@@ -1,22 +1,26 @@
-FROM golang:1.25-alpine AS builder
+# ── Stage 1: Build frontend ─────────────────────────────────────────────────
+FROM node:20-alpine AS frontend-builder
+WORKDIR /frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
 
+# ── Stage 2: Build backend ───────────────────────────────────────────────────
+FROM golang:1.25-alpine AS backend-builder
 WORKDIR /app
-
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
-
 COPY backend/ .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /aura ./cmd/server
 
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /aura-server ./cmd/server
-
-# ---
-
-FROM scratch
-
-COPY --from=builder /aura-server /aura-server
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-
-EXPOSE 8080
+# ── Stage 3: Final image ─────────────────────────────────────────────────────
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates tzdata
+WORKDIR /app
+COPY --from=backend-builder /aura ./aura
+COPY --from=frontend-builder /frontend/build ./frontend/build
+RUN mkdir -p /data
+EXPOSE 9001
 VOLUME ["/data"]
-
-CMD ["/aura-server"]
+CMD ["./aura"]

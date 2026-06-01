@@ -7,7 +7,7 @@
   import { appendPosition, formatDate, isToday, offsetDate, today, weekStart } from '$lib/utils';
   import { pomodoro } from '$lib/stores/pomodoro.svelte';
   import KanbanColumn from '$lib/components/KanbanColumn.svelte';
-  import AddTaskModal from '$lib/components/AddTaskModal.svelte';
+  import TaskPanel from '$lib/components/TaskPanel.svelte';
 
   let date = $derived($page.params.date ?? today());
   let tasks = $state<Task[]>([]);
@@ -16,8 +16,11 @@
 
   let draggingId = $state<string | null>(null);
   let dragOverStatus = $state<TaskStatus | null>(null);
-  let modalOpen = $state(false);
-  let modalStatus = $state<TaskStatus>('planned');
+
+  // Panel state — null = closed, undefined task = create, Task = edit
+  let panelOpen = $state(false);
+  let panelTask = $state<Task | null>(null);
+  let panelStatus = $state<TaskStatus>('planned');
 
   async function loadTasks() {
     loading = true; error = null;
@@ -33,6 +36,7 @@
     return tasks.filter(t => t.status === status).sort((a, b) => a.position - b.position);
   }
 
+  // ── Drag & drop ──────────────────────────────────────────────────────────
   function handleDragStart(id: string) { draggingId = id; }
 
   async function handleDrop(targetStatus: TaskStatus) {
@@ -54,43 +58,59 @@
     } catch { tasks = prev; }
   }
 
-  function handleFocus(id: string, title: string) { pomodoro.start(id, title); }
-
-  function openModal(status: TaskStatus) { modalStatus = status; modalOpen = true; }
-
-  async function handleCreate(params: {
-    title: string; description: string | null; status: TaskStatus;
-    estimateMinutes: number | null; tags: string[];
-    recurrenceRule: string | null; plannedDate: string | null;
-  }) {
-    modalOpen = false;
-    const { title, description, status, estimateMinutes, tags, recurrenceRule, plannedDate } = params;
-    const effectiveDate = plannedDate ?? (status !== 'backlog' ? date : undefined);
-    const newPos = appendPosition(tasks.filter(t => t.status === status).map(t => t.position));
+  // ── Quick complete ────────────────────────────────────────────────────────
+  async function handleComplete(id: string) {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    const newStatus = task.status === 'done' ? 'planned' : 'done';
+    const prev = tasks.slice();
+    tasks = tasks.map(t => t.id === id ? { ...t, status: newStatus } : t);
     try {
-      const task = await api.tasks.create({
-        title,
-        description: description ?? undefined,
-        tags,
-        ...(recurrenceRule
-          ? { recurrence_rule: recurrenceRule }
-          : {
-              status,
-              position: newPos,
-              planned_date: effectiveDate,
-              week_start: effectiveDate ? weekStart(effectiveDate) : undefined,
-            }),
-        time_estimate_minutes: estimateMinutes ?? undefined,
+      const updated = await api.tasks.update(id, {
+        status: newStatus,
+        completed_at: newStatus === 'done' ? new Date().toISOString() : null,
       });
-      if (recurrenceRule) { await loadTasks(); }
-      else { tasks = [...tasks, task]; }
-    } catch (e) {
-      error = e instanceof Error ? e.message : 'Failed to create task';
-    }
+      tasks = tasks.map(t => t.id === updated.id ? updated : t);
+    } catch { tasks = prev; }
   }
 
+  // ── Pomodoro ──────────────────────────────────────────────────────────────
+  function handleFocus(id: string, title: string) { pomodoro.start(id, title); }
+
+  // ── Panel ─────────────────────────────────────────────────────────────────
+  function openCreate(status: TaskStatus) {
+    panelTask = null; panelStatus = status; panelOpen = true;
+  }
+
+  function openEdit(task: Task) {
+    panelTask = task; panelOpen = true;
+  }
+
+  async function handlePanelSave(saved: Task) {
+    panelOpen = false;
+    // Deletion signal: status 'cancelled' and not in original list
+    if (saved.status === 'cancelled' && !tasks.find(t => t.id === saved.id)) {
+      tasks = tasks.filter(t => t.id !== saved.id);
+      return;
+    }
+    // If it was a create with recurrence, reload (generate was triggered server-side)
+    if (!panelTask && saved.recurrence_rule) {
+      await loadTasks();
+      return;
+    }
+    // Remove deleted tasks
+    if (saved.status === 'cancelled') {
+      tasks = tasks.filter(t => t.id !== saved.id);
+      return;
+    }
+    // Update or insert
+    const existing = tasks.findIndex(t => t.id === saved.id);
+    if (existing >= 0) tasks = tasks.map(t => t.id === saved.id ? saved : t);
+    else tasks = [...tasks, saved];
+  }
+
+  // ── Navigation ───────────────────────────────────────────────────────────
   function navigate(delta: number) { goto(`/day/${offsetDate(date, delta)}`); }
-  function goToday() { goto(`/day/${today()}`); }
 </script>
 
 <svelte:head><title>{isToday(date) ? 'Today' : date} — Aura</title></svelte:head>
@@ -120,13 +140,13 @@
     </div>
     <div class="flex items-center gap-2">
       {#if !isToday(date)}
-        <button onclick={goToday}
+        <button onclick={() => goto(`/day/${today()}`)}
                 class="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600
                        hover:bg-gray-50 transition-colors dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800">
           Today
         </button>
       {/if}
-      <button onclick={() => openModal('planned')}
+      <button onclick={() => openCreate('planned')}
               class="flex items-center gap-1.5 rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-medium
                      text-white hover:bg-blue-600 transition-colors">
         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -142,7 +162,8 @@
   {#if loading}
     <div class="flex h-64 items-center justify-center text-sm text-gray-400 dark:text-gray-600">Loading…</div>
   {:else if error}
-    <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
+    <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700
+                dark:border-red-900 dark:bg-red-950 dark:text-red-400">
       {error} <button onclick={loadTasks} class="ml-2 underline">Retry</button>
     </div>
   {:else}
@@ -152,14 +173,19 @@
           label={col.label} status={col.status} tasks={columnTasks(col.status)}
           accent={col.accent} bg={col.bg} border={col.border}
           isDragOver={dragOverStatus === col.status}
-          onTaskDragStart={handleDragStart} onTaskFocusClick={handleFocus}
-          onDrop={handleDrop} onDragOver={(s) => (dragOverStatus = s)}
-          onDragLeave={() => (dragOverStatus = null)} onAddClick={openModal}
+          onTaskDragStart={handleDragStart}
+          onTaskFocusClick={handleFocus}
+          onTaskComplete={handleComplete}
+          onTaskClick={openEdit}
+          onDrop={handleDrop}
+          onDragOver={(s) => (dragOverStatus = s)}
+          onDragLeave={() => (dragOverStatus = null)}
+          onAddClick={openCreate}
         />
       {/each}
     </div>
   {/if}
 </main>
 
-<AddTaskModal open={modalOpen} defaultStatus={modalStatus} defaultDate={date}
-              onSubmit={handleCreate} onClose={() => (modalOpen = false)} />
+<TaskPanel open={panelOpen} task={panelTask} defaultStatus={panelStatus} defaultDate={date}
+           onSave={handlePanelSave} onClose={() => (panelOpen = false)} />

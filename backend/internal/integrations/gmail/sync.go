@@ -13,12 +13,6 @@ import (
 	"github.com/clevercode/aura/internal/db"
 )
 
-type SyncResult struct {
-	Total   int `json:"total"`
-	New     int `json:"new"`
-	Updated int `json:"updated"`
-	Errors  int `json:"errors"`
-}
 
 // messageListResponse from the Gmail messages.list endpoint
 type messageListResponse struct {
@@ -53,12 +47,12 @@ func (m *messageDetail) header(name string) string {
 	return ""
 }
 
-func Sync(ctx context.Context, clientID, clientSecret string, stored *StoredToken, tasks *db.TaskStore) (SyncResult, error) {
+func Sync(ctx context.Context, clientID, clientSecret string, stored *StoredToken, tasks *db.TaskStore) (db.SyncResult, error) {
 	if err := RefreshAccessToken(ctx, clientID, clientSecret, stored); err != nil {
-		return SyncResult{}, fmt.Errorf("refresh token: %w", err)
+		return db.SyncResult{}, fmt.Errorf("refresh token: %w", err)
 	}
 
-	var result SyncResult
+	var result db.SyncResult
 	pageToken := ""
 
 	for {
@@ -117,7 +111,7 @@ func listMessages(ctx context.Context, accessToken string, labels []string, page
 	return lr.Messages, lr.NextPageToken, nil
 }
 
-func syncMessage(ctx context.Context, msgID, accessToken string, tasks *db.TaskStore, result *SyncResult) error {
+func syncMessage(ctx context.Context, msgID, accessToken string, tasks *db.TaskStore, result *db.SyncResult) error {
 	result.Total++
 
 	// Check if this message is already imported

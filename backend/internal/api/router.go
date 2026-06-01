@@ -104,6 +104,17 @@ func NewRouter(database *sql.DB, cfg config.Config) http.Handler {
 				r.Patch("/labels", integrations.gmailUpdateLabels)
 				r.Post("/sync", integrations.gmailSync)
 			})
+			r.Route("/calendar", func(r chi.Router) {
+				r.Get("/", integrations.calendarGet)
+				r.Patch("/", integrations.calendarToggle)
+				r.Post("/sync", integrations.calendarSync)
+			})
+			r.Route("/fastmail", func(r chi.Router) {
+				r.Get("/", integrations.fastmailGet)
+				r.Put("/", integrations.fastmailPut)
+				r.Delete("/", integrations.fastmailDelete)
+				r.Post("/sync", integrations.fastmailSync)
+			})
 		})
 	})
 

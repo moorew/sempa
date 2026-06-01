@@ -4,12 +4,15 @@
 
   let {
     label, status, tasks, accent, bg, border, isDragOver,
-    onTaskDragStart, onTaskFocusClick, onDrop, onDragOver, onDragLeave, onAddClick,
+    onTaskDragStart, onTaskFocusClick, onTaskComplete, onTaskClick,
+    onDrop, onDragOver, onDragLeave, onAddClick,
   }: {
     label: string; status: TaskStatus; tasks: Task[];
     accent: string; bg: string; border: string; isDragOver: boolean;
     onTaskDragStart: (id: string) => void;
     onTaskFocusClick?: (id: string, title: string) => void;
+    onTaskComplete?: (id: string) => void;
+    onTaskClick?: (task: Task) => void;
     onDrop: (status: TaskStatus) => void;
     onDragOver: (status: TaskStatus) => void;
     onDragLeave: () => void;
@@ -37,7 +40,11 @@
 
   <div role="list" class="flex flex-1 flex-col gap-2 overflow-y-auto p-2 min-h-[120px]">
     {#each tasks as task (task.id)}
-      <TaskCard {task} {accent} onDragStart={onTaskDragStart} onFocusClick={onTaskFocusClick} />
+      <TaskCard {task} {accent}
+               onDragStart={onTaskDragStart}
+               onFocusClick={onTaskFocusClick}
+               onComplete={onTaskComplete}
+               onClick={onTaskClick} />
     {/each}
     {#if isDragOver && tasks.length === 0}
       <div class="flex h-16 items-center justify-center rounded-lg border-2 border-dashed border-blue-300 text-xs text-blue-400 dark:border-blue-700 dark:text-blue-600">

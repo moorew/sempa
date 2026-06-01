@@ -97,11 +97,30 @@ export const api = {
     },
     gmail: {
       get: () => req<GmailIntegrationConfig>('/api/v1/integrations/gmail'),
-      authUrl: () => `${base}/api/v1/integrations/gmail/auth`,
+      authUrl: (withCalendar = false) =>
+        `${base}/api/v1/integrations/gmail/auth${withCalendar ? '?calendar=1' : ''}`,
       updateLabels: (labels: string[]) =>
         req<unknown>('/api/v1/integrations/gmail/labels', { method: 'PATCH', body: body({ labels }) }),
       sync: () => req<SyncResult>('/api/v1/integrations/gmail/sync', { method: 'POST' }),
       delete: () => req<void>('/api/v1/integrations/gmail', { method: 'DELETE' }),
+    },
+
+    calendar: {
+      get: () => req<{ connected: boolean; email?: string; calendar_ids?: string[]; last_synced_at?: string }>('/api/v1/integrations/calendar'),
+      toggle: (enabled: boolean, calendarIds?: string[]) =>
+        req<{ enabled: boolean }>('/api/v1/integrations/calendar', {
+          method: 'PATCH', body: body({ enabled, calendar_ids: calendarIds }),
+        }),
+      sync: (date?: string) =>
+        req<SyncResult>(`/api/v1/integrations/calendar/sync${date ? `?date=${date}` : ''}`, { method: 'POST' }),
+    },
+
+    fastmail: {
+      get: () => req<{ connected: boolean; email?: string; last_synced_at?: string }>('/api/v1/integrations/fastmail'),
+      save: (email: string, app_password: string) =>
+        req<unknown>('/api/v1/integrations/fastmail', { method: 'PUT', body: body({ email, app_password }) }),
+      sync: () => req<SyncResult>('/api/v1/integrations/fastmail/sync', { method: 'POST' }),
+      delete: () => req<void>('/api/v1/integrations/fastmail', { method: 'DELETE' }),
     },
   },
 };

@@ -19,6 +19,14 @@ var migrationsFS embed.FS
 
 var ErrNotFound = errors.New("not found")
 
+// SyncResult is returned by all integration sync operations.
+type SyncResult struct {
+	Total   int `json:"total"`
+	New     int `json:"new"`
+	Updated int `json:"updated"`
+	Errors  int `json:"errors"`
+}
+
 func Open(path string) (*sql.DB, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return nil, fmt.Errorf("create db dir: %w", err)

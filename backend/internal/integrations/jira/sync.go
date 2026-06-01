@@ -10,16 +10,10 @@ import (
 	"github.com/clevercode/aura/internal/db"
 )
 
-type SyncResult struct {
-	Total   int    `json:"total"`
-	New     int    `json:"new"`
-	Updated int    `json:"updated"`
-	Errors  int    `json:"errors"`
-}
 
-func Sync(ctx context.Context, cfg Config, tasks *db.TaskStore) (SyncResult, error) {
+func Sync(ctx context.Context, cfg Config, tasks *db.TaskStore) (db.SyncResult, error) {
 	client := NewClient(cfg)
-	var result SyncResult
+	var result db.SyncResult
 	startAt := 0
 
 	for {
@@ -43,7 +37,7 @@ func Sync(ctx context.Context, cfg Config, tasks *db.TaskStore) (SyncResult, err
 	return result, nil
 }
 
-func syncIssue(ctx context.Context, issue *Issue, host string, tasks *db.TaskStore, result *SyncResult) error {
+func syncIssue(ctx context.Context, issue *Issue, host string, tasks *db.TaskStore, result *db.SyncResult) error {
 	result.Total++
 
 	metaBytes, _ := json.Marshal(map[string]any{

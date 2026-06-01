@@ -85,7 +85,7 @@
 
       <!-- Settings + dark toggle pinned to bottom -->
       <div class="mt-auto border-t border-gray-100 pt-2 dark:border-gray-800">
-        <a href="/settings/integrations"
+        <a href="/settings/accounts"
            class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors
                   {isActive('/settings') ? 'bg-blue-50 font-medium text-blue-600 dark:bg-blue-950 dark:text-blue-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'}">
           <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">

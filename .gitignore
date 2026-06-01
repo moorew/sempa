@@ -25,3 +25,6 @@ frontend/node_modules/
 # OS
 .DS_Store
 Thumbs.db
+
+# Secrets env file (never commit)
+.env.local
