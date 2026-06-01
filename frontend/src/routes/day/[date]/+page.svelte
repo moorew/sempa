@@ -59,26 +59,29 @@
   function openModal(status: TaskStatus) { modalStatus = status; modalOpen = true; }
 
   async function handleCreate(params: {
-    title: string; status: TaskStatus; estimateMinutes: number | null;
-    tags: string[]; recurrenceRule: string | null;
+    title: string; description: string | null; status: TaskStatus;
+    estimateMinutes: number | null; tags: string[];
+    recurrenceRule: string | null; plannedDate: string | null;
   }) {
     modalOpen = false;
-    const { title, status, estimateMinutes, tags, recurrenceRule } = params;
+    const { title, description, status, estimateMinutes, tags, recurrenceRule, plannedDate } = params;
+    const effectiveDate = plannedDate ?? (status !== 'backlog' ? date : undefined);
     const newPos = appendPosition(tasks.filter(t => t.status === status).map(t => t.position));
     try {
       const task = await api.tasks.create({
-        title, tags,
+        title,
+        description: description ?? undefined,
+        tags,
         ...(recurrenceRule
           ? { recurrence_rule: recurrenceRule }
           : {
               status,
               position: newPos,
-              planned_date: status !== 'backlog' ? date : undefined,
-              week_start: status !== 'backlog' ? weekStart(date) : undefined,
+              planned_date: effectiveDate,
+              week_start: effectiveDate ? weekStart(effectiveDate) : undefined,
             }),
         time_estimate_minutes: estimateMinutes ?? undefined,
       });
-      // If it was a recurring template creation, reload to pick up the generated instance
       if (recurrenceRule) { await loadTasks(); }
       else { tasks = [...tasks, task]; }
     } catch (e) {

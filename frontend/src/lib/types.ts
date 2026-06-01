@@ -71,7 +71,7 @@ export interface PomodoroSession {
 
 export interface CreateTaskInput {
   title: string;
-  description?: string;
+  description?: string | null;
   planned_date?: string;
   week_start?: string;
   status?: TaskStatus;
