@@ -11,6 +11,13 @@
   import PomodoroTimer from '$lib/components/PomodoroTimer.svelte';
   import type { Snippet } from 'svelte';
 
+  // Lucide icons
+  import {
+    Sun, Calendar, ClipboardCheck, Inbox, Moon, Settings,
+    ChevronLeft, ChevronRight, Plus, RefreshCw, X, Check,
+    Target, Timer, LayoutDashboard, Palette,
+  } from 'lucide-svelte';
+
   let { children }: { children: Snippet } = $props();
 
   const todayDate = today();
@@ -49,102 +56,60 @@
 
     <!-- Logo -->
     <div class="flex items-center gap-2.5 px-5 py-5">
-      <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-500 shadow-sm shadow-blue-200 dark:shadow-none">
+      <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-sm"
+           style="background: var(--a500);">
         <span class="text-xs font-bold text-white">S</span>
       </div>
       <span class="text-sm font-bold tracking-tight text-gray-900 dark:text-gray-50">Sempa</span>
     </div>
 
-    <!-- Nav links -->
+    <!-- Nav -->
     <nav class="flex flex-1 flex-col gap-0.5 px-3 pb-3">
 
-      {#snippet navLink(href: string, label: string, icon: import('svelte').Snippet)}
+      {#snippet navItem(href: string, label: string, Icon: any)}
         {@const active = isActive(href)}
         <a {href}
            class="group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors
-                  {active
-                    ? 'bg-blue-50 text-blue-600 font-semibold dark:bg-blue-950/60 dark:text-blue-400'
-                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-200'}">
-          <span class="shrink-0 {active ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300'}">
-            {@render icon()}
+                  {active ? 'font-semibold' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-200'}"
+           style={active ? `background:var(--a50); color:var(--a600);` : ''}>
+          <span class="shrink-0 transition-colors"
+                style={active ? `color:var(--a500)` : ''}>
+            <Icon size={16} strokeWidth={active ? 2.25 : 1.75} />
           </span>
           {label}
         </a>
       {/snippet}
 
-      {#snippet iconToday()}
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M18.66 5.34l1.41-1.41"/>
-        </svg>
-      {/snippet}
-      {@render navLink(`/day/${todayDate}`, 'Today', iconToday)}
+      {@render navItem(`/day/${todayDate}`, 'Today', LayoutDashboard)}
+      {@render navItem(`/week/${thisWeek}`, 'This Week', Calendar)}
+      {@render navItem(`/plan/${todayDate}`, 'Plan Day', ClipboardCheck)}
+      {@render navItem('/email', 'Inbox', Inbox)}
+      {@render navItem(`/shutdown/${todayDate}`, 'Shutdown', Moon)}
 
-      {#snippet iconWeek()}
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-          <rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/>
-        </svg>
-      {/snippet}
-      {@render navLink(`/week/${thisWeek}`, 'This Week', iconWeek)}
-
-
-      {#snippet iconPlan()}
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-          <path stroke-linecap="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9 2 2 4-4"/>
-        </svg>
-      {/snippet}
-      {@render navLink(`/plan/${todayDate}`, 'Plan Day', iconPlan)}
-
-      {#snippet iconEmail()}
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-          <path stroke-linecap="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-        </svg>
-      {/snippet}
-      {@render navLink('/email', 'Inbox', iconEmail)}
-
-      {#snippet iconShutdown()}
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-          <path stroke-linecap="round" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-        </svg>
-      {/snippet}
-      {@render navLink(`/shutdown/${todayDate}`, 'Shutdown', iconShutdown)}
-
-      <!-- Pomodoro in-progress widget -->
+      <!-- Pomodoro in-progress -->
       {#if pomodoro.taskId}
-        <div class="mt-2 rounded-xl border border-amber-200/70 bg-amber-50 px-3 py-2.5
-                    dark:border-amber-800/40 dark:bg-amber-950/40">
-          <p class="truncate text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-500">
+        <div class="mt-2 rounded-xl border px-3 py-2.5"
+             style="border-color:var(--a200); background:var(--a50); color:var(--a700);">
+          <p class="truncate text-[10px] font-semibold uppercase tracking-wider opacity-70">
             {pomodoro.phaseLabel}
           </p>
-          <p class="font-mono text-xl font-bold text-amber-600 dark:text-amber-400">
-            {pomodoro.display}
-          </p>
+          <p class="font-mono text-xl font-bold">{pomodoro.display}</p>
         </div>
       {/if}
 
       <!-- Bottom section -->
       <div class="mt-auto flex flex-col gap-0.5 border-t border-gray-100 pt-3 dark:border-gray-800/60">
+        {@render navItem('/settings/accounts', 'Settings', Settings)}
 
-        {#snippet iconSettings()}
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-            <path stroke-linecap="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 0 0-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 0 0-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 0 0-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 0 0-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 0 0 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/>
-          </svg>
-        {/snippet}
-        {@render navLink('/settings/accounts', 'Settings', iconSettings)}
-
-        <!-- Dark mode toggle -->
         <button onclick={theme.toggle}
                 class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-500
                        transition-colors hover:bg-gray-50 hover:text-gray-800
                        dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-200">
-          <span class="shrink-0 text-gray-400">
+          <span class="shrink-0">
             {#if theme.dark}
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M18.66 5.34l1.41-1.41"/>
-              </svg>
+              <Sun size={16} strokeWidth={1.75} />
             {:else}
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-                <path stroke-linecap="round" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-              </svg>
+              <Moon size={16} strokeWidth={1.75} />
             {/if}
           </span>
           {theme.dark ? 'Light mode' : 'Dark mode'}

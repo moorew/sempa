@@ -11,6 +11,7 @@
   import EmailPanel from '$lib/components/EmailPanel.svelte';
   import MiniCalendar from '$lib/components/MiniCalendar.svelte';
   import TimeslotCalendar from '$lib/components/TimeslotCalendar.svelte';
+  import WeeklyObjectivesWidget from '$lib/components/WeeklyObjectivesWidget.svelte';
 
   let date = $derived($page.params.date ?? today());
   let tasks = $state<Task[]>([]);
@@ -237,8 +238,11 @@
         </button>
       {/if}
       <button onclick={() => openCreate('planned')}
-              class="flex items-center gap-1.5 rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-semibold
-                     text-white hover:bg-blue-600 transition-colors shadow-sm shadow-blue-200 dark:shadow-none">
+              class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold
+                     text-white transition-colors shadow-sm"
+              style="background:var(--a500);"
+              onmouseenter={(e)=>(e.currentTarget as HTMLElement).style.background='var(--a600)'}
+              onmouseleave={(e)=>(e.currentTarget as HTMLElement).style.background='var(--a500)'}>
         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" d="M12 4v16m8-8H4"/>
         </svg>
@@ -314,6 +318,8 @@
     <div class="shrink-0 border-b border-gray-100 dark:border-gray-800/60">
       <MiniCalendar {date} />
     </div>
+
+    <WeeklyObjectivesWidget {date} />
 
     <div class="flex shrink-0 border-b border-gray-100 dark:border-gray-800/60">
       <button onclick={() => rightTab = 'inbox'}

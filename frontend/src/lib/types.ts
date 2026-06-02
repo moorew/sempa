@@ -171,7 +171,7 @@ export const COLUMNS: {
   bg: string;
   border: string;
 }[] = [
-  { status: 'backlog',     label: 'Backlog', accent: 'bg-slate-400',  bg: 'bg-slate-50 dark:bg-slate-900/50',   border: 'border-slate-200 dark:border-slate-800'  },
+  { status: 'backlog',     label: 'Triage',  accent: 'bg-slate-400',  bg: 'bg-slate-50 dark:bg-slate-900/50',   border: 'border-slate-200 dark:border-slate-800'  },
   { status: 'planned',     label: 'Planned', accent: 'bg-blue-500',   bg: 'bg-blue-50 dark:bg-blue-950/40',     border: 'border-blue-200 dark:border-blue-900'    },
   { status: 'in_progress', label: 'Focus',   accent: 'bg-amber-500',  bg: 'bg-amber-50 dark:bg-amber-950/40',   border: 'border-amber-200 dark:border-amber-900'  },
   { status: 'done',        label: 'Done',    accent: 'bg-green-500',  bg: 'bg-green-50 dark:bg-green-950/40',   border: 'border-green-200 dark:border-green-900'  },

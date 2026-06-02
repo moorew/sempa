@@ -76,13 +76,16 @@
         {@const isSel = ds === date}
         <div class="flex items-center justify-center">
           <span class="flex h-6 w-6 items-center justify-center rounded-full text-[11px]
-                       {isToday && isSel
-                         ? 'bg-blue-500 text-white font-bold'
-                         : isToday
-                           ? 'bg-blue-100 text-blue-700 font-semibold dark:bg-blue-900/60 dark:text-blue-300'
-                           : isSel
-                             ? 'bg-gray-200 text-gray-800 font-medium dark:bg-gray-600 dark:text-gray-100'
-                             : 'text-gray-500 dark:text-gray-400'}">
+                       {isSel
+                         ? 'bg-gray-200 text-gray-800 font-medium dark:bg-gray-600 dark:text-gray-100'
+                         : !isToday
+                           ? 'text-gray-500 dark:text-gray-400'
+                           : ''}"
+                style={isToday
+                  ? (isSel
+                      ? 'background:var(--a500);color:white;font-weight:700;'
+                      : 'background:var(--a100);color:var(--a700);font-weight:600;')
+                  : ''}>
             {cell}
           </span>
         </div>

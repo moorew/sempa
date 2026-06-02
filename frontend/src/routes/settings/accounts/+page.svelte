@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { api } from '$lib/api';
+  import { theme, ACCENT_PRESETS, type AccentName } from '$lib/stores/theme.svelte';
 
   type AccountStatus = { connected: boolean; email?: string; last_synced_at?: string | null; enabled?: boolean };
 
@@ -460,5 +461,47 @@
         {/if}
       </div>
     {/if}
+  </section>
+
+  <!-- ── Appearance ─────────────────────────────────────────────────────── -->
+  <section class="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <div class="border-b border-gray-100 px-5 py-4 dark:border-gray-700">
+      <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Appearance</h2>
+    </div>
+    <div class="px-5 py-4 space-y-4">
+      <!-- Accent colour -->
+      <div>
+        <p class="mb-3 text-xs font-medium text-gray-600 dark:text-gray-400">Accent colour</p>
+        <div class="flex flex-wrap gap-2">
+          {#each Object.entries(ACCENT_PRESETS) as [name, preset]}
+            <button onclick={() => theme.setAccent(name as AccentName)}
+                    title={preset.label}
+                    class="flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-xs font-medium transition-all
+                           {theme.accent === name
+                             ? 'border-gray-400 bg-gray-50 dark:border-gray-500 dark:bg-gray-700'
+                             : 'border-gray-100 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-500'}">
+              <span class="h-3.5 w-3.5 rounded-full shrink-0" style="background:{preset.swatch}"></span>
+              <span class="text-gray-700 dark:text-gray-300">{preset.label}</span>
+              {#if theme.accent === name}
+                <svg class="h-3 w-3 text-gray-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+              {/if}
+            </button>
+          {/each}
+        </div>
+      </div>
+
+      <!-- Dark / light -->
+      <div>
+        <p class="mb-3 text-xs font-medium text-gray-600 dark:text-gray-400">Mode</p>
+        <button onclick={theme.toggle}
+                class="flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm
+                       text-gray-700 hover:bg-gray-50 transition-colors
+                       dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700">
+          {theme.dark ? '☀️ Switch to light mode' : '🌙 Switch to dark mode'}
+        </button>
+      </div>
+    </div>
   </section>
 </div>

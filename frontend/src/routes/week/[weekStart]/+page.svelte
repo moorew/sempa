@@ -4,7 +4,7 @@
   import { page } from '$app/stores';
   import { api } from '$lib/api';
   import type { Objective, Task } from '$lib/types';
-  import { appendPosition, formatWeekRange, offsetDate, weekStart as calcWeekStart } from '$lib/utils';
+  import { appendPosition, formatWeekRange, offsetDate, today, weekStart as calcWeekStart } from '$lib/utils';
 
   let weekStartDate = $derived($page.params.weekStart ?? calcWeekStart(new Date().toISOString().split('T')[0]));
 
@@ -20,6 +20,7 @@
   let addingInput: HTMLInputElement | undefined = $state();
   let taskDrafts   = $state<Record<string, string>>({});
   let addingTask   = $state<Record<string, boolean>>({});
+  let taskDays     = $state<Record<string, string>>({});
 
   async function load() {
     loading = true; error = null;
@@ -81,11 +82,13 @@
     addingTask = { ...addingTask, [objId]: true };
     taskDrafts = { ...taskDrafts, [objId]: '' };
     const pos = appendPosition(objectiveTasks(objId).map(t => t.position));
+    const plannedDate = taskDays[objId] ?? today();
     try {
       const t = await api.tasks.create({
         title,
         weekly_objective_id: objId,
         week_start: weekStartDate,
+        planned_date: plannedDate,
         status: 'planned',
         position: pos,
       });
@@ -333,22 +336,34 @@
               {/each}
 
               <!-- Quick add task -->
-              <div class="flex items-center gap-2 rounded-lg border border-dashed border-gray-200 px-2 py-1.5 mt-1
-                          focus-within:border-blue-400 dark:border-gray-700 dark:focus-within:border-blue-600">
-                <svg class="h-3.5 w-3.5 shrink-0 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" d="M12 4v16m8-8H4"/>
-                </svg>
-                <input bind:value={taskDrafts[obj.id]}
-                       onkeydown={(e) => { if (e.key === 'Enter') addTask(obj.id); }}
-                       type="text"
-                       placeholder="Add a task for this objective… (Enter)"
-                       class="flex-1 bg-transparent text-xs text-gray-700 placeholder-gray-400 outline-none
-                              dark:text-gray-200 dark:placeholder-gray-600" />
+              <div class="mt-1 space-y-1.5">
+                <div class="flex items-center gap-2 rounded-lg border border-dashed border-gray-200 px-2 py-1.5
+                            focus-within:border-[var(--a500)] dark:border-gray-700">
+                  <svg class="h-3.5 w-3.5 shrink-0 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" d="M12 4v16m8-8H4"/>
+                  </svg>
+                  <input bind:value={taskDrafts[obj.id]}
+                         onkeydown={(e) => { if (e.key === 'Enter') addTask(obj.id); }}
+                         type="text"
+                         placeholder="Add a task… (Enter to save)"
+                         class="flex-1 bg-transparent text-xs text-gray-700 placeholder-gray-400 outline-none
+                                dark:text-gray-200 dark:placeholder-gray-600" />
+                </div>
                 {#if taskDrafts[obj.id]?.trim()}
-                  <button onclick={() => addTask(obj.id)} disabled={addingTask[obj.id]}
-                          class="text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 disabled:opacity-40">
-                    Add
-                  </button>
+                  <div class="flex items-center gap-2 pl-1">
+                    <select bind:value={taskDays[obj.id]}
+                            class="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs
+                                   text-gray-600 outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                      {#each Array.from({length:7},(_,i)=>offsetDate(weekStartDate,i)) as d}
+                        <option value={d}>{new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</option>
+                      {/each}
+                    </select>
+                    <button onclick={() => addTask(obj.id)} disabled={addingTask[obj.id]}
+                            class="rounded-md bg-[var(--a500)] px-3 py-1 text-xs font-medium text-white
+                                   hover:bg-[var(--a600)] disabled:opacity-40 transition-colors">
+                      Add
+                    </button>
+                  </div>
                 {/if}
               </div>
             </div>
