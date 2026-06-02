@@ -3,10 +3,10 @@ package fastmail
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -25,16 +25,18 @@ type Config struct {
 }
 
 type Client struct {
-	cfg     Config
-	auth    string
-	apiURL  string
-	account string
-	http    *http.Client
+	cfg      Config
+	auth     string
+	apiURL   string
+	account  string
+	username string // discovered from JMAP session
+	http     *http.Client
 }
 
 type jmapSession struct {
-	APIURL      string            `json:"apiUrl"`
+	APIURL          string            `json:"apiUrl"`
 	PrimaryAccounts map[string]string `json:"primaryAccounts"`
+	Username        string            `json:"username"`
 }
 
 type jmapRequest struct {
@@ -47,13 +49,16 @@ type jmapResponse struct {
 }
 
 func NewClient(cfg Config) *Client {
-	token := base64.StdEncoding.EncodeToString([]byte(cfg.Email + ":" + cfg.AppPassword))
 	return &Client{
 		cfg:  cfg,
-		auth: "Basic " + token,
+		auth: "Bearer " + cfg.AppPassword,
 		http: &http.Client{Timeout: 30 * time.Second},
 	}
 }
+
+// Username returns the account email discovered from the JMAP session.
+// Only populated after Discover() has been called.
+func (c *Client) Username() string { return c.username }
 
 func (c *Client) Discover(ctx context.Context) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sessionURL, nil)
@@ -68,10 +73,16 @@ func (c *Client) Discover(ctx context.Context) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized {
-		return fmt.Errorf("unauthorized — check your email and app password")
+		body, _ := io.ReadAll(resp.Body)
+		detail := strings.TrimSpace(string(body))
+		if detail == "" {
+			detail = "no detail from server"
+		}
+		return fmt.Errorf("401 unauthorized (email: %s) — %s", c.cfg.Email, detail)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("JMAP session returned HTTP %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("JMAP session HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 
 	var session jmapSession
@@ -83,6 +94,7 @@ func (c *Client) Discover(ctx context.Context) error {
 		c.apiURL = "https://api.fastmail.com/jmap/api/"
 	}
 	c.account = session.PrimaryAccounts["urn:ietf:params:jmap:mail"]
+	c.username = session.Username
 	return nil
 }
 

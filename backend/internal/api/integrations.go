@@ -450,16 +450,19 @@ func (h *integrationHandler) fastmailPut(w http.ResponseWriter, r *http.Request)
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if body.Email == "" || body.AppPassword == "" {
-		respondError(w, http.StatusBadRequest, "email and app_password are required")
+	if body.AppPassword == "" {
+		respondError(w, http.StatusBadRequest, "app_password is required")
 		return
 	}
 
-	// Test connection before saving
 	client := fastmail.NewClient(body)
 	if err := client.TestConnection(r.Context()); err != nil {
 		respondError(w, http.StatusBadGateway, "connection failed: "+err.Error())
 		return
+	}
+	// Populate email from JMAP session so we always have it for display.
+	if body.Email == "" {
+		body.Email = client.Username()
 	}
 
 	configJSON, _ := json.Marshal(body)
@@ -656,15 +659,17 @@ func (h *integrationHandler) taskInboxPut(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if body.Email == "" || body.AppPassword == "" || body.InboxAddress == "" {
-		respondError(w, http.StatusBadRequest, "email, app_password, and inbox_address are required")
+	if body.AppPassword == "" || body.InboxAddress == "" {
+		respondError(w, http.StatusBadRequest, "app_password and inbox_address are required")
 		return
 	}
-	client := fastmail.NewClient(fastmail.Config{Email: body.Email, AppPassword: body.AppPassword})
+	client := fastmail.NewClient(fastmail.Config{AppPassword: body.AppPassword})
 	if err := client.TestConnection(r.Context()); err != nil {
 		respondError(w, http.StatusBadGateway, "connection failed: "+err.Error())
 		return
 	}
+	// Auto-discover email from JMAP session.
+	body.Email = client.Username()
 	if body.AllowedSenders == nil {
 		body.AllowedSenders = []string{}
 	}
