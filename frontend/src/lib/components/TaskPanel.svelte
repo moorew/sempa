@@ -1,7 +1,8 @@
 <script lang="ts">
-  import type { Task, TaskStatus } from '$lib/types';
+  import type { Objective, Task, TaskStatus } from '$lib/types';
   import { tagStore } from '$lib/stores/tags.svelte';
   import { api } from '$lib/api';
+  import { weekStart as calcWeekStart } from '$lib/utils';
   import SubTaskList from './SubTaskList.svelte';
 
   const TIME_OPTIONS = [
@@ -51,6 +52,8 @@
   let actualMinutesInput = $state('');
   let scheduledStart = $state('');
   let scheduledEnd = $state('');
+  let selectedObjectiveId = $state<string | null>(null);
+  let weekObjectives = $state<Objective[]>([]);
   let recurrenceRule = $state('');
   let selectedTags = $state<string[]>([]);
   let tagSearch = $state('');
@@ -94,14 +97,23 @@
       scheduledEnd = toLocalDatetimeInput(task.scheduled_end);
       recurrenceRule = task.recurrence_rule ?? '';
       selectedTags = [...(task.tags ?? [])];
+      selectedObjectiveId = task.weekly_objective_id ?? null;
     } else {
       title = ''; description = ''; plannedDate = defaultDate;
       estimateMinutes = null; actualMinutesInput = '';
       scheduledStart = ''; scheduledEnd = '';
       recurrenceRule = ''; selectedTags = [];
+      selectedObjectiveId = null;
     }
     tagSearch = ''; tagDropdownOpen = false; error = '';
     setTimeout(() => titleInput?.focus(), 30);
+
+    // Load objectives for the current week
+    const dateForWeek = task?.planned_date ?? defaultDate;
+    if (dateForWeek) {
+      const ws = calcWeekStart(dateForWeek);
+      api.objectives.listByWeek(ws).then(objs => { weekObjectives = objs; }).catch(() => {});
+    }
   });
 
   // Tags
@@ -148,6 +160,7 @@
           tags: selectedTags,
           scheduled_start: fromLocalDatetimeInput(scheduledStart),
           scheduled_end: fromLocalDatetimeInput(scheduledEnd),
+          weekly_objective_id: selectedObjectiveId ?? null,
         });
       } else {
         saved = await api.tasks.create({
@@ -161,6 +174,7 @@
                 planned_date: plannedDate || undefined,
               }),
           time_estimate_minutes: estimateMinutes ?? undefined,
+          weekly_objective_id: selectedObjectiveId ?? undefined,
         });
       }
       onSave(saved);
@@ -297,6 +311,24 @@
           </select>
         </div>
       </div>
+
+      <!-- Weekly objective -->
+      {#if weekObjectives.length > 0}
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400" for="task-objective">
+            Weekly objective
+          </label>
+          <select id="task-objective" bind:value={selectedObjectiveId}
+                  class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm
+                         text-gray-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100
+                         dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+            <option value={null}>No objective</option>
+            {#each weekObjectives as obj}
+              <option value={obj.id}>🎯 {obj.title}</option>
+            {/each}
+          </select>
+        </div>
+      {/if}
 
       <!-- Tags -->
       <div>
