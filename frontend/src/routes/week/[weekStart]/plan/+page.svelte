@@ -193,7 +193,7 @@
   {:else if step === 1}
     <div class="space-y-4">
       <p class="text-sm text-gray-500 dark:text-gray-400">
-        What are your <strong class="text-gray-700 dark:text-gray-200">2–4 big goals</strong> for this week?
+        What do you want to accomplish this week?
         Be specific enough to know when you've achieved each one.
       </p>
 
