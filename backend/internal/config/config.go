@@ -23,6 +23,9 @@ type Config struct {
 
 	// Webhook token for Cloudflare Email Routing → POST /api/v1/tasks/from-email
 	EmailForwardToken string
+
+	// Background inbox polling interval (e.g. "5m"); empty disables
+	InboxPollInterval string
 }
 
 func Load() Config {
@@ -39,6 +42,7 @@ func Load() Config {
 		AuthUsername:      env("SEMPA_USERNAME", "admin"),
 		AuthPassword:      env("SEMPA_PASSWORD", ""),
 		EmailForwardToken: env("EMAIL_FORWARD_TOKEN", ""),
+		InboxPollInterval: env("INBOX_POLL_INTERVAL", "5m"),
 	}
 }
 

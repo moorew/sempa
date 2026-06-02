@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
 	"github.com/clevercode/sempa/internal/config"
@@ -745,6 +746,164 @@ func (h *integrationHandler) taskInboxDelete(w http.ResponseWriter, r *http.Requ
 			return
 		}
 		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ── Fastmail inbox panel ──────────────────────────────────────────────────
+
+func (h *integrationHandler) fastmailEmails(w http.ResponseWriter, r *http.Request) {
+	cfg, err := h.configs.Get(r.Context(), "fastmail")
+	if errors.Is(err, db.ErrNotFound) {
+		respondError(w, http.StatusBadRequest, "fastmail not connected")
+		return
+	}
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	var fmCfg fastmail.Config
+	if err := json.Unmarshal([]byte(cfg.Config), &fmCfg); err != nil {
+		respondError(w, http.StatusInternalServerError, "malformed config")
+		return
+	}
+	client := fastmail.NewClient(fmCfg)
+	inboxID, _, err := client.GetMailboxRoles(r.Context())
+	if err != nil || inboxID == "" {
+		respondError(w, http.StatusBadGateway, "could not find inbox mailbox")
+		return
+	}
+	emails, err := client.GetInboxEmails(r.Context(), inboxID, 50)
+	if err != nil {
+		respondError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	type emailRow struct {
+		ID         string                `json:"id"`
+		Subject    string                `json:"subject"`
+		From       []fastmail.EmailAddress `json:"from"`
+		ReceivedAt string                `json:"received_at"`
+		Preview    string                `json:"preview"`
+		IsUnread   bool                  `json:"is_unread"`
+	}
+	rows := make([]emailRow, len(emails))
+	for i, e := range emails {
+		rows[i] = emailRow{
+			ID:         e.ID,
+			Subject:    e.Subject,
+			From:       e.From,
+			ReceivedAt: e.ReceivedAt,
+			Preview:    e.Preview,
+			IsUnread:   e.IsUnread(),
+		}
+	}
+	respond(w, http.StatusOK, rows)
+}
+
+func (h *integrationHandler) fastmailEmailToTask(w http.ResponseWriter, r *http.Request) {
+	emailID := chi.URLParam(r, "id")
+	cfg, err := h.configs.Get(r.Context(), "fastmail")
+	if errors.Is(err, db.ErrNotFound) {
+		respondError(w, http.StatusBadRequest, "fastmail not connected")
+		return
+	}
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	var fmCfg fastmail.Config
+	if err := json.Unmarshal([]byte(cfg.Config), &fmCfg); err != nil {
+		respondError(w, http.StatusInternalServerError, "malformed config")
+		return
+	}
+	client := fastmail.NewClient(fmCfg)
+	inboxID, archiveID, err := client.GetMailboxRoles(r.Context())
+	if err != nil {
+		respondError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+
+	// Fetch email body.
+	body, err := client.GetEmailBody(r.Context(), emailID)
+	if err != nil {
+		respondError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+
+	// Read subject from request body (sent by client to avoid an extra round-trip).
+	var req struct {
+		Subject string `json:"subject"`
+	}
+	_ = decode(r, &req)
+	subject := req.Subject
+	if subject == "" {
+		subject = "(no subject)"
+	}
+
+	today := time.Now().Format("2006-01-02")
+	ws := mondayOfDate(today)
+	source := "fastmail"
+	sourceID := "panel_" + emailID
+	sourceURL := "https://app.fastmail.com/mail/"
+
+	var desc *string
+	if body != "" {
+		d := body
+		if len(d) > 4000 {
+			d = d[:4000] + "…"
+		}
+		desc = &d
+	}
+
+	task, createErr := h.tasks.Create(r.Context(), db.CreateTaskParams{
+		ID:          newID(),
+		Title:       subject,
+		Description: desc,
+		Status:      "planned",
+		PlannedDate: &today,
+		WeekStart:   &ws,
+		Position:    float64(time.Now().UnixMilli()),
+		Source:      &source,
+		SourceID:    &sourceID,
+		SourceURL:   &sourceURL,
+		Tags:        []string{},
+	})
+	if createErr != nil {
+		respondError(w, http.StatusInternalServerError, createErr.Error())
+		return
+	}
+
+	// Archive regardless of task creation success.
+	_ = client.ArchiveEmail(r.Context(), emailID, inboxID, archiveID)
+
+	respond(w, http.StatusOK, task)
+}
+
+func (h *integrationHandler) fastmailArchiveEmail(w http.ResponseWriter, r *http.Request) {
+	emailID := chi.URLParam(r, "id")
+	cfg, err := h.configs.Get(r.Context(), "fastmail")
+	if errors.Is(err, db.ErrNotFound) {
+		respondError(w, http.StatusBadRequest, "fastmail not connected")
+		return
+	}
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	var fmCfg fastmail.Config
+	if err := json.Unmarshal([]byte(cfg.Config), &fmCfg); err != nil {
+		respondError(w, http.StatusInternalServerError, "malformed config")
+		return
+	}
+	client := fastmail.NewClient(fmCfg)
+	inboxID, archiveID, err := client.GetMailboxRoles(r.Context())
+	if err != nil {
+		respondError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	if err := client.ArchiveEmail(r.Context(), emailID, inboxID, archiveID); err != nil {
+		respondError(w, http.StatusBadGateway, err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

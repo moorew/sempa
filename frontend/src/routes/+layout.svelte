@@ -82,6 +82,15 @@
         Plan Day
       </a>
 
+      <a href="/email"
+         class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors
+                {isActive('/email') ? 'bg-blue-50 font-medium text-blue-600 dark:bg-blue-950 dark:text-blue-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'}">
+        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+          <path stroke-linecap="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+        </svg>
+        Inbox
+      </a>
+
       <a href="/shutdown/{todayDate}"
          class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors
                 {isActive('/shutdown') ? 'bg-blue-50 font-medium text-blue-600 dark:bg-blue-950 dark:text-blue-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'}">

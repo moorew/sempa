@@ -157,3 +157,12 @@ export const COLUMNS: {
   { status: 'in_progress', label: 'Focus',   accent: 'bg-amber-500',  bg: 'bg-amber-50 dark:bg-amber-950/40',   border: 'border-amber-200 dark:border-amber-900'  },
   { status: 'done',        label: 'Done',    accent: 'bg-green-500',  bg: 'bg-green-50 dark:bg-green-950/40',   border: 'border-green-200 dark:border-green-900'  },
 ];
+
+export interface FastmailEmail {
+  id: string;
+  subject: string;
+  from: { name: string; email: string }[];
+  received_at: string;
+  preview: string;
+  is_unread: boolean;
+}

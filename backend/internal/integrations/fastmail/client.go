@@ -563,3 +563,215 @@ func senderAllowed(from []EmailAddress, allowed []string) bool {
 	}
 	return false
 }
+
+// ── Inbox panel (email view + convert-to-task) ─────────────────────────────
+
+type Mailbox struct {
+	ID   string  `json:"id"`
+	Role *string `json:"role"`
+}
+
+type PanelEmail struct {
+	ID         string         `json:"id"`
+	Subject    string         `json:"subject"`
+	From       []EmailAddress `json:"from"`
+	ReceivedAt string         `json:"receivedAt"`
+	Preview    string         `json:"preview"`
+	Keywords   map[string]bool `json:"keywords"`
+}
+
+func (e PanelEmail) IsUnread() bool { return !e.Keywords["$seen"] }
+
+// GetMailboxRoles returns the JMAP IDs for the inbox and archive mailboxes.
+func (c *Client) GetMailboxRoles(ctx context.Context) (inboxID, archiveID string, err error) {
+	if c.apiURL == "" {
+		if err = c.Discover(ctx); err != nil {
+			return
+		}
+	}
+	body, _ := json.Marshal(jmapRequest{
+		Using: []string{"urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"},
+		MethodCalls: [][]interface{}{
+			{"Mailbox/get", map[string]interface{}{
+				"accountId":  c.account,
+				"ids":        nil,
+				"properties": []string{"id", "role"},
+			}, "0"},
+		},
+	})
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.apiURL, bytes.NewReader(body))
+	req.Header.Set("Authorization", c.auth)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return "", "", fmt.Errorf("GetMailboxRoles: %w", err)
+	}
+	defer resp.Body.Close()
+	var jr jmapResponse
+	if err = json.NewDecoder(resp.Body).Decode(&jr); err != nil {
+		return
+	}
+	for _, mc := range jr.MethodResponses {
+		if name, _ := mc[0].(string); name != "Mailbox/get" {
+			continue
+		}
+		data, _ := json.Marshal(mc[1])
+		var result struct{ List []Mailbox `json:"list"` }
+		if err = json.Unmarshal(data, &result); err != nil {
+			return
+		}
+		for _, m := range result.List {
+			if m.Role == nil {
+				continue
+			}
+			switch *m.Role {
+			case "inbox":
+				inboxID = m.ID
+			case "archive":
+				archiveID = m.ID
+			}
+		}
+		return
+	}
+	return "", "", fmt.Errorf("no mailbox data in response")
+}
+
+// GetInboxEmails returns recent emails from the inbox mailbox.
+func (c *Client) GetInboxEmails(ctx context.Context, inboxID string, limit int) ([]PanelEmail, error) {
+	if c.apiURL == "" {
+		if err := c.Discover(ctx); err != nil {
+			return nil, err
+		}
+	}
+	body, _ := json.Marshal(jmapRequest{
+		Using: []string{"urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"},
+		MethodCalls: [][]interface{}{
+			{"Email/query", map[string]interface{}{
+				"accountId": c.account,
+				"filter":    map[string]interface{}{"inMailbox": inboxID},
+				"sort":      []map[string]interface{}{{"property": "receivedAt", "isAscending": false}},
+				"limit":     limit,
+			}, "0"},
+			{"Email/get", map[string]interface{}{
+				"accountId": c.account,
+				"#ids": map[string]interface{}{
+					"resultOf": "0", "name": "Email/query", "path": "/ids/*",
+				},
+				"properties": []string{"id", "subject", "from", "receivedAt", "preview", "keywords"},
+			}, "1"},
+		},
+	})
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.apiURL, bytes.NewReader(body))
+	req.Header.Set("Authorization", c.auth)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("GetInboxEmails: %w", err)
+	}
+	defer resp.Body.Close()
+	var jr jmapResponse
+	if err := json.NewDecoder(resp.Body).Decode(&jr); err != nil {
+		return nil, err
+	}
+	for _, mc := range jr.MethodResponses {
+		if name, _ := mc[0].(string); name != "Email/get" {
+			continue
+		}
+		data, _ := json.Marshal(mc[1])
+		var result struct{ List []PanelEmail `json:"list"` }
+		if err := json.Unmarshal(data, &result); err != nil {
+			return nil, err
+		}
+		return result.List, nil
+	}
+	return nil, nil
+}
+
+// GetEmailBody fetches the plain-text body of a single email.
+func (c *Client) GetEmailBody(ctx context.Context, emailID string) (string, error) {
+	if c.apiURL == "" {
+		if err := c.Discover(ctx); err != nil {
+			return "", err
+		}
+	}
+	body, _ := json.Marshal(jmapRequest{
+		Using: []string{"urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"},
+		MethodCalls: [][]interface{}{
+			{"Email/get", map[string]interface{}{
+				"accountId":           c.account,
+				"ids":                 []string{emailID},
+				"properties":          []string{"id", "textBody", "bodyValues"},
+				"fetchTextBodyValues": true,
+				"maxBodyValueBytes":   8192,
+			}, "0"},
+		},
+	})
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.apiURL, bytes.NewReader(body))
+	req.Header.Set("Authorization", c.auth)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	var jr jmapResponse
+	if err := json.NewDecoder(resp.Body).Decode(&jr); err != nil {
+		return "", err
+	}
+	for _, mc := range jr.MethodResponses {
+		if name, _ := mc[0].(string); name != "Email/get" {
+			continue
+		}
+		data, _ := json.Marshal(mc[1])
+		var result struct {
+			List []Email `json:"list"`
+		}
+		if err := json.Unmarshal(data, &result); err != nil || len(result.List) == 0 {
+			return "", err
+		}
+		em := result.List[0]
+		if len(em.TextBody) > 0 && em.BodyValues != nil {
+			if bv, ok := em.BodyValues[em.TextBody[0].PartID]; ok {
+				return strings.TrimSpace(bv.Value), nil
+			}
+		}
+		return "", nil
+	}
+	return "", nil
+}
+
+// ArchiveEmail moves an email from the inbox to the archive mailbox.
+func (c *Client) ArchiveEmail(ctx context.Context, emailID, inboxID, archiveID string) error {
+	if c.apiURL == "" {
+		if err := c.Discover(ctx); err != nil {
+			return err
+		}
+	}
+	update := map[string]interface{}{
+		"mailboxIds/" + inboxID: nil,
+	}
+	if archiveID != "" {
+		update["mailboxIds/"+archiveID] = true
+	}
+	body, _ := json.Marshal(jmapRequest{
+		Using: []string{"urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"},
+		MethodCalls: [][]interface{}{
+			{"Email/set", map[string]interface{}{
+				"accountId": c.account,
+				"update":    map[string]interface{}{emailID: update},
+			}, "0"},
+		},
+	})
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, c.apiURL, bytes.NewReader(body))
+	req.Header.Set("Authorization", c.auth)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return fmt.Errorf("ArchiveEmail: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("ArchiveEmail: HTTP %d", resp.StatusCode)
+	}
+	return nil
+}

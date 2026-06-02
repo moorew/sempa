@@ -13,6 +13,7 @@ import (
 	"github.com/clevercode/sempa/internal/config"
 	"github.com/clevercode/sempa/internal/db"
 	"github.com/clevercode/sempa/internal/integrations/emailrecv"
+	"github.com/clevercode/sempa/internal/poller"
 )
 
 func main() {
@@ -32,9 +33,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Cancellable context for background workers.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	handler := api.NewRouter(database, cfg)
 
-	// Start inbound SMTP server if configured.
+	// Inbound SMTP server.
 	if cfg.SMTPPort != "" {
 		smtpSrv := emailrecv.New(":"+cfg.SMTPPort, db.NewTaskStore(database))
 		go func() {
@@ -43,6 +48,17 @@ func main() {
 				slog.Error("smtp server error", "err", err)
 			}
 		}()
+	}
+
+	// Background inbox poller.
+	if cfg.InboxPollInterval != "" {
+		interval, err := time.ParseDuration(cfg.InboxPollInterval)
+		if err != nil {
+			slog.Warn("invalid INBOX_POLL_INTERVAL, using 5m", "value", cfg.InboxPollInterval)
+			interval = 5 * time.Minute
+		}
+		poller.StartInbox(ctx, database, interval)
+		slog.Info("inbox poller started", "interval", interval)
 	}
 
 	srv := &http.Server{
@@ -66,10 +82,10 @@ func main() {
 	<-quit
 
 	slog.Info("shutting down...")
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	if err := srv.Shutdown(ctx); err != nil {
+	cancel() // stop background workers
+	shutCtx, shutCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutCancel()
+	if err := srv.Shutdown(shutCtx); err != nil {
 		slog.Error("shutdown error", "err", err)
 	}
 	slog.Info("stopped")

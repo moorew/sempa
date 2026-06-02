@@ -2,6 +2,7 @@ import type {
   CreateObjectiveInput,
   CreateTaskInput,
   DailyPlan,
+  FastmailEmail,
   GmailIntegrationConfig,
   JiraIntegrationConfig,
   Objective,
@@ -129,6 +130,11 @@ export const api = {
         req<unknown>('/api/v1/integrations/fastmail', { method: 'PUT', body: body({ email, app_password }) }),
       sync: () => req<SyncResult>('/api/v1/integrations/fastmail/sync', { method: 'POST' }),
       delete: () => req<void>('/api/v1/integrations/fastmail', { method: 'DELETE' }),
+      emails: () => req<FastmailEmail[]>('/api/v1/integrations/fastmail/emails'),
+      toTask: (id: string, subject: string) =>
+        req<Task>(`/api/v1/integrations/fastmail/emails/${id}/to-task`, { method: 'POST', body: body({ subject }) }),
+      archive: (id: string) =>
+        req<void>(`/api/v1/integrations/fastmail/emails/${id}/archive`, { method: 'POST' }),
     },
 
     taskInbox: {
