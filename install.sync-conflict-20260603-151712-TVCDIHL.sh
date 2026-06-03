@@ -143,9 +143,6 @@ echo ""
 ANTHROPIC_KEY=""
 read -rp "    Anthropic API key (AI-powered task title cleanup, optional): " ANTHROPIC_KEY
 
-TS_AUTHKEY=""
-read -rp "    Tailscale auth key (for Tailscale sidecar, optional): " TS_AUTHKEY
-
 EMAIL_TOKEN=""
 read -rp "    Email forward token (Cloudflare email → task, optional): " EMAIL_TOKEN
 [[ -z "$EMAIL_TOKEN" ]] && EMAIL_TOKEN=$(rand_hex)
@@ -171,7 +168,6 @@ ok "Written .env"
   [[ -n "$SEMPA_USERNAME" ]]       && echo "SEMPA_USERNAME=${SEMPA_USERNAME}"
   [[ -n "$SEMPA_PASSWORD" ]]       && echo "SEMPA_PASSWORD=${SEMPA_PASSWORD}"
   [[ -n "$ANTHROPIC_KEY" ]]        && echo "ANTHROPIC_API_KEY=${ANTHROPIC_KEY}"
-  [[ -n "$TS_AUTHKEY" ]]           && echo "TS_AUTHKEY=${TS_AUTHKEY}"
   echo "EMAIL_FORWARD_TOKEN=${EMAIL_TOKEN}"
 } > .env.local
 ok "Written .env.local"
