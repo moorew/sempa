@@ -93,15 +93,13 @@
 
 <svelte:head><title>Plan {isToday(date) ? 'Today' : date} — Sempa</title></svelte:head>
 
-<div class="flex min-h-full flex-col items-center justify-center px-4 py-12 animate-fade-in">
+<div class="flex min-h-full flex-col items-center justify-center px-4 py-12">
   <!-- Step indicators -->
   <div class="mb-10 flex items-center gap-2">
     {#each stepLabels as label, i}
       <div class="flex items-center gap-2">
-        <div class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold"
-             style={i + 1 <= step
-               ? 'background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);'
-               : 'background: var(--sempa-accent-bg); color: var(--sempa-text-dim);'}>
+        <div class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold
+                    {i + 1 <= step ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-400'}">
           {#if i + 1 < step}
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
@@ -110,10 +108,9 @@
             {i + 1}
           {/if}
         </div>
-        <span class="text-xs {i + 1 === step ? 'font-medium' : ''}"
-              style="color: {i + 1 === step ? 'var(--sempa-text)' : 'var(--sempa-text-dim)'};">{label}</span>
+        <span class="text-xs {i + 1 === step ? 'font-medium text-gray-700' : 'text-gray-400'}">{label}</span>
         {#if i < stepLabels.length - 1}
-          <div class="h-px w-8" style="background: var(--sempa-border);"></div>
+          <div class="h-px w-8 bg-gray-200"></div>
         {/if}
       </div>
     {/each}
@@ -122,37 +119,29 @@
   <div class="w-full max-w-md">
     <!-- ── Step 1: Intention ───────────────────────────────────────────── -->
     {#if step === 1}
-      {#key step}
-      <div class="animate-fade-in"
-           style="border-radius:16px; border: 1px solid var(--sempa-border);
-                  background: var(--sempa-bg-panel); padding:28px 28px 24px;">
+      <div class="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
         <p class="mb-1 text-2xl">🌅</p>
-        <h1 class="mb-1 text-xl font-semibold" style="color: var(--sempa-text);">
+        <h1 class="mb-1 text-xl font-semibold text-gray-900">
           {isToday(date) ? 'Good morning!' : formatDate(date)}
         </h1>
-        <p class="mb-6 text-sm" style="color: var(--sempa-text-soft);">What's your theme or focus for today?</p>
+        <p class="mb-6 text-sm text-gray-500">What's your theme or focus for today?</p>
 
         <textarea
           bind:this={intentionEl}
           bind:value={intention}
           onkeydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); goToStep2(); } }}
-          onfocus={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'}
-          onblur={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'}
           rows="3"
           placeholder="e.g. 'Ship the auth feature and prep for standup'"
-          style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main);
-                 border-radius:12px; padding:16px; resize:none; width:100%; min-height:100px;
-                 font-size:15px; color:var(--sempa-text); line-height:1.6; outline:none;"
+          class="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm
+                 text-gray-800 placeholder-gray-400 outline-none focus:border-blue-400 focus:bg-white
+                 focus:ring-2 focus:ring-blue-100"
         ></textarea>
 
         <div class="mt-4 flex justify-end">
           <button
             onclick={goToStep2}
-            style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
-                   padding:10px 20px; font-size:14px; font-weight:500; border:none; cursor:pointer;
-                   display:inline-flex; align-items:center; gap:8px;"
-            onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
-            onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}
+            class="flex items-center gap-1.5 rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-medium
+                   text-white hover:bg-blue-600 transition-colors"
           >
             Continue
             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -161,46 +150,33 @@
           </button>
         </div>
       </div>
-      {/key}
 
     <!-- ── Step 2: Carryover ───────────────────────────────────────────── -->
     {:else if step === 2}
-      {#key step}
-      <div class="animate-fade-in"
-           style="border-radius:16px; border: 1px solid var(--sempa-border);
-                  background: var(--sempa-bg-panel); padding:28px 28px 24px;">
+      <div class="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
         <p class="mb-1 text-2xl">↩️</p>
-        <h1 class="mb-1 text-xl font-semibold" style="color: var(--sempa-text);">From yesterday</h1>
-        <p class="mb-6 text-sm" style="color: var(--sempa-text-soft);">
+        <h1 class="mb-1 text-xl font-semibold text-gray-900">From yesterday</h1>
+        <p class="mb-6 text-sm text-gray-500">
           {carryover.length === 0
             ? "You cleared your board yesterday. Nicely done."
             : `${carryover.length} task${carryover.length !== 1 ? 's' : ''} didn't get done. Move them to today?`}
         </p>
 
         {#if carryover.length > 0}
-          <div class="flex flex-col mb-6">
+          <div class="flex flex-col gap-2 mb-6">
             {#each carryover as task (task.id)}
-              <label class="flex cursor-pointer items-start gap-3 transition-colors"
-                     style="display:flex; align-items:center; gap:12px; padding:10px 14px;
-                            border-radius:10px; margin-bottom:6px;
-                            {selected.has(task.id)
-                              ? 'border: 1px solid var(--sempa-accent); background: var(--sempa-accent-bg);'
-                              : 'border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);'}">
+              <label class="flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 transition-colors
+                            {selected.has(task.id) ? 'border-blue-200 bg-blue-50' : 'border-gray-100 hover:border-gray-200'}">
                 <input
                   type="checkbox"
                   checked={selected.has(task.id)}
                   onchange={() => toggleSelect(task.id)}
-                  class="mt-0.5 h-4 w-4 shrink-0"
-                  style="accent-color: var(--sempa-accent);"
+                  class="mt-0.5 h-4 w-4 shrink-0 accent-blue-500"
                 />
                 <div>
-                  <p class="text-sm" style="color: var(--sempa-text);">{task.title}</p>
+                  <p class="text-sm text-gray-700">{task.title}</p>
                   {#if task.time_estimate_minutes}
-                    <span style="background: var(--sempa-accent-bg); color: var(--sempa-accent);
-                                 border-radius:9999px; padding:3px 10px; font-size:12px; font-weight:500;
-                                 display:inline-block; margin-top:4px;">
-                      {formatMinutes(task.time_estimate_minutes)}
-                    </span>
+                    <p class="text-xs text-gray-400">{formatMinutes(task.time_estimate_minutes)}</p>
                   {/if}
                 </div>
               </label>
@@ -211,18 +187,14 @@
         {#if error}<p class="mb-4 text-xs text-red-500">{error}</p>{/if}
 
         <div class="flex justify-between">
-          <button onclick={() => step = 1} class="px-4 py-2 text-sm transition-colors" style="color: var(--sempa-text-dim);">
+          <button onclick={() => step = 1} class="px-4 py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors">
             ← Back
           </button>
           <button
             onclick={goToStep3}
             disabled={saving}
-            class="disabled:opacity-50"
-            style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
-                   padding:10px 20px; font-size:14px; font-weight:500; border:none; cursor:pointer;
-                   display:inline-flex; align-items:center; gap:8px;"
-            onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
-            onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}
+            class="flex items-center gap-1.5 rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-medium
+                   text-white hover:bg-blue-600 disabled:opacity-50 transition-colors"
           >
             {saving ? 'Moving…' : 'Continue'}
             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -231,25 +203,21 @@
           </button>
         </div>
       </div>
-      {/key}
 
     <!-- ── Step 3: Ready ───────────────────────────────────────────────── -->
     {:else}
-      {#key step}
-      <div class="animate-fade-in"
-           style="border-radius:16px; border: 1px solid var(--sempa-border);
-                  background: var(--sempa-bg-panel); padding:28px 28px 24px;">
+      <div class="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
         <p class="mb-1 text-2xl">✅</p>
-        <h1 class="mb-1 text-xl font-semibold" style="color: var(--sempa-text);">You're set for today!</h1>
+        <h1 class="mb-1 text-xl font-semibold text-gray-900">You're set for today!</h1>
 
         {#if intention}
-          <div class="mb-4 rounded-xl px-4 py-3" style="background: var(--sempa-accent-bg);">
-            <p class="text-xs font-medium mb-0.5" style="color: var(--sempa-accent);">Today's intention</p>
-            <p class="text-sm" style="color: var(--sempa-text);">{intention}</p>
+          <div class="mb-4 rounded-xl bg-blue-50 px-4 py-3">
+            <p class="text-xs font-medium text-blue-500 mb-0.5">Today's intention</p>
+            <p class="text-sm text-blue-800">{intention}</p>
           </div>
         {/if}
 
-        <p class="mb-1 text-sm" style="color: var(--sempa-text-soft);">
+        <p class="mb-1 text-sm text-gray-500">
           {todayTasks.filter(t => t.status !== 'done').length} tasks on your board
           {#if totalEstimate > 0}· {formatMinutes(totalEstimate)} estimated{/if}
         </p>
@@ -257,18 +225,14 @@
         {#if error}<p class="mb-4 text-xs text-red-500">{error}</p>{/if}
 
         <div class="mt-6 flex justify-between">
-          <button onclick={() => step = 2} class="px-4 py-2 text-sm transition-colors" style="color: var(--sempa-text-dim);">
+          <button onclick={() => step = 2} class="px-4 py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors">
             ← Back
           </button>
           <button
             onclick={startFocusing}
             disabled={saving}
-            class="disabled:opacity-50"
-            style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
-                   padding:10px 20px; font-size:14px; font-weight:500; border:none; cursor:pointer;
-                   display:inline-flex; align-items:center; gap:8px;"
-            onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
-            onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}
+            class="flex items-center gap-2 rounded-xl bg-blue-500 px-6 py-2.5 text-sm font-medium
+                   text-white hover:bg-blue-600 disabled:opacity-50 transition-colors"
           >
             {saving ? 'Saving…' : 'Start focusing'}
             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -277,7 +241,6 @@
           </button>
         </div>
       </div>
-      {/key}
     {/if}
   </div>
 </div>

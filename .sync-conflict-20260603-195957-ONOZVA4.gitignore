@@ -1,0 +1,29 @@
+# Database & runtime data
+backend/data/
+backend/bin/
+backend/aura
+
+# Go build artifacts
+*.exe
+*.test
+
+# Frontend
+frontend/build/
+frontend/.svelte-kit/
+frontend/node_modules/
+
+# Secrets — user-specific, never commit
+.env
+.env.local
+# Allow example templates
+!.env.example
+!.env.local.example
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

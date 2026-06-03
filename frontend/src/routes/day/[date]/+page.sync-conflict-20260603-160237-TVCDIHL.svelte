@@ -245,29 +245,29 @@
     <!-- Week nav -->
     <div class="flex items-center gap-2">
       <button onclick={() => navigateWeek(-1)} aria-label="Previous week"
-              class="rounded-lg p-1.5 transition-colors"
-              style="color: var(--sempa-text-dim);">
+              class="rounded-lg p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-600 transition-colors
+                     dark:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-400">
         <ChevronLeft size={16} />
       </button>
       <div>
-        <p class="text-sm font-semibold" style="color: var(--sempa-text);">{weekLabel()}</p>
+        <p class="text-sm font-semibold text-gray-900 dark:text-gray-50">{weekLabel()}</p>
         {#if isToday(date)}
           <p class="text-[10px] font-medium uppercase tracking-wider" style="color:var(--a500)">This week</p>
         {/if}
       </div>
       <button onclick={() => navigateWeek(1)} aria-label="Next week"
-              class="rounded-lg p-1.5 transition-colors"
-              style="color: var(--sempa-text-dim);">
+              class="rounded-lg p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-600 transition-colors
+                     dark:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-400">
         <ChevronRight size={16} />
       </button>
     </div>
 
     <!-- Stats -->
     {#if !loading && totalTasks.length > 0}
-      <div class="hidden md:flex items-center gap-4 text-xs" style="color: var(--sempa-text-dim);">
+      <div class="hidden md:flex items-center gap-4 text-xs text-gray-400 dark:text-gray-600">
         <span>{doneTasks}/{totalTasks.length} done this week</span>
         {#if estimateMins > 0}<span>~{formatMinutes(estimateMins)} planned</span>{/if}
-        {#if actualMins > 0}<span style="color: var(--sempa-accent);">{formatMinutes(actualMins)} logged</span>{/if}
+        {#if actualMins > 0}<span class="text-green-600 dark:text-green-500">{formatMinutes(actualMins)} logged</span>{/if}
       </div>
     {/if}
 
@@ -275,12 +275,8 @@
     <div class="flex items-center gap-2">
       {#if !isToday(date)}
         <button onclick={goToday}
-                class="font-medium"
-                style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);
-                       background: transparent; border-radius: 9px; padding: 6px 12px;
-                       font-size: 12px; cursor: pointer; transition: all 150ms ease;"
-                onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--sempa-accent-bg)'}
-                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                class="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-500
+                       hover:bg-gray-50 transition-colors dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800">
           Today
         </button>
       {/if}
@@ -301,26 +297,25 @@
 <div class="flex h-[calc(100vh-57px)] overflow-hidden">
 
   <!-- Kanban area -->
-  <main class="flex-1 overflow-auto px-4 py-5 animate-fade-in">
+  <main class="flex-1 overflow-auto px-4 py-5">
 
     <!-- Rollover banner -->
     {#if rolloverTasks.length > 0 && !rolloverDismissed}
-      <div class="mb-4 flex items-center gap-3 rounded-xl px-4 py-3 animate-slide-down"
-           style="border: 1px solid var(--sempa-amber); background: color-mix(in srgb, var(--sempa-amber) 8%, var(--sempa-bg-main));">
-        <svg class="h-4 w-4 shrink-0" style="color: var(--sempa-amber);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <div class="mb-4 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3
+                  dark:border-amber-800/50 dark:bg-amber-950/40">
+        <svg class="h-4 w-4 shrink-0 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
-        <p class="flex-1 text-xs" style="color: var(--sempa-amber);">
+        <p class="flex-1 text-xs text-amber-700 dark:text-amber-400">
           <strong>{rolloverTasks.length}</strong> unfinished from yesterday —
           {rolloverTasks.slice(0,2).map(t=>t.title).join(', ')}{rolloverTasks.length > 2 ? '…' : ''}
         </p>
         <button onclick={rolloverAll}
-                class="rounded-lg px-3 py-1 text-xs font-medium transition-colors"
-                style="background: var(--sempa-amber); color: var(--sempa-btn-fg);">
+                class="rounded-lg bg-amber-500 px-3 py-1 text-xs font-medium text-white hover:bg-amber-600 transition-colors">
           Roll over
         </button>
         <button onclick={() => rolloverDismissed = true} aria-label="Dismiss"
-                style="color: var(--sempa-amber); opacity: 0.7;">
+                class="text-amber-400 hover:text-amber-600">
           <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>

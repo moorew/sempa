@@ -78,11 +78,11 @@
       </div>
     </div>
 
-    <div class="rounded-2xl border p-6 shadow-sm space-y-4 animate-scale-in"
+    <div class="rounded-2xl border p-6 shadow-sm space-y-4"
          style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
 
       {#if error}
-        <div class="rounded-lg px-4 py-3 text-sm text-red-700 bg-red-50 dark:bg-red-950 dark:text-red-300 animate-slide-down">
+        <div class="rounded-lg px-4 py-3 text-sm text-red-700 bg-red-50 dark:bg-red-950 dark:text-red-300">
           {error}
         </div>
       {/if}
@@ -98,11 +98,8 @@
         <!-- Google Sign-In (primary) -->
         <button onclick={googleSignIn}
                 class="flex w-full items-center justify-center gap-3 rounded-xl border px-4 py-3
-                       text-sm font-medium shadow-sm transition-all hover:shadow-md"
-                style="border-color: var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text);"
-                onmousedown={(e) => (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)'}
-                onmouseup={(e) => (e.currentTarget as HTMLElement).style.transform = ''}
-                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.transform = ''}>
+                       text-sm font-medium shadow-sm transition-all hover:shadow-md active:scale-[0.98]"
+                style="border-color: var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text);">
           <!-- Google coloured G -->
           <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -128,17 +125,13 @@
                 <label for="username" class="mb-1 block text-xs" style="color: var(--sempa-text-soft);">Username</label>
                 <input id="username" type="text" bind:value={username} autocomplete="username"
                        class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-                       style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);"
-                       onfocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2.5px rgba(179,89,46,0.12)'; }}
-                       onblur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'; (e.currentTarget as HTMLElement).style.boxShadow = ''; }} />
+                       style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
               </div>
               <div>
                 <label for="password" class="mb-1 block text-xs" style="color: var(--sempa-text-soft);">Password</label>
                 <input id="password" type="password" bind:value={password} autocomplete="current-password"
                        class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-                       style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);"
-                       onfocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2.5px rgba(179,89,46,0.12)'; }}
-                       onblur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'; (e.currentTarget as HTMLElement).style.boxShadow = ''; }} />
+                       style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
               </div>
               <button type="submit" disabled={loading || !username || !password}
                       class="w-full rounded-lg py-2.5 text-sm font-medium text-white disabled:opacity-40 transition-colors"
@@ -157,17 +150,13 @@
             <input id="username" type="text" bind:value={username} autocomplete="username"
                    autofocus
                    class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-                   style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);"
-                   onfocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2.5px rgba(179,89,46,0.12)'; }}
-                   onblur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'; (e.currentTarget as HTMLElement).style.boxShadow = ''; }} />
+                   style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
           </div>
           <div>
             <label for="password" class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);">Password</label>
             <input id="password" type="password" bind:value={password} autocomplete="current-password"
                    class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-                   style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);"
-                   onfocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2.5px rgba(179,89,46,0.12)'; }}
-                   onblur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'; (e.currentTarget as HTMLElement).style.boxShadow = ''; }} />
+                   style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
           </div>
           <button type="submit" disabled={loading || !username || !password}
                   class="w-full rounded-lg py-2.5 text-sm font-medium text-white disabled:opacity-40 transition-colors"
