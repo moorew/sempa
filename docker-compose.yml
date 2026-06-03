@@ -4,10 +4,13 @@ services:
     container_name: ts-sempa
     hostname: sempa
     environment:
-      - TS_AUTHKEY=tskey-auth-kFzDPSvrSS11CNTRL-BkvwifJagHQGWbeXr1wGHQLJfnVd1DH9V
+      - TS_AUTHKEY=${TS_AUTHKEY}
       - TS_EXTRA_ARGS=--advertise-tags=tag:container
       - TS_SERVE_CONFIG=/config/sempa.json
       - TS_STATE_DIR=/var/lib/tailscale
+    env_file:
+      - path: .env.local
+        required: false
     volumes:
       - ./ts-sempa/state:/var/lib/tailscale
       - ./ts-sempa/config:/config
