@@ -41,15 +41,19 @@
     </span>
     <div class="flex gap-0.5">
       <button onclick={prev} aria-label="Previous month"
-              class="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors
-                     dark:hover:bg-gray-700 dark:hover:text-gray-300">
+              class="rounded p-0.5 transition-colors"
+              style="color: var(--sempa-text-dim);"
+              onmouseenter={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text)'}
+              onmouseleave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text-dim)'}>
         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" d="M15 19l-7-7 7-7"/>
         </svg>
       </button>
       <button onclick={next} aria-label="Next month"
-              class="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors
-                     dark:hover:bg-gray-700 dark:hover:text-gray-300">
+              class="rounded p-0.5 transition-colors"
+              style="color: var(--sempa-text-dim);"
+              onmouseenter={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text)'}
+              onmouseleave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text-dim)'}>
         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" d="M9 5l7 7-7 7"/>
         </svg>
@@ -76,16 +80,14 @@
         {@const isSel = ds === date}
         <div class="flex items-center justify-center">
           <span class="flex h-6 w-6 items-center justify-center rounded-full text-[11px]
-                       {isSel
-                         ? 'bg-gray-200 text-gray-800 font-medium dark:bg-gray-600 dark:text-gray-100'
-                         : !isToday
-                           ? 'text-gray-500 dark:text-gray-400'
-                           : ''}"
-                style={isToday
-                  ? (isSel
-                      ? 'background:var(--a500);color:white;font-weight:700;'
-                      : 'background:var(--a100);color:var(--a700);font-weight:600;')
-                  : ''}>
+                       {!isToday && !isSel ? 'text-gray-500 dark:text-gray-400' : ''}"
+                style={isToday && isSel
+                  ? 'background:var(--sempa-today-bg);color:var(--sempa-today-fg);font-weight:700;'
+                  : isToday
+                    ? 'background:var(--sempa-accent-bg);color:var(--sempa-accent);font-weight:600;'
+                    : isSel
+                      ? 'background:var(--sempa-accent-bg);color:var(--sempa-text);font-weight:500;'
+                      : ''}>
             {cell}
           </span>
         </div>

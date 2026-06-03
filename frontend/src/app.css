@@ -24,6 +24,23 @@
   --a950: #2a0b03;
 }
 
+/* ── Remap Tailwind's blue scale to terracotta ──────────────────────────── */
+/* This means every bg-blue-*, text-blue-*, border-blue-*, ring-blue-*,     */
+/* focus:ring-blue-* etc. automatically uses the brand palette.              */
+@theme {
+  --color-blue-50:  #fdf4ef;
+  --color-blue-100: #f9e4d5;
+  --color-blue-200: #f2c9ab;
+  --color-blue-300: #e89464;
+  --color-blue-400: #d97b4a;
+  --color-blue-500: #b3592e;
+  --color-blue-600: #963e1f;
+  --color-blue-700: #7a2e15;
+  --color-blue-800: #5e2010;
+  --color-blue-900: #451508;
+  --color-blue-950: #2a0b03;
+}
+
 /* ── Sempa warm design tokens — light mode ───────────────────────────────── */
 :root {
   --sempa-bg-rail:   #d8d2c6;
