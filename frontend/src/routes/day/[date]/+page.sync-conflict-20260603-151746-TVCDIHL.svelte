@@ -70,7 +70,7 @@
   async function loadRollover() {
     try {
       const prev = await api.tasks.listByDate(offsetDate(todayDate, -1));
-      rolloverTasks = prev.filter(t => (t.status === 'planned' || t.status === 'in_progress') && !t.recurrence_origin_id);
+      rolloverTasks = prev.filter(t => t.status === 'planned' || t.status === 'in_progress');
     } catch { /* ignore */ }
   }
 

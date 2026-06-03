@@ -125,21 +125,10 @@ SEMPA_PASSWORD=your-strong-password
 
 If `SEMPA_PASSWORD` is not set, auth is disabled entirely (fine for local-only installs on a trusted network like Tailscale).
 
-#### Tailscale (optional)
-
-If you use the bundled Tailscale sidecar (`ts-sempa` service in `docker-compose.yml`), add your auth key:
-
-```dotenv
-TS_AUTHKEY=tskey-auth-...
-```
-
-Generate one at [Tailscale Admin → Keys](https://login.tailscale.com/admin/settings/keys). The key is read by the `ts-sempa` container to join your tailnet.
-
 #### Optional
 
 | Variable | Description |
 |----------|-------------|
-| `TS_AUTHKEY` | Auth key for the Tailscale sidecar container |
 | `ANTHROPIC_API_KEY` | Enables AI-powered task title cleanup when importing emails |
 | `EMAIL_FORWARD_TOKEN` | Secret token for the Cloudflare email-to-task webhook |
 | `SMTP_PORT` | Port for the built-in inbound SMTP server (default: `2525`) |
