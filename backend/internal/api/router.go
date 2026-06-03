@@ -44,6 +44,7 @@ func NewRouter(database *sql.DB, cfg config.Config) http.Handler {
 
 	tagStore    := db.NewTagStore(database)
 	configStore := db.NewIntegrationConfigStore(database)
+	setup       := &setupHandler{configs: configStore}
 	fmCalStore  := db.NewFastmailCalStore(database)
 	auth := newAuthHandler(cfg)
 
@@ -82,6 +83,9 @@ func NewRouter(database *sql.DB, cfg config.Config) http.Handler {
 			r.Get("/google", auth.googleAuth)
 			r.Get("/google/callback", auth.googleCallback)
 		})
+
+		// Setup status — public read so the frontend can redirect before auth
+		r.Get("/setup/status", setup.status)
 
 		// Cloudflare email webhook — token-auth, not session-auth
 		r.Post("/tasks/from-email", integrations.fromEmail)
@@ -134,6 +138,8 @@ func NewRouter(database *sql.DB, cfg config.Config) http.Handler {
 				r.Post("/subscriptions/{id}/sync", icals.syncSubscription)
 				r.Get("/events", icals.listEventsForDate)
 			})
+
+			r.Post("/setup/complete", setup.complete)
 
 			r.Route("/pomodoros", func(r chi.Router) {
 				r.Get("/", sessions.listByTask)

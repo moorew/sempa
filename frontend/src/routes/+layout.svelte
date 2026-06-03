@@ -24,6 +24,7 @@
   const thisWeek  = weekStart(todayDate);
 
   let isLoginPage      = $derived(($page.url.pathname as string) === '/login');
+  let isSetupPage      = $derived(($page.url.pathname as string) === '/setup');
   let shortcutsOpen    = $state(false);
   let userEmail        = $state<string | undefined>(undefined);
 
@@ -60,14 +61,19 @@
 
   onMount(async () => {
     theme.init();
-    if (!isLoginPage) {
+    if (!isLoginPage && !isSetupPage) {
       tagStore.load();
       try {
         const me = await api.auth.me();
         if (!me.authenticated) {
           goto('/login?redirect=' + encodeURIComponent($page.url.pathname), { replaceState: true });
-        } else {
-          userEmail = me.email;
+          return;
+        }
+        userEmail = me.email;
+        // Redirect to first-run wizard if setup hasn't been completed
+        const setup = await api.setup.status();
+        if (!setup.done) {
+          goto('/setup', { replaceState: true });
         }
       } catch {
         goto('/login?redirect=' + encodeURIComponent($page.url.pathname), { replaceState: true });
@@ -82,7 +88,7 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-{#if isLoginPage}
+{#if isLoginPage || isSetupPage}
   {@render children()}
 {:else}
 <div class="flex h-screen overflow-hidden" style="background: var(--sempa-bg-main);">

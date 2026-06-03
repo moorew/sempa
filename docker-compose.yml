@@ -3,18 +3,18 @@ services:
     build: .
     container_name: sempa
     ports:
-      - "9001:9001"
+      - "${HOST_PORT:-9001}:9001"
       - "2525:2525"
     environment:
       PORT: "9001"
       DB_PATH: "/data/sempa.db"
       FRONTEND_DIR: "/app/frontend/build"
-      APP_URL: "https://blackbox.clevercode.ts.net"
-      FRONTEND_URL: "https://blackbox.clevercode.ts.net"
+      APP_URL: "${APP_URL:-http://localhost:9001}"
+      FRONTEND_URL: "${APP_URL:-http://localhost:9001}"
       ENV: "production"
     env_file:
       - path: .env.local
-        required: false   # won't fail if file doesn't exist
+        required: false
     volumes:
       - sempa_data:/data
     restart: unless-stopped
