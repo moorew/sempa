@@ -154,6 +154,14 @@
     pomodoro.start(id, title, t?.time_actual_minutes ?? 0);
   }
 
+  // ── Keyboard shortcut: n = new task ──────────────────────────────────────
+  function handleKeydown(e: KeyboardEvent) {
+    const tgt = e.target as HTMLElement;
+    if (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'n' && !panelOpen) { e.preventDefault(); openCreate(todayDate); }
+  }
+
   // ── Panel ─────────────────────────────────────────────────────────────────
   function openCreate(d: string) {
     panelTask = null; panelStatus = 'planned'; panelDate = d; panelOpen = true;
@@ -211,13 +219,16 @@
   }
 </script>
 
+<svelte:window onkeydown={handleKeydown} />
+
 <svelte:head>
   <title>{isToday(date) ? 'Today' : weekLabel()} — Sempa</title>
 </svelte:head>
 
 <!-- ── Header ─────────────────────────────────────────────────────────────── -->
-<header class="sticky top-0 z-10 border-b border-gray-100 bg-white/95 backdrop-blur-sm
-               dark:border-gray-800/60 dark:bg-gray-900/95">
+<header class="sticky top-0 z-10 backdrop-blur-sm"
+        style="background: color-mix(in srgb, var(--sempa-bg-main) 95%, transparent);
+               border-bottom: 1px solid var(--sempa-border);">
   <div class="flex items-center justify-between px-6 py-3">
     <!-- Week nav -->
     <div class="flex items-center gap-2">
@@ -258,11 +269,11 @@
         </button>
       {/if}
       <button onclick={() => openCreate(todayDate)}
-              class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold
-                     text-white transition-colors shadow-sm"
-              style="background:var(--a500);"
-              onmouseenter={(e)=>(e.currentTarget as HTMLElement).style.background='var(--a600)'}
-              onmouseleave={(e)=>(e.currentTarget as HTMLElement).style.background='var(--a500)'}>
+              class="flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[13px] font-[500]
+                     tracking-[-0.01em] transition-colors shadow-sm"
+              style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);"
+              onmouseenter={(e)=>(e.currentTarget as HTMLElement).style.opacity='0.88'}
+              onmouseleave={(e)=>(e.currentTarget as HTMLElement).style.opacity='1'}>
         <Plus size={13} strokeWidth={2.5} />
         New task
       </button>
@@ -358,28 +369,26 @@
   </main>
 
   <!-- ── Right panel ─────────────────────────────────────────────────────── -->
-  <aside class="w-72 shrink-0 flex flex-col border-l border-gray-100 bg-white overflow-hidden
-                dark:border-gray-800/60 dark:bg-gray-900">
-    <div class="shrink-0 border-b border-gray-100 dark:border-gray-800/60">
+  <aside class="w-72 shrink-0 flex flex-col overflow-hidden"
+         style="background: var(--sempa-bg-panel); border-left: 1px solid var(--sempa-border);">
+    <div class="shrink-0" style="border-bottom: 1px solid var(--sempa-border);">
       <MiniCalendar {date} />
     </div>
     <WeeklyObjectivesWidget {date} />
 
-    <div class="flex shrink-0 border-b border-gray-100 dark:border-gray-800/60">
+    <div class="flex shrink-0" style="border-bottom: 1px solid var(--sempa-border);">
       <button onclick={() => rightTab = 'mail'}
-              class="flex-1 py-2.5 text-xs font-medium transition-colors
-                     {rightTab === 'mail'
-                       ? 'border-b-2 text-[var(--a600)] dark:text-[var(--a400)]'
-                       : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}"
-              style={rightTab === 'mail' ? 'border-color:var(--a500)' : ''}>
+              class="flex-1 py-2.5 text-xs font-medium transition-colors"
+              style={rightTab === 'mail'
+                ? `border-bottom: 2px solid var(--sempa-accent); color: var(--sempa-accent); margin-bottom: -1px;`
+                : `color: var(--sempa-text-dim);`}>
         Mail
       </button>
       <button onclick={() => rightTab = 'schedule'}
-              class="flex-1 py-2.5 text-xs font-medium transition-colors
-                     {rightTab === 'schedule'
-                       ? 'border-b-2 text-[var(--a600)] dark:text-[var(--a400)]'
-                       : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}"
-              style={rightTab === 'schedule' ? 'border-color:var(--a500)' : ''}>
+              class="flex-1 py-2.5 text-xs font-medium transition-colors"
+              style={rightTab === 'schedule'
+                ? `border-bottom: 2px solid var(--sempa-accent); color: var(--sempa-accent); margin-bottom: -1px;`
+                : `color: var(--sempa-text-dim);`}>
         Schedule
       </button>
     </div>

@@ -20,6 +20,20 @@ type createSessionRequest struct {
 	WasCompleted    bool    `json:"was_completed"`
 }
 
+func (h *sessionHandler) listByTask(w http.ResponseWriter, r *http.Request) {
+	taskID := r.URL.Query().Get("task_id")
+	if taskID == "" {
+		respondError(w, http.StatusBadRequest, "task_id is required")
+		return
+	}
+	sessions, err := h.store.ListByTask(r.Context(), taskID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to list sessions")
+		return
+	}
+	respond(w, http.StatusOK, sessions)
+}
+
 func (h *sessionHandler) create(w http.ResponseWriter, r *http.Request) {
 	var req createSessionRequest
 	if err := decode(r, &req); err != nil {

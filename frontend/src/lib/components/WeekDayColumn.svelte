@@ -39,6 +39,22 @@
   const done   = $derived(tasks.filter(t => t.status === 'done').sort((a, b) => a.position - b.position));
   let showDone = $state(false);
 
+  const CAPACITY_MINS = 8 * 60;
+  const estimateMins = $derived(
+    tasks.filter(t => t.status !== 'cancelled').reduce((s, t) => s + (t.time_estimate_minutes ?? 0), 0)
+  );
+  const fillPct    = $derived(Math.min((estimateMins / CAPACITY_MINS) * 100, 100));
+  const overloaded = $derived(estimateMins > CAPACITY_MINS);
+  const nearFull   = $derived(!overloaded && estimateMins > CAPACITY_MINS * 0.75);
+
+  function fmtCapacity(mins: number): string {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h === 0) return `${m}m`;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}m`;
+  }
+
   let taskListEl = $state<HTMLElement | undefined>();
   let insertIdx  = $state<number | null>(null);
 
@@ -78,9 +94,9 @@
       {dayName}
     </span>
     <!-- Day number — circle only on today -->
-    <span class="flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold leading-none
-                 {isToday ? 'text-white' : isWeekend ? 'text-gray-400 dark:text-gray-600' : 'text-gray-600 dark:text-gray-300'}"
-          style={isToday ? 'background:var(--a500)' : ''}>
+    <span class="flex h-5 w-5 items-center justify-center rounded-full text-xs font-[600] leading-none
+                 {isToday ? '' : isWeekend ? 'text-gray-400 dark:text-gray-600' : 'text-gray-600 dark:text-gray-300'}"
+          style={isToday ? 'background: var(--sempa-today-bg); color: var(--sempa-today-fg);' : ''}>
       {dayNum}
     </span>
     <!-- Task count -->
@@ -91,6 +107,27 @@
       </span>
     {/if}
   </div>
+
+  <!-- Capacity bar -->
+  {#if estimateMins > 0}
+    <div class="mb-2 px-1">
+      <div class="flex items-center gap-1.5">
+        <div class="h-1 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+          <div class="h-full rounded-full transition-all duration-300
+                      {overloaded ? 'bg-red-400 dark:bg-red-500'
+                        : nearFull ? 'bg-amber-400 dark:bg-amber-500'
+                        : 'bg-blue-300 dark:bg-blue-600'}"
+               style="width: {fillPct}%"></div>
+        </div>
+        <span class="min-w-[28px] text-right text-[9px] tabular-nums
+                     {overloaded ? 'text-red-500 dark:text-red-400 font-semibold'
+                       : nearFull ? 'text-amber-500 dark:text-amber-400'
+                       : 'text-gray-400 dark:text-gray-600'}">
+          {fmtCapacity(estimateMins)}
+        </span>
+      </div>
+    </div>
+  {/if}
 
   <!-- Column body -->
   <div class="flex flex-1 flex-col rounded-xl transition-all duration-150

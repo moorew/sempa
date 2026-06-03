@@ -3,16 +3,60 @@
 /* Class-based dark mode */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* ── Accent colour system ───────────────────────────────────────────────── */
-/* These are overridden via JS (theme.svelte.ts) when the user picks a colour */
+/* ── Global font ────────────────────────────────────────────────────────── */
+* {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Accent colour system (used by the existing --a* references) ─────────── */
+/* Terracotta scale (#b3592e) — overridden by JS when the user picks a colour */
 :root {
-  --a50:  #eff6ff;
-  --a100: #dbeafe;
-  --a200: #bfdbfe;
-  --a400: #60a5fa;
-  --a500: #3b82f6;
-  --a600: #2563eb;
-  --a700: #1d4ed8;
-  --a900: #1e3a8a;
-  --a950: #172554;
+  --a50:  #fdf4ef;
+  --a100: #f9e4d5;
+  --a200: #f2c9ab;
+  --a400: #d97b4a;
+  --a500: #b3592e;
+  --a600: #963e1f;
+  --a700: #7a2e15;
+  --a900: #451508;
+  --a950: #2a0b03;
+}
+
+/* ── Sempa warm design tokens — light mode ───────────────────────────────── */
+:root {
+  --sempa-bg-rail:   #d8d2c6;
+  --sempa-bg-nav:    #f0ece3;
+  --sempa-bg-main:   #faf8f4;
+  --sempa-bg-panel:  #f0ece3;
+  --sempa-border:    #e2dcd3;
+  --sempa-text:      #2b221b;
+  --sempa-text-soft: #7a6a5e;
+  --sempa-text-dim:  #b0a498;
+  --sempa-accent:    #b3592e;
+  --sempa-accent-bg: #ede5dd;
+  --sempa-amber:     #da9f62;
+  --sempa-today-bg:  #b3592e;
+  --sempa-today-fg:  #f7f3eb;
+  --sempa-btn-bg:    #b3592e;
+  --sempa-btn-fg:    #f7f3eb;
+}
+
+/* ── Sempa warm design tokens — dark mode ────────────────────────────────── */
+.dark {
+  --sempa-bg-rail:   #130e09;
+  --sempa-bg-nav:    #1d1510;
+  --sempa-bg-main:   #181310;
+  --sempa-bg-panel:  #1d1510;
+  --sempa-border:    #2e2016;
+  --sempa-text:      #f0ece4;
+  --sempa-text-soft: #b8a89a;
+  --sempa-text-dim:  #7a6a5e;
+  --sempa-accent:    #cc6e3a;
+  --sempa-accent-bg: #2d1d12;
+  --sempa-today-bg:  #cc6e3a;
+  --sempa-today-fg:  #f7f3eb;
+  --sempa-btn-bg:    #cc6e3a;
+  --sempa-btn-fg:    #f7f3eb;
 }

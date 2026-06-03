@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Objective, Task, TaskStatus } from '$lib/types';
+  import type { Objective, PomodoroSession, Task, TaskStatus } from '$lib/types';
   import { tagStore } from '$lib/stores/tags.svelte';
   import { api } from '$lib/api';
   import { weekStart as calcWeekStart } from '$lib/utils';
@@ -61,6 +61,13 @@
   let saving = $state(false);
   let error = $state('');
   let titleInput: HTMLInputElement | undefined = $state();
+
+  let sessions = $state<PomodoroSession[]>([]);
+
+  $effect(() => {
+    if (!open || !task) { sessions = []; return; }
+    api.pomodoros.listByTask(task.id).then(s => { sessions = s; }).catch(() => {});
+  });
 
   function toLocalDatetimeInput(iso: string | null | undefined): string {
     if (!iso) return '';
@@ -445,6 +452,34 @@
       {#if isEdit && task}
         <div>
           <SubTaskList parentId={task.id} parentDate={task.planned_date ?? undefined} />
+        </div>
+      {/if}
+
+      <!-- Pomodoro session history (edit mode only) -->
+      {#if isEdit && task && sessions.length > 0}
+        <div>
+          <p class="mb-1.5 text-xs font-medium text-gray-600 dark:text-gray-400">
+            Focus sessions
+            <span class="ml-1 font-normal text-gray-400 dark:text-gray-600">
+              ({sessions.reduce((s, p) => s + p.duration_minutes, 0)} min total)
+            </span>
+          </p>
+          <div class="flex flex-col gap-1 max-h-40 overflow-y-auto">
+            {#each sessions as session}
+              <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-1.5
+                          dark:bg-gray-800/60">
+                <span class="text-[11px] text-gray-500 dark:text-gray-400">
+                  {new Date(session.started_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  {new Date(session.started_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <div class="flex items-center gap-1.5">
+                  <span class="font-mono text-[11px] text-gray-500 dark:text-gray-400">{session.duration_minutes}m</span>
+                  <span class="h-1.5 w-1.5 rounded-full {session.was_completed ? 'bg-green-400' : 'bg-gray-300 dark:bg-gray-600'}"
+                        title={session.was_completed ? 'Completed' : 'Interrupted'}></span>
+                </div>
+              </div>
+            {/each}
+          </div>
         </div>
       {/if}
 

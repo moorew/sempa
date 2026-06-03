@@ -12,6 +12,7 @@ import (
 
 	"github.com/clevercode/sempa/internal/db"
 	"github.com/clevercode/sempa/internal/integrations/gmail"
+	"github.com/clevercode/sempa/internal/integrations/jira"
 )
 
 type taskHandler struct {
@@ -262,6 +263,13 @@ func (h *taskHandler) update(w http.ResponseWriter, r *http.Request) {
 		go h.writeFocusBlock(updated)
 	}
 
+	// Jira writeback: close the linked ticket when task is marked done
+	if req.Status != nil && *req.Status == "done" &&
+		updated.Source != nil && *updated.Source == "jira" &&
+		updated.SourceID != nil && h.configs != nil {
+		go h.writeJiraTransition(updated)
+	}
+
 	respond(w, http.StatusOK, updated)
 }
 
@@ -285,6 +293,21 @@ func (h *taskHandler) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respond(w, http.StatusNoContent, nil)
+}
+
+// writeJiraTransition closes the linked Jira issue when a task is marked done.
+// Runs in a goroutine; errors are silently ignored.
+func (h *taskHandler) writeJiraTransition(task db.Task) {
+	cfg, err := h.configs.Get(context.Background(), "jira")
+	if err != nil {
+		return
+	}
+	var jiraCfg jira.Config
+	if err := json.Unmarshal([]byte(cfg.Config), &jiraCfg); err != nil {
+		return
+	}
+	client := jira.NewClient(jiraCfg)
+	_ = client.TransitionToDone(context.Background(), *task.SourceID)
 }
 
 // writeFocusBlock creates a Google Calendar event for a newly-scheduled task.

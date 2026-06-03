@@ -81,6 +81,7 @@ export const api = {
       completed_at?: string;
       was_completed: boolean;
     }) => req<PomodoroSession>('/api/v1/pomodoros', { method: 'POST', body: body(input) }),
+    listByTask: (taskId: string) => req<PomodoroSession[]>(`/api/v1/pomodoros?task_id=${taskId}`),
   },
 
   tags: {

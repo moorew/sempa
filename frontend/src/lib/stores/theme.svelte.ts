@@ -3,6 +3,7 @@ const ACCENT_KEY = 'sempa-accent';
 const SCALE_KEY  = 'sempa-text-scale';
 
 export type AccentName =
+  | 'terracotta'
   | 'blue' | 'sky' | 'indigo'
   | 'violet' | 'purple' | 'pink'
   | 'rose' | 'orange' | 'amber'
@@ -12,6 +13,12 @@ export type AccentName =
 type Preset = { label: string; swatch: string; a50: string; a100: string; a200: string; a400: string; a500: string; a600: string; a700: string; a900: string; a950: string };
 
 export const ACCENT_PRESETS: Record<AccentName, Preset> = {
+  // ── Sempa brand ────────────────────────────────────────────────────────
+  terracotta: {
+    label: 'Terracotta', swatch: '#b3592e',
+    a50:'#fdf4ef', a100:'#f9e4d5', a200:'#f2c9ab', a400:'#d97b4a',
+    a500:'#b3592e', a600:'#963e1f', a700:'#7a2e15', a900:'#451508', a950:'#2a0b03',
+  },
   // ── Blues ──────────────────────────────────────────────────────────────
   sky: {
     label: 'Sky', swatch: '#0ea5e9',
@@ -91,7 +98,7 @@ export const ACCENT_PRESETS: Record<AccentName, Preset> = {
 
 function createThemeStore() {
   let dark       = $state(false);
-  let accentName = $state<AccentName>('blue');
+  let accentName = $state<AccentName>('terracotta');
   let textScale  = $state(100); // percent, e.g. 90 / 100 / 110
 
   function init() {

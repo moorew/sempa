@@ -122,6 +122,7 @@ func NewRouter(database *sql.DB, cfg config.Config) http.Handler {
 			})
 
 			r.Route("/pomodoros", func(r chi.Router) {
+				r.Get("/", sessions.listByTask)
 				r.Post("/", sessions.create)
 			})
 
