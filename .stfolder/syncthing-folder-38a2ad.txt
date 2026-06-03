@@ -1,5 +1,0 @@
-# This directory is a Syncthing folder marker.
-# Do not delete.
-
-folderID: eppwn-rquyj
-created: 2026-06-03T15:59:50-04:00

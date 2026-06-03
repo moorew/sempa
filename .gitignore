@@ -27,4 +27,8 @@ frontend/node_modules/
 # OS
 .DS_Store
 Thumbs.db
-.stfolder/syncthing-folder-e0bcad.txt
+
+# Syncthing
+.stfolder/
+.stignore
+*.sync-conflict-*
