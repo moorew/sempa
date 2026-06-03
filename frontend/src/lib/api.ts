@@ -36,6 +36,11 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 const body = (data: unknown) => JSON.stringify(data);
 
 export const api = {
+  setup: {
+    status: () => req<{ done: boolean }>('/api/v1/setup/status'),
+    complete: () => req<{ done: boolean }>('/api/v1/setup/complete', { method: 'POST' }),
+  },
+
   auth: {
     me: () => req<{ authenticated: boolean; auth_enabled: boolean; google_enabled: boolean; email?: string; username?: string }>('/api/v1/auth/me'),
     login: (username: string, password: string) =>

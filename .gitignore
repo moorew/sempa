@@ -12,10 +12,12 @@ frontend/build/
 frontend/.svelte-kit/
 frontend/node_modules/
 
-# Secrets
+# Secrets — user-specific, never commit
 .env
-.env.*
-*.local
+.env.local
+# Allow example templates
+!.env.example
+!.env.local.example
 
 # Editor
 .vscode/
@@ -25,6 +27,3 @@ frontend/node_modules/
 # OS
 .DS_Store
 Thumbs.db
-
-# Secrets env file (never commit)
-.env.local
