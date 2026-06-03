@@ -60,8 +60,15 @@
   --color-gray-800: #181310;
   --color-gray-950: #130e09;
 
-  /* Warm near-white for bg-gray-50 inputs and hover surfaces */
-  --color-gray-50: #f5f1eb;
+  /* Warm gray scale */
+  --color-gray-50:  #f5f1eb;
+  --color-gray-100: #ede5dd;
+  --color-gray-200: #e2dcd3;
+  --color-gray-300: #c8bfb5;
+  --color-gray-400: #b0a498;
+  --color-gray-500: #7a6a5e;
+  --color-gray-600: #5c4f45;
+  --color-gray-700: #3d3028;
 }
 
 /* ── Sempa warm design tokens — light mode ───────────────────────────────── */
@@ -99,4 +106,20 @@
   --sempa-today-fg:  #f7f3eb;
   --sempa-btn-bg:    #cc6e3a;
   --sempa-btn-fg:    #f7f3eb;
+}
+
+/* ── Sempa animation library ─────────────────────────────────────────────── */
+@keyframes sempa-fade-in    { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+@keyframes sempa-slide-right{ from{opacity:0;transform:translateX(16px)} to{opacity:1;transform:none} }
+@keyframes sempa-scale-in   { from{opacity:0;transform:scale(0.96)} to{opacity:1;transform:none} }
+@keyframes sempa-slide-down { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:none} }
+
+.animate-fade-in     { animation: sempa-fade-in     350ms cubic-bezier(0,0,0.2,1) both }
+.animate-slide-right { animation: sempa-slide-right  280ms cubic-bezier(0,0,0.2,1) both }
+.animate-scale-in    { animation: sempa-scale-in     200ms cubic-bezier(0,0,0.2,1) both }
+.animate-slide-down  { animation: sempa-slide-down   250ms cubic-bezier(0,0,0.2,1) both }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,.animate-slide-right,
+  .animate-scale-in,.animate-slide-down { animation:none }
 }

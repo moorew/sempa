@@ -80,7 +80,6 @@
     }
 
     // IntersectionObserver for sub-nav active state
-    await tick();
     setupObserver();
   });
 
@@ -281,8 +280,7 @@
       <div id="settings-integrations">
 
         <!-- ── Email & Calendar ──────────────────────────────────────── -->
-        <p class="mb-3" style="font-family:monospace; font-size:10px; font-weight:700; letter-spacing:0.12em;
-         text-transform:uppercase; color:var(--sempa-text-dim)">Email & Calendar</p>
+        <p class="mb-3 text-xs font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Email & Calendar</p>
 
         <!-- ── Gmail ─────────────────────────────────────────────────── -->
         <section class="mb-3 overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
@@ -736,8 +734,7 @@
         </section>
 
         <!-- ── Project Management ────────────────────────────────────── -->
-        <p class="mb-3" style="font-family:monospace; font-size:10px; font-weight:700; letter-spacing:0.12em;
-         text-transform:uppercase; color:var(--sempa-text-dim)">Project Management</p>
+        <p class="mb-3 text-xs font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Project Management</p>
 
         <div class="mb-8">
           <a href="/settings/integrations/jira"
@@ -771,8 +768,7 @@
            SECTION: Tasks
       ════════════════════════════════════════════════════════════════════ -->
       <div id="settings-tasks">
-        <p class="mb-3" style="font-family:monospace; font-size:10px; font-weight:700; letter-spacing:0.12em;
-         text-transform:uppercase; color:var(--sempa-text-dim)">Tasks</p>
+        <p class="mb-3 text-xs font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Tasks</p>
 
         <div class="mb-8 flex flex-col gap-2">
           <a href="/settings/tags"
@@ -815,8 +811,7 @@
            SECTION: Appearance
       ════════════════════════════════════════════════════════════════════ -->
       <div id="settings-appearance">
-        <p class="mb-3" style="font-family:monospace; font-size:10px; font-weight:700; letter-spacing:0.12em;
-         text-transform:uppercase; color:var(--sempa-text-dim)">Appearance</p>
+        <p class="mb-3 text-xs font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Appearance</p>
 
         <section class="overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
           <div class="px-5 py-5 space-y-6">
@@ -824,15 +819,14 @@
             <!-- Accent colour -->
             <div>
               <p class="mb-3 text-xs font-medium" style="color: var(--sempa-text-soft);">Accent colour</p>
-              <div style="display:grid; grid-template-columns:repeat(auto-fill,28px); gap:8px;">
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, 28px); gap: 8px;">
                 {#each Object.entries(ACCENT_PRESETS) as [name, preset]}
                   <button onclick={() => theme.setAccent(name as AccentName)}
                           title={preset.label}
-                          class="transition-transform hover:scale-110"
-                          style="width:28px; height:28px; border-radius:14px; border:none; cursor:pointer;
-                                 background: {preset.swatch};
+                          class="h-7 w-7 rounded-full transition-transform hover:scale-110"
+                          style="background: {preset.swatch};
                                  {theme.accent === name
-                                   ? 'box-shadow: 0 0 0 2px var(--sempa-bg-panel), 0 0 0 4px var(--sempa-accent);'
+                                   ? `outline: 2px solid var(--sempa-accent); outline-offset: 2px;`
                                    : ''}">
                   </button>
                 {/each}
@@ -845,18 +839,18 @@
             <!-- Text size -->
             <div>
               <p class="mb-3 text-xs font-medium" style="color: var(--sempa-text-soft);">Text size</p>
-              <div style="display:flex; align-items:center; gap:12px;">
-                <span style="font-size:12px; color:var(--sempa-text-dim)">A</span>
+              <div class="flex items-center gap-3">
+                <span class="text-xs" style="color: var(--sempa-text-dim);">A</span>
                 <input type="range" min="80" max="130" step="5"
                        value={theme.textScale}
                        oninput={(e) => theme.setScale(parseInt((e.target as HTMLInputElement).value, 10))}
-                       class="h-1.5 appearance-none rounded-full cursor-pointer"
-                       style="flex:1; background: var(--sempa-border); accent-color: var(--sempa-accent);" />
-                <span style="font-size:18px; font-weight:600; color:var(--sempa-text)">A</span>
-                <span style="font-family:monospace; font-size:12px; color:var(--sempa-text-dim); width:36px">{theme.textScale}%</span>
+                       class="flex-1 h-1.5 appearance-none rounded-full cursor-pointer"
+                       style="background: var(--sempa-border); accent-color: var(--sempa-accent);" />
+                <span class="text-base" style="color: var(--sempa-text-dim);">A</span>
+                <span class="w-10 text-right tabular-nums text-xs" style="color: var(--sempa-text-dim);">{theme.textScale}%</span>
               </div>
               <button onclick={() => theme.setScale(100)}
-                      class="mt-2" style="color: var(--sempa-text-dim); font-size:12px; background:none; border:none; cursor:pointer;">
+                      class="mt-2 text-xs" style="color: var(--sempa-text-dim);">
                 Reset to default
               </button>
             </div>
@@ -864,21 +858,19 @@
             <!-- Mode: segmented pill -->
             <div>
               <p class="mb-3 text-xs font-medium" style="color: var(--sempa-text-soft);">Mode</p>
-              <div style="display:flex; border-radius:9999px; border:1px solid var(--sempa-border);
-                          padding:3px; gap:2px; width:fit-content;">
+              <div class="inline-flex rounded-lg border overflow-hidden" style="border-color: var(--sempa-border);">
                 <button onclick={() => { if (theme.dark) theme.toggle(); }}
-                        class="transition-colors"
-                        style="border-radius:9999px; padding:6px 16px; font-size:13px; border:none; cursor:pointer;
-                               {!theme.dark
-                                 ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent); font-weight:600;'
-                                 : 'background: transparent; color: var(--sempa-text-soft);'}">
+                        class="px-4 py-1.5 text-sm font-medium transition-colors"
+                        style={!theme.dark
+                          ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent);'
+                          : 'background: transparent; color: var(--sempa-text-soft);'}>
                   Light
                 </button>
                 <button onclick={() => { if (!theme.dark) theme.toggle(); }}
-                        class="transition-colors"
-                        style="border-radius:9999px; padding:6px 16px; font-size:13px; border:none; cursor:pointer;
+                        class="px-4 py-1.5 text-sm font-medium transition-colors"
+                        style="border-left: 1px solid var(--sempa-border);
                                {theme.dark
-                                 ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent); font-weight:600;'
+                                 ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent);'
                                  : 'background: transparent; color: var(--sempa-text-soft);'}">
                   Dark
                 </button>

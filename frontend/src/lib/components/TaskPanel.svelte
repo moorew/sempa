@@ -199,14 +199,13 @@
 
 {#if open}
   <div role="presentation"
-       class="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm dark:bg-black/50"
+       class="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm animate-fade-in"
        onclick={onClose}></div>
 
   <aside role="dialog" aria-modal="true"
          aria-label="{isEdit ? 'Edit task' : 'New task'}"
-         class="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col
-                border-l border-gray-200 bg-white shadow-2xl
-                dark:border-gray-700 dark:bg-gray-900">
+         class="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col shadow-2xl animate-slide-right"
+         style="border-left: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
 
     <!-- Header -->
     <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-800">
