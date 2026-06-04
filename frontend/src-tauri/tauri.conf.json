@@ -26,14 +26,8 @@
         "visible": true
       }
     ],
-    "trayIcon": {
-      "id": "main-tray",
-      "iconPath": "icons/icon.png",
-      "iconAsTemplate": false,
-      "tooltip": "sempa"
-    },
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' http://localhost:* https://*"
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' ipc: http://localhost:* https://*"
     }
   },
   "bundle": {

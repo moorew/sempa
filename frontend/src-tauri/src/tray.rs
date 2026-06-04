@@ -1,4 +1,5 @@
 use tauri::{
+    image::Image,
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
     AppHandle, Emitter, Manager,
@@ -13,8 +14,13 @@ pub fn create_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 
     let menu = Menu::with_items(app, &[&open, &quick_add, &sync_now, &separator, &quit])?;
 
+    let icon = app
+        .default_window_icon()
+        .cloned()
+        .unwrap_or_else(|| Image::from_bytes(include_bytes!("../icons/icon.png")).expect("embedded icon"));
+
     TrayIconBuilder::with_id("main-tray")
-        .icon(app.default_window_icon().unwrap().clone())
+        .icon(icon)
         .menu(&menu)
         .tooltip("sempa")
         .on_menu_event(move |app, event| match event.id().as_ref() {

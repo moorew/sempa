@@ -34,8 +34,9 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: windows-cargo-deps-${{ hashFiles('frontend/src-tauri/Cargo.lock') }}
-          restore-keys: windows-cargo-deps-
+            frontend/src-tauri/target
+          key: windows-cargo-${{ hashFiles('frontend/src-tauri/Cargo.lock') }}
+          restore-keys: windows-cargo-
 
       - name: Generate Windows icon from PNG
         shell: pwsh

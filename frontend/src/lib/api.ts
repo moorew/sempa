@@ -1,3 +1,5 @@
+import { isTauri } from './tauri/bridge';
+
 import type {
   CreateObjectiveInput,
   CreateTaskInput,
@@ -35,7 +37,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 
 const body = (data: unknown) => JSON.stringify(data);
 
-export const api = {
+const httpApi = {
   setup: {
     status: () => req<{ done: boolean }>('/api/v1/setup/status'),
     complete: () => req<{ done: boolean }>('/api/v1/setup/complete', { method: 'POST' }),
@@ -217,3 +219,21 @@ export const api = {
     },
   },
 };
+
+// In Tauri (desktop) mode, use local SQLite. In web mode, use HTTP API.
+// The local API is eagerly imported but only used when isTauri() is true.
+import { localApi } from './tauri/local-api';
+
+let _api: typeof httpApi | null = null;
+function resolveApi(): typeof httpApi {
+  if (!_api) {
+    _api = isTauri() ? (localApi as unknown as typeof httpApi) : httpApi;
+  }
+  return _api;
+}
+
+export const api = new Proxy({} as typeof httpApi, {
+  get(_target, prop) {
+    return (resolveApi() as Record<string | symbol, unknown>)[prop];
+  },
+});

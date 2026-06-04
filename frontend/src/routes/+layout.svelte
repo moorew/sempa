@@ -11,6 +11,7 @@
   import { hapticTick } from '$lib/haptics';
   import { initPushNotifications } from '$lib/push';
   import { api } from '$lib/api';
+  import { isTauri } from '$lib/tauri/bridge';
   import PomodoroTimer from '$lib/components/PomodoroTimer.svelte';
   import BottomSheet from '$lib/components/BottomSheet.svelte';
   import type { Snippet } from 'svelte';
@@ -74,6 +75,13 @@
     mobile.init();
     if (!isLoginPage && !isSetupPage) {
       tagStore.load();
+
+      // In Tauri (desktop), the app is local-first — no backend auth needed.
+      if (isTauri()) {
+        userEmail = 'local';
+        return;
+      }
+
       try {
         const me = await api.auth.me();
         if (!me.authenticated) {

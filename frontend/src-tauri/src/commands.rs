@@ -83,7 +83,8 @@ pub async fn get_server_url() -> Result<String, String> {
 pub async fn set_server_url(url: String) -> Result<(), String> {
     // Persisted via the store plugin from the frontend side.
     // This command is a fallback for setting the env var at runtime.
-    std::env::set_var("SEMPA_SERVER_URL", &url);
+    // SAFETY: only called from the main thread via Tauri IPC.
+    unsafe { std::env::set_var("SEMPA_SERVER_URL", &url) };
     Ok(())
 }
 
