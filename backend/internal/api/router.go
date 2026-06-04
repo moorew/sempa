@@ -91,6 +91,7 @@ func NewRouter(database *sql.DB, cfg config.Config) http.Handler {
 			r.Get("/me", auth.me)
 			r.Get("/google", auth.googleAuth)
 			r.Get("/google/callback", auth.googleCallback)
+			r.Post("/native/finalize", auth.nativeFinalize)
 		})
 
 		// Setup status — public read so the frontend can redirect before auth

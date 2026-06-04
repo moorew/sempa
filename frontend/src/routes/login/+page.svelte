@@ -1,15 +1,15 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { api } from '$lib/api';
   import { Capacitor } from '@capacitor/core';
+  import { Browser } from '@capacitor/browser';
+  import { App } from '@capacitor/app';
 
   // In dev: set VITE_API_URL=http://localhost:9001
   const base = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
 
-  // On native, Google OAuth opens the system browser and the callback can't return
-  // to the app — so we go straight to the password form.
   const isNative = Capacitor.isNativePlatform();
 
   let authInfo = $state<{ google_enabled: boolean; password_enabled: boolean } | null>(null);
@@ -17,9 +17,25 @@
   let password = $state('');
   let loading  = $state(false);
   let error    = $state('');
-  let showPasswordForm = $state(isNative);
+  let showPasswordForm = $state(false);
+  let appUrlListener: { remove: () => void } | null = null;
 
   const redirectTarget = $derived($page.url.searchParams.get('redirect') ?? '/');
+
+  async function handleAppUrl(event: { url: string }) {
+    try {
+      const u = new URL(event.url);
+      if (u.hostname !== 'login') return;
+      const linkToken = u.searchParams.get('link_token');
+      const redirect  = u.searchParams.get('redirect') ?? '/';
+      if (!linkToken) return;
+      await Browser.close().catch(() => {});
+      await api.auth.nativeFinalize(linkToken);
+      goto(redirect, { replaceState: true });
+    } catch {
+      error = 'Google sign-in failed. Please try again.';
+    }
+  }
 
   onMount(async () => {
     const errParam = $page.url.searchParams.get('error');
@@ -35,7 +51,18 @@
       }
     } catch { /* no session — continue */ }
 
-    // Load auth config separately — this endpoint always returns 200
+    if (isNative) {
+      // Cold start: app was opened via the deep link before the listener was registered
+      const launch = await App.getLaunchUrl();
+      if (launch?.url?.startsWith('com.clevercode.sempa://login')) {
+        await handleAppUrl({ url: launch.url });
+        return;
+      }
+      // Warm start: listen for the deep link callback while app is already running
+      appUrlListener = await App.addListener('appUrlOpen', handleAppUrl);
+    }
+
+    // Load auth config
     try {
       authInfo = await api.auth.config();
     } catch {
@@ -43,9 +70,17 @@
     }
   });
 
+  onDestroy(() => { appUrlListener?.remove(); });
+
   function googleSignIn() {
     const params = new URLSearchParams({ redirect: redirectTarget });
-    window.location.href = `${base}/api/v1/auth/google?${params}`;
+    if (isNative) {
+      // Open in an in-app Chrome Custom Tab; the OAuth callback will redirect to
+      // com.clevercode.sempa://login?link_token=X which fires appUrlOpen.
+      Browser.open({ url: `${base}/api/v1/auth/google?${params}&native=true` });
+    } else {
+      window.location.href = `${base}/api/v1/auth/google?${params}`;
+    }
   }
 
   async function submit() {
@@ -99,8 +134,8 @@
                style="border-top-color: var(--sempa-accent);"></div>
         </div>
 
-      {:else if authInfo.google_enabled && !isNative}
-        <!-- Google Sign-In (primary, web only — deep linking not yet wired up for native) -->
+      {:else if authInfo.google_enabled}
+        <!-- Google Sign-In (primary) -->
         <button onclick={googleSignIn}
                 class="flex w-full items-center justify-center gap-3 rounded-xl border px-4 py-3
                        text-sm font-medium shadow-sm transition-all hover:shadow-md"

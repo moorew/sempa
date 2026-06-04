@@ -81,6 +81,7 @@ func (s *sessionStore) reap() {
 
 type stateEntry struct {
 	Redirect string
+	Native   bool
 	Expires  time.Time
 }
 
@@ -95,25 +96,25 @@ func newStateStore() *stateStore {
 	return s
 }
 
-func (s *stateStore) create(redirect string) string {
+func (s *stateStore) create(redirect string, native bool) string {
 	b := make([]byte, 24)
 	_, _ = rand.Read(b)
 	id := hex.EncodeToString(b)
 	s.mu.Lock()
-	s.entries[id] = stateEntry{Redirect: redirect, Expires: time.Now().Add(15 * time.Minute)}
+	s.entries[id] = stateEntry{Redirect: redirect, Native: native, Expires: time.Now().Add(15 * time.Minute)}
 	s.mu.Unlock()
 	return id
 }
 
-func (s *stateStore) pop(id string) (string, bool) {
+func (s *stateStore) pop(id string) (stateEntry, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	e, ok := s.entries[id]
 	if !ok || time.Now().After(e.Expires) {
-		return "", false
+		return stateEntry{}, false
 	}
 	delete(s.entries, id)
-	return e.Redirect, true
+	return e, true
 }
 
 func (s *stateStore) reap() {
@@ -129,19 +130,75 @@ func (s *stateStore) reap() {
 	}
 }
 
+// ── Link token store (one-time native OAuth exchange) ─────────────────────────
+
+type linkTokenStore struct {
+	mu      sync.Mutex
+	entries map[string]struct {
+		SessionID string
+		Expires   time.Time
+	}
+}
+
+func newLinkTokenStore() *linkTokenStore {
+	s := &linkTokenStore{entries: make(map[string]struct {
+		SessionID string
+		Expires   time.Time
+	})}
+	go func() {
+		for range time.Tick(5 * time.Minute) {
+			now := time.Now()
+			s.mu.Lock()
+			for k, e := range s.entries {
+				if now.After(e.Expires) {
+					delete(s.entries, k)
+				}
+			}
+			s.mu.Unlock()
+		}
+	}()
+	return s
+}
+
+func (s *linkTokenStore) create(sessionID string) string {
+	b := make([]byte, 24)
+	_, _ = rand.Read(b)
+	tok := hex.EncodeToString(b)
+	s.mu.Lock()
+	s.entries[tok] = struct {
+		SessionID string
+		Expires   time.Time
+	}{SessionID: sessionID, Expires: time.Now().Add(2 * time.Minute)}
+	s.mu.Unlock()
+	return tok
+}
+
+func (s *linkTokenStore) pop(tok string) (string, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	e, ok := s.entries[tok]
+	if !ok || time.Now().After(e.Expires) {
+		return "", false
+	}
+	delete(s.entries, tok)
+	return e.SessionID, true
+}
+
 // ── Auth handler ──────────────────────────────────────────────────────────────
 
 type authHandler struct {
-	cfg      config.Config
-	sessions *sessionStore
-	states   *stateStore
+	cfg        config.Config
+	sessions   *sessionStore
+	states     *stateStore
+	linkTokens *linkTokenStore
 }
 
 func newAuthHandler(cfg config.Config) *authHandler {
 	return &authHandler{
-		cfg:      cfg,
-		sessions: newSessionStore(),
-		states:   newStateStore(),
+		cfg:        cfg,
+		sessions:   newSessionStore(),
+		states:     newStateStore(),
+		linkTokens: newLinkTokenStore(),
 	}
 }
 
@@ -290,7 +347,8 @@ func (h *authHandler) googleAuth(w http.ResponseWriter, r *http.Request) {
 	if redirect == "" || !strings.HasPrefix(redirect, "/") || strings.HasPrefix(redirect, "//") {
 		redirect = "/"
 	}
-	state := h.states.create(redirect)
+	native := r.URL.Query().Get("native") == "true"
+	state := h.states.create(redirect, native)
 
 	q := url.Values{
 		"client_id":     {h.cfg.GmailClientID},
@@ -311,11 +369,12 @@ func (h *authHandler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	state := r.URL.Query().Get("state")
-	redirect, ok := h.states.pop(state)
+	stateVal, ok := h.states.pop(state)
 	if !ok {
 		http.Error(w, "invalid or expired state — please try signing in again", http.StatusBadRequest)
 		return
 	}
+	redirect := stateVal.Redirect
 
 	code := r.URL.Query().Get("code")
 	if code == "" {
@@ -341,8 +400,47 @@ func (h *authHandler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := h.sessions.create(30*24*time.Hour, email)
+
+	if stateVal.Native {
+		// For native Capacitor: don't set a cookie here (Custom Tabs and WebView
+		// don't share cookie jars). Instead issue a short-lived link token and
+		// redirect to the app's custom URL scheme. The app will call
+		// /auth/native/finalize to exchange it for a SameSite=None cookie.
+		lt := h.linkTokens.create(id)
+		q := url.Values{"link_token": {lt}, "redirect": {redirect}}
+		http.Redirect(w, r, "com.clevercode.sempa://login?"+q.Encode(), http.StatusFound)
+		return
+	}
+
 	h.setSessionCookie(w, id)
 	http.Redirect(w, r, redirect, http.StatusFound)
+}
+
+func (h *authHandler) nativeFinalize(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		LinkToken string `json:"link_token"`
+	}
+	if err := decode(r, &req); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	sessionID, ok := h.linkTokens.pop(req.LinkToken)
+	if !ok {
+		respondError(w, http.StatusUnauthorized, "invalid or expired link token")
+		return
+	}
+	// SameSite=None so the Capacitor WebView (origin http://localhost) can send
+	// this cookie on cross-origin requests to the API server.
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    sessionID,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteNoneMode,
+		Path:     "/",
+		MaxAge:   30 * 24 * 60 * 60,
+	})
+	respond(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (h *authHandler) exchangeCode(r *http.Request, code string) (string, error) {
