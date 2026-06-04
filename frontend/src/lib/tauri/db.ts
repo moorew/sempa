@@ -21,14 +21,10 @@ async function getDb(): Promise<Database> {
     if (db) return db;
     if (!isTauri()) throw new Error('Not running in Tauri');
 
-    const sql = (window as any).__TAURI_PLUGIN_SQL__ as SqlPlugin | undefined;
-    if (!sql) {
-        // Tauri v2 plugin access via the global
-        const mod = await import('@tauri-apps/plugin-sql');
-        db = await (mod.default as any).load('sqlite:sempa.db');
-    } else {
-        db = await sql.load('sqlite:sempa.db');
-    }
+    // Tauri v2: import the SQL plugin module
+    const mod = await import('@tauri-apps/plugin-sql');
+    const instance = await mod.default.load('sqlite:sempa.db');
+    db = instance as unknown as Database;
     return db!;
 }
 

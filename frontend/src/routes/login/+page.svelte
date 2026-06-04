@@ -3,14 +3,15 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { api } from '$lib/api';
-  import { Capacitor } from '@capacitor/core';
-  import { Browser } from '@capacitor/browser';
-  import { App } from '@capacitor/app';
+  import { isTauri } from '$lib/tauri/bridge';
 
   // In dev: set VITE_API_URL=http://localhost:9001
   const base = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
 
-  const isNative = Capacitor.isNativePlatform();
+  let isNative = false;
+  let Capacitor: any = null;
+  let Browser: any = null;
+  let App: any = null;
 
   let authInfo = $state<{ google_enabled: boolean; password_enabled: boolean } | null>(null);
   let username = $state('');
@@ -29,7 +30,7 @@
       const linkToken = u.searchParams.get('link_token');
       const redirect  = u.searchParams.get('redirect') ?? '/';
       if (!linkToken) return;
-      await Browser.close().catch(() => {});
+      await Browser?.close().catch(() => {});
       await api.auth.nativeFinalize(linkToken);
       goto(redirect, { replaceState: true });
     } catch {
@@ -38,6 +39,27 @@
   }
 
   onMount(async () => {
+    // In Tauri desktop mode, skip login entirely — the app is local-first
+    if (isTauri()) {
+      goto(redirectTarget || '/', { replaceState: true });
+      return;
+    }
+
+    // Load Capacitor modules dynamically (only on mobile)
+    try {
+      const capMod = await import('@capacitor/core');
+      Capacitor = capMod.Capacitor;
+      isNative = Capacitor.isNativePlatform();
+      if (isNative) {
+        const [browserMod, appMod] = await Promise.all([
+          import('@capacitor/browser'),
+          import('@capacitor/app'),
+        ]);
+        Browser = browserMod.Browser;
+        App = appMod.App;
+      }
+    } catch { /* Capacitor not available */ }
+
     const errParam = $page.url.searchParams.get('error');
     if (errParam === 'not_allowed') error = 'Your Google account is not authorised for this Sempa instance.';
     else if (errParam) error = 'Google sign-in was cancelled or failed. Please try again.';
@@ -51,15 +73,15 @@
       }
     } catch { /* no session — continue */ }
 
-    if (isNative) {
+    if (isNative && App) {
       // Cold start: app was opened via the deep link before the listener was registered
-      const launch = await App.getLaunchUrl();
+      const launch = await App?.getLaunchUrl();
       if (launch?.url?.startsWith('com.clevercode.sempa://login')) {
         await handleAppUrl({ url: launch.url });
         return;
       }
       // Warm start: listen for the deep link callback while app is already running
-      appUrlListener = await App.addListener('appUrlOpen', handleAppUrl);
+      appUrlListener = await App?.addListener('appUrlOpen', handleAppUrl);
     }
 
     // Load auth config
@@ -77,7 +99,7 @@
     if (isNative) {
       // Open in an in-app Chrome Custom Tab; the OAuth callback will redirect to
       // com.clevercode.sempa://login?link_token=X which fires appUrlOpen.
-      Browser.open({ url: `${base}/api/v1/auth/google?${params}&native=true` });
+      Browser?.open({ url: `${base}/api/v1/auth/google?${params}&native=true` });
     } else {
       window.location.href = `${base}/api/v1/auth/google?${params}`;
     }
