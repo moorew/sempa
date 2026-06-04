@@ -47,6 +47,8 @@ export const api = {
     login: (username: string, password: string) =>
       req<{ status: string }>('/api/v1/auth/login', { method: 'POST', body: body({ username, password }), credentials: 'include' }),
     logout: () => req<void>('/api/v1/auth/logout', { method: 'POST', credentials: 'include' }),
+    nativeFinalize: (linkToken: string) =>
+      req<{ status: string }>('/api/v1/auth/native/finalize', { method: 'POST', body: body({ link_token: linkToken }) }),
   },
 
   tasks: {
