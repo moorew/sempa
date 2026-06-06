@@ -61,6 +61,27 @@
       }
     } catch { /* Capacitor not available */ }
 
+    // Tauri Google OAuth callback: backend redirects back to tauri.localhost/login?link_token=X
+    // Exchange the one-time token for a Bearer token and proceed into the app.
+    if (isTauri()) {
+      const linkToken = $page.url.searchParams.get('link_token');
+      if (linkToken) {
+        loading = true;
+        try {
+          const result = await api.auth.nativeFinalize(linkToken);
+          if (result.token) {
+            setTauriToken(result.token);
+            resetApiResolver();
+          }
+          goto(redirectTarget, { replaceState: true });
+          return;
+        } catch {
+          error = 'Google sign-in failed. Please try again.';
+          loading = false;
+        }
+      }
+    }
+
     // On native/Tauri platforms, load any previously saved server URL
     if (needsServerUrl) {
       serverUrl = getServerUrl();
@@ -114,9 +135,12 @@
     const base = getBase();
     const params = new URLSearchParams({ redirect: redirectTarget });
     if (isNative) {
-      // Open in an in-app Chrome Custom Tab; the OAuth callback will redirect to
-      // com.clevercode.sempa://login?link_token=X which fires appUrlOpen.
+      // Capacitor: open in Chrome Custom Tab; callback redirects to custom URL scheme.
       Browser?.open({ url: `${base}/api/v1/auth/google?${params}&native=true` });
+    } else if (isTauri()) {
+      // Tauri desktop: tell the backend our origin so it can redirect back into the WebView.
+      const tauriOrigin = window.location.origin;
+      window.location.href = `${base}/api/v1/auth/google?${params}&tauri=true&tauri_origin=${encodeURIComponent(tauriOrigin)}`;
     } else {
       window.location.href = `${base}/api/v1/auth/google?${params}`;
     }
