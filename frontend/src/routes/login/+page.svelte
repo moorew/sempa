@@ -2,10 +2,11 @@
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { api, setServerUrl, getServerUrl } from '$lib/api';
+  import { api, setServerUrl, getServerUrl, setTauriToken, clearTauriToken, resetApiResolver } from '$lib/api';
   import { isTauri } from '$lib/tauri/bridge';
 
   let isNative = $state(false);
+  let needsServerUrl = $derived(isNative || isTauri());
   let Capacitor: any = null;
   let Browser: any = null;
   let App: any = null;
@@ -45,12 +46,6 @@
   }
 
   onMount(async () => {
-    // In Tauri desktop mode, skip login entirely — the app is local-first
-    if (isTauri()) {
-      goto(redirectTarget || '/', { replaceState: true });
-      return;
-    }
-
     // Load Capacitor modules dynamically (only on mobile)
     try {
       const capMod = await import('@capacitor/core');
@@ -66,8 +61,8 @@
       }
     } catch { /* Capacitor not available */ }
 
-    // On native platforms, load any previously saved server URL
-    if (isNative) {
+    // On native/Tauri platforms, load any previously saved server URL
+    if (needsServerUrl) {
       serverUrl = getServerUrl();
       // If no server URL is configured yet, show the URL field and wait
       if (!serverUrl) {
@@ -131,7 +126,12 @@
     if (!username.trim() || !password) return;
     loading = true; error = '';
     try {
-      await api.auth.login(username.trim(), password);
+      const result = await api.auth.login(username.trim(), password);
+      // In Tauri mode, store Bearer token for subsequent requests
+      if (isTauri() && result.token) {
+        setTauriToken(result.token);
+        resetApiResolver(); // force re-evaluation with token
+      }
       goto(redirectTarget, { replaceState: true });
     } catch {
       error = 'Invalid username or password.';
@@ -151,6 +151,7 @@
       }
       setServerUrl(url);
       serverUrl = url;
+      resetApiResolver(); // switch from localApi to httpApi now that URL is set
 
       // Test connectivity
       const me = await api.auth.me();
@@ -311,8 +312,8 @@
       {/if}
     </div>
 
-    {#if isNative && getServerUrl()}
-      <button onclick={() => { showServerUrl = true; localStorage.removeItem('sempa_server_url'); serverUrl = ''; authInfo = null; error = ''; }}
+    {#if needsServerUrl && getServerUrl()}
+      <button onclick={() => { showServerUrl = true; localStorage.removeItem('sempa_server_url'); clearTauriToken(); resetApiResolver(); serverUrl = ''; authInfo = null; error = ''; }}
               class="mt-4 w-full text-center text-xs transition-colors"
               style="color: var(--sempa-text-dim);">
         Change server ({getServerUrl().replace(/^https?:\/\//, '')})

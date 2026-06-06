@@ -169,3 +169,28 @@ button:active, [role="button"]:active {
 [data-tauri-drag-region] textarea {
   -webkit-app-region: no-drag;
 }
+
+/* ── Custom scrollbars (Chrome, Edge, Safari, Tauri/WebView2) ─────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--sempa-border);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--sempa-text-dim);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sempa-border) transparent;
+}

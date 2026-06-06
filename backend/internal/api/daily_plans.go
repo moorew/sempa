@@ -12,6 +12,7 @@ import (
 
 type planHandler struct {
 	store *db.DailyPlanStore
+	hub   *EventHub
 }
 
 type upsertPlanRequest struct {
@@ -62,5 +63,6 @@ func (h *planHandler) upsert(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "failed to upsert plan")
 		return
 	}
+	h.hub.Broadcast("plan:change", map[string]string{"date": date})
 	respond(w, http.StatusOK, plan)
 }

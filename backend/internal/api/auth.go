@@ -225,6 +225,33 @@ func (h *authHandler) googleCallbackURL() string {
 	return h.cfg.AppURL + "/api/v1/auth/google/callback"
 }
 
+// extractSession checks for auth in this order:
+// 1. sempa_session cookie (web)
+// 2. Authorization: Bearer <token> header (Tauri desktop)
+// 3. ?token=<value> query param (SSE EventSource — can't set headers)
+func (h *authHandler) extractSession(r *http.Request) (sessionEntry, bool) {
+	// Cookie
+	if c, err := r.Cookie(sessionCookieName); err == nil {
+		if e, ok := h.sessions.get(c.Value); ok {
+			return e, true
+		}
+	}
+	// Authorization: Bearer
+	if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+		token := strings.TrimPrefix(auth, "Bearer ")
+		if e, ok := h.sessions.get(token); ok {
+			return e, true
+		}
+	}
+	// Query param (for SSE EventSource)
+	if token := r.URL.Query().Get("token"); token != "" {
+		if e, ok := h.sessions.get(token); ok {
+			return e, true
+		}
+	}
+	return sessionEntry{}, false
+}
+
 func (h *authHandler) setSessionCookie(w http.ResponseWriter, id string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
@@ -266,7 +293,7 @@ func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 
 	id := h.sessions.create(30*24*time.Hour, h.cfg.AuthUsername)
 	h.setSessionCookie(w, id)
-	respond(w, http.StatusOK, map[string]string{"status": "ok"})
+	respond(w, http.StatusOK, map[string]any{"status": "ok", "token": id})
 }
 
 func (h *authHandler) logout(w http.ResponseWriter, r *http.Request) {
@@ -291,16 +318,7 @@ func (h *authHandler) me(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	c, err := r.Cookie(sessionCookieName)
-	if err != nil {
-		respond(w, http.StatusOK, map[string]any{
-			"authenticated":  false,
-			"auth_enabled":   true,
-			"google_enabled": h.googleEnabled(),
-		})
-		return
-	}
-	entry, ok := h.sessions.get(c.Value)
+	entry, ok := h.extractSession(r)
 	if !ok {
 		respond(w, http.StatusOK, map[string]any{
 			"authenticated":  false,
@@ -323,12 +341,7 @@ func (h *authHandler) requireAuth(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		c, err := r.Cookie(sessionCookieName)
-		if err != nil {
-			respondError(w, http.StatusUnauthorized, "not authenticated")
-			return
-		}
-		if _, ok := h.sessions.get(c.Value); !ok {
+		if _, ok := h.extractSession(r); !ok {
 			respondError(w, http.StatusUnauthorized, "not authenticated")
 			return
 		}

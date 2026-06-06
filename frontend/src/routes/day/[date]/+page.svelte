@@ -19,6 +19,7 @@
   import MobileTaskCard from '$lib/components/MobileTaskCard.svelte';
   import MobileTaskView from '$lib/components/MobileTaskView.svelte';
   import { syncWidgetData } from '$lib/widget-bridge';
+  import { realtime } from '$lib/stores/realtime.svelte';
 
   // "date" is used to anchor the week and mark today
   let date      = $derived($page.params.date ?? today());
@@ -98,6 +99,13 @@
 
   onMount(() => { loadTasks(); loadRollover(); });
   $effect(() => { ws; loadTasks(); });
+
+  // Re-fetch when another platform broadcasts a change
+  $effect(() => {
+    const ev = realtime.lastEvent;
+    if (!ev) return;
+    if (ev.type === 'task:change' || ev.type === 'objective:change') loadTasks();
+  });
 
   // Handle FAB deep link — runs on mount AND whenever search params change
   // (same-page goto('/day/today?new=1') doesn't re-trigger onMount)

@@ -12,6 +12,7 @@ import (
 
 type objectiveHandler struct {
 	store *db.ObjectiveStore
+	hub   *EventHub
 }
 
 type createObjectiveRequest struct {
@@ -82,6 +83,7 @@ func (h *objectiveHandler) create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "failed to create objective")
 		return
 	}
+	h.hub.Broadcast("objective:change", map[string]string{"week_start": obj.WeekStart})
 	respond(w, http.StatusCreated, obj)
 }
 
@@ -122,6 +124,7 @@ func (h *objectiveHandler) update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "failed to update objective")
 		return
 	}
+	h.hub.Broadcast("objective:change", map[string]string{"week_start": updated.WeekStart})
 	respond(w, http.StatusOK, updated)
 }
 
@@ -135,5 +138,6 @@ func (h *objectiveHandler) delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "failed to delete objective")
 		return
 	}
+	h.hub.Broadcast("objective:change", map[string]string{})
 	respond(w, http.StatusNoContent, nil)
 }

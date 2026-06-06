@@ -5,6 +5,7 @@
   import type { Objective, Task } from '$lib/types';
   import { today, weekStart } from '$lib/utils';
   import { mobile } from '$lib/stores/mobile.svelte';
+  import { realtime } from '$lib/stores/realtime.svelte';
 
   const todayDate = today();
   const thisWeek  = weekStart(todayDate);
@@ -47,16 +48,26 @@
     return m > 0 ? `${h}h ${m}m` : `${h}h`;
   }
 
-  onMount(async () => {
-    if (!mobile.value) {
-      goto(`/day/${todayDate}`, { replaceState: true });
-      return;
-    }
+  async function loadData() {
     [todayTasks, objectives] = await Promise.all([
       api.tasks.listByDate(todayDate),
       api.objectives.listByWeek(thisWeek),
     ]);
     loading = false;
+  }
+
+  $effect(() => {
+    const ev = realtime.lastEvent;
+    if (!ev) return;
+    if (ev.type === 'task:change' || ev.type === 'objective:change') void loadData();
+  });
+
+  onMount(async () => {
+    if (!mobile.value) {
+      goto(`/day/${todayDate}`, { replaceState: true });
+      return;
+    }
+    await loadData();
   });
 </script>
 

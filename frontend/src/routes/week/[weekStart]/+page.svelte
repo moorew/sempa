@@ -41,8 +41,16 @@
     } finally { loading = false; }
   }
 
+  import { realtime } from '$lib/stores/realtime.svelte';
+
   onMount(load);
   $effect(() => { weekStartDate; void load(); });
+
+  $effect(() => {
+    const ev = realtime.lastEvent;
+    if (!ev) return;
+    if (ev.type === 'task:change' || ev.type === 'objective:change') void load();
+  });
 
   // ── Task helpers ───────────────────────────────────────────────────────────
   function objectiveTasks(id: string): Task[] {

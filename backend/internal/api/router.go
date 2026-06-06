@@ -32,6 +32,10 @@ func NewRouter(database *sql.DB, cfg config.Config) http.Handler {
 		if origin == "http://localhost" || origin == "https://localhost" || origin == "capacitor://localhost" {
 			return true
 		}
+		// Allow Tauri desktop app origins
+		if origin == "tauri://localhost" || origin == "http://tauri.localhost" {
+			return true
+		}
 		return origin == cfg.FrontendURL
 	}
 	r.Use(cors.Handler(cors.Options{
@@ -48,16 +52,19 @@ func NewRouter(database *sql.DB, cfg config.Config) http.Handler {
 	fmCalStore  := db.NewFastmailCalStore(database)
 	auth := newAuthHandler(cfg)
 
+	hub := NewEventHub()
+
 	tasks        := &taskHandler{
 		store:   db.NewTaskStore(database),
 		tags:    tagStore,
 		configs: configStore,
 		appURL:  cfg.AppURL,
+		hub:     hub,
 	}
-	objectives   := &objectiveHandler{store: db.NewObjectiveStore(database)}
-	plans        := &planHandler{store: db.NewDailyPlanStore(database)}
+	objectives   := &objectiveHandler{store: db.NewObjectiveStore(database), hub: hub}
+	plans        := &planHandler{store: db.NewDailyPlanStore(database), hub: hub}
 	sessions     := &sessionHandler{store: db.NewSessionStore(database)}
-	tags         := &tagHandler{store: tagStore}
+	tags         := &tagHandler{store: tagStore, hub: hub}
 	weekReviews  := &weekReviewHandler{store: db.NewWeekReviewStore(database)}
 	icals        := &icalHandler{
 		store:      db.NewICalStore(database),
@@ -106,6 +113,8 @@ func NewRouter(database *sql.DB, cfg config.Config) http.Handler {
 		// All remaining API routes require session auth (if auth is configured)
 		r.Group(func(r chi.Router) {
 			r.Use(auth.requireAuth)
+
+			r.Get("/events", hub.ServeSSE)
 
 			r.Route("/tasks", func(r chi.Router) {
 				r.Get("/", tasks.list)

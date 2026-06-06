@@ -45,12 +45,30 @@ export function getServerUrl(): string {
     : '';
 }
 
+const TAURI_TOKEN_KEY = 'sempa_tauri_token';
+export function getTauriToken(): string {
+  return typeof localStorage !== 'undefined' ? localStorage.getItem(TAURI_TOKEN_KEY) ?? '' : '';
+}
+export function setTauriToken(token: string) {
+  localStorage.setItem(TAURI_TOKEN_KEY, token);
+}
+export function clearTauriToken() {
+  localStorage.removeItem(TAURI_TOKEN_KEY);
+}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const base = getBaseUrl();
+  const extraHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+
+  if (isTauri()) {
+    const token = getTauriToken();
+    if (token) extraHeaders['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${base}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     ...init,
+    headers: { ...extraHeaders, ...(init?.headers as Record<string, string> ?? {}) },
+    credentials: isTauri() ? 'omit' : 'include',
   });
   if (!res.ok) {
     const body = await res.text();
@@ -72,8 +90,8 @@ const httpApi = {
     config: () => req<{ google_enabled: boolean; password_enabled: boolean }>('/api/v1/auth/config'),
     me: () => req<{ authenticated: boolean; auth_enabled: boolean; google_enabled: boolean; email?: string; username?: string }>('/api/v1/auth/me'),
     login: (username: string, password: string) =>
-      req<{ status: string }>('/api/v1/auth/login', { method: 'POST', body: body({ username, password }), credentials: 'include' }),
-    logout: () => req<void>('/api/v1/auth/logout', { method: 'POST', credentials: 'include' }),
+      req<{ status: string; token?: string }>('/api/v1/auth/login', { method: 'POST', body: body({ username, password }) }),
+    logout: () => req<void>('/api/v1/auth/logout', { method: 'POST' }),
     nativeFinalize: (linkToken: string) =>
       req<{ status: string }>('/api/v1/auth/native/finalize', { method: 'POST', body: body({ link_token: linkToken }) }),
   },
@@ -246,14 +264,25 @@ const httpApi = {
   },
 };
 
-// In Tauri (desktop) mode, use local SQLite. In web mode, use HTTP API.
-// The local API is eagerly imported but only used when isTauri() is true.
+// In Tauri (desktop) mode, use local SQLite only when no server URL is configured.
+// When a server URL is set, use httpApi with Bearer token auth.
 import { localApi } from './tauri/local-api';
 
 let _api: typeof httpApi | null = null;
+export function resetApiResolver() {
+  _api = null;
+}
 function resolveApi(): typeof httpApi {
   if (!_api) {
-    _api = isTauri() ? (localApi as unknown as typeof httpApi) : httpApi;
+    if (isTauri() && getServerUrl()) {
+      // Desktop with server configured: use HTTP API with Bearer token auth
+      _api = httpApi;
+    } else if (isTauri()) {
+      // Desktop without server: local-only mode (offline)
+      _api = localApi as unknown as typeof httpApi;
+    } else {
+      _api = httpApi;
+    }
   }
   return _api;
 }
