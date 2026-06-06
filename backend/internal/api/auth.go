@@ -80,9 +80,10 @@ func (s *sessionStore) reap() {
 // ── OAuth state store (anti-CSRF) ─────────────────────────────────────────────
 
 type stateEntry struct {
-	Redirect string
-	Native   bool
-	Expires  time.Time
+	Redirect    string
+	Native      bool
+	TauriOrigin string // non-empty for Tauri desktop OAuth flow
+	Expires     time.Time
 }
 
 type stateStore struct {
@@ -96,12 +97,12 @@ func newStateStore() *stateStore {
 	return s
 }
 
-func (s *stateStore) create(redirect string, native bool) string {
+func (s *stateStore) create(redirect string, native bool, tauriOrigin string) string {
 	b := make([]byte, 24)
 	_, _ = rand.Read(b)
 	id := hex.EncodeToString(b)
 	s.mu.Lock()
-	s.entries[id] = stateEntry{Redirect: redirect, Native: native, Expires: time.Now().Add(15 * time.Minute)}
+	s.entries[id] = stateEntry{Redirect: redirect, Native: native, TauriOrigin: tauriOrigin, Expires: time.Now().Add(15 * time.Minute)}
 	s.mu.Unlock()
 	return id
 }
@@ -361,7 +362,21 @@ func (h *authHandler) googleAuth(w http.ResponseWriter, r *http.Request) {
 		redirect = "/"
 	}
 	native := r.URL.Query().Get("native") == "true"
-	state := h.states.create(redirect, native)
+
+	// Tauri desktop: the WebView passes its own origin so we can redirect back after OAuth.
+	// Validate against the known Tauri schemes to prevent open redirect.
+	tauriOrigin := ""
+	if r.URL.Query().Get("tauri") == "true" {
+		raw := r.URL.Query().Get("tauri_origin")
+		switch raw {
+		case "https://tauri.localhost", "tauri://localhost", "http://tauri.localhost":
+			tauriOrigin = raw
+		default:
+			tauriOrigin = "https://tauri.localhost"
+		}
+	}
+
+	state := h.states.create(redirect, native, tauriOrigin)
 
 	q := url.Values{
 		"client_id":     {h.cfg.GmailClientID},
@@ -414,11 +429,17 @@ func (h *authHandler) googleCallback(w http.ResponseWriter, r *http.Request) {
 
 	id := h.sessions.create(30*24*time.Hour, email)
 
+	if stateVal.TauriOrigin != "" {
+		// Tauri desktop: redirect back into the WebView so the app can exchange the
+		// link token for a Bearer token via /auth/native/finalize.
+		lt := h.linkTokens.create(id)
+		q := url.Values{"link_token": {lt}, "redirect": {redirect}}
+		http.Redirect(w, r, stateVal.TauriOrigin+"/login?"+q.Encode(), http.StatusFound)
+		return
+	}
+
 	if stateVal.Native {
-		// For native Capacitor: don't set a cookie here (Custom Tabs and WebView
-		// don't share cookie jars). Instead issue a short-lived link token and
-		// redirect to the app's custom URL scheme. The app will call
-		// /auth/native/finalize to exchange it for a SameSite=None cookie.
+		// Capacitor: redirect to the custom URL scheme; the app calls /auth/native/finalize.
 		lt := h.linkTokens.create(id)
 		q := url.Values{"link_token": {lt}, "redirect": {redirect}}
 		http.Redirect(w, r, "com.clevercode.sempa://login?"+q.Encode(), http.StatusFound)
@@ -453,7 +474,9 @@ func (h *authHandler) nativeFinalize(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   30 * 24 * 60 * 60,
 	})
-	respond(w, http.StatusOK, map[string]string{"status": "ok"})
+	// Also return the session ID in the body so Tauri desktop can store it as a
+	// Bearer token (cross-origin cookies don't work in the Tauri WebView).
+	respond(w, http.StatusOK, map[string]any{"status": "ok", "token": sessionID})
 }
 
 func (h *authHandler) exchangeCode(r *http.Request, code string) (string, error) {
