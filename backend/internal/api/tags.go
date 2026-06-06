@@ -21,7 +21,10 @@ var defaultPalette = []string{
 	"#84cc16", // lime
 }
 
-type tagHandler struct{ store *db.TagStore }
+type tagHandler struct {
+	store *db.TagStore
+	hub   *EventHub
+}
 
 func (h *tagHandler) list(w http.ResponseWriter, r *http.Request) {
 	tags, err := h.store.List(r.Context())
@@ -56,6 +59,7 @@ func (h *tagHandler) create(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	h.hub.Broadcast("tag:change", map[string]string{})
 	respond(w, http.StatusCreated, tag)
 }
 
@@ -77,6 +81,7 @@ func (h *tagHandler) update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	h.hub.Broadcast("tag:change", map[string]string{})
 	respond(w, http.StatusOK, tag)
 }
 
@@ -90,5 +95,6 @@ func (h *tagHandler) delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	h.hub.Broadcast("tag:change", map[string]string{})
 	w.WriteHeader(http.StatusNoContent)
 }

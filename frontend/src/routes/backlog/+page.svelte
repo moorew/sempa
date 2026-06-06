@@ -15,7 +15,15 @@
   let panelOpen = $state(false);
   let panelTask = $state<Task | null>(null);
 
+  import { realtime } from '$lib/stores/realtime.svelte';
+
   onMount(load);
+
+  $effect(() => {
+    const ev = realtime.lastEvent;
+    if (!ev) return;
+    if (ev.type === 'task:change') void load();
+  });
 
   async function load() {
     loading = true; error = null;

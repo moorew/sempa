@@ -20,6 +20,7 @@ type taskHandler struct {
 	tags    *db.TagStore
 	configs *db.IntegrationConfigStore // for calendar write-back
 	appURL  string                      // base URL for task links
+	hub     *EventHub
 }
 
 type createTaskRequest struct {
@@ -170,6 +171,14 @@ func (h *taskHandler) create(w http.ResponseWriter, r *http.Request) {
 		_ = h.store.GenerateForDate(r.Context(), today)
 	}
 
+	meta := map[string]string{"entity": "task"}
+	if task.PlannedDate != nil {
+		meta["date"] = *task.PlannedDate
+	}
+	if task.WeekStart != nil {
+		meta["week_start"] = *task.WeekStart
+	}
+	h.hub.Broadcast("task:change", meta)
 	respond(w, http.StatusCreated, task)
 }
 
@@ -278,6 +287,14 @@ func (h *taskHandler) update(w http.ResponseWriter, r *http.Request) {
 		go h.writeJiraTransition(updated)
 	}
 
+	meta := map[string]string{"entity": "task"}
+	if updated.PlannedDate != nil {
+		meta["date"] = *updated.PlannedDate
+	}
+	if updated.WeekStart != nil {
+		meta["week_start"] = *updated.WeekStart
+	}
+	h.hub.Broadcast("task:change", meta)
 	respond(w, http.StatusOK, updated)
 }
 
@@ -300,6 +317,7 @@ func (h *taskHandler) delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "failed to delete task")
 		return
 	}
+	h.hub.Broadcast("task:change", map[string]string{"entity": "task"})
 	respond(w, http.StatusNoContent, nil)
 }
 

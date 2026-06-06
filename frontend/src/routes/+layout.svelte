@@ -12,10 +12,12 @@
   import { initPushNotifications } from '$lib/push';
   import { SplashScreen } from '@capacitor/splash-screen';
   import { Capacitor } from '@capacitor/core';
-  import { api } from '$lib/api';
+  import { api, getServerUrl, getTauriToken, clearTauriToken, resetApiResolver } from '$lib/api';
   import { isTauri } from '$lib/tauri/bridge';
   import PomodoroTimer from '$lib/components/PomodoroTimer.svelte';
   import BottomSheet from '$lib/components/BottomSheet.svelte';
+  import TitleBar from '$lib/components/TitleBar.svelte';
+  import { realtime } from '$lib/stores/realtime.svelte';
   import type { Snippet } from 'svelte';
 
   // Lucide icons
@@ -81,9 +83,34 @@
     if (!isLoginPage && !isSetupPage) {
       tagStore.load();
 
-      // In Tauri (desktop), the app is local-first — no backend auth needed.
+      // In Tauri (desktop), require server URL and token before proceeding.
       if (isTauri()) {
-        userEmail = 'local';
+        if (!getServerUrl()) {
+          goto('/login?redirect=' + encodeURIComponent($page.url.pathname), { replaceState: true });
+          return;
+        }
+        if (!getTauriToken()) {
+          goto('/login?redirect=' + encodeURIComponent($page.url.pathname), { replaceState: true });
+          return;
+        }
+        // Server URL and token present — verify token is still valid
+        try {
+          const me = await api.auth.me();
+          if (!me.authenticated) {
+            clearTauriToken();
+            goto('/login?redirect=' + encodeURIComponent($page.url.pathname), { replaceState: true });
+            return;
+          }
+          userEmail = me.email ?? 'desktop';
+        } catch {
+          clearTauriToken();
+          goto('/login?redirect=' + encodeURIComponent($page.url.pathname), { replaceState: true });
+          return;
+        }
+        realtime.connect();
+        showIntroAnimation = true;
+        setTimeout(() => { introFadingOut = true; }, 1600);
+        setTimeout(() => { showIntroAnimation = false; introFadingOut = false; }, 1800);
         return;
       }
 
@@ -101,8 +128,10 @@
         if (!setup.done) {
           goto('/setup', { replaceState: true });
         }
+        realtime.connect();
       } catch {
         goto('/login?redirect=' + encodeURIComponent($page.url.pathname), { replaceState: true });
+        realtime.disconnect();
       } finally {
         if (Capacitor.isNativePlatform()) {
           await SplashScreen.hide({ fadeOutDuration: 400 });
@@ -112,6 +141,13 @@
         setTimeout(() => { showIntroAnimation = false; introFadingOut = false; }, 1800);
       }
     }
+  });
+
+  // Re-load tags from server when a tag:change SSE event arrives
+  $effect(() => {
+    const ev = realtime.lastEvent;
+    if (!ev) return;
+    if (ev.type === 'tag:change') tagStore.load();
   });
 
   function isActive(prefix: string): boolean {
@@ -132,7 +168,10 @@
 {#if isLoginPage || isSetupPage}
   {@render children()}
 {:else}
-<div class="flex h-screen overflow-hidden" style="background: var(--sempa-bg-main);">
+<div class="flex flex-col h-screen overflow-hidden" style="background: var(--sempa-bg-main);">
+  <!-- Custom titlebar (Tauri only — hidden on web/mobile) -->
+  <TitleBar />
+  <div class="flex flex-1 overflow-hidden" style="min-height: 0;">
 
   <!-- ── Sidebar (hidden on mobile) ───────────────────────────────────── -->
   {#if !mobile.value}
@@ -213,7 +252,7 @@
         {#if userEmail}
           <div class="mt-1 rounded-lg px-3 py-2" style="border-top: 1px solid var(--sempa-border);">
             <p class="truncate text-[11px]" style="color: var(--sempa-text-dim);" title={userEmail}>{userEmail}</p>
-            <button onclick={async () => { await api.auth.logout(); goto('/login'); }}
+            <button onclick={async () => { if (isTauri()) { clearTauriToken(); resetApiResolver(); goto('/login'); return; } await api.auth.logout(); goto('/login'); }}
                     class="mt-0.5 text-[11px] transition-colors"
                     style="color: var(--sempa-text-dim);"
                     onmouseenter={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-accent)'}
@@ -234,6 +273,7 @@
       <div class="animate-fade-in">{@render children()}</div>
     {/key}
   </div>
+  </div><!-- end inner flex row -->
 </div>
 
 <!-- ── Mobile bottom tab bar ────────────────────────────────────────────── -->
@@ -324,7 +364,7 @@
       {#if userEmail}
         <div class="mt-3 px-4 pt-3" style="border-top: 1px solid var(--sempa-border);">
           <p class="truncate text-xs" style="color: var(--sempa-text-dim);">{userEmail}</p>
-          <button onclick={async () => { moreSheetOpen = false; await api.auth.logout(); goto('/login'); }}
+          <button onclick={async () => { moreSheetOpen = false; if (isTauri()) { clearTauriToken(); resetApiResolver(); goto('/login'); return; } await api.auth.logout(); goto('/login'); }}
                   class="mt-1 text-xs transition-colors" style="color: var(--sempa-text-dim);">
             Sign out
           </button>
