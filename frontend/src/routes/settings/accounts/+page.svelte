@@ -66,6 +66,10 @@
     { id: 'appearance', label: 'Appearance' },
   ] as const;
 
+  // Integrations (Gmail / Fastmail / Jira / calendar OAuth) are managed on
+  // desktop/web; they're hidden in the mobile settings to keep it focused.
+  const MOBILE_SECTIONS = NAV_SECTIONS.filter((s) => s.id !== 'integrations');
+
   // Surfaces a clear banner when the device can't reach the backend at all
   // (the common Android failure mode — wrong/missing server URL or auth). Without
   // this the section just renders every integration as "disconnected", which
@@ -306,7 +310,7 @@
         <h1 class="text-xl font-bold" style="color: var(--sempa-text);">Settings</h1>
       </div>
       <div class="px-4 py-3">
-        {#each NAV_SECTIONS as section}
+        {#each MOBILE_SECTIONS as section}
           <button onclick={() => mobileSection = section.id}
                   class="flex w-full items-center gap-4 rounded-xl px-3 py-3.5 transition-colors"
                   style="text-align:left;"
