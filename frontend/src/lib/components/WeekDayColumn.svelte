@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Task } from '$lib/types';
   import TaskCard from './TaskCard.svelte';
+  import { compareTasksForDay } from '$lib/utils';
   import { Plus } from 'lucide-svelte';
 
   let {
@@ -41,8 +42,8 @@
     onAddClick: (date: string) => void;
   } = $props();
 
-  const active = $derived(tasks.filter(t => t.status !== 'done').sort((a, b) => a.position - b.position));
-  const done   = $derived(tasks.filter(t => t.status === 'done').sort((a, b) => a.position - b.position));
+  const active = $derived(tasks.filter(t => t.status !== 'done').sort(compareTasksForDay));
+  const done   = $derived(tasks.filter(t => t.status === 'done').sort(compareTasksForDay));
   let showDone = $state(false);
 
   const CAPACITY_MINS = 8 * 60;

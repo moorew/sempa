@@ -29,6 +29,8 @@ export interface Task {
   // Timeboxing
   scheduled_start: string | null;
   scheduled_end: string | null;
+  // "Roughly at" sort hint (HH:MM) — visual ordering only, no time block
+  roughly_at: string | null;
 }
 
 export interface TagDefinition {
@@ -86,6 +88,7 @@ export interface CreateTaskInput {
   recurrence_rule?: string;
   scheduled_start?: string;
   scheduled_end?: string;
+  roughly_at?: string | null;
 }
 
 export interface ICalSubscription {
@@ -137,6 +140,7 @@ export interface UpdateTaskInput {
   parent_task_id?: string | null;
   scheduled_start?: string | null;
   scheduled_end?: string | null;
+  roughly_at?: string | null;
 }
 
 export interface CreateObjectiveInput {

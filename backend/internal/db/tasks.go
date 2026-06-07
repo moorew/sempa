@@ -36,6 +36,8 @@ type Task struct {
 	// Timeboxing (added in migration 006)
 	ScheduledStart *string `json:"scheduled_start"`
 	ScheduledEnd   *string `json:"scheduled_end"`
+	// "Roughly at" sort hint, HH:MM (added in migration 011). Visual ordering only.
+	RoughlyAt *string `json:"roughly_at"`
 }
 
 const taskCols = `id, title, description, planned_date, week_start, status, position,
@@ -43,7 +45,7 @@ const taskCols = `id, title, description, planned_date, week_start, status, posi
        source, source_id, source_url, source_metadata,
        completed_at, archived_at, created_at, updated_at,
        tags, recurrence_rule, recurrence_origin_id, is_customized,
-       scheduled_start, scheduled_end`
+       scheduled_start, scheduled_end, roughly_at`
 
 func scanTask(s scanner) (Task, error) {
 	var t Task
@@ -55,7 +57,7 @@ func scanTask(s scanner) (Task, error) {
 	var tagsJSON string
 	var recurrenceRule, recurrenceOriginID sql.NullString
 	var isCustomized int64
-	var scheduledStart, scheduledEnd sql.NullString
+	var scheduledStart, scheduledEnd, roughlyAt sql.NullString
 
 	err := s.Scan(
 		&t.ID, &t.Title, &description, &plannedDate, &weekStart,
@@ -66,7 +68,7 @@ func scanTask(s scanner) (Task, error) {
 		&completedAt, &archivedAt,
 		&t.CreatedAt, &t.UpdatedAt,
 		&tagsJSON, &recurrenceRule, &recurrenceOriginID, &isCustomized,
-		&scheduledStart, &scheduledEnd,
+		&scheduledStart, &scheduledEnd, &roughlyAt,
 	)
 	if err != nil {
 		return Task{}, err
@@ -90,6 +92,7 @@ func scanTask(s scanner) (Task, error) {
 	t.IsCustomized = isCustomized == 1
 	t.ScheduledStart = nullStr(scheduledStart)
 	t.ScheduledEnd = nullStr(scheduledEnd)
+	t.RoughlyAt = nullStr(roughlyAt)
 
 	if tagsJSON != "" && tagsJSON != "[]" {
 		_ = json.Unmarshal([]byte(tagsJSON), &t.Tags)
@@ -213,6 +216,7 @@ type CreateTaskParams struct {
 	RecurrenceOriginID *string
 	ScheduledStart     *string
 	ScheduledEnd       *string
+	RoughlyAt          *string
 }
 
 func (s *TaskStore) Create(ctx context.Context, p CreateTaskParams) (Task, error) {
@@ -226,14 +230,14 @@ func (s *TaskStore) Create(ctx context.Context, p CreateTaskParams) (Task, error
 			time_estimate_minutes, parent_task_id, weekly_objective_id,
 			source, source_id, source_url, source_metadata,
 			tags, recurrence_rule, recurrence_origin_id,
-			scheduled_start, scheduled_end
-		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+			scheduled_start, scheduled_end, roughly_at
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		RETURNING `+taskCols,
 		p.ID, p.Title, p.Description, p.PlannedDate, p.WeekStart, p.Status, p.Position,
 		p.TimeEstimateMinutes, p.ParentTaskID, p.WeeklyObjectiveID,
 		p.Source, p.SourceID, p.SourceURL, p.SourceMetadata,
 		string(tagsJSON), p.RecurrenceRule, p.RecurrenceOriginID,
-		p.ScheduledStart, p.ScheduledEnd,
+		p.ScheduledStart, p.ScheduledEnd, p.RoughlyAt,
 	)
 	return scanTask(row)
 }
@@ -263,6 +267,7 @@ func (s *TaskStore) Update(ctx context.Context, t Task) (Task, error) {
 			is_customized         = ?,
 			scheduled_start       = ?,
 			scheduled_end         = ?,
+			roughly_at            = ?,
 			updated_at            = datetime('now')
 		WHERE id = ?
 		RETURNING `+taskCols,
@@ -271,7 +276,7 @@ func (s *TaskStore) Update(ctx context.Context, t Task) (Task, error) {
 		t.TimeEstimateMinutes, t.TimeActualMinutes,
 		t.WeeklyObjectiveID, t.CompletedAt,
 		string(tagsJSON), isCustomized,
-		t.ScheduledStart, t.ScheduledEnd,
+		t.ScheduledStart, t.ScheduledEnd, t.RoughlyAt,
 		t.ID,
 	)
 	updated, err := scanTask(row)

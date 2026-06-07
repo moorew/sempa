@@ -2,8 +2,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -12,92 +10,92 @@ import (
 	"github.com/google/uuid"
 )
 
-// GenerateForDate generates recurring task instances for the given date (YYYY-MM-DD).
+// GenerateForDate runs the daily "smart rollover" for `date` (YYYY-MM-DD) and
+// makes sure every template due that day has a fresh instance.
 //
-// Rollover rule: if an uncompleted, non-customised instance exists on or before
-// `date`, move it forward to `date`.  If none exists and nothing already covers
-// this date, create a fresh instance.
+// Smart rollover — applied to every recurring instance still open *before* `date`:
+//
+//	pristine  (untouched: not customised, not started, no logged time)
+//	          → deleted; today's fresh instance takes its place (no pile-up).
+//	modified  (customised, in-progress, or with logged time)
+//	          → carried forward to `date` (and its week_start realigned), so the
+//	            user keeps their notes/subtasks and sees it alongside today's new
+//	            instance.
+//
+// Pristine vs. modified is tracked by tasks.is_customized (set whenever the user
+// edits an instance's content or adds a sub-task — see the API layer).
 func (s *TaskStore) GenerateForDate(ctx context.Context, date string) error {
 	t, err := time.Parse("2006-01-02", date)
 	if err != nil {
 		return fmt.Errorf("invalid date %q: %w", date, err)
 	}
+	ws := weekStartOf(t)
 
+	// 1a. Delete pristine, open instances left in the past — nothing the user
+	//     cared about, so today's fresh instance replaces them.
+	if _, err := s.db.ExecContext(ctx, `
+		DELETE FROM tasks
+		WHERE recurrence_origin_id IS NOT NULL
+		  AND is_customized = 0
+		  AND status IN ('backlog','planned')
+		  AND (time_actual_minutes IS NULL OR time_actual_minutes = 0)
+		  AND planned_date IS NOT NULL
+		  AND planned_date < ?`, date); err != nil {
+		return err
+	}
+
+	// 1b. Whatever past, open recurring instances remain are "modified" — carry
+	//     them forward to today and realign week_start so ListByWeek finds them.
+	if _, err := s.db.ExecContext(ctx, `
+		UPDATE tasks
+		SET planned_date = ?, week_start = ?, updated_at = datetime('now')
+		WHERE recurrence_origin_id IS NOT NULL
+		  AND status IN ('backlog','planned','in_progress')
+		  AND planned_date IS NOT NULL
+		  AND planned_date < ?`, date, ws, date); err != nil {
+		return err
+	}
+
+	// 2. Ensure a fresh instance exists for every template due on `date`. A
+	//    carried-forward modified instance (is_customized = 1) does not count, so
+	//    the user sees both it and the new pristine one.
 	templates, err := s.ListRecurringTemplates(ctx)
 	if err != nil {
 		return err
 	}
-
 	for _, tmpl := range templates {
 		if tmpl.RecurrenceRule == nil || !isDueOn(*tmpl.RecurrenceRule, t) {
 			continue
 		}
-
-		// Skip if this date already has a live instance.
-		if s.recurringInstanceExistsForDate(ctx, tmpl.ID, date) {
+		if s.pristineInstanceExistsForDate(ctx, tmpl.ID, date) {
 			continue
 		}
-
-		// Look for an uncompleted instance on or before `date` (never future).
-		pending, err := s.findPendingRecurringInstanceBefore(ctx, tmpl.ID, date)
-		if err != nil {
+		if err := s.createInstance(ctx, tmpl, t); err != nil {
 			return err
-		}
-
-		if pending != nil {
-			// Roll the instance forward to `date` AND realign its week_start.
-			// Without updating week_start, an instance carried over from a prior
-			// week keeps its old week_start, so ListByWeek (which filters on
-			// week_start) can't find it — even though ListByDate can. That makes
-			// the task appear on the home/today screen but vanish in the day/week
-			// views.
-			ws := weekStartOf(t)
-			pending.PlannedDate = &date
-			pending.WeekStart = &ws
-			if _, err := s.Update(ctx, *pending); err != nil {
-				return err
-			}
-		} else {
-			ws := weekStartOf(t)
-			if _, err := s.Create(ctx, CreateTaskParams{
-				ID:                 uuid.New().String(),
-				Title:              tmpl.Title,
-				Description:        tmpl.Description,
-				PlannedDate:        &date,
-				WeekStart:          &ws,
-				Status:             "planned",
-				Position:           float64(t.UnixMilli()),
-				Tags:               tmpl.Tags,
-				RecurrenceOriginID: &tmpl.ID,
-			}); err != nil {
-				return err
-			}
 		}
 	}
 	return nil
 }
 
-// GenerateForWeek ensures each day of the requested week has the right recurring
-// instances:
+// GenerateForWeek ensures the requested week has the right recurring instances.
+// `today` is the caller's local date (YYYY-MM-DD); pass "" to use the server's.
+// Passing the client's date keeps rollover correct across timezones.
 //
-//   - Past weeks: no-op (history is settled).
-//   - Current week: delete stale uncompleted future instances, roll today's task
-//     forward via GenerateForDate, then seed fresh planned instances for every
-//     upcoming day in the week.
-//   - Future weeks: seed one planned instance per due day, no rollover.
-func (s *TaskStore) GenerateForWeek(ctx context.Context, weekStart string) error {
-	today := time.Now().Format("2006-01-02")
+// This is intentionally non-destructive: it never deletes future instances (an
+// earlier version did, which could race with the day/today view and make tasks
+// vanish). Pristine-existence checks keep it idempotent and duplicate-free.
+func (s *TaskStore) GenerateForWeek(ctx context.Context, weekStart, today string) error {
+	if today == "" {
+		today = time.Now().Format("2006-01-02")
+	}
 	ws, err := time.Parse("2006-01-02", weekStart)
 	if err != nil {
 		return fmt.Errorf("invalid weekStart %q: %w", weekStart, err)
 	}
 	weekEnd := ws.AddDate(0, 0, 6).Format("2006-01-02")
 
-	// Backfill: repair any task whose week_start is missing OR doesn't match its
-	// planned_date (e.g. a recurring instance rolled forward from a prior week
-	// before the rollover learned to realign week_start). Without this they'd
-	// never surface in ListByWeek. Computes the Monday-based week start to match
-	// the frontend convention.
+	// Backfill: repair any task whose week_start is missing or doesn't match its
+	// planned_date, so it surfaces in ListByWeek (which filters on week_start).
 	s.db.ExecContext(ctx, `
 		UPDATE tasks
 		SET week_start = date(planned_date, '-' || ((CAST(strftime('%w', planned_date) AS INTEGER) + 6) % 7) || ' days')
@@ -107,39 +105,23 @@ func (s *TaskStore) GenerateForWeek(ctx context.Context, weekStart string) error
 
 	switch {
 	case today > weekEnd:
-		// Past week — nothing to do; instances are already settled.
+		// Past week — instances are settled; nothing to do.
 		return nil
-
 	case today < weekStart:
-		// Future week — seed planned instances without rollover.
+		// Future week — seed every due day, no rollover.
 		return s.seedWeekInstances(ctx, ws, "")
-
 	default:
-		// Current week.
-		// 1. Wipe uncompleted non-customised instances for the rest of the week
-		//    so they can be re-seeded fresh (prevents stale accumulation).
-		s.db.ExecContext(ctx, `
-			DELETE FROM tasks
-			WHERE recurrence_origin_id IS NOT NULL
-			  AND is_customized = 0
-			  AND status IN ('backlog','planned')
-			  AND planned_date > ?
-			  AND planned_date <= ?`,
-			today, weekEnd)
-
-		// 2. Roll today's task forward (or create if none exists).
+		// Current week — roll today over, then seed the remaining days.
 		if err := s.GenerateForDate(ctx, today); err != nil {
 			return err
 		}
-
-		// 3. Seed one fresh instance per due day for the rest of the week.
 		return s.seedWeekInstances(ctx, ws, today)
 	}
 }
 
-// seedWeekInstances creates planned instances for each day in the week (Mon–Sun)
-// that is strictly after `afterDate` (use "" to include all days).
-// Skips days that already have a live instance for the template.
+// seedWeekInstances creates a pristine instance for each due day in the week
+// (Mon–Sun) strictly after `afterDate` (use "" to include all days). Days that
+// already have a pristine instance for the template are skipped.
 func (s *TaskStore) seedWeekInstances(ctx context.Context, ws time.Time, afterDate string) error {
 	templates, err := s.ListRecurringTemplates(ctx)
 	if err != nil {
@@ -155,22 +137,10 @@ func (s *TaskStore) seedWeekInstances(ctx context.Context, ws time.Time, afterDa
 			if tmpl.RecurrenceRule == nil || !isDueOn(*tmpl.RecurrenceRule, d) {
 				continue
 			}
-			if s.recurringInstanceExistsForDate(ctx, tmpl.ID, date) {
+			if s.pristineInstanceExistsForDate(ctx, tmpl.ID, date) {
 				continue
 			}
-			planDate := date
-			ws := weekStartOf(d)
-			if _, err := s.Create(ctx, CreateTaskParams{
-				ID:                 uuid.New().String(),
-				Title:              tmpl.Title,
-				Description:        tmpl.Description,
-				PlannedDate:        &planDate,
-				WeekStart:          &ws,
-				Status:             "planned",
-				Position:           float64(d.UnixMilli()),
-				Tags:               tmpl.Tags,
-				RecurrenceOriginID: &tmpl.ID,
-			}); err != nil {
+			if err := s.createInstance(ctx, tmpl, d); err != nil {
 				return err
 			}
 		}
@@ -178,35 +148,34 @@ func (s *TaskStore) seedWeekInstances(ctx context.Context, ws time.Time, afterDa
 	return nil
 }
 
-// findPendingRecurringInstanceBefore finds the most recent uncompleted,
-// non-customised instance of a template with planned_date <= maxDate.
-// This prevents future pre-seeded instances from interfering with rollover.
-func (s *TaskStore) findPendingRecurringInstanceBefore(ctx context.Context, originID, maxDate string) (*Task, error) {
-	row := s.db.QueryRowContext(ctx,
-		`SELECT `+taskCols+` FROM tasks
-		 WHERE recurrence_origin_id = ?
-		   AND status IN ('backlog','planned')
-		   AND is_customized = 0
-		   AND planned_date <= ?
-		 ORDER BY planned_date DESC
-		 LIMIT 1`, originID, maxDate)
-	t, err := scanTask(row)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &t, nil
+// createInstance materialises one recurring instance for the given template on
+// day `t`, copying the template's roughly_at sort hint.
+func (s *TaskStore) createInstance(ctx context.Context, tmpl Task, t time.Time) error {
+	date := t.Format("2006-01-02")
+	ws := weekStartOf(t)
+	_, err := s.Create(ctx, CreateTaskParams{
+		ID:                 uuid.New().String(),
+		Title:              tmpl.Title,
+		Description:        tmpl.Description,
+		PlannedDate:        &date,
+		WeekStart:          &ws,
+		Status:             "planned",
+		Position:           float64(t.UnixMilli()),
+		Tags:               tmpl.Tags,
+		RecurrenceOriginID: &tmpl.ID,
+		RoughlyAt:          tmpl.RoughlyAt,
+	})
+	return err
 }
 
-// recurringInstanceExistsForDate returns true if a non-cancelled instance of
-// the given template already exists on the given date.
-func (s *TaskStore) recurringInstanceExistsForDate(ctx context.Context, originID, date string) bool {
+// pristineInstanceExistsForDate reports whether a non-customised, non-cancelled
+// instance of the template already exists on the given date.
+func (s *TaskStore) pristineInstanceExistsForDate(ctx context.Context, originID, date string) bool {
 	var count int
 	s.db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM tasks
-		 WHERE recurrence_origin_id = ? AND planned_date = ? AND status != 'cancelled'`,
+		 WHERE recurrence_origin_id = ? AND planned_date = ?
+		   AND is_customized = 0 AND status != 'cancelled'`,
 		originID, date).Scan(&count)
 	return count > 0
 }

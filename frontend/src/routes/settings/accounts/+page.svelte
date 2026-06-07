@@ -66,23 +66,40 @@
     { id: 'appearance', label: 'Appearance' },
   ] as const;
 
+  // Surfaces a clear banner when the device can't reach the backend at all
+  // (the common Android failure mode — wrong/missing server URL or auth). Without
+  // this the section just renders every integration as "disconnected", which
+  // reads as "nothing loaded".
+  let serverUnreachable = $state(false);
+
   onMount(async () => {
     const connected = $page.url.searchParams.get('connected');
     if (connected === '1') window.history.replaceState({}, '', '/settings/accounts');
 
-    // Each call catches independently. A single failing endpoint (common on
-    // Android, where base URL + Bearer auth differ from web) must NOT reject the
-    // whole Promise.all — otherwise none of the integration state is assigned
-    // and the entire Integrations section renders blank.
-    [gmail, calendar, fastmail, fmCal, taskInbox, icalSubs, jira] = await Promise.all([
-      api.integrations.gmail.get().catch(() => ({ connected: false })),
-      api.integrations.calendar.get().catch(() => ({ connected: false })),
-      api.integrations.fastmail.get().catch(() => ({ connected: false })),
-      api.integrations.fastmail.calendar.get().catch(() => ({ connected: false, enabled: false })),
-      api.integrations.taskInbox.get().catch(() => ({ connected: false })),
-      api.ical.listSubscriptions().catch(() => []),
-      api.integrations.jira.get().catch(() => ({ connected: false })),
+    // allSettled so one failing endpoint never rejects the batch (which would
+    // leave the whole Integrations section blank). Track how many failed so we
+    // can tell "server unreachable" apart from "genuinely disconnected".
+    const results = await Promise.allSettled([
+      api.integrations.gmail.get(),
+      api.integrations.calendar.get(),
+      api.integrations.fastmail.get(),
+      api.integrations.fastmail.calendar.get(),
+      api.integrations.taskInbox.get(),
+      api.ical.listSubscriptions(),
+      api.integrations.jira.get(),
     ]);
+    const val = <T,>(i: number, fallback: T): T =>
+      results[i].status === 'fulfilled' ? (results[i] as PromiseFulfilledResult<T>).value : fallback;
+
+    gmail     = val(0, { connected: false });
+    calendar  = val(1, { connected: false });
+    fastmail  = val(2, { connected: false });
+    fmCal     = val(3, { connected: false, enabled: false });
+    taskInbox = val(4, { connected: false });
+    icalSubs  = val(5, []);
+    jira      = val(6, { connected: false });
+
+    serverUnreachable = results.every((r) => r.status === 'rejected');
 
     // IntersectionObserver for sub-nav active state
     await tick();
@@ -402,6 +419,17 @@
        SECTION: Integrations
   ════════════════════════════════════════════════════════════════════════ -->
   <div id="settings-integrations">
+
+    {#if serverUnreachable}
+      <div class="mb-4 rounded-xl px-4 py-3 text-sm"
+           style="border: 1px solid var(--sempa-amber); background: color-mix(in srgb, var(--sempa-amber) 10%, var(--sempa-bg-panel)); color: var(--sempa-amber);">
+        <p class="font-semibold">Can't reach your server</p>
+        <p class="mt-1 text-xs leading-relaxed" style="color: var(--sempa-text-soft);">
+          Integration status couldn't load. Check your connection and that the server URL is
+          correct, then pull to refresh or reopen this screen.
+        </p>
+      </div>
+    {/if}
 
     <!-- ── Email & Calendar ──────────────────────────────────────── -->
     <p class="mb-3" style="font-family:monospace; font-size:10px; font-weight:700; letter-spacing:0.12em;

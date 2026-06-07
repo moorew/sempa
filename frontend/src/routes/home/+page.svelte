@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { api } from '$lib/api';
   import type { Objective, Task, WeekReview } from '$lib/types';
-  import { today, weekStart } from '$lib/utils';
+  import { today, weekStart, compareTasksForDay } from '$lib/utils';
   import { mobile } from '$lib/stores/mobile.svelte';
   import { realtime } from '$lib/stores/realtime.svelte';
   import { tagStore } from '$lib/stores/tags.svelte';
@@ -30,7 +30,8 @@
     activeTasks.reduce((s, t) => s + (t.time_estimate_minutes ?? 0), 0)
   );
 
-  // Open tasks for today, scheduled ones first, then by position.
+  // Open tasks for today: scheduled time blocks first, then by "roughly at"
+  // sort hint (recurring tasks), then manual position.
   const openToday = $derived(
     topLevel
       .filter(t => t.status !== 'done' && t.status !== 'cancelled')
@@ -38,7 +39,7 @@
         if (a.scheduled_start && b.scheduled_start) return a.scheduled_start < b.scheduled_start ? -1 : 1;
         if (a.scheduled_start) return -1;
         if (b.scheduled_start) return 1;
-        return a.position - b.position;
+        return compareTasksForDay(a, b);
       })
   );
 

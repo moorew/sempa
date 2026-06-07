@@ -39,6 +39,7 @@ type createTaskRequest struct {
 	SourceMetadata      *string  `json:"source_metadata"`
 	Tags                []string `json:"tags"`
 	RecurrenceRule      *string  `json:"recurrence_rule"`
+	RoughlyAt           *string  `json:"roughly_at"`
 }
 
 type updateTaskRequest struct {
@@ -56,6 +57,7 @@ type updateTaskRequest struct {
 	ParentTaskID        *string  `json:"parent_task_id"`
 	ScheduledStart      *string  `json:"scheduled_start"`
 	ScheduledEnd        *string  `json:"scheduled_end"`
+	RoughlyAt           *string  `json:"roughly_at"`
 }
 
 func (h *taskHandler) list(w http.ResponseWriter, r *http.Request) {
@@ -63,9 +65,10 @@ func (h *taskHandler) list(w http.ResponseWriter, r *http.Request) {
 	date := q.Get("date")
 	weekStart := q.Get("week_start")
 
-	// Generate recurring instances before returning results.
+	// Generate recurring instances before returning results. `today` is the
+	// client's local date — passing it keeps rollover correct across timezones.
 	if weekStart != "" {
-		_ = h.store.GenerateForWeek(r.Context(), weekStart)
+		_ = h.store.GenerateForWeek(r.Context(), weekStart, q.Get("today"))
 	} else if date != "" {
 		_ = h.store.GenerateForDate(r.Context(), date)
 	}
@@ -159,10 +162,17 @@ func (h *taskHandler) create(w http.ResponseWriter, r *http.Request) {
 		SourceMetadata:      req.SourceMetadata,
 		Tags:                req.Tags,
 		RecurrenceRule:      req.RecurrenceRule,
+		RoughlyAt:           req.RoughlyAt,
 	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create task")
 		return
+	}
+
+	// Adding a sub-task to a recurring instance counts as a modification, so the
+	// instance is no longer "pristine" and must survive rollover (carry forward).
+	if req.ParentTaskID != nil && *req.ParentTaskID != "" {
+		h.markRecurringInstanceModified(r.Context(), *req.ParentTaskID)
 	}
 
 	// If this is a recurring template, immediately generate today's instance
@@ -255,6 +265,12 @@ func (h *taskHandler) update(w http.ResponseWriter, r *http.Request) {
 	if req.ScheduledEnd != nil {
 		task.ScheduledEnd = req.ScheduledEnd
 	}
+	if req.RoughlyAt != nil {
+		if task.RecurrenceOriginID != nil {
+			contentChanged = true
+		}
+		task.RoughlyAt = req.RoughlyAt
+	}
 
 	// Auto-stamp completed_at when moving to done for the first time
 	if req.Status != nil && *req.Status == "done" && task.CompletedAt == nil {
@@ -271,6 +287,12 @@ func (h *taskHandler) update(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to update task")
 		return
+	}
+
+	// Checking off / editing a sub-task of a recurring instance modifies that
+	// instance, so it should carry forward rather than be replaced on rollover.
+	if updated.ParentTaskID != nil && *updated.ParentTaskID != "" {
+		h.markRecurringInstanceModified(r.Context(), *updated.ParentTaskID)
 	}
 
 	// Write focus block to Google Calendar when a task gets a scheduled time
@@ -296,6 +318,18 @@ func (h *taskHandler) update(w http.ResponseWriter, r *http.Request) {
 	}
 	h.hub.Broadcast("task:change", meta)
 	respond(w, http.StatusOK, updated)
+}
+
+// markRecurringInstanceModified flags a parent task as customised when it is a
+// recurring instance, so the smart rollover carries it forward instead of
+// deleting it. No-op for normal (non-recurring) parents.
+func (h *taskHandler) markRecurringInstanceModified(ctx context.Context, parentID string) {
+	parent, err := h.store.Get(ctx, parentID)
+	if err != nil || parent.RecurrenceOriginID == nil || parent.IsCustomized {
+		return
+	}
+	parent.IsCustomized = true
+	_, _ = h.store.Update(ctx, parent)
 }
 
 func (h *taskHandler) listTemplates(w http.ResponseWriter, r *http.Request) {

@@ -22,6 +22,13 @@ import type {
 // 1. Build-time env var (dev): VITE_API_URL
 // 2. Runtime user-configured server (mobile/native): stored in localStorage
 // 3. Fallback: empty string → relative URLs (web served by Go)
+// Client's local date as YYYY-MM-DD, sent to the server so recurring-task
+// rollover uses the user's "today" rather than the server's timezone.
+function localToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function getBaseUrl(): string {
   const envUrl = import.meta.env.VITE_API_URL as string | undefined;
   if (envUrl) return envUrl;
@@ -110,7 +117,7 @@ const httpApi = {
 
   tasks: {
     listByDate:   (date: string)        => req<Task[]>(`/api/v1/tasks?date=${date}`),
-    listByWeek:   (weekStart: string)   => req<Task[]>(`/api/v1/tasks?week_start=${weekStart}`),
+    listByWeek:   (weekStart: string)   => req<Task[]>(`/api/v1/tasks?week_start=${weekStart}&today=${localToday()}`),
     listBacklog:  ()                    => req<Task[]>('/api/v1/tasks'),
     listByRecurrenceOrigin: (originId: string) => req<Task[]>(`/api/v1/tasks?recurrence_origin=${originId}`),
     listBySource: (source: string)      => req<Task[]>(`/api/v1/tasks?source=${source}`),
