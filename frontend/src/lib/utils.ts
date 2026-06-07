@@ -73,6 +73,28 @@ export function insertPosition(positions: number[], i: number): number {
   return (positions[i - 1] + positions[i]) / 2;
 }
 
+// "Roughly at" sort hint (HH:MM) → minutes since midnight; untimed tasks sort
+// last (Infinity). Used to order the daily list chronologically without turning
+// tasks into rigid calendar blocks.
+export function roughlyAtMinutes(t: { roughly_at?: string | null }): number {
+  if (!t.roughly_at) return Number.POSITIVE_INFINITY;
+  const [h, m] = t.roughly_at.split(':').map((n) => parseInt(n, 10));
+  if (Number.isNaN(h)) return Number.POSITIVE_INFINITY;
+  return h * 60 + (Number.isNaN(m) ? 0 : m);
+}
+
+// Daily-view ordering: timed tasks first in chronological order, then the rest
+// by their manual position. Purely visual — does not lock tasks to time blocks.
+export function compareTasksForDay(
+  a: { roughly_at?: string | null; position: number },
+  b: { roughly_at?: string | null; position: number },
+): number {
+  const ra = roughlyAtMinutes(a);
+  const rb = roughlyAtMinutes(b);
+  if (ra !== rb) return ra - rb;
+  return a.position - b.position;
+}
+
 export function parseMinutes(raw: string): number | null {
   const s = raw.trim().toLowerCase();
   if (!s) return null;

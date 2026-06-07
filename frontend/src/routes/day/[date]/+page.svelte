@@ -4,7 +4,7 @@
   import { page } from '$app/stores';
   import { api } from '$lib/api';
   import type { Task, TaskStatus } from '$lib/types';
-  import { appendPosition, formatMinutes, insertPosition, isToday, offsetDate, today, weekStart } from '$lib/utils';
+  import { appendPosition, compareTasksForDay, formatMinutes, insertPosition, isToday, offsetDate, today, weekStart } from '$lib/utils';
   import { pomodoro } from '$lib/stores/pomodoro.svelte';
   import { mobile } from '$lib/stores/mobile.svelte';
   import WeekDayColumn from '$lib/components/WeekDayColumn.svelte';
@@ -150,7 +150,7 @@
   function dayTasks(d: string): Task[] {
     return tasks
       .filter(t => t.planned_date === d && t.status !== 'cancelled' && !t.parent_task_id)
-      .sort((a, b) => a.position - b.position);
+      .sort(compareTasksForDay);
   }
 
   // Day stats for header — exclude sub-tasks (they nest inside their parent)
