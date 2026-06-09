@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedream2007/tauri/v2/crates/tauri-cli/schema.json",
   "productName": "sempa",
-  "version": "1.0.70",
+  "version": "1.0.71",
   "identifier": "com.sempa.desktop",
   "build": {
     "frontendDist": "../build",
@@ -28,7 +28,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' ipc: http://localhost:* https://*"
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost http://tauri.localhost http://localhost:* https://*"
     }
   },
   "bundle": {
