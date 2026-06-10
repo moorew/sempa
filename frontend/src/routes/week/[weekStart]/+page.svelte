@@ -11,8 +11,33 @@
   import SempaSelect from '$lib/components/ui/SempaSelect.svelte';
   import AttachmentList from '$lib/components/AttachmentList.svelte';
   import { swipeNavigate } from '$lib/actions/swipeNavigate';
+  import { tagStore } from '$lib/stores/tags.svelte';
+  import TagFilterBar from '$lib/components/TagFilterBar.svelte';
+  import { SlidersHorizontal } from 'lucide-svelte';
 
   let weekStartDate = $derived($page.params.weekStart ?? calcWeekStart(today()));
+
+  // ── Tag filter (shared with the day view via the same localStorage key) ────
+  let filterTags  = $state<string[]>([]);
+  let filterMatch = $state<'any' | 'all'>('any');
+  let showFilter  = $state(false);
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const v = JSON.parse(localStorage.getItem('sempa_tag_filter') ?? '{}');
+      if (Array.isArray(v.tags)) filterTags = v.tags;
+      if (v.match === 'all' || v.match === 'any') filterMatch = v.match;
+      if (filterTags.length) showFilter = true;
+    } catch { /* ignore */ }
+  }
+  $effect(() => {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem('sempa_tag_filter', JSON.stringify({ tags: filterTags, match: filterMatch }));
+  });
+  function passesTagFilter(t: Task): boolean {
+    if (filterTags.length === 0) return true;
+    const tt = t.tags ?? [];
+    return filterMatch === 'all' ? filterTags.every(f => tt.includes(f)) : filterTags.some(f => tt.includes(f));
+  }
 
   let objectives       = $state<Objective[]>([]);
   let tasks            = $state<Task[]>([]);
@@ -23,6 +48,7 @@
 
   const unscheduled = $derived(
     tasks.filter(t => !t.planned_date && t.status !== 'done' && t.status !== 'cancelled')
+         .filter(passesTagFilter)
          .sort((a, b) => a.position - b.position)
   );
 
@@ -74,6 +100,7 @@
   // ── Task helpers ───────────────────────────────────────────────────────────
   function objectiveTasks(id: string): Task[] {
     return tasks.filter(t => t.weekly_objective_id === id && t.status !== 'cancelled')
+                .filter(passesTagFilter)
                 .sort((a, b) => a.position - b.position);
   }
   function doneTasks(id: string) { return objectiveTasks(id).filter(t => t.status === 'done'); }
@@ -323,6 +350,24 @@
 <!-- Body -->
 <main class="mx-auto max-w-2xl px-6 py-6 animate-fade-in"
       use:swipeNavigate={{ onPrev: () => navigate(-1), onNext: () => navigate(1) }}>
+  <!-- Tag filter (in-place) -->
+  {#if tagStore.definitions.length}
+    <div class="mb-4 flex flex-wrap items-center gap-3">
+      <button onclick={() => showFilter = !showFilter}
+              class="inline-flex items-center gap-1.5 rounded-full transition-colors"
+              style="font-size: 12px; padding: 4px 10px;
+                     {filterTags.length
+                       ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent);'
+                       : 'color: var(--sempa-text-dim); box-shadow: inset 0 0 0 1px var(--sempa-border);'}">
+        <SlidersHorizontal size={13} />
+        {filterTags.length ? `Filtered · ${filterTags.length}` : 'Filter by tag'}
+      </button>
+      {#if showFilter}
+        <TagFilterBar bind:selected={filterTags} bind:match={filterMatch} />
+      {/if}
+    </div>
+  {/if}
+
   {#if loading}
     <div class="flex h-48 items-center justify-center text-sm text-gray-400">Loading…</div>
 

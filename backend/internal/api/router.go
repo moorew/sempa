@@ -99,6 +99,12 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store) http.Hand
 	}
 	devices := &deviceHandler{store: db.NewDeviceTokenStore(database)}
 	unfurls := &unfurlHandler{store: db.NewUnfurlStore(database)}
+	search := &searchHandler{
+		tasks:      db.NewTaskStore(database),
+		objectives: objectiveStore,
+		plans:      db.NewDailyPlanStore(database),
+		reviews:    db.NewWeekReviewStore(database),
+	}
 	integrations := &integrationHandler{
 		configs:    configStore,
 		tasks:      db.NewTaskStore(database),
@@ -145,6 +151,9 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store) http.Hand
 			r.Use(auth.requireAuth)
 
 			r.Get("/events", hub.ServeSSE)
+
+			// Global search across tasks, objectives and journal entries.
+			r.Get("/search", search.search)
 
 			// Link preview / Open Graph unfurl for URLs in task notes.
 			r.Get("/unfurl", unfurls.get)

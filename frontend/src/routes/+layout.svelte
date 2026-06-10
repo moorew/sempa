@@ -28,7 +28,7 @@
   import {
     Sun, CalendarDays, ClipboardCheck, Mail, Moon, SlidersHorizontal,
     ChevronLeft, ChevronRight, Plus, RefreshCw, X, Check,
-    Target, Timer, Palette, Menu, Layers, BookOpen,
+    Target, Timer, Palette, Menu, Layers, BookOpen, Search,
   } from 'lucide-svelte';
 
   let { children }: { children: Snippet } = $props();
@@ -325,6 +325,7 @@
       {/snippet}
 
       {@render navItem('/home', 'Today', CalendarDays)}
+      {@render navItem('/search', 'Search', Search)}
       {@render navItem(`/week/${thisWeek}`, 'This Week', CalendarDays)}
       {@render navItem(`/plan/${todayDate}`, 'Plan Day', ClipboardCheck)}
       {@render navItem('/email', 'Email', Mail)}
@@ -470,6 +471,7 @@
         </a>
       {/snippet}
 
+      {@render moreItem('/search', 'Search', Search)}
       {@render moreItem(`/plan/${todayDate}`, 'Plan Day', ClipboardCheck)}
       {@render moreItem(`/shutdown/${todayDate}`, 'Shutdown', Moon)}
       {@render moreItem('/email', 'Inbox', Mail)}

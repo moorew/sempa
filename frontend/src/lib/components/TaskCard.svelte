@@ -186,13 +186,16 @@
   {#if hasFooter}
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
     <div class="flex flex-wrap items-center cursor-pointer" style="gap: 4px; margin-top: 7px;" onclick={() => onClick?.(task)}>
-      {#each (task.tags ?? []) as tag}
-        <!-- Quiet tag: colour lives in the dot so the list scans by colour
-             without filled pills shouting; label stays muted text. -->
-        <span class="inline-flex items-center" style="gap: 5px; font-size: 10.5px; font-weight: 500; color: var(--sempa-text-soft);">
-          <span class="shrink-0 rounded-full" style="width: 6px; height: 6px; background-color: {tagStore.colorFor(tag)};"></span>{tag}
+      {#if (task.tags ?? []).length}
+        <!-- Tags as colour dots only — scan the list by colour without label
+             clutter. Full names live in the task detail view. Title shows the
+             names on hover/long-press for accessibility. -->
+        <span class="inline-flex items-center" style="gap: 3px;" title={(task.tags ?? []).join(', ')}>
+          {#each task.tags ?? [] as tag}
+            <span class="shrink-0 rounded-full" style="width: 7px; height: 7px; background-color: {tagStore.colorFor(tag)};"></span>
+          {/each}
         </span>
-      {/each}
+      {/if}
       {#if task.source && task.source !== 'manual'}
         <span class="type-badge rounded" style="padding: 2px 7px; background: var(--sempa-accent-bg); color: var(--sempa-accent);">
           {sourceLabel[task.source] ?? task.source}

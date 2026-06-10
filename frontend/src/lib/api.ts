@@ -12,6 +12,7 @@ import type {
   JiraIntegrationConfig,
   LinkUnfurl,
   Objective,
+  SearchResults,
   PomodoroSession,
   SyncResult,
   TagDefinition,
@@ -206,6 +207,16 @@ const httpApi = {
     logout: () => req<void>('/api/v1/auth/logout', { method: 'POST' }),
     nativeFinalize: (linkToken: string) =>
       req<{ status: string; token?: string }>('/api/v1/auth/native/finalize', { method: 'POST', body: body({ link_token: linkToken }) }),
+  },
+
+  // Global search across tasks, objectives and journal. Tags filter tasks only;
+  // match 'all' = AND, 'any' = OR.
+  search: (q: string, tags: string[] = [], match: 'any' | 'all' = 'any') => {
+    const p = new URLSearchParams();
+    if (q.trim()) p.set('q', q.trim());
+    if (tags.length) p.set('tags', tags.join(','));
+    if (match === 'all') p.set('match', 'all');
+    return req<SearchResults>(`/api/v1/search?${p.toString()}`);
   },
 
   // Open Graph link preview for a URL (server-fetched + cached).
