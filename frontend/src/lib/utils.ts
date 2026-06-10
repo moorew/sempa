@@ -133,3 +133,24 @@ export function prettyUrl(u: URL): string {
   if (path.length > 20) path = path.slice(0, 20) + '…';
   return host + path;
 }
+
+// Bare URLs in a block of text (deduped, in order), excluding URLs that are
+// part of a markdown link [label](url) — those stay inline as hyperlinks.
+// Shared by RichText (read view) and TaskPanel (edit preview) so both decide
+// "what gets a preview card" identically.
+export function extractBareUrls(text: string): string[] {
+  if (!text) return [];
+  // Blank out markdown-link targets so their URLs aren't treated as bare.
+  const masked = text.replace(/\[[^\]]+\]\((https?:\/\/[^\s)]+)\)/g, (m) => ' '.repeat(m.length));
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const re = /(https?:\/\/[^\s)]+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(masked)) !== null) {
+    let raw = m[0];
+    const tm = raw.match(/[).,;:!?\]]+$/);
+    if (tm) raw = raw.slice(0, -tm[0].length);
+    if (raw && !seen.has(raw)) { seen.add(raw); out.push(raw); }
+  }
+  return out;
+}

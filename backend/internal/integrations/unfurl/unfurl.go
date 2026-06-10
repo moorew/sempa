@@ -32,8 +32,8 @@ func isPrivateIP(ip net.IP) bool {
 		ip.IsLinkLocalMulticast() || ip.IsUnspecified()
 }
 
-// validate ensures the URL is http(s) and resolves only to public IPs.
-func validate(rawURL string) (*url.URL, error) {
+// ValidatePublicURL ensures the URL is http(s) and resolves only to public IPs.
+func ValidatePublicURL(rawURL string) (*url.URL, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid URL: %w", err)
@@ -88,7 +88,7 @@ func clip(s string, n int) string {
 
 // Fetch downloads rawURL and returns its preview metadata plus the HTTP status.
 func Fetch(ctx context.Context, rawURL string) (*Meta, int, error) {
-	u, err := validate(rawURL)
+	u, err := ValidatePublicURL(rawURL)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -100,7 +100,7 @@ func Fetch(ctx context.Context, rawURL string) (*Meta, int, error) {
 				return fmt.Errorf("stopped after 5 redirects")
 			}
 			// Re-validate each redirect target to block SSRF via redirect.
-			if _, err := validate(req.URL.String()); err != nil {
+			if _, err := ValidatePublicURL(req.URL.String()); err != nil {
 				return err
 			}
 			return nil
@@ -204,6 +204,54 @@ func parseMeta(doc string, base *url.URL) *Meta {
 	meta.Description = clip(meta.Description, 500)
 
 	return meta
+}
+
+// FetchImage downloads a preview image (og:image / favicon) for proxying to the
+// client, so thumbnails load reliably regardless of the page's mixed-content,
+// referrer or hotlink restrictions. Returns the bytes and content-type. It is
+// SSRF-guarded, sends no Referer, caps the body at 5 MB and requires an image/*
+// content-type.
+func FetchImage(ctx context.Context, rawURL string) ([]byte, string, error) {
+	u, err := ValidatePublicURL(rawURL)
+	if err != nil {
+		return nil, "", err
+	}
+	client := &http.Client{
+		Timeout: 12 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 5 {
+				return fmt.Errorf("stopped after 5 redirects")
+			}
+			if _, err := ValidatePublicURL(req.URL.String()); err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, "", err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; SempaBot/1.0; +https://github.com/moorew/sempa)")
+	req.Header.Set("Accept", "image/*")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, "", fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+	ct := resp.Header.Get("Content-Type")
+	if !strings.HasPrefix(strings.ToLower(ct), "image/") {
+		return nil, "", fmt.Errorf("not an image (%s)", ct)
+	}
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 5<<20))
+	if err != nil {
+		return nil, "", err
+	}
+	return data, ct, nil
 }
 
 func resolveRef(base *url.URL, ref string) string {
