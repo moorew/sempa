@@ -58,14 +58,17 @@
        style="animation: sempa-fade-in 200ms ease both;"
        onclick={onClose}></div>
 
-  <!-- Sheet — lifted above the soft keyboard so its content/inputs stay reachable -->
+  <!-- Sheet height = the VISIBLE (visual) viewport, not the layout viewport.
+       `bottom: 0` anchors to the layout viewport, which on this Android WebView is
+       taller than the visible area, pushing the footer off-screen. visualViewport
+       .height (= viewport.height) matches the visible area and shrinks with the
+       soft keyboard, keeping the footer reachable. See note in TaskPanel.svelte. -->
   <div role="dialog" aria-modal="true" aria-label="Task details" tabindex="-1"
        class="fixed left-0 right-0 z-[90] flex flex-col shadow-2xl"
        style="border-radius: 20px 20px 0 0; background: var(--sempa-bg-panel);
               top: max(40px, env(safe-area-inset-top, 0px));
-              bottom: 0;
-              padding-bottom: {viewport.keyboardHeight}px;
-              transition: padding-bottom 180ms ease-out;
+              height: calc({viewport.height}px - max(40px, env(safe-area-inset-top, 0px)));
+              transition: height 180ms ease-out;
               animation: task-view-up 320ms cubic-bezier(0.32, 0.72, 0, 1) both;"
        use:dismissibleSheet={{ onClose, scrollSelector: '[data-sheet-scroll]', threshold: 90, onDismissHaptic: hapticTick }}>
 

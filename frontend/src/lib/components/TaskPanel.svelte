@@ -603,20 +603,22 @@
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
     <div class="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm animate-fade-in"
          onclick={onClose}></div>
-    <!-- Definite height anchored top+bottom to the VIEWPORT (no transformed
-         ancestor here, verified) instead of a JS visualViewport height. The old
-         approach sized off viewport.keyboardHeight, which on Android got stuck at
-         the keyboard-open value and left the sheet frozen at half screen with
-         Save unreachable. With top/bottom the browser sizes the sheet from the
-         live layout viewport (which adjustResize shrinks/restores with the
-         keyboard), the body scrolls, and the footer is always reachable. -->
+    <!-- Height = the VISIBLE (visual) viewport, not the layout viewport. On this
+         Android WebView the layout viewport (100vh / innerHeight, and therefore a
+         `bottom: 0` fixed anchor) is TALLER than the visible area, so the sheet's
+         bottom — and its footer/Save button — sat below the visible screen even
+         with the keyboard closed (the nav bar showed through). visualViewport.height
+         (= viewport.height) is the one measure that matches what the user sees, and
+         it shrinks when the soft keyboard opens, so the footer always stays on
+         screen above the keyboard. (Earlier "stuck at half" bug was from feeding
+         keyboardHeight into BOTH bottom and max-height; here it's a single height,
+         and the store re-measures on focusin/out so it recovers on dismiss.) -->
     <div role="dialog" aria-modal="true" aria-label="{isEdit ? 'Edit task' : 'New task'}"
          class="fixed left-0 right-0 z-50 flex flex-col shadow-2xl"
          style="border-radius: 20px 20px 0 0; background: var(--sempa-bg-panel);
                 top: max(40px, env(safe-area-inset-top, 0px));
-                bottom: 0;
-                padding-bottom: {viewport.keyboardHeight}px;
-                transition: padding-bottom 180ms ease-out;
+                height: calc({viewport.height}px - max(40px, env(safe-area-inset-top, 0px)));
+                transition: height 180ms ease-out;
                 animation: sempa-sheet-up 320ms cubic-bezier(0.32, 0.72, 0, 1) both;"
          use:dismissibleSheet={{ onClose, scrollSelector: '[data-sheet-scroll]', onDismissHaptic: hapticTick }}>
       <!-- Drag handle -->
