@@ -142,13 +142,15 @@
       <!-- Meta row -->
       {#if task.tags?.length || task.time_estimate_minutes || (task.source && task.source !== 'manual') || isRecurring}
         <div class="flex flex-wrap gap-1 mt-1.5">
-          {#each (task.tags ?? []) as tag}
-            <!-- Quiet tag: colour in the dot, muted label (matches TaskCard) -->
-            <span class="inline-flex items-center gap-1.5 text-[10.5px] font-medium"
-                  style="color: var(--sempa-text-soft);">
-              <span class="shrink-0 rounded-full" style="width: 6px; height: 6px; background-color: {tagStore.colorFor(tag)};"></span>{tag}
+          {#if (task.tags ?? []).length}
+            <!-- Tags as colour dots only (matches TaskCard) — names live in the
+                 task detail view; title shows them on long-press. -->
+            <span class="inline-flex items-center gap-1" title={(task.tags ?? []).join(', ')}>
+              {#each task.tags ?? [] as tag}
+                <span class="shrink-0 rounded-full" style="width: 7px; height: 7px; background-color: {tagStore.colorFor(tag)};"></span>
+              {/each}
             </span>
-          {/each}
+          {/if}
           {#if task.time_estimate_minutes}
             <span class="rounded px-1.5 py-0.5 text-[10.5px] font-mono"
                   style="background: var(--sempa-accent-bg); color: var(--sempa-text-dim);">

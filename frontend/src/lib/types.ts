@@ -294,3 +294,18 @@ export interface LinkUnfurl {
   ok: boolean;
   fetched_at: string;
 }
+
+// A journal match from global search (a daily plan or a week review).
+export interface JournalHit {
+  kind: 'daily' | 'week';
+  date: string;     // plan_date or week_start
+  snippet: string;
+}
+
+// Results of GET /api/v1/search. Tag filtering applies to tasks only, so
+// objectives/journal are empty when a tag filter is active.
+export interface SearchResults {
+  tasks: Task[];
+  objectives: Objective[];
+  journal: JournalHit[];
+}

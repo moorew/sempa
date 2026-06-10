@@ -15,7 +15,9 @@
   import MiniCalendar from '$lib/components/MiniCalendar.svelte';
   import TimeslotCalendar from '$lib/components/TimeslotCalendar.svelte';
   import WeeklyObjectivesWidget from '$lib/components/WeeklyObjectivesWidget.svelte';
-  import { ChevronLeft, ChevronRight, Plus, Clock, Mail } from 'lucide-svelte';
+  import { ChevronLeft, ChevronRight, Plus, Clock, Mail, SlidersHorizontal } from 'lucide-svelte';
+  import { tagStore } from '$lib/stores/tags.svelte';
+  import TagFilterBar from '$lib/components/TagFilterBar.svelte';
   import JiraPanel from '$lib/components/JiraPanel.svelte';
   import MobileTaskCard from '$lib/components/MobileTaskCard.svelte';
   import MobileTaskView from '$lib/components/MobileTaskView.svelte';
@@ -179,9 +181,40 @@
   }
 
   // ── Tasks per day ──────────────────────────────────────────────────────────
+  // ── Tag filter (in-place "filter mode") ──────────────────────────────────
+  // Persisted so the chosen filter sticks as you move between days/weeks.
+  let filterTags  = $state<string[]>([]);
+  let filterMatch = $state<'any' | 'all'>('any');
+  let showFilter  = $state(false);
+
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('sempa_tag_filter');
+      if (raw) {
+        const v = JSON.parse(raw);
+        if (Array.isArray(v.tags)) filterTags = v.tags;
+        if (v.match === 'all' || v.match === 'any') filterMatch = v.match;
+        if (filterTags.length) showFilter = true;
+      }
+    } catch { /* ignore */ }
+  }
+  $effect(() => {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem('sempa_tag_filter', JSON.stringify({ tags: filterTags, match: filterMatch }));
+  });
+
+  function passesTagFilter(t: Task): boolean {
+    if (filterTags.length === 0) return true;
+    const tt = t.tags ?? [];
+    return filterMatch === 'all'
+      ? filterTags.every(f => tt.includes(f))
+      : filterTags.some(f => tt.includes(f));
+  }
+
   function dayTasks(d: string): Task[] {
     return tasks
       .filter(t => t.planned_date === d && t.status !== 'cancelled' && !t.parent_task_id)
+      .filter(passesTagFilter)
       .sort(compareTasksForDay);
   }
 
@@ -479,6 +512,26 @@
     {/if}
   </header>
 
+  <!-- Tag filter (in-place) -->
+  {#if tagStore.definitions.length}
+    <div class="px-4 pb-1">
+      <button onclick={() => showFilter = !showFilter}
+              class="inline-flex items-center gap-1.5 rounded-full transition-colors"
+              style="font-size: 12px; padding: 4px 10px;
+                     {filterTags.length
+                       ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent);'
+                       : 'color: var(--sempa-text-dim); box-shadow: inset 0 0 0 1px var(--sempa-border);'}">
+        <SlidersHorizontal size={13} />
+        {filterTags.length ? `Filtered · ${filterTags.length}` : 'Filter by tag'}
+      </button>
+      {#if showFilter}
+        <div class="mt-2">
+          <TagFilterBar bind:selected={filterTags} bind:match={filterMatch} />
+        </div>
+      {/if}
+    </div>
+  {/if}
+
   <!-- Contextual intention (mobile) -->
   {#if prefs.contextualReflections}
     <div class="px-4 mb-3">
@@ -673,6 +726,24 @@
   <!-- Kanban area -->
   <main bind:this={kanbanScroll} class="flex-1 overflow-auto px-4 py-5 animate-fade-in"
         use:swipeNavigate={{ onPrev: () => navigateWeek(-1), onNext: () => navigateWeek(1) }}>
+
+    <!-- Tag filter (in-place) -->
+    {#if tagStore.definitions.length}
+      <div class="mb-4 flex flex-wrap items-center gap-3">
+        <button onclick={() => showFilter = !showFilter}
+                class="inline-flex items-center gap-1.5 rounded-full transition-colors"
+                style="font-size: 12px; padding: 4px 10px;
+                       {filterTags.length
+                         ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent);'
+                         : 'color: var(--sempa-text-dim); box-shadow: inset 0 0 0 1px var(--sempa-border);'}">
+          <SlidersHorizontal size={13} />
+          {filterTags.length ? `Filtered · ${filterTags.length}` : 'Filter by tag'}
+        </button>
+        {#if showFilter}
+          <TagFilterBar bind:selected={filterTags} bind:match={filterMatch} />
+        {/if}
+      </div>
+    {/if}
 
     <!-- Rollover banner -->
     {#if rolloverTasks.length > 0 && !rolloverDismissed}
