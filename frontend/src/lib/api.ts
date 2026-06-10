@@ -211,6 +211,11 @@ const httpApi = {
   // Open Graph link preview for a URL (server-fetched + cached).
   unfurl: (url: string) =>
     req<LinkUnfurl>(`/api/v1/unfurl?url=${encodeURIComponent(url)}`),
+  // Same-origin proxy URL for a preview thumbnail — load this in an <img> so it
+  // works regardless of mixed-content/hotlink/CORS. Carries the auth token on
+  // native/desktop where <img> can't send the Authorization header.
+  unfurlImageUrl: (imageUrl: string) =>
+    authedFileUrl(`/api/v1/unfurl/image?url=${encodeURIComponent(imageUrl)}`),
 
   tasks: {
     listByDate:   (date: string)        => req<Task[]>(`/api/v1/tasks?date=${date}`),

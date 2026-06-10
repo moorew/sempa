@@ -60,10 +60,10 @@ func TestParseMeta_TwitterImageFallback(t *testing.T) {
 }
 
 func TestValidate_RejectsLoopback(t *testing.T) {
-	if _, err := validate("http://localhost:8080/x"); err == nil {
+	if _, err := ValidatePublicURL("http://localhost:8080/x"); err == nil {
 		t.Error("expected loopback to be rejected")
 	}
-	if _, err := validate("ftp://example.com"); err == nil {
+	if _, err := ValidatePublicURL("ftp://example.com"); err == nil {
 		t.Error("expected non-http scheme to be rejected")
 	}
 }

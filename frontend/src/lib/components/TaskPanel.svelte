@@ -2,9 +2,10 @@
   import type { Objective, PomodoroSession, Task, TaskStatus } from '$lib/types';
   import { tagStore } from '$lib/stores/tags.svelte';
   import { api } from '$lib/api';
-  import { weekStart as calcWeekStart } from '$lib/utils';
+  import { weekStart as calcWeekStart, extractBareUrls } from '$lib/utils';
   import SubTaskList from './SubTaskList.svelte';
   import AttachmentList from './AttachmentList.svelte';
+  import LinkPreview from './LinkPreview.svelte';
   import SempaSelect from '$lib/components/ui/SempaSelect.svelte';
   import SempaDatePicker from '$lib/components/ui/SempaDatePicker.svelte';
   import { mobile } from '$lib/stores/mobile.svelte';
@@ -69,6 +70,8 @@
   // Form state
   let title = $state('');
   let description = $state('');
+  // Bare URLs in the notes → live preview cards below the textarea.
+  const noteUrls = $derived(extractBareUrls(description));
   let plannedDate = $state('');
   let estimateMinutes = $state<number | null>(null);
   let actualMinutesInput = $state('');
@@ -359,6 +362,18 @@
                          focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100
                          dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-600
                          dark:focus:border-blue-500 dark:focus:bg-gray-800"></textarea>
+
+        <!-- Live link previews for any pasted URLs in the notes. Shown on every
+             platform (this edit panel is the desktop/web/Windows task view), so
+             previews aren't mobile-only. Markdown [text](url) links stay inline
+             in the text and are intentionally excluded here. -->
+        {#if noteUrls.length > 0}
+          <div class="mt-2 flex flex-col gap-2">
+            {#each noteUrls as url (url)}
+              <LinkPreview {url} />
+            {/each}
+          </div>
+        {/if}
       </div>
 
       <!-- Links extracted from email -->

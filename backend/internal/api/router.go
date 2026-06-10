@@ -148,6 +148,8 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store) http.Hand
 
 			// Link preview / Open Graph unfurl for URLs in task notes.
 			r.Get("/unfurl", unfurls.get)
+			// Same-origin proxy for preview thumbnails (robust image loading).
+			r.Get("/unfurl/image", unfurls.image)
 
 			// Offline sync: pull all changes since a cursor (created/updated/deleted)
 			r.Get("/sync/changes", syncH.changes)

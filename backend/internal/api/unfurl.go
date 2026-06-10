@@ -52,3 +52,24 @@ func (h *unfurlHandler) get(w http.ResponseWriter, r *http.Request) {
 	_ = h.store.Upsert(row)
 	respond(w, http.StatusOK, row)
 }
+
+// image proxies a preview image so the client always loads it same-origin over
+// the app's own scheme — avoiding mixed-content blocks, hotlink/referrer
+// protection, and CORS. On any failure it returns a 502 so the client's <img>
+// onerror fires and falls back to the favicon-tile card.
+func (h *unfurlHandler) image(w http.ResponseWriter, r *http.Request) {
+	raw := r.URL.Query().Get("url")
+	if raw == "" {
+		respondError(w, http.StatusBadRequest, "missing url parameter")
+		return
+	}
+	data, contentType, err := unfurl.FetchImage(r.Context(), raw)
+	if err != nil {
+		http.Error(w, "image unavailable", http.StatusBadGateway)
+		return
+	}
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Cache-Control", "public, max-age=604800") // 7 days
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	_, _ = w.Write(data)
+}
