@@ -82,6 +82,18 @@ func main() {
 		slog.Info("inbox poller started", "interval", interval)
 	}
 
+	// Background calendar refresh — keeps ICS subscriptions and the Fastmail
+	// calendar fresh (and timezone-correct) without manual syncing.
+	if cfg.CalendarPollInterval != "" {
+		interval, err := time.ParseDuration(cfg.CalendarPollInterval)
+		if err != nil {
+			slog.Warn("invalid CALENDAR_POLL_INTERVAL, using 15m", "value", cfg.CalendarPollInterval)
+			interval = 15 * time.Minute
+		}
+		poller.StartCalendars(ctx, database, interval)
+		slog.Info("calendar poller started", "interval", interval)
+	}
+
 	// Push notification reminders. The dispatcher fans messages out to Web Push,
 	// FCM and the generic webhook, honoring the user's channel toggles.
 	fcmSvc := notify.New(db.NewDeviceTokenStore(database), cfg.FCMKeyPath)

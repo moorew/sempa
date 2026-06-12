@@ -2,6 +2,7 @@ package api
 
 import (
 	"crypto/subtle"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,9 +13,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/clevercode/sempa/internal/calsync"
 	"github.com/clevercode/sempa/internal/config"
 	"github.com/clevercode/sempa/internal/db"
-	"github.com/clevercode/sempa/internal/integrations/caldav"
 	"github.com/clevercode/sempa/internal/integrations/emailrecv"
 	"github.com/clevercode/sempa/internal/integrations/fastmail"
 	"github.com/clevercode/sempa/internal/integrations/gmail"
@@ -22,6 +23,7 @@ import (
 )
 
 type integrationHandler struct {
+	db         *sql.DB
 	configs    *db.IntegrationConfigStore
 	tasks      *db.TaskStore
 	fmCalStore *db.FastmailCalStore
@@ -1072,38 +1074,17 @@ func (h *integrationHandler) fastmailCalendarToggle(w http.ResponseWriter, r *ht
 }
 
 func (h *integrationHandler) fastmailCalendarSync(w http.ResponseWriter, r *http.Request) {
-	// Read events over CalDAV using the Fastmail app password. JMAP rejects
-	// the app password ("not bearer"), but the same credential works for
-	// CalDAV — which is already used to push task time-blocks.
-	client, err := h.caldavClient(r.Context())
-	if err != nil {
-		respondError(w, http.StatusBadRequest, err.Error())
+	// Shared with the background calendar poller so manual and periodic syncs
+	// parse/store events identically. Reads over CalDAV using the Fastmail app
+	// password (JMAP rejects it; CalDAV accepts it).
+	count, from, to, err := calsync.SyncFastmailCalendar(r.Context(), h.db)
+	if errors.Is(err, calsync.ErrFastmailCalendarDisabled) {
+		respondError(w, http.StatusBadRequest, "fastmail calendar not connected — connect Fastmail first")
 		return
 	}
-
-	// Sync 4 weeks: 1 in the past + 3 ahead
-	now := time.Now()
-	dateFrom := now.AddDate(0, 0, -7).Format("2006-01-02")
-	dateTo := now.AddDate(0, 0, 21).Format("2006-01-02")
-
-	events, err := caldav.ReadCalendarEvents(r.Context(), client, dateFrom, dateTo)
 	if err != nil {
 		respondError(w, http.StatusBadGateway, err.Error())
 		return
 	}
-
-	// Replace the stored snapshot so events deleted/moved on the server stop
-	// appearing. ListCalendars failing returns an error above (no wipe); a
-	// single unreadable calendar is skipped inside ReadCalendarEvents.
-	if err := h.fmCalStore.DeleteAll(r.Context()); err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if err := h.fmCalStore.UpsertEvents(r.Context(), events); err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	_ = h.configs.TouchSyncTime(r.Context(), "fastmail_calendar")
-	respond(w, http.StatusOK, map[string]any{"synced": len(events), "from": dateFrom, "to": dateTo})
+	respond(w, http.StatusOK, map[string]any{"synced": count, "from": from, "to": to})
 }

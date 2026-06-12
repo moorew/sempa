@@ -198,6 +198,7 @@ Generate one at [Tailscale Admin → Keys](https://login.tailscale.com/admin/set
 | `EMAIL_FORWARD_TOKEN` | Secret token for the Cloudflare email-to-task webhook |
 | `SMTP_PORT` | Port for the built-in inbound SMTP server (default: `2525`) |
 | `INBOX_POLL_INTERVAL` | How often to poll the email inbox (default: `1m`) |
+| `CALENDAR_POLL_INTERVAL` | How often to refresh ICS subscriptions + the Fastmail calendar (default: `15m`; empty disables) |
 
 ---
 
