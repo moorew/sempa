@@ -74,6 +74,17 @@ type LocalNotifModule = typeof import('@capacitor/local-notifications');
 type LocalNotif = LocalNotifModule['LocalNotifications'];
 
 async function loadPlugin(): Promise<LocalNotif | null> {
+  // Prefer the already-registered global bridge instance (same one push.ts uses
+  // successfully for PushNotifications). The dynamic import returns an equivalent
+  // proxy, but going through the global avoids any chance of resolving the web
+  // fallback and matches the proven-working path on this app.
+  try {
+    const cap = (window as unknown as { Capacitor?: { Plugins?: Record<string, unknown> } }).Capacitor;
+    const fromGlobal = cap?.Plugins?.LocalNotifications;
+    if (fromGlobal) return fromGlobal as LocalNotif;
+  } catch {
+    /* fall through to dynamic import */
+  }
   try {
     const mod = await import('@capacitor/local-notifications');
     return mod.LocalNotifications;
@@ -82,10 +93,22 @@ async function loadPlugin(): Promise<LocalNotif | null> {
   }
 }
 
+/**
+ * Reject if a native bridge call doesn't settle in `ms`. Capacitor calls
+ * occasionally never call back (e.g. a permission dialog whose result plumbing
+ * is wedged); without this the awaiting UI hangs forever with no clue why.
+ */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)),
+  ]);
+}
+
 async function ensurePermission(LN: LocalNotif): Promise<boolean> {
   try {
-    let perm = await LN.checkPermissions();
-    if (perm.display !== 'granted') perm = await LN.requestPermissions();
+    let perm = await withTimeout(LN.checkPermissions(), 8000, 'checkPermissions');
+    if (perm.display !== 'granted') perm = await withTimeout(LN.requestPermissions(), 30000, 'requestPermissions');
     return perm.display === 'granted';
   } catch {
     return false;
@@ -265,32 +288,57 @@ export async function syncLocalReminders(): Promise<void> {
  */
 export async function sendTestReminder(): Promise<{ ok: boolean; message: string }> {
   if (!isCapacitor()) return { ok: false, message: 'Test notifications only run on the Android app.' };
+
   const LN = await loadPlugin();
-  if (!LN) return { ok: false, message: 'Notification plugin unavailable.' };
-  if (!(await ensurePermission(LN))) {
-    return { ok: false, message: 'Notifications are blocked. Enable them for Sempa in Android settings.' };
+  if (!LN) return { ok: false, message: 'Notification plugin not found on this device.' };
+
+  // Each native call is bounded so a wedged bridge call surfaces the exact step
+  // it stalled on instead of spinning forever.
+  try {
+    let perm = await withTimeout(LN.checkPermissions(), 8000, 'checkPermissions');
+    if (perm.display !== 'granted') {
+      perm = await withTimeout(LN.requestPermissions(), 30000, 'requestPermissions');
+    }
+    if (perm.display !== 'granted') {
+      return { ok: false, message: `Notifications are blocked (status: ${perm.display}). Enable them for Sempa in Android settings.` };
+    }
+  } catch (e) {
+    return { ok: false, message: `Permission step failed: ${e instanceof Error ? e.message : String(e)}` };
   }
+
   const st = notificationSettings.settings;
   const soundOn = st.master_enabled && st.sound_enabled;
   const soundId = st.sound_id || DEFAULT_SOUND_ID;
-  await bindListeners(LN);
-  const channelId = await ensureChannel(LN, soundId, soundOn);
+
+  let channelId = SILENT_CHANNEL_ID;
   try {
-    await LN.schedule({
-      notifications: [
-        {
-          id: 2000000001,
-          title: 'Sempa test reminder',
-          body: soundOn ? 'If you can hear this, reminders are working.' : 'Reminders are working (sound is off).',
-          schedule: { at: new Date(Date.now() + 3000), allowWhileIdle: true },
-          channelId,
-          extra: { url: '/settings/notifications' },
-        },
-      ],
-    });
-    return { ok: true, message: 'Test sent — it should appear in ~3 seconds.' };
+    channelId = await withTimeout(ensureChannel(LN, soundId, soundOn), 8000, 'createChannel');
   } catch (e) {
-    return { ok: false, message: `Could not schedule: ${e instanceof Error ? e.message : String(e)}` };
+    return { ok: false, message: `Channel step failed: ${e instanceof Error ? e.message : String(e)}` };
+  }
+
+  try {
+    await withTimeout(
+      // No `schedule` field → fires immediately. This deliberately bypasses the
+      // exact-alarm path so the test isolates plain notification display
+      // (permission + channel) from alarm scheduling.
+      LN.schedule({
+        notifications: [
+          {
+            id: 2000000001,
+            title: 'Sempa test reminder',
+            body: soundOn ? 'If you can hear this, reminders are working.' : 'Reminders are working (sound is off).',
+            channelId,
+            extra: { url: '/settings/notifications' },
+          },
+        ],
+      }),
+      8000,
+      'schedule',
+    );
+    return { ok: true, message: 'Test sent — it should appear now.' };
+  } catch (e) {
+    return { ok: false, message: `Schedule failed: ${e instanceof Error ? e.message : String(e)}` };
   }
 }
 
