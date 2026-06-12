@@ -36,6 +36,10 @@ type Config struct {
 	// Background inbox polling interval (e.g. "1m"); empty disables
 	InboxPollInterval string
 
+	// Background calendar refresh interval (ICS subscriptions + Fastmail
+	// calendar), e.g. "15m"; empty disables periodic calendar syncing.
+	CalendarPollInterval string
+
 	// Optional: Ollama base URL for local AI-powered task title cleanup
 	OllamaBaseURL string // e.g. http://ollama:11434
 	OllamaModel   string // default: qwen2.5:1.5b
@@ -51,26 +55,27 @@ type Config struct {
 func Load() Config {
 	dbPath := env("DB_PATH", "./data/sempa.db")
 	return Config{
-		Port:               env("PORT", "8080"),
-		DBPath:             dbPath,
-		AttachmentsDir:     env("ATTACHMENTS_DIR", filepath.Join(filepath.Dir(dbPath), "attachments")),
-		Env:                env("ENV", "development"),
-		FrontendDir:        env("FRONTEND_DIR", ""),
-		AppURL:             env("APP_URL", "http://localhost:8080"),
-		FrontendURL:        env("FRONTEND_URL", "http://localhost:5173"),
-		GmailClientID:      env("GMAIL_CLIENT_ID", ""),
-		GmailClientSecret:  env("GMAIL_CLIENT_SECRET", ""),
-		SMTPPort:           env("SMTP_PORT", "2525"),
-		SMTPAllowedSenders: splitEmails(env("SMTP_ALLOWED_SENDERS", "")),
-		AuthUsername:       env("SEMPA_USERNAME", "admin"),
-		AuthPassword:       env("SEMPA_PASSWORD", ""),
-		AllowedEmails:      splitEmails(env("SEMPA_ALLOWED_EMAILS", "")),
-		EmailForwardToken:  env("EMAIL_FORWARD_TOKEN", ""),
-		InboxPollInterval:  env("INBOX_POLL_INTERVAL", "1m"),
-		OllamaBaseURL:      env("OLLAMA_BASE_URL", ""),
-		OllamaModel:        env("OLLAMA_MODEL", "qwen2.5:1.5b"),
-		FCMKeyPath:         env("FCM_KEY_PATH", ""),
-		VAPIDSubject:       env("VAPID_SUBJECT", "mailto:admin@localhost"),
+		Port:                 env("PORT", "8080"),
+		DBPath:               dbPath,
+		AttachmentsDir:       env("ATTACHMENTS_DIR", filepath.Join(filepath.Dir(dbPath), "attachments")),
+		Env:                  env("ENV", "development"),
+		FrontendDir:          env("FRONTEND_DIR", ""),
+		AppURL:               env("APP_URL", "http://localhost:8080"),
+		FrontendURL:          env("FRONTEND_URL", "http://localhost:5173"),
+		GmailClientID:        env("GMAIL_CLIENT_ID", ""),
+		GmailClientSecret:    env("GMAIL_CLIENT_SECRET", ""),
+		SMTPPort:             env("SMTP_PORT", "2525"),
+		SMTPAllowedSenders:   splitEmails(env("SMTP_ALLOWED_SENDERS", "")),
+		AuthUsername:         env("SEMPA_USERNAME", "admin"),
+		AuthPassword:         env("SEMPA_PASSWORD", ""),
+		AllowedEmails:        splitEmails(env("SEMPA_ALLOWED_EMAILS", "")),
+		EmailForwardToken:    env("EMAIL_FORWARD_TOKEN", ""),
+		InboxPollInterval:    env("INBOX_POLL_INTERVAL", "1m"),
+		CalendarPollInterval: env("CALENDAR_POLL_INTERVAL", "15m"),
+		OllamaBaseURL:        env("OLLAMA_BASE_URL", ""),
+		OllamaModel:          env("OLLAMA_MODEL", "qwen2.5:1.5b"),
+		FCMKeyPath:           env("FCM_KEY_PATH", ""),
+		VAPIDSubject:         env("VAPID_SUBJECT", "mailto:admin@localhost"),
 	}
 }
 

@@ -111,6 +111,7 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 		reviews:    db.NewWeekReviewStore(database),
 	}
 	integrations := &integrationHandler{
+		db:         database,
 		configs:    configStore,
 		tasks:      db.NewTaskStore(database),
 		fmCalStore: fmCalStore,

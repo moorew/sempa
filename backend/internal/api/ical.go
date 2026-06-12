@@ -7,8 +7,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/clevercode/sempa/internal/calsync"
 	"github.com/clevercode/sempa/internal/db"
-	"github.com/clevercode/sempa/internal/integrations/ical"
 )
 
 type icalHandler struct {
@@ -135,28 +135,5 @@ func (h *icalHandler) syncSubscriptionByID(ctx context.Context, id string) {
 }
 
 func (h *icalHandler) syncOne(ctx context.Context, sub db.ICalSubscription) {
-	events, err := ical.Fetch(sub.URL)
-	if err != nil {
-		h.store.SetError(ctx, sub.ID, err.Error())
-		return
-	}
-	dbEvents := make([]db.ICalEvent, 0, len(events))
-	for _, ev := range events {
-		if ev.UID == "" || ev.StartTime == "" {
-			continue
-		}
-		dbEvents = append(dbEvents, db.ICalEvent{
-			ID:             uuid.New().String(),
-			SubscriptionID: sub.ID,
-			UID:            ev.UID,
-			Summary:        ev.Summary,
-			Description:    ev.Description,
-			Location:       ev.Location,
-			URL:            ev.URL,
-			StartTime:      ev.StartTime,
-			EndTime:        ev.EndTime,
-			AllDay:         ev.AllDay,
-		})
-	}
-	_ = h.store.UpsertEvents(ctx, sub.ID, dbEvents)
+	_ = calsync.SyncICalSubscription(ctx, h.store, sub)
 }
