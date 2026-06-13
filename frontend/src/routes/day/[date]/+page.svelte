@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { api } from '$lib/api';
@@ -15,7 +15,7 @@
   import MiniCalendar from '$lib/components/MiniCalendar.svelte';
   import TimeslotCalendar from '$lib/components/TimeslotCalendar.svelte';
   import WeeklyObjectivesWidget from '$lib/components/WeeklyObjectivesWidget.svelte';
-  import { ChevronLeft, ChevronRight, Plus, Clock, Mail, SlidersHorizontal } from 'lucide-svelte';
+  import { ChevronLeft, ChevronRight, Plus, Clock, Mail, SlidersHorizontal, Target, ClipboardCheck } from 'lucide-svelte';
   import { tagStore } from '$lib/stores/tags.svelte';
   import TagFilterBar from '$lib/components/TagFilterBar.svelte';
   import JiraPanel from '$lib/components/JiraPanel.svelte';
@@ -48,7 +48,10 @@
   let draggingId    = $state<string | null>(null);
   let dragOverDate  = $state<string | null>(null);
   let emailPanel    = $state<EmailPanel | undefined>(undefined);
-  let rightPanel    = $state<'schedule' | 'mail' | 'jira'>('schedule');
+  let rightPanel    = $state<'schedule' | 'mail' | 'jira' | 'objectives'>('schedule');
+  // Desktop: intention/reflection now lives as a slim disclosure at the top of
+  // the board column (moved out of the right sidebar to give it more room).
+  let reflectionOpen = $state(false);
 
   let panelOpen   = $state(false);
   let panelTask   = $state<Task | null>(null);
@@ -83,33 +86,46 @@
     })
   );
 
-  // Desktop board: a rolling 7-day window STARTING at the anchored date, so
-  // today (the default anchor) is always the left-most column with the future
-  // to its right — never centred or buried mid-week. Past days are reached by
-  // paging back. Spans up to two calendar weeks, so task loading covers both.
-  const BOARD_DAYS = 7;
-  const boardDays = $derived(
-    Array.from({ length: BOARD_DAYS }, (_, i) => {
-      const d = offsetDate(date, i);
+  // Desktop board: an INFINITE rolling strip of day columns. Rather than a fixed
+  // 7-day window that pages (and reloads/flashes) at week boundaries, we render a
+  // contiguous range of day-offsets relative to the anchored `date` and grow it
+  // on demand as the user scrolls toward either edge. The anchor (offset 0 —
+  // today by default) is snapped to the left edge on (re)anchor, with a past
+  // buffer scrolled off to the left so you can immediately scroll backwards.
+  const WEEK = 7;
+  const PAST_BUFFER = 7;     // day columns rendered before the anchor (left runway)
+  const FUTURE_BUFFER = 21;  // day columns rendered after the anchor
+  const COL_FALLBACK = 236;  // w-56 (224) + gap-3 (12); only used pre-layout
+
+  // Inclusive start / exclusive end day-offsets from `date`. Grown by the scroll
+  // handler; reset whenever the anchor changes.
+  let colStart = $state(-PAST_BUFFER);
+  let colEnd   = $state(FUTURE_BUFFER);
+  // Offset of the left-most visible column — drives the header's date label so
+  // it tracks what you've scrolled to, not just the anchor.
+  let firstVisibleOffset = $state(0);
+
+  const columns = $derived(
+    Array.from({ length: colEnd - colStart }, (_, i) => {
+      const off = colStart + i;
+      const d = offsetDate(date, off);
       const dt = new Date(d + 'T12:00:00');
       return {
         date: d,
         dayName: dt.toLocaleDateString('en-US', { weekday: 'short' }),
         dayNum: dt.toLocaleDateString('en-US', { day: 'numeric' }),
-        monthName: dt.toLocaleDateString('en-US', { month: 'short' }),
-        fullDayName: dt.toLocaleDateString('en-US', { weekday: 'long' }),
         isToday: d === todayDate,
         isWeekend: dt.getDay() === 0 || dt.getDay() === 6,
       };
     })
   );
-  // The Mon–Sun weeks the board overlaps — loaded together so cross-week windows
-  // still get all their tasks.
-  const boardWeeks = $derived.by(() => {
-    const a = weekStart(date);
-    const b = weekStart(offsetDate(date, BOARD_DAYS - 1));
-    return a === b ? [a] : [a, b];
-  });
+
+  // Unique Mon–Sun week-starts spanned by a half-open offset range [from, to).
+  function weeksForOffsets(from: number, to: number): string[] {
+    const set = new Set<string>();
+    for (let o = from; o < to; o++) set.add(weekStart(offsetDate(date, o)));
+    return [...set];
+  }
 
   // Mobile: current selected day info
   const selectedDay = $derived(weekDays.find(d => d.date === date) ?? weekDays[0]);
@@ -162,18 +178,56 @@
   const dayReflection = $derived(dayPlan?.plan_date === date ? dayPlan?.reflection : null);
 
   // ── Load ──────────────────────────────────────────────────────────────────
+  // Tasks live in a single pool keyed by id; columns filter it by planned_date.
+  // Because the pool is independent of the column offsets, changing the anchor
+  // (navigating, clicking a calendar day) never has to clear it — that's what
+  // kills the per-week "flash". We only fetch weeks we haven't loaded yet.
+  let loadedWeeks = new Set<string>();
+
+  // Fetch any of `weeks` not already loaded and merge them into the pool.
+  async function ensureWeeks(weeks: string[], initial = false) {
+    const missing = weeks.filter(w => !loadedWeeks.has(w));
+    if (!missing.length) return;
+    missing.forEach(w => loadedWeeks.add(w));
+    if (initial) { loading = true; error = null; }
+    try {
+      const lists = await Promise.all(missing.map(w => api.tasks.listByWeek(w)));
+      const byId = new Map(tasks.map(t => [t.id, t]));
+      for (const list of lists) for (const t of list) byId.set(t.id, t);
+      tasks = [...byId.values()];
+    } catch (e) {
+      missing.forEach(w => loadedWeeks.delete(w)); // allow a retry
+      if (initial) error = e instanceof Error ? e.message : 'Failed';
+    } finally {
+      if (initial) loading = false;
+    }
+  }
+
+  // Full reload of every week we've loaded (used by the error-retry button).
   async function loadTasks() {
+    const weeks = loadedWeeks.size ? [...loadedWeeks] : weeksForOffsets(colStart, colEnd);
     loading = true; error = null;
     try {
-      const lists = await Promise.all(boardWeeks.map(w => api.tasks.listByWeek(w)));
-      // Dedupe by id (the two weeks never overlap, but a task could shift between
-      // loads); a Map keeps the last-seen copy.
+      const lists = await Promise.all(weeks.map(w => api.tasks.listByWeek(w)));
       const byId = new Map<string, Task>();
       for (const list of lists) for (const t of list) byId.set(t.id, t);
+      weeks.forEach(w => loadedWeeks.add(w));
       tasks = [...byId.values()];
     }
     catch (e) { error = e instanceof Error ? e.message : 'Failed'; }
     finally { loading = false; }
+  }
+
+  // Background refresh (no loading flag → no flash) for realtime/CRUD echoes.
+  async function reloadLoaded() {
+    const weeks = loadedWeeks.size ? [...loadedWeeks] : weeksForOffsets(colStart, colEnd);
+    try {
+      const lists = await Promise.all(weeks.map(w => api.tasks.listByWeek(w)));
+      const byId = new Map<string, Task>();
+      for (const list of lists) for (const t of list) byId.set(t.id, t);
+      weeks.forEach(w => loadedWeeks.add(w));
+      tasks = [...byId.values()];
+    } catch { /* keep stale on failure */ }
   }
 
   async function loadRollover() {
@@ -184,15 +238,34 @@
   }
 
   onMount(() => { loadRollover(); });
-  // Re-load whenever the board's covering weeks change (i.e. as the anchored
-  // date pages forward/back). Joined so the dependency is reactive.
-  $effect(() => { boardWeeks.join(','); loadTasks(); });
+
+  // (Re)initialise the rolling board around the anchored date: reset the column
+  // range, request its weeks, and flag that the scroll needs re-anchoring. Tasks
+  // already in the pool are kept, so this is flash-free after the first load.
+  let pendingAnchor = $state(true);
+  $effect(() => {
+    date; // re-run on anchor change
+    colStart = -PAST_BUFFER;
+    colEnd   = FUTURE_BUFFER;
+    pendingAnchor = true;
+    void ensureWeeks(weeksForOffsets(colStart, colEnd), tasks.length === 0);
+  });
+
+  // Once the board has rendered, snap the anchor (offset 0) to the left edge,
+  // leaving PAST_BUFFER columns scrolled off to the left as backward runway.
+  $effect(() => {
+    if (mobile.value || loading || !weekGrid || !pendingAnchor) return;
+    pendingAnchor = false;
+    const stride = colStride();
+    weekGrid.scrollLeft = (0 - colStart) * stride;
+    firstVisibleOffset = 0;
+  });
 
   // Re-fetch when another platform broadcasts a change
   $effect(() => {
     const ev = realtime.lastEvent;
     if (!ev) return;
-    if (ev.type === 'task:change' || ev.type === 'objective:change') loadTasks();
+    if (ev.type === 'task:change' || ev.type === 'objective:change') reloadLoaded();
   });
 
   // Handle FAB deep link — runs on mount AND whenever search params change
@@ -217,7 +290,7 @@
     await Promise.all(toRoll.map(t =>
       api.tasks.update(t.id, { planned_date: todayDate, week_start: weekStart(todayDate), status: 'planned' })
     ));
-    rolloverTasks = []; await loadTasks();
+    rolloverTasks = []; await reloadLoaded();
   }
 
   // ── Tasks per day ──────────────────────────────────────────────────────────
@@ -289,17 +362,80 @@
   const mobileDone      = $derived(mobileDayTasks.filter(t => t.status === 'done'));
   const mobileDayEstimate = $derived(mobileDayTasks.reduce((s, t) => s + (t.time_estimate_minutes ?? 0), 0));
 
-  // ── Board navigation ───────────────────────────────────────────────────────
-  // The board is a rolling window anchored at `date`, so paging shifts the
-  // anchor by a week and the new anchor day becomes the left-most column.
-  function navigateWeek(delta: number) {
-    goto(`/day/${offsetDate(date, delta * 7)}`);
+  // ── Infinite board scroll ──────────────────────────────────────────────────
+  // Measure the real per-column stride from the DOM so prepend compensation and
+  // week jumps stay exact under browser zoom (rem-based widths drift otherwise).
+  function colStride(): number {
+    const el = weekGrid?.querySelector('[data-daycol]');
+    return el instanceof HTMLElement ? el.offsetWidth + 12 : COL_FALLBACK;
   }
-  // "Today" jump: re-anchor the board on today (which puts today back at the
-  // left). If already anchored on today, just snap the scroll back to the start.
+
+  // Grow the rendered range as the user nears either edge. Prepending shifts all
+  // columns right, so we add the same number of pixels back to scrollLeft to
+  // keep the view visually still — no jump, no flash, infinite in both directions.
+  let extending = false;
+  function onBoardScroll() {
+    if (!weekGrid) return;
+    const stride = colStride();
+    const { scrollLeft, scrollWidth, clientWidth } = weekGrid;
+    firstVisibleOffset = colStart + Math.round(scrollLeft / stride);
+    if (extending) return;
+    const edge = stride * 3;
+    if (scrollWidth - clientWidth - scrollLeft < edge) {
+      extending = true;
+      const newEnd = colEnd + WEEK;
+      void ensureWeeks(weeksForOffsets(colEnd, newEnd));
+      colEnd = newEnd;
+      tick().then(() => { extending = false; });
+    } else if (scrollLeft < edge) {
+      extending = true;
+      const newStart = colStart - WEEK;
+      const added = colStart - newStart;
+      void ensureWeeks(weeksForOffsets(newStart, colStart));
+      colStart = newStart;
+      tick().then(() => {
+        if (weekGrid) weekGrid.scrollLeft += added * stride;
+        extending = false;
+      });
+    }
+  }
+
+  // Header ‹ › and arrow keys: smooth-scroll the board by a week (no navigation,
+  // so no flash). Pre-extend the range first so the smooth scroll has runway.
+  function scrollWeeks(dir: 1 | -1) {
+    if (mobile.value) { navigateDay(dir); return; }
+    if (!weekGrid) return;
+    const stride = colStride();
+    if (dir > 0) {
+      const room = weekGrid.scrollWidth - weekGrid.clientWidth - weekGrid.scrollLeft;
+      if (room < WEEK * stride + stride) {
+        const ne = colEnd + WEEK * 2;
+        void ensureWeeks(weeksForOffsets(colEnd, ne));
+        colEnd = ne;
+      }
+      tick().then(() => weekGrid?.scrollBy({ left: WEEK * stride, behavior: 'smooth' }));
+    } else if (weekGrid.scrollLeft < WEEK * stride + stride) {
+      const ns = colStart - WEEK * 2;
+      const added = colStart - ns;
+      void ensureWeeks(weeksForOffsets(ns, colStart));
+      colStart = ns;
+      tick().then(() => {
+        if (!weekGrid) return;
+        weekGrid.scrollLeft += added * stride;
+        weekGrid.scrollBy({ left: -WEEK * stride, behavior: 'smooth' });
+      });
+    } else {
+      weekGrid.scrollBy({ left: -WEEK * stride, behavior: 'smooth' });
+    }
+  }
+
+  // "Today": re-anchor (which snaps today to the left) when off-day; if already
+  // anchored on today, just smooth-scroll today's column back to the left edge.
   function goToday() {
-    if (isToday(date)) resetBoardScroll(true);
-    else goto(`/day/${todayDate}`);
+    if (date !== todayDate) { goto(`/day/${todayDate}`); return; }
+    if (!weekGrid) return;
+    const stride = colStride();
+    weekGrid.scrollTo({ left: (0 - colStart) * stride, behavior: 'smooth' });
   }
 
   function handleCalendarDateClick(d: string) {
@@ -310,22 +446,6 @@
   function navigateDay(delta: number) {
     goto(`/day/${offsetDate(date, delta)}`);
   }
-
-  // The anchored day is column 0, so "left-aligned today" just means the board's
-  // horizontal scroll sits at the start. Reset it when the anchor changes.
-  function resetBoardScroll(smooth = false) {
-    if (mobile.value) return;
-    requestAnimationFrame(() => {
-      weekGrid?.scrollTo({ left: 0, behavior: smooth ? 'smooth' : 'auto' });
-    });
-  }
-  let scrolledFor = '';
-  $effect(() => {
-    const d = date;
-    if (mobile.value || loading || d === scrolledFor) return;
-    scrolledFor = d;
-    resetBoardScroll(false);
-  });
 
   // ── Drag & drop between days ───────────────────────────────────────────────
   function handleDragStart(id: string) { draggingId = id; }
@@ -398,10 +518,10 @@
       const t = tasks.find(t => t.id === hoveredTaskId);
       if (t) openEdit(t);
     }
-    // Arrow keys navigate weeks (desktop week board). Skipped above when focus
-    // is in an input/textarea/contenteditable.
-    if (e.key === 'ArrowLeft' && !panelOpen)  { e.preventDefault(); navigateWeek(-1); }
-    if (e.key === 'ArrowRight' && !panelOpen) { e.preventDefault(); navigateWeek(1); }
+    // Arrow keys scroll the board by a week. Skipped above when focus is in an
+    // input/textarea/contenteditable.
+    if (e.key === 'ArrowLeft' && !panelOpen)  { e.preventDefault(); scrollWeeks(-1); }
+    if (e.key === 'ArrowRight' && !panelOpen) { e.preventDefault(); scrollWeeks(1); }
   }
 
   // ── Trash (with confirm modal) ──────────────────────────────────────────
@@ -440,7 +560,7 @@
   async function handlePanelSave(saved: Task) {
     panelOpen = false;
     if (saved.status === 'cancelled') { tasks = tasks.filter(t => t.id !== saved.id); return; }
-    if (!panelTask && saved.recurrence_rule) { await loadTasks(); return; }
+    if (!panelTask && saved.recurrence_rule) { await reloadLoaded(); return; }
     const idx = tasks.findIndex(t => t.id === saved.id);
     if (idx >= 0) tasks = tasks.map(t => t.id === saved.id ? saved : t);
     else tasks = [...tasks, saved];
@@ -476,10 +596,12 @@
     } catch { tasks = prev; }
   }
 
-  // Heading — the visible rolling window (anchored date → +6 days).
+  // Heading — the 7 days starting at whatever's scrolled to the left edge, so it
+  // reflects where you are in the infinite strip rather than a fixed anchor.
+  const firstVisibleDate = $derived(offsetDate(date, firstVisibleOffset));
   function weekLabel(): string {
-    const start = new Date(date + 'T00:00:00');
-    const endDt = new Date(offsetDate(date, BOARD_DAYS - 1) + 'T00:00:00');
+    const start = new Date(firstVisibleDate + 'T00:00:00');
+    const endDt = new Date(offsetDate(firstVisibleDate, 6) + 'T00:00:00');
     const mo = (d: Date) => d.toLocaleDateString('en-US', { month: 'short' });
     const dy = (d: Date) => d.getDate();
     if (start.getMonth() === endDt.getMonth()) return `${mo(start)} ${dy(start)}–${dy(endDt)}`;
@@ -702,7 +824,7 @@
   <div class="flex items-center justify-between px-6 py-3">
     <!-- Week nav -->
     <div class="flex items-center gap-2">
-      <button onclick={() => navigateWeek(-1)} aria-label="Previous week"
+      <button onclick={() => scrollWeeks(-1)} aria-label="Previous week"
               class="rounded-lg p-1.5 transition-colors"
               style="color: var(--sempa-text-dim);">
         <ChevronLeft size={16} />
@@ -713,7 +835,7 @@
           <p class="type-label" style="color: var(--sempa-accent);">This week</p>
         {/if}
       </div>
-      <button onclick={() => navigateWeek(1)} aria-label="Next week"
+      <button onclick={() => scrollWeeks(1)} aria-label="Next week"
               class="rounded-lg p-1.5 transition-colors"
               style="color: var(--sempa-text-dim);">
         <ChevronRight size={16} />
@@ -781,8 +903,32 @@
        banner sit at the top (fixed), and the board below grows to fill the rest
        so its horizontal scrollbar lands at the very BOTTOM of the page rather
        than floating halfway up where the tallest column happens to end. -->
-  <main bind:this={kanbanScroll} class="flex-1 flex flex-col overflow-hidden px-4 pt-5 pb-2 animate-fade-in"
-        use:swipeNavigate={{ onPrev: () => navigateWeek(-1), onNext: () => navigateWeek(1) }}>
+  <main bind:this={kanbanScroll} class="flex-1 flex flex-col overflow-hidden px-4 pt-5 pb-2 animate-fade-in">
+
+    <!-- Intention / reflection (moved out of the sidebar into a slim disclosure
+         so it never pushes the schedule/inbox/jira panels off-screen). -->
+    {#if prefs.contextualReflections && (dayIntention?.trim() || dayReflection?.trim() || isToday(date))}
+      <div class="mb-4 shrink-0">
+        <button onclick={() => reflectionOpen = !reflectionOpen}
+                class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left transition-colors"
+                style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+          <ClipboardCheck size={14} style="color: var(--sempa-accent);" />
+          <span class="flex-1 truncate text-[13px]" style="color: var(--sempa-text-soft);">
+            {dayIntention?.trim() ? dayIntention : "Set today's intention"}
+          </span>
+          <svg class="h-3.5 w-3.5 transition-transform {reflectionOpen ? '' : '-rotate-90'}"
+               style="color: var(--sempa-text-dim);"
+               fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+        {#if reflectionOpen}
+          <div class="mt-2">
+            <ReflectionCard date={date} intention={dayIntention} reflection={dayReflection} show="both" promptWhenEmpty={isToday(date)} />
+          </div>
+        {/if}
+      </div>
+    {/if}
 
     <!-- Tag filter (in-place) -->
     {#if tagStore.definitions.length}
@@ -835,13 +981,14 @@
         {error} <button onclick={loadTasks} class="ml-2 underline">Retry</button>
       </div>
     {:else}
-      <!-- Rolling board: today (anchor) is the left-most column, future days to
-           the right. overflow-x-auto lets it scroll on narrow windows; the inner
-           data-weekgrid row owns the scroll axis (swipe/wheel paging respects the
-           edge). Weekend columns read a touch softer but keep date order. -->
-      <div bind:this={weekGrid} class="flex flex-1 min-h-0 items-start gap-3 overflow-auto" data-weekgrid>
-        {#each boardDays as day (day.date)}
-          <div id="day-col-{day.date}" class="w-56 shrink-0" style={day.isWeekend ? 'opacity: 0.92;' : ''}>
+      <!-- Infinite rolling board: today (anchor) starts at the left edge, with
+           past days reachable by scrolling left and the future to the right —
+           the range grows on demand at either edge, so there's no week boundary
+           to flash through. Weekend columns read a touch softer. -->
+      <div bind:this={weekGrid} onscroll={onBoardScroll}
+           class="flex flex-1 min-h-0 items-start gap-3 overflow-auto" data-weekgrid>
+        {#each columns as day (day.date)}
+          <div id="day-col-{day.date}" data-daycol class="w-56 shrink-0" style={day.isWeekend ? 'opacity: 0.92;' : ''}>
             <WeekDayColumn
               date={day.date} dayName={day.dayName} dayNum={day.dayNum}
               isToday={day.isToday} isWeekend={day.isWeekend}
@@ -866,74 +1013,80 @@
     {/if}
   </main>
 
-  <!-- ── Right panel ─────────────────────────────────────────────────────── -->
-  <aside class="w-72 shrink-0 flex flex-col overflow-hidden"
+  <!-- ── Right panel ─────────────────────────────────────────────────────────
+       Calendar pinned at the top, then a single tabbed region (Schedule / Inbox
+       / Jira / Objectives) that fills the rest of the height. Previously these
+       all stacked vertically and pushed each other off-screen on shorter
+       windows; now exactly one is shown at full height. -->
+  <aside class="w-80 shrink-0 flex flex-col overflow-hidden"
          style="background: var(--sempa-bg-panel); border-left: 1px solid var(--sempa-border);">
 
-    <!-- Contextual intention / reflection for the anchored day -->
-    {#if prefs.contextualReflections && (dayIntention?.trim() || dayReflection?.trim() || isToday(date))}
-      <div class="shrink-0 p-3" style="border-bottom: 1px solid var(--sempa-border);">
-        <ReflectionCard date={date} intention={dayIntention} reflection={dayReflection} show="both" promptWhenEmpty={isToday(date)} />
-      </div>
-    {/if}
-
-    <!-- Always-visible: mini calendar + objectives -->
+    <!-- Pinned: mini calendar -->
     <div class="shrink-0" style="border-bottom: 1px solid var(--sempa-border);">
       <MiniCalendar {date} onDateClick={handleCalendarDateClick} onDateDrop={(d) => handleDrop(d)} dragActive={draggingId !== null} />
     </div>
-    <WeeklyObjectivesWidget {date} />
 
-    <!-- Switchable panel + icon strip -->
-    <div class="flex flex-1 overflow-hidden" style="border-top: 1px solid var(--sempa-border);">
+    <!-- Tab bar -->
+    <div class="flex shrink-0 items-stretch" style="border-bottom: 1px solid var(--sempa-border);">
+      {#each [
+        { id: 'schedule',   label: 'Schedule' },
+        { id: 'mail',       label: 'Inbox' },
+        { id: 'jira',       label: 'Jira' },
+        { id: 'objectives', label: 'Goals' },
+      ] as panel}
+        {@const active = rightPanel === panel.id}
+        <button onclick={() => rightPanel = panel.id as typeof rightPanel}
+                title={panel.label}
+                class="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10.5px] font-medium transition-colors"
+                style={active
+                  ? 'color: var(--sempa-accent); box-shadow: inset 0 -2px 0 var(--sempa-accent);'
+                  : 'color: var(--sempa-text-dim);'}>
+          {#if panel.id === 'schedule'}
+            <Clock size={15} />
+          {:else if panel.id === 'mail'}
+            <Mail size={15} />
+          {:else if panel.id === 'jira'}
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.757a5.215 5.215 0 0 0 5.214 5.214h2.129v2.058A5.218 5.218 0 0 0 18.313 18.3V6.763a1.006 1.006 0 0 0-1.019-1.006zM23.277.007H11.749a5.215 5.215 0 0 0 5.214 5.214h2.129v2.058A5.218 5.218 0 0 0 24.282 12.5V1.012A1.005 1.005 0 0 0 23.277.007z"/>
+            </svg>
+          {:else}
+            <Target size={15} />
+          {/if}
+          {panel.label}
+        </button>
+      {/each}
+    </div>
 
-      <!-- Panel content -->
-      <div class="flex-1 overflow-hidden">
-        {#if rightPanel === 'schedule'}
-          <TimeslotCalendar
-            date={date}
-            tasks={tasks}
-            onSchedule={handleSchedule}
-            onUnschedule={handleUnschedule}
-            onOpenTask={(id) => { const t = tasks.find(t => t.id === id); if (t) openEdit(t); }}
-            onEventConverted={(t) => { tasks = [...tasks, t]; }}
-          />
-        {:else if rightPanel === 'mail'}
-          <EmailPanel bind:this={emailPanel} onTaskCreated={(t) => { tasks = [...tasks, t]; }} />
-        {:else if rightPanel === 'jira'}
-          <JiraPanel
-            onTaskDragStart={(id) => { draggingId = id; }}
-            onTasksReloaded={loadTasks}
-          />
-        {/if}
-      </div>
-
-      <!-- Icon strip -->
-      <div class="flex shrink-0 flex-col items-center gap-1 px-1 py-2"
-           style="border-left: 1px solid var(--sempa-border); width: 40px;">
-        {#each [
-          { id: 'schedule', label: 'Schedule' },
-          { id: 'mail',     label: 'Mail' },
-          { id: 'jira',     label: 'Jira' },
-        ] as panel}
-          <button onclick={() => rightPanel = panel.id as typeof rightPanel}
-                  title={panel.label}
-                  class="flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
-                  style={rightPanel === panel.id
-                    ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent);'
-                    : 'color: var(--sempa-text-dim);'}>
-            {#if panel.id === 'schedule'}
-              <Clock size={15} />
-            {:else if panel.id === 'mail'}
-              <Mail size={15} />
-            {:else}
-              <!-- Jira logo -->
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.757a5.215 5.215 0 0 0 5.214 5.214h2.129v2.058A5.218 5.218 0 0 0 18.313 18.3V6.763a1.006 1.006 0 0 0-1.019-1.006zM23.277.007H11.749a5.215 5.215 0 0 0 5.214 5.214h2.129v2.058A5.218 5.218 0 0 0 24.282 12.5V1.012A1.005 1.005 0 0 0 23.277.007z"/>
-              </svg>
-            {/if}
-          </button>
-        {/each}
-      </div>
+    <!-- Active tab content (full remaining height) -->
+    <div class="flex-1 overflow-hidden">
+      {#if rightPanel === 'schedule'}
+        <TimeslotCalendar
+          date={date}
+          tasks={tasks}
+          onSchedule={handleSchedule}
+          onUnschedule={handleUnschedule}
+          onOpenTask={(id) => { const t = tasks.find(t => t.id === id); if (t) openEdit(t); }}
+          onEventConverted={(t) => { tasks = [...tasks, t]; }}
+        />
+      {:else if rightPanel === 'mail'}
+        <EmailPanel bind:this={emailPanel} onTaskCreated={(t) => { tasks = [...tasks, t]; }} />
+      {:else if rightPanel === 'jira'}
+        <JiraPanel
+          onTaskDragStart={(id) => { draggingId = id; }}
+          onTasksReloaded={reloadLoaded}
+        />
+      {:else}
+        <!-- Objectives: weekly goals + a jump to the full planner -->
+        <div class="h-full overflow-y-auto">
+          <WeeklyObjectivesWidget {date} />
+          <a href="/week/{ws}"
+             class="m-3 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium transition-colors"
+             style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
+            <Target size={13} />
+            Open weekly planner
+          </a>
+        </div>
+      {/if}
     </div>
   </aside>
 </div>
