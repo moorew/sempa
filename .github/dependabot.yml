@@ -32,6 +32,23 @@ updates:
       cargo-deps:
         patterns: ["*"]
         update-types: [minor, patch]
+    ignore:
+      # glib < 0.20 (RUSTSEC-2024-0429) is a transitive, Linux-only dep of Tauri's
+      # gtk-rs 0.18 stack (via gio-sys/gdk). Tauri 2.x caps it at 0.18.5, so the
+      # 0.20.0 fix is unreachable and the security-update job fails on every run.
+      # We don't ship a Linux desktop build, so this code isn't in our artifacts.
+      # Revisit when Tauri moves to gtk-rs 0.20. Same applies to the rest of the
+      # capped gtk stack.
+      - dependency-name: "glib"
+      - dependency-name: "gdk"
+      - dependency-name: "gdk-sys"
+      - dependency-name: "gtk"
+      - dependency-name: "gtk-sys"
+      - dependency-name: "gio"
+      - dependency-name: "gio-sys"
+      - dependency-name: "glib-sys"
+      - dependency-name: "atk"
+      - dependency-name: "pango"
 
   # GitHub Actions used in workflows
   - package-ecosystem: github-actions
