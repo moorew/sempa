@@ -1,4 +1,17 @@
-# Sempa
+
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 70">
+  
+  <rect width="280" height="70" fill="#2b221b"></rect>
+  
+  <svg x="5" y="5" width="60" height="60" viewBox="0 0 100 100">
+    <path d="M22,40 a28,28 0 0 0 56,0" stroke="#f7f3eb" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+    <circle cx="50" cy="35" r="7.5" fill="#f7f3eb"></circle>
+  </svg>
+
+<img width="300" height="75" alt="sempa-logo-reversed" src="https://github.com/user-attachments/assets/e2683027-3cfa-40f3-91a7-fa4a68ef5cfa" />
+<img width="1813" height="664" alt="image" src="https://github.com/user-attachments/assets/ed332d31-7805-48ff-b8b4-663db73e69e0" />
+
 
 A self-hosted personal task manager for everyone.
 
