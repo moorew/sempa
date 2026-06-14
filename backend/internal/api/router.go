@@ -116,6 +116,7 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 		tasks:      db.NewTaskStore(database),
 		fmCalStore: fmCalStore,
 		cfg:        cfg,
+		pulls:      map[string]*pullState{},
 	}
 
 	r.Route("/api/v1", func(r chi.Router) {
@@ -317,6 +318,9 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 					r.Get("/", integrations.aiTitleGet)
 					r.Put("/", integrations.aiTitleUpdate)
 					r.Post("/test", integrations.aiTitleTest)
+					r.Post("/pull", integrations.aiTitlePull)
+					r.Get("/pull", integrations.aiTitlePullStatus)
+					r.Post("/remove", integrations.aiTitleRemove)
 				})
 			})
 		})

@@ -24,10 +24,17 @@ import (
 // The residual risk is accepted; the CodeQL alert is dismissed with this
 // justification. See SECURITY.md and the README "AI task-title cleanup" notes.
 
-// ListModels returns the model names available on the Ollama instance at
-// baseURL. It doubles as a reachability check (used by the settings UI's
-// "Test" button). A short timeout keeps the settings page responsive.
-func ListModels(ctx context.Context, baseURL string) ([]string, error) {
+// ModelInfo is a model available on the Ollama host plus its on-disk size in
+// bytes, so the settings UI can show how much space each model uses.
+type ModelInfo struct {
+	Name string `json:"name"`
+	Size int64  `json:"size"`
+}
+
+// ListModelsDetailed returns the models on the Ollama host at baseURL with their
+// sizes. It doubles as a reachability check (used by the settings UI's "Test"
+// button). A short timeout keeps the settings page responsive.
+func ListModelsDetailed(ctx context.Context, baseURL string) ([]ModelInfo, error) {
 	if baseURL == "" {
 		return nil, fmt.Errorf("ollama base URL not set")
 	}
@@ -47,16 +54,114 @@ func ListModels(ctx context.Context, baseURL string) ([]string, error) {
 	var out struct {
 		Models []struct {
 			Name string `json:"name"`
+			Size int64  `json:"size"`
 		} `json:"models"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return nil, err
 	}
-	names := make([]string, 0, len(out.Models))
+	models := make([]ModelInfo, 0, len(out.Models))
 	for _, m := range out.Models {
+		models = append(models, ModelInfo{Name: m.Name, Size: m.Size})
+	}
+	return models, nil
+}
+
+// ListModels returns just the model names (reachability + name list).
+func ListModels(ctx context.Context, baseURL string) ([]string, error) {
+	models, err := ListModelsDetailed(ctx, baseURL)
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(models))
+	for _, m := range models {
 		names = append(names, m.Name)
 	}
 	return names, nil
+}
+
+// PullProgress is one streamed update while a model downloads.
+type PullProgress struct {
+	Status    string `json:"status"`
+	Completed int64  `json:"completed"`
+	Total     int64  `json:"total"`
+}
+
+// PullModel streams a model download from the Ollama host, invoking onProgress
+// for each update. It blocks until the pull completes, errors, or ctx is
+// cancelled. No client timeout — large models take minutes.
+func PullModel(ctx context.Context, baseURL, model string, onProgress func(PullProgress)) error {
+	if baseURL == "" {
+		return fmt.Errorf("ollama base URL not set")
+	}
+	if model == "" {
+		return fmt.Errorf("model name required")
+	}
+	reqBody, _ := json.Marshal(map[string]any{"model": model, "stream": true})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/api/pull", bytes.NewReader(reqBody))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{} // no timeout — pulls can take several minutes
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+		return fmt.Errorf("ollama pull returned %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
+	}
+	dec := json.NewDecoder(resp.Body)
+	for {
+		var line struct {
+			Status    string `json:"status"`
+			Completed int64  `json:"completed"`
+			Total     int64  `json:"total"`
+			Error     string `json:"error"`
+		}
+		if err := dec.Decode(&line); err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		if line.Error != "" {
+			return fmt.Errorf("%s", line.Error)
+		}
+		if onProgress != nil {
+			onProgress(PullProgress{Status: line.Status, Completed: line.Completed, Total: line.Total})
+		}
+	}
+}
+
+// DeleteModel removes a model from the Ollama host to free disk space.
+func DeleteModel(ctx context.Context, baseURL, model string) error {
+	if baseURL == "" {
+		return fmt.Errorf("ollama base URL not set")
+	}
+	if model == "" {
+		return fmt.Errorf("model name required")
+	}
+	// Send both "model" (current API) and "name" (older API) for compatibility.
+	reqBody, _ := json.Marshal(map[string]any{"model": model, "name": model})
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, baseURL+"/api/delete", bytes.NewReader(reqBody))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+		return fmt.Errorf("ollama delete returned %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
+	}
+	return nil
 }
 
 // ImproveTitle uses a local Ollama model to turn an email subject into a

@@ -25,6 +25,24 @@ import type {
   WeekReview,
 } from './types';
 
+/** A model available on the Ollama host, with its on-disk size in bytes. */
+export interface AiModel { name: string; size: number }
+export interface AiTitleConfig {
+  enabled: boolean;
+  base_url: string;
+  model: string;
+  reachable: boolean;
+  available_models: AiModel[];
+}
+/** Progress snapshot of an in-flight model download. */
+export interface AiPullState {
+  status: string;
+  completed: number;
+  total: number;
+  done: boolean;
+  error: string;
+}
+
 // Resolve the API base URL:
 // 1. Build-time env var (dev): VITE_API_URL
 // 2. Runtime user-configured server (mobile/native): stored in localStorage
@@ -400,14 +418,21 @@ const httpApi = {
     // subjects into task titles; nothing leaves the server).
     aiTitle: {
       get: () =>
-        req<{ enabled: boolean; base_url: string; model: string; reachable: boolean; available_models: string[] }>(
-          '/api/v1/integrations/ai-title'),
+        req<AiTitleConfig>('/api/v1/integrations/ai-title'),
       save: (cfg: { enabled: boolean; base_url: string; model: string }) =>
-        req<{ enabled: boolean; base_url: string; model: string; reachable: boolean; available_models: string[] }>(
-          '/api/v1/integrations/ai-title', { method: 'PUT', body: body(cfg) }),
+        req<AiTitleConfig>('/api/v1/integrations/ai-title', { method: 'PUT', body: body(cfg) }),
       test: (base_url: string) =>
-        req<{ reachable: boolean; models: string[]; error?: string }>(
+        req<{ reachable: boolean; models: AiModel[]; error?: string }>(
           '/api/v1/integrations/ai-title/test', { method: 'POST', body: body({ base_url }) }),
+      // Start (or no-op if already running) a background model download.
+      pull: (model: string, base_url: string) =>
+        req<AiPullState>('/api/v1/integrations/ai-title/pull', { method: 'POST', body: body({ model, base_url }) }),
+      // Poll the progress of a model download.
+      pullStatus: (model: string) =>
+        req<AiPullState>(`/api/v1/integrations/ai-title/pull?model=${encodeURIComponent(model)}`),
+      // Delete a downloaded model from the Ollama host.
+      remove: (model: string, base_url: string) =>
+        req<AiTitleConfig>('/api/v1/integrations/ai-title/remove', { method: 'POST', body: body({ model, base_url }) }),
     },
 
     calendar: {
