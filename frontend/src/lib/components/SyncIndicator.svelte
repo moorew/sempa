@@ -91,8 +91,12 @@
 </script>
 
 {#if hasLocalDb()}
+  <!-- Desktop: bottom-right. Mobile: bottom-LEFT, above the tab bar — the
+       bottom-right corner there belongs to the task-creation FAB. -->
   <div class="fixed z-[60]"
-       style="right: 16px; bottom: {mobile.value ? 'calc(env(safe-area-inset-bottom, 0px) + 92px)' : '16px'};">
+       style={mobile.value
+         ? 'left: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);'
+         : 'right: 16px; bottom: 16px;'}>
     <button
       onclick={onClick}
       onmouseenter={() => (hovered = true)}
