@@ -5,18 +5,18 @@ name: Tag release
 # yet, so ordinary docs/CI merges don't trigger a release — bump the version to
 # ship one. The tag then kicks off the Windows + Android release builds.
 #
-# Note: tags pushed with the built-in GITHUB_TOKEN do NOT trigger other
-# workflows (GitHub blocks that to prevent loops). So instead of relying on the
-# tag's `push` event, we dispatch the release workflows explicitly with the tag
-# as their ref — which produces the same result (they create the GitHub Release
-# whenever github.ref is a tag) without needing a personal access token.
+# The tag is created via the REST API (not `git push`) so the checkout doesn't
+# need to persist credentials. Tags created with the built-in token do NOT
+# trigger other workflows (GitHub blocks that to prevent loops), so we dispatch
+# the release workflows explicitly with the tag as their ref — which produces the
+# same result (they create the GitHub Release whenever github.ref is a tag).
 
 on:
   push:
     branches: [main]
 
 permissions:
-  contents: write   # create and push the tag
+  contents: write   # create the tag ref
   actions: write    # dispatch the release workflows
 
 concurrency:
@@ -31,32 +31,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          fetch-depth: 0   # need all tags to check whether this version exists
+          persist-credentials: false
 
       - name: Read version from package.json
         id: ver
         run: echo "v=v$(jq -r .version frontend/package.json)" >> "$GITHUB_OUTPUT"
 
-      - name: Create and push tag if it is new
-        id: tag
-        env:
-          V: ${{ steps.ver.outputs.v }}
-        run: |
-          if git rev-parse "$V" >/dev/null 2>&1; then
-            echo "Tag $V already exists — nothing to release."
-            echo "created=false" >> "$GITHUB_OUTPUT"
-          else
-            git tag "$V"
-            git push origin "$V"
-            echo "Created and pushed $V"
-            echo "created=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Trigger release builds
-        if: steps.tag.outputs.created == 'true'
+      - name: Tag and trigger release builds if version is new
         env:
           V: ${{ steps.ver.outputs.v }}
           GH_TOKEN: ${{ github.token }}
         run: |
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$V" >/dev/null 2>&1; then
+            echo "Tag $V already exists — nothing to release."
+            exit 0
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f "ref=refs/tags/$V" -f "sha=$GITHUB_SHA" >/dev/null
+          echo "Created tag $V at $GITHUB_SHA"
           gh workflow run windows-release.yml --ref "$V"
           gh workflow run android-release.yml --ref "$V"
