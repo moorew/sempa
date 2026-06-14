@@ -1,24 +1,28 @@
 <script lang="ts">
   /**
-   * Compact sync-status pill bound to the shared syncStore. Shows whether the
-   * device is online, currently syncing, or has local changes still queued, and
-   * lets the user kick off a sync by clicking. Only meaningful on local-first
-   * platforms (desktop/Android); renders nothing on plain web.
+   * Floating sync-status widget (bottom-right). A permanent compact cloud icon
+   * conveys state at a glance — plain cloud when synced, cloud-off when offline,
+   * upload/alert variants for pending/error. The text label stays hidden to keep
+   * the corner quiet, and fades in only when there's something to say: on hover,
+   * while syncing/pending/offline/errored, or briefly after a sync completes.
+   * Clicking syncs now (or shows the error). Only meaningful where a local DB
+   * exists (desktop/Android); renders nothing on plain web.
    */
   import { syncStore, sync as runSync } from '$lib/sync.svelte';
   import { hasLocalDb } from '$lib/tauri/bridge';
+  import { mobile } from '$lib/stores/mobile.svelte';
   import { onMount } from 'svelte';
+  import { fade } from 'svelte/transition';
   import { RefreshCw, Cloud, CloudOff, CloudUpload, CloudAlert } from 'lucide-svelte';
 
-  // A ticking clock so the relative "synced Xm ago" label stays current even
-  // when nothing else changes. Updated every 30s.
   let nowMs = $state(Date.now());
+  let hovered = $state(false);
+  let flash = $state(false); // briefly reveal the label after a sync completes
   onMount(() => {
     const t = setInterval(() => { nowMs = Date.now(); }, 30_000);
     return () => clearInterval(t);
   });
 
-  // Relative "last synced" label, recomputed when lastSyncedAt or the tick changes.
   function ago(iso: string | null, now: number): string {
     if (!iso) return '';
     const secs = Math.max(0, Math.floor((now - new Date(iso).getTime()) / 1000));
@@ -53,8 +57,30 @@
     : 'var(--sempa-text-soft)',
   );
 
-  // Tapping the pill while in an error state shows the raw error so it can be
-  // read off the device (release builds have no DevTools). Otherwise it syncs.
+  // Non-synced states keep the label visible (they need attention). The "synced"
+  // resting state hides it — except for a short flash right after a sync.
+  const persistent = $derived(
+    syncState === 'syncing' || syncState === 'pending' || syncState === 'error' || syncState === 'offline',
+  );
+  const showLabel = $derived(hovered || persistent || flash);
+
+  // Flash the label for ~2.5s when sync transitions to "synced" so the user gets
+  // a moment of "synced just now" feedback, then it quietly fades away.
+  let prev = syncState;
+  let flashTimer: ReturnType<typeof setTimeout> | null = null;
+  $effect(() => {
+    const s = syncState;
+    if (s !== prev) {
+      const wasSyncing = prev === 'syncing';
+      prev = s;
+      if (s === 'synced' && wasSyncing) {
+        flash = true;
+        if (flashTimer) clearTimeout(flashTimer);
+        flashTimer = setTimeout(() => { flash = false; }, 2500);
+      }
+    }
+  });
+
   function onClick() {
     if (syncStore.lastError) {
       alert(`Sync error:\n\n${syncStore.lastError}`);
@@ -65,33 +91,40 @@
 </script>
 
 {#if hasLocalDb()}
-  <button
-    onclick={onClick}
-    disabled={syncStore.syncing}
-    title={syncState === 'error'
-      ? (syncStore.lastError ?? 'Sync error')
-      : syncState === 'offline'
-      ? 'No connection to your sempa server. Changes are saved locally and will sync when you reconnect.'
-      : 'Click to sync now'}
-    class="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] transition-colors"
-    style="color: {color}; background: transparent;"
-    onmouseenter={(e) => ((e.currentTarget as HTMLElement).style.background = 'var(--sempa-bg-hover, rgba(0,0,0,0.05))')}
-    onmouseleave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}>
-    <span class="flex-shrink-0" class:spin={syncStore.syncing}>
-      {#if syncState === 'syncing'}
-        <RefreshCw size={13} strokeWidth={1.75} />
-      {:else if syncState === 'error'}
-        <CloudAlert size={13} strokeWidth={1.75} />
-      {:else if syncState === 'offline'}
-        <CloudOff size={13} strokeWidth={1.75} />
-      {:else if syncState === 'pending'}
-        <CloudUpload size={13} strokeWidth={1.75} />
-      {:else}
-        <Cloud size={13} strokeWidth={1.75} />
+  <div class="fixed z-[60]"
+       style="right: 16px; bottom: {mobile.value ? 'calc(env(safe-area-inset-bottom, 0px) + 92px)' : '16px'};">
+    <button
+      onclick={onClick}
+      onmouseenter={() => (hovered = true)}
+      onmouseleave={() => (hovered = false)}
+      onfocus={() => (hovered = true)}
+      onblur={() => (hovered = false)}
+      disabled={syncStore.syncing}
+      title={syncState === 'error'
+        ? (syncStore.lastError ?? 'Sync error')
+        : syncState === 'offline'
+        ? 'No connection to your sempa server. Changes are saved locally and will sync when you reconnect.'
+        : 'Click to sync now'}
+      class="flex items-center gap-2 rounded-full px-2 py-2 shadow-md transition-colors"
+      style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border); color: {color};">
+      <span class="flex h-4 w-4 items-center justify-center" class:spin={syncStore.syncing}>
+        {#if syncState === 'syncing'}
+          <RefreshCw size={15} strokeWidth={1.75} />
+        {:else if syncState === 'error'}
+          <CloudAlert size={15} strokeWidth={1.75} />
+        {:else if syncState === 'offline'}
+          <CloudOff size={15} strokeWidth={1.75} />
+        {:else if syncState === 'pending'}
+          <CloudUpload size={15} strokeWidth={1.75} />
+        {:else}
+          <Cloud size={15} strokeWidth={1.75} />
+        {/if}
+      </span>
+      {#if showLabel}
+        <span class="whitespace-nowrap pr-1 text-[11px]" transition:fade={{ duration: 140 }}>{label}</span>
       {/if}
-    </span>
-    <span class="truncate">{label}</span>
-  </button>
+    </button>
+  </div>
 {/if}
 
 <style>

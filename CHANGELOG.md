@@ -6,6 +6,26 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.117] - 2026-06-14
+
+### Added
+- **AI model management.** Settings → Integrations → AI now lists every downloaded
+  model with its on-disk **size**, lets you pick the active one, **download a new
+  model with a live progress bar**, and **remove** a model (with a confirm that it
+  must be re-downloaded). Backed by new server endpoints that proxy Ollama
+  pull/delete and report progress.
+- **Action feedback in AI settings.** Test/Save and model actions now report clearly
+  ("Connected · N models", "AI settings saved", "Nothing to save", "Downloaded X",
+  "Removed X") instead of silently doing nothing.
+
+### Changed
+- **Sync status is now a floating widget** (bottom-right): a permanent compact cloud
+  icon (cloud-off when offline) whose label fades in only on hover, while
+  syncing/pending/offline/errored, or briefly after a sync — freeing the left rail.
+  The sidebar footer (utility icons + account) is correspondingly shorter.
+- **Platform-correct keyboard shortcuts.** The Search hint shows `Ctrl+K` on
+  Windows/Linux and `⌘K` on macOS, and the shortcut now actually opens Search.
+
 ## [1.0.116] - 2026-06-14
 
 ### Fixed

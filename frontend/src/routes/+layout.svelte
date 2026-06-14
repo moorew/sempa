@@ -24,6 +24,7 @@
   import { Capacitor } from '@capacitor/core';
   import { api, getServerUrl, getTauriToken, clearTauriToken, clearNativeToken, resetApiResolver } from '$lib/api';
   import { isTauri, hasLocalDb, onSyncTrigger } from '$lib/tauri/bridge';
+  import { shortcutLabel } from '$lib/platform';
   import { startSync, sync as runSync, syncStore } from '$lib/sync.svelte';
   import PomodoroTimer from '$lib/components/PomodoroTimer.svelte';
   import BottomSheet from '$lib/components/BottomSheet.svelte';
@@ -97,6 +98,12 @@
   function handleKeydown(e: KeyboardEvent) {
     if (isLoginPage) return;
     const tgt = e.target as HTMLElement;
+    // Cmd/Ctrl+K opens Search from anywhere (even while typing in a field).
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+      e.preventDefault();
+      goto('/search');
+      return;
+    }
     if (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
 
@@ -432,7 +439,7 @@
           <Search size={15} strokeWidth={1.75} />
           <span>Search</span>
           <kbd class="ml-auto rounded border px-1.5 font-mono text-[10.5px]"
-               style="border-color: var(--sempa-border);">⌘K</kbd>
+               style="border-color: var(--sempa-border);">{shortcutLabel('K')}</kbd>
         </button>
       {/if}
 
@@ -462,11 +469,10 @@
         </div>
       {/if}
 
-      <!-- Rail footer: utility icons spread across the row, the sync status, and
-           a full-width account chip (avatar + email + Sign out). Spreading the
-           icons (justify-between) and giving sync + account their own rows keeps
-           everything legible — no cramped clump, no orphaned avatar. -->
-      <div class="mt-auto flex flex-col gap-3.5 pt-4" style="border-top: 1px solid var(--sempa-border);">
+      <!-- Rail footer: a compact utility icon row and a full-width account chip
+           (avatar + email + Sign out). Sync status now lives in a floating
+           bottom-right widget, so the footer stays short. -->
+      <div class="mt-auto flex flex-col gap-2 pt-3" style="border-top: 1px solid var(--sempa-border);">
         <!-- Utility icon row -->
         <div class="flex items-center justify-between">
           {#if updates.available}
@@ -504,9 +510,6 @@
             </button>
           {/if}
         </div>
-
-        <!-- Sync status (renders nothing on plain web). -->
-        <SyncIndicator />
 
         <!-- Account chip — avatar + identity; the "Sign out" line is the affordance. -->
         <button onclick={signOut} title={accountEmail ? `${accountEmail} — sign out` : 'Sign out'}
@@ -695,9 +698,10 @@
   <PomodoroTimer />
 {/if}
 
-<!-- ── In-app update toast (main window only) ───────────────────────────── -->
+<!-- ── In-app update toast + floating sync status (main window only) ─────── -->
 {#if !isStandaloneWindow}
   <UpdateToast />
+  <SyncIndicator />
 {/if}
 
 <!-- ── Intro animation overlay ──────────────────────────────────────────── -->

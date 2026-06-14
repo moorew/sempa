@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/subtle"
 	"database/sql"
 	"encoding/json"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -23,12 +25,26 @@ import (
 	"github.com/clevercode/sempa/internal/integrations/jira"
 )
 
+// pullState tracks an in-flight model download so the UI can poll its progress
+// (a background goroutine runs the actual pull; this is updated as it streams).
+type pullState struct {
+	Status    string `json:"status"`
+	Completed int64  `json:"completed"`
+	Total     int64  `json:"total"`
+	Done      bool   `json:"done"`
+	Error     string `json:"error"`
+}
+
 type integrationHandler struct {
 	db         *sql.DB
 	configs    *db.IntegrationConfigStore
 	tasks      *db.TaskStore
 	fmCalStore *db.FastmailCalStore
 	cfg        config.Config
+
+	// Active/most-recent model pulls, keyed by model name. Guarded by pullsMu.
+	pullsMu sync.Mutex
+	pulls   map[string]*pullState
 }
 
 // ── Jira ─────────────────────────────────────────────────────────────────────
@@ -881,9 +897,9 @@ func (h *integrationHandler) aiTitleGet(w http.ResponseWriter, r *http.Request) 
 		"base_url":         ai.BaseURL,
 		"model":            ai.Model,
 		"reachable":        false,
-		"available_models": []string{},
+		"available_models": []fastmail.ModelInfo{},
 	}
-	if models, err := fastmail.ListModels(r.Context(), ai.BaseURL); err == nil {
+	if models, err := fastmail.ListModelsDetailed(r.Context(), ai.BaseURL); err == nil {
 		resp["reachable"] = true
 		resp["available_models"] = models
 	}
@@ -936,12 +952,119 @@ func (h *integrationHandler) aiTitleTest(w http.ResponseWriter, r *http.Request)
 	if baseURL == "" {
 		baseURL = h.configs.ResolveAITitle(r.Context(), h.cfg.OllamaBaseURL, h.cfg.OllamaModel).BaseURL
 	}
-	models, err := fastmail.ListModels(r.Context(), baseURL)
+	models, err := fastmail.ListModelsDetailed(r.Context(), baseURL)
 	if err != nil {
-		respond(w, http.StatusOK, map[string]any{"reachable": false, "error": err.Error(), "models": []string{}})
+		respond(w, http.StatusOK, map[string]any{"reachable": false, "error": err.Error(), "models": []fastmail.ModelInfo{}})
 		return
 	}
 	respond(w, http.StatusOK, map[string]any{"reachable": true, "models": models})
+}
+
+// resolveOllamaURL returns the request's base_url override, else the configured one.
+func (h *integrationHandler) resolveOllamaURL(ctx context.Context, override string) string {
+	if u := strings.TrimSpace(override); u != "" {
+		return u
+	}
+	return h.configs.ResolveAITitle(ctx, h.cfg.OllamaBaseURL, h.cfg.OllamaModel).BaseURL
+}
+
+// aiTitlePull starts (or no-ops if already running) a background model download
+// and returns the current progress snapshot. The UI polls aiTitlePullStatus.
+func (h *integrationHandler) aiTitlePull(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Model   string `json:"model"`
+		BaseURL string `json:"base_url"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	model := strings.TrimSpace(body.Model)
+	if model == "" {
+		respondError(w, http.StatusBadRequest, "model required")
+		return
+	}
+	baseURL := h.resolveOllamaURL(r.Context(), body.BaseURL)
+
+	h.pullsMu.Lock()
+	if h.pulls == nil {
+		h.pulls = map[string]*pullState{}
+	}
+	st := h.pulls[model]
+	if st == nil || st.Done {
+		st = &pullState{Status: "starting"}
+		h.pulls[model] = st
+		go h.runPull(baseURL, model, st)
+	}
+	snapshot := *st
+	h.pullsMu.Unlock()
+	respond(w, http.StatusOK, snapshot)
+}
+
+// runPull executes the download in the background, updating st as it streams.
+// Uses a detached context so it survives the originating HTTP request.
+func (h *integrationHandler) runPull(baseURL, model string, st *pullState) {
+	err := fastmail.PullModel(context.Background(), baseURL, model, func(p fastmail.PullProgress) {
+		h.pullsMu.Lock()
+		st.Status = p.Status
+		st.Completed = p.Completed
+		st.Total = p.Total
+		h.pullsMu.Unlock()
+	})
+	h.pullsMu.Lock()
+	st.Done = true
+	if err != nil {
+		st.Error = err.Error()
+	} else {
+		st.Status = "success"
+	}
+	h.pullsMu.Unlock()
+}
+
+// aiTitlePullStatus returns the latest progress for a model pull.
+func (h *integrationHandler) aiTitlePullStatus(w http.ResponseWriter, r *http.Request) {
+	model := strings.TrimSpace(r.URL.Query().Get("model"))
+	if model == "" {
+		respondError(w, http.StatusBadRequest, "model required")
+		return
+	}
+	h.pullsMu.Lock()
+	st := h.pulls[model]
+	var snapshot pullState
+	if st != nil {
+		snapshot = *st
+	} else {
+		snapshot = pullState{Status: "idle", Done: true}
+	}
+	h.pullsMu.Unlock()
+	respond(w, http.StatusOK, snapshot)
+}
+
+// aiTitleRemove deletes a model from the Ollama host to reclaim disk space.
+func (h *integrationHandler) aiTitleRemove(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Model   string `json:"model"`
+		BaseURL string `json:"base_url"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	model := strings.TrimSpace(body.Model)
+	if model == "" {
+		respondError(w, http.StatusBadRequest, "model required")
+		return
+	}
+	baseURL := h.resolveOllamaURL(r.Context(), body.BaseURL)
+	if err := fastmail.DeleteModel(r.Context(), baseURL, model); err != nil {
+		respondError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	// Clear any cached pull state so a future re-download starts fresh.
+	h.pullsMu.Lock()
+	delete(h.pulls, model)
+	h.pullsMu.Unlock()
+	h.aiTitleGet(w, r)
 }
 
 // ── Fastmail inbox panel ──────────────────────────────────────────────────

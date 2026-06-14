@@ -20,3 +20,20 @@ export function isCapacitor(): boolean {
 export function hasLocalDb(): boolean {
     return isTauri() || isCapacitor();
 }
+
+/** True on macOS / iOS, where the platform modifier is ⌘ rather than Ctrl. */
+export function isMac(): boolean {
+    if (typeof navigator === 'undefined') return false;
+    const p = `${navigator.platform ?? ''} ${navigator.userAgent ?? ''}`;
+    return /Mac|iPhone|iPad|iPod/i.test(p);
+}
+
+/** Platform-correct modifier label: "⌘" on macOS/iOS, "Ctrl" elsewhere. */
+export function modKey(): string {
+    return isMac() ? '⌘' : 'Ctrl';
+}
+
+/** A shortcut label for the current platform, e.g. "⌘K" (mac) or "Ctrl+K". */
+export function shortcutLabel(key: string): string {
+    return isMac() ? `⌘${key}` : `Ctrl+${key}`;
+}
