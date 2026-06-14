@@ -10,3 +10,10 @@ rules:
       # from these builds as defense-in-depth.
       - android-release.yml
       - windows-release.yml
+  superfluous-actions:
+    ignore:
+      # softprops/action-gh-release is intentional: it cleanly handles release-
+      # note generation and multi-file uploads. zizmor suggests `gh release` in a
+      # script step, but the action is preferred and already proven in releases.
+      - android-release.yml
+      - windows-release.yml
