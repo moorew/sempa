@@ -17,6 +17,8 @@ A self-hosted personal task manager for everyone.
 
 Plan your day, track focused work, and end each day with intention — with your email and calendar pulled in automatically.
 
+## Full details, docs and downloads available at [sempa.ca](https://sempa.ca)
+
 ---
 
 ## Features
