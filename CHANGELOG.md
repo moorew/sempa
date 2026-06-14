@@ -6,6 +6,17 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.118] - 2026-06-14
+
+### Fixed
+- **Backups failing silently with "refresh returned HTTP 400".** When the Google
+  Drive refresh token expires or is revoked (Google returns `invalid_grant` — OAuth
+  apps still in "Testing" status expire refresh tokens after 7 days), the error is now
+  recognised as **re-auth required**. Backup → Google Drive shows a clear amber
+  "Google access expired — Reconnect" banner (with a tip to publish the OAuth app so
+  tokens stop expiring weekly) instead of reading as "Connected" while every backup
+  fails. The token refresh error also now includes Google's actual message.
+
 ## [1.0.117] - 2026-06-14
 
 ### Added

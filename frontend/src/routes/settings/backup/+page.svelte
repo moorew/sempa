@@ -22,6 +22,7 @@
   let lastRunAt = $state<string | null>(null);
   let lastStatus = $state<string | null>(null);
   let driveConnected = $state(false);
+  let driveNeedsReconnect = $state(false);
   let googleOAuth = $state(false);
 
   // Manual restore
@@ -76,7 +77,11 @@
   }
 
   async function refreshDriveStatus() {
-    try { driveConnected = (await api.backup.driveStatus()).connected; } catch { /* ignore */ }
+    try {
+      const s = await api.backup.driveStatus();
+      driveConnected = s.connected;
+      driveNeedsReconnect = !!s.needs_reconnect;
+    } catch { /* ignore */ }
   }
 
   async function load() {
@@ -95,6 +100,9 @@
       lastStatus = s.last_status;
       driveConnected = r.drive_connected;
       googleOAuth = r.google_oauth;
+      // Probe the live Drive token so an expired/revoked one surfaces a reconnect
+      // prompt rather than reading as "connected" while every backup fails.
+      if (r.drive_connected) void refreshDriveStatus();
     } catch (e) {
       error = e instanceof Error ? e.message : 'Failed to load backup settings';
     } finally {
@@ -398,9 +406,20 @@
               </div>
             {:else if dest.type === 'drive'}
               <div class="space-y-2">
-                {#if driveConnected}
+                {#if driveConnected && driveNeedsReconnect}
+                  <div class="rounded-lg border px-3 py-2" style="border-color: color-mix(in srgb, var(--sempa-amber) 40%, transparent); background: color-mix(in srgb, var(--sempa-amber) 8%, transparent);">
+                    <p class="text-xs" style="color: var(--sempa-amber);">
+                      Google access expired — backups are failing. Reconnect to restore them.
+                      <span style="color: var(--sempa-text-dim);">(Tip: publish your Google OAuth app to stop tokens expiring every 7 days.)</span>
+                    </p>
+                    <button onclick={connectDrive}
+                            class="mt-2 rounded-md px-3 py-1.5 text-xs font-medium text-white" style="background: var(--sempa-amber);">
+                      Reconnect Google Drive
+                    </button>
+                  </div>
+                {:else if driveConnected}
                   <p class="text-xs" style="color: var(--sempa-text-soft);">
-                    <span class="text-green-600">Connected.</span> Backups go to a “Sempa Backups” folder.
+                    <span style="color: var(--sempa-success);">Connected.</span> Backups go to a “Sempa Backups” folder.
                     <button onclick={disconnectDrive} class="ml-1 text-red-400 hover:text-red-500">Disconnect</button>
                   </p>
                 {:else if googleOAuth}
