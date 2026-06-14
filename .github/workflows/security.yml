@@ -29,17 +29,28 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Go doesn't support build-mode "none"; build the backend module manually.
           - language: go
-            build-mode: none
+            build-mode: manual
           - language: javascript-typescript
             build-mode: none
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
+      - name: Build Go backend (manual build mode)
+        if: matrix.language == 'go'
+        working-directory: backend
+        run: go build ./...
       - name: Analyze
         uses: github/codeql-action/analyze@v3
         with:
@@ -78,7 +89,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Trivy scan (SARIF report)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -94,7 +105,7 @@ jobs:
           sarif_file: trivy-results.sarif
           category: trivy
       - name: Fail on fixable HIGH/CRITICAL CVEs
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .

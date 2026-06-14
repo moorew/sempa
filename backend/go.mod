@@ -1,11 +1,11 @@
 module github.com/clevercode/sempa
 
-go 1.25.3
+go 1.25.11
 
 require (
 	github.com/emersion/go-imap/v2 v2.0.0-beta.8
 	github.com/emersion/go-smtp v0.24.0
-	github.com/go-chi/chi/v5 v5.2.1
+	github.com/go-chi/chi/v5 v5.2.2
 	github.com/go-chi/cors v1.2.1
 	github.com/google/uuid v1.6.0
 	golang.org/x/crypto v0.52.0
