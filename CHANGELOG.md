@@ -6,6 +6,13 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.119] - 2026-06-14
+
+### Fixed
+- **Mobile: the floating sync status no longer covers the "+" button.** On mobile the
+  sync widget now sits in the bottom-left (above the tab bar); the bottom-right corner
+  is left to the task-creation FAB. Desktop is unchanged (bottom-right).
+
 ## [1.0.118] - 2026-06-14
 
 ### Fixed
