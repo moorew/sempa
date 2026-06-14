@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -827,8 +828,12 @@ func (h *integrationHandler) taskInboxSync(w http.ResponseWriter, r *http.Reques
 		respondError(w, http.StatusInternalServerError, "malformed config")
 		return
 	}
-	inboxCfg.OllamaBaseURL = h.cfg.OllamaBaseURL
-	inboxCfg.OllamaModel = h.cfg.OllamaModel
+	ai := h.configs.ResolveAITitle(r.Context(), h.cfg.OllamaBaseURL, h.cfg.OllamaModel)
+	inboxCfg.OllamaBaseURL = ""
+	if ai.Enabled {
+		inboxCfg.OllamaBaseURL = ai.BaseURL
+	}
+	inboxCfg.OllamaModel = ai.Model
 	result, err := fastmail.SyncTaskInbox(r.Context(), inboxCfg, h.tasks)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
@@ -848,6 +853,95 @@ func (h *integrationHandler) taskInboxDelete(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// ── AI task-title cleanup (local Ollama) ──────────────────────────────────
+
+// validModelServerURL accepts an empty string (falls back to the env default)
+// or a well-formed http(s) URL with a host. It deliberately permits internal/
+// loopback hosts — the self-hosted model server lives there; see the SSRF note
+// in fastmail/aititle.go.
+func validModelServerURL(raw string) bool {
+	if raw == "" {
+		return true
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	return (u.Scheme == "http" || u.Scheme == "https") && u.Host != ""
+}
+
+// aiTitleGet returns the effective AI title-cleanup config plus a live
+// reachability check and the models available on the configured Ollama host.
+func (h *integrationHandler) aiTitleGet(w http.ResponseWriter, r *http.Request) {
+	ai := h.configs.ResolveAITitle(r.Context(), h.cfg.OllamaBaseURL, h.cfg.OllamaModel)
+	resp := map[string]any{
+		"enabled":          ai.Enabled,
+		"base_url":         ai.BaseURL,
+		"model":            ai.Model,
+		"reachable":        false,
+		"available_models": []string{},
+	}
+	if models, err := fastmail.ListModels(r.Context(), ai.BaseURL); err == nil {
+		resp["reachable"] = true
+		resp["available_models"] = models
+	}
+	respond(w, http.StatusOK, resp)
+}
+
+// aiTitleUpdate saves the enable flag, Ollama base URL, and model.
+func (h *integrationHandler) aiTitleUpdate(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Enabled bool   `json:"enabled"`
+		BaseURL string `json:"base_url"`
+		Model   string `json:"model"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	// Validate the model-server URL. It is admin-configured and intentionally
+	// allowed to point at internal/loopback hosts (the self-hosted model server
+	// lives there) — see the SSRF note in fastmail/aititle.go — but it must at
+	// least be a well-formed http(s) URL with a host.
+	baseURL := strings.TrimSpace(body.BaseURL)
+	if !validModelServerURL(baseURL) {
+		respondError(w, http.StatusBadRequest, "model server URL must be a valid http(s) URL")
+		return
+	}
+	cfgJSON, _ := json.Marshal(db.AITitleConfig{
+		BaseURL: baseURL,
+		Model:   strings.TrimSpace(body.Model),
+	})
+	if _, err := h.configs.Upsert(r.Context(), uuid.New().String(), db.AITitleType, string(cfgJSON)); err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if err := h.configs.SetEnabled(r.Context(), db.AITitleType, body.Enabled); err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	h.aiTitleGet(w, r)
+}
+
+// aiTitleTest pings a candidate Ollama base URL (or the configured one) so the
+// settings UI can verify connectivity before saving.
+func (h *integrationHandler) aiTitleTest(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		BaseURL string `json:"base_url"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	baseURL := strings.TrimSpace(body.BaseURL)
+	if baseURL == "" {
+		baseURL = h.configs.ResolveAITitle(r.Context(), h.cfg.OllamaBaseURL, h.cfg.OllamaModel).BaseURL
+	}
+	models, err := fastmail.ListModels(r.Context(), baseURL)
+	if err != nil {
+		respond(w, http.StatusOK, map[string]any{"reachable": false, "error": err.Error(), "models": []string{}})
+		return
+	}
+	respond(w, http.StatusOK, map[string]any{"reachable": true, "models": models})
 }
 
 // ── Fastmail inbox panel ──────────────────────────────────────────────────

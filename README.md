@@ -200,6 +200,7 @@ Generate one at [Tailscale Admin → Keys](https://login.tailscale.com/admin/set
 | `SMTP_PORT` | Port for the built-in inbound SMTP server (default: `2525`) |
 | `VAPID_SUBJECT` | Web Push contact address (e.g. `mailto:you@example.com`); the VAPID key pair auto-generates |
 | `FCM_KEY_PATH` | Path to a Firebase service-account JSON key for native Android push |
+| `OLLAMA_BASE_URL` | Ollama endpoint for AI task-title cleanup (default: the bundled `ollama` service). These set the defaults; the feature can also be toggled and the model chosen in **Settings → Integrations**. |
 | `OLLAMA_MODEL` | Local model for AI task-title cleanup (default: `qwen2.5:1.5b`, bundled — no API key) |
 | `INBOX_POLL_INTERVAL` | How often to poll the email inbox (default: `1m`) |
 | `CALENDAR_POLL_INTERVAL` | How often to refresh ICS subscriptions + the Fastmail calendar (default: `15m`; empty disables) |
@@ -219,6 +220,17 @@ All integrations are optional and configured through the Settings UI after first
 | **Jira** | Imports assigned issues as tasks. Marking a Jira-sourced task done closes the ticket. |
 | **Calendar feeds (ICS)** | Subscribe to any `.ics` / webcal URL for read-only events. |
 | **Email inbox** | Forward any email to a Fastmail address to auto-create a task. |
+| **AI task-title cleanup** | A local language model (Ollama, bundled) tidies imported email subjects into concise task titles. Runs entirely on your server — no data leaves it. Toggle, choose the model, and test connectivity in Settings → Integrations. |
+
+> **Note on the model-server URL (AI task-title cleanup).** The Ollama endpoint
+> is configurable in Settings → Integrations and may point at an internal /
+> loopback address — that's by design, because the model server is self-hosted
+> (e.g. `http://ollama:11434`). Static analysis (CodeQL `go/request-forgery`)
+> flags this as a possible SSRF because a configured URL drives a server-side
+> request. It's a **deliberate, accepted trade-off**: the URL is settable only
+> by the authenticated instance owner (who already controls the server), is
+> validated to be a well-formed `http(s)` URL, and restricting it to public
+> hosts would defeat the feature. See `SECURITY.md`.
 
 ---
 
