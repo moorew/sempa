@@ -6,6 +6,28 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.120] - 2026-06-14
+
+### Added
+- **AI assist (local model) across the app — all opt-in per feature** (Settings →
+  Integrations → AI → "AI features"; each also requires the model to be reachable):
+  - **Natural-language quick add** — the task title field gets a ✦ that parses
+    "lunch w/ Sam thu 1pm 30m #personal" into title, date, time, estimate, and tags.
+  - **Suggest tags** — ✦ on the task tag editor proposes tags from your existing set.
+  - **Break into subtasks** — ✦ on a task creates a few concrete subtasks.
+  - **Email/Jira → task summary + estimate** endpoint (shared helper).
+  - **Plan my day** — Plan Day suggests an order for today's tasks around your events.
+  - **Draft weekly review** — Week Review fills wins / challenges / next-focus from the week.
+  - **Reflection prompts** — Shutdown suggests context-aware end-of-day questions.
+  - New backend `internal/ai` client + `/api/v1/ai/*` endpoints; everything runs on
+    your local Ollama model — nothing leaves the server.
+
+### Changed
+- **Mobile sync status is now hidden at rest.** It only appears while
+  syncing/pending/offline/errored (bottom-left, above the tab bar) and disappears
+  when synced, so it never sits on top of content. Desktop keeps the permanent
+  bottom-right cloud.
+
 ## [1.0.119] - 2026-06-14
 
 ### Fixed

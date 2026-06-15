@@ -32,6 +32,7 @@
   import SyncIndicator from '$lib/components/SyncIndicator.svelte';
   import UpdateToast from '$lib/components/UpdateToast.svelte';
   import { updates } from '$lib/stores/updates.svelte';
+  import { aiStatus } from '$lib/stores/aiStatus.svelte';
   import { realtime } from '$lib/stores/realtime.svelte';
   import type { Snippet } from 'svelte';
 
@@ -137,6 +138,10 @@
     // Background check for a newer release (throttled to ~6h; honours the user's
     // "Automatic checks" preference). Surfaces the rail indicator + update toast.
     updates.maybeAutoCheck();
+
+    // Learn whether the local AI model is reachable so AI-assist buttons only
+    // appear when they'll actually work.
+    void aiStatus.load();
 
     // Desktop floating reminder card (Tauri only; self-guards). Binds the popup
     // window's action listeners once, in the main window.

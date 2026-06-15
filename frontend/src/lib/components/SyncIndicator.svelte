@@ -90,9 +90,11 @@
   }
 </script>
 
-{#if hasLocalDb()}
-  <!-- Desktop: bottom-right. Mobile: bottom-LEFT, above the tab bar — the
-       bottom-right corner there belongs to the task-creation FAB. -->
+{#if hasLocalDb() && (!mobile.value || persistent)}
+  <!-- Desktop: a permanent compact cloud, bottom-right. Mobile: stays HIDDEN in
+       the resting "synced" state (it only appears while syncing/pending/offline/
+       errored), so it never sits on top of content; shown bottom-left, above the
+       tab bar, clear of the task-creation FAB. -->
   <div class="fixed z-[60]"
        style={mobile.value
          ? 'left: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);'
