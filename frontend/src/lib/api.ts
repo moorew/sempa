@@ -25,6 +25,24 @@ import type {
   WeekReview,
 } from './types';
 
+/** A model available on the Ollama host, with its on-disk size in bytes. */
+export interface AiModel { name: string; size: number }
+export interface AiTitleConfig {
+  enabled: boolean;
+  base_url: string;
+  model: string;
+  reachable: boolean;
+  available_models: AiModel[];
+}
+/** Progress snapshot of an in-flight model download. */
+export interface AiPullState {
+  status: string;
+  completed: number;
+  total: number;
+  done: boolean;
+  error: string;
+}
+
 // Resolve the API base URL:
 // 1. Build-time env var (dev): VITE_API_URL
 // 2. Runtime user-configured server (mobile/native): stored in localStorage
@@ -90,7 +108,7 @@ export function clearNativeToken() {
 // path (connect probe, auth, sync), not just ones a caller remembered to wrap.
 const REQUEST_TIMEOUT_MS = 15_000;
 
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
+async function req<T>(path: string, init?: RequestInit, timeoutMs: number = REQUEST_TIMEOUT_MS): Promise<T> {
   const base = getBaseUrl();
   const extraHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
 
@@ -99,7 +117,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   if (bearerToken) extraHeaders['Authorization'] = `Bearer ${bearerToken}`;
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   let res: Response;
   try {
     res = await fetch(`${base}${path}`, {
@@ -230,6 +248,36 @@ const httpApi = {
   unfurlImageUrl: (imageUrl: string) =>
     authedFileUrl(`/api/v1/unfurl/image?url=${encodeURIComponent(imageUrl)}`),
 
+  // AI-assist features — all run on the instance's local model. Each returns
+  // { available: false } when AI is off, so callers hide the feature. A long
+  // timeout accommodates CPU inference on small models.
+  ai: {
+    quickAdd: (text: string, today: string, tags: string[]) =>
+      req<{ available: boolean; title?: string; planned_date?: string; time_estimate_minutes?: number; reminder_at?: string; tags?: string[] }>(
+        '/api/v1/ai/quick-add', { method: 'POST', body: body({ text, today, tags }) }, 90_000),
+    summarize: (title: string, bodyText: string) =>
+      req<{ available: boolean; summary?: string; time_estimate_minutes?: number }>(
+        '/api/v1/ai/summarize', { method: 'POST', body: body({ title, body: bodyText }) }, 90_000),
+    suggestTags: (title: string, notes: string, available_tags: string[]) =>
+      req<{ available: boolean; tags?: string[] }>(
+        '/api/v1/ai/suggest-tags', { method: 'POST', body: body({ title, notes, available_tags }) }, 90_000),
+    breakdown: (title: string, notes: string) =>
+      req<{ available: boolean; subtasks?: string[] }>(
+        '/api/v1/ai/breakdown', { method: 'POST', body: body({ title, notes }) }, 90_000),
+    tidyNotes: (notes: string) =>
+      req<{ available: boolean; notes?: string }>(
+        '/api/v1/ai/tidy-notes', { method: 'POST', body: body({ notes }) }, 90_000),
+    planDay: (date: string, tasks: { id: string; title: string; minutes: number }[], events: { title: string; start: string; end: string }[]) =>
+      req<{ available: boolean; order?: string[]; note?: string }>(
+        '/api/v1/ai/plan-day', { method: 'POST', body: body({ date, tasks, events }) }, 90_000),
+    weeklyReview: (completed: string[], objectives: { title: string; status: string }[]) =>
+      req<{ available: boolean; wins?: string[]; challenges?: string[]; next_focus?: string }>(
+        '/api/v1/ai/weekly-review', { method: 'POST', body: body({ completed, objectives }) }, 90_000),
+    reflectionPrompts: (done: string[], undone: string[]) =>
+      req<{ available: boolean; prompts?: string[] }>(
+        '/api/v1/ai/reflection-prompts', { method: 'POST', body: body({ done, undone }) }, 90_000),
+  },
+
   tasks: {
     listByDate:   (date: string)        => req<Task[]>(`/api/v1/tasks?date=${date}`),
     listByWeek:   (weekStart: string)   => req<Task[]>(`/api/v1/tasks?week_start=${weekStart}&today=${localToday()}`),
@@ -278,7 +326,7 @@ const httpApi = {
       uploadMultipart<{ status: string }>('/api/v1/backup/restore', file,
         passphrase ? { passphrase } : {}, onProgress),
     driveAuthUrl: () => authedFileUrl('/api/v1/backup/drive/auth'),
-    driveStatus: () => req<{ connected: boolean; email?: string }>('/api/v1/backup/drive'),
+    driveStatus: () => req<{ connected: boolean; email?: string; needs_reconnect?: boolean }>('/api/v1/backup/drive'),
     driveDisconnect: () => req<void>('/api/v1/backup/drive', { method: 'DELETE' }),
   },
 
@@ -400,14 +448,21 @@ const httpApi = {
     // subjects into task titles; nothing leaves the server).
     aiTitle: {
       get: () =>
-        req<{ enabled: boolean; base_url: string; model: string; reachable: boolean; available_models: string[] }>(
-          '/api/v1/integrations/ai-title'),
+        req<AiTitleConfig>('/api/v1/integrations/ai-title'),
       save: (cfg: { enabled: boolean; base_url: string; model: string }) =>
-        req<{ enabled: boolean; base_url: string; model: string; reachable: boolean; available_models: string[] }>(
-          '/api/v1/integrations/ai-title', { method: 'PUT', body: body(cfg) }),
+        req<AiTitleConfig>('/api/v1/integrations/ai-title', { method: 'PUT', body: body(cfg) }),
       test: (base_url: string) =>
-        req<{ reachable: boolean; models: string[]; error?: string }>(
+        req<{ reachable: boolean; models: AiModel[]; error?: string }>(
           '/api/v1/integrations/ai-title/test', { method: 'POST', body: body({ base_url }) }),
+      // Start (or no-op if already running) a background model download.
+      pull: (model: string, base_url: string) =>
+        req<AiPullState>('/api/v1/integrations/ai-title/pull', { method: 'POST', body: body({ model, base_url }) }),
+      // Poll the progress of a model download.
+      pullStatus: (model: string) =>
+        req<AiPullState>(`/api/v1/integrations/ai-title/pull?model=${encodeURIComponent(model)}`),
+      // Delete a downloaded model from the Ollama host.
+      remove: (model: string, base_url: string) =>
+        req<AiTitleConfig>('/api/v1/integrations/ai-title/remove', { method: 'POST', body: body({ model, base_url }) }),
     },
 
     calendar: {

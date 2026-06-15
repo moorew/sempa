@@ -5,13 +5,22 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
 )
+
+// ErrReauthRequired means the stored Google refresh token is no longer valid
+// (revoked, or expired — Google returns invalid_grant; OAuth apps still in
+// "Testing" publishing status expire refresh tokens after 7 days). The user must
+// reconnect the account to mint a fresh token. Callers can errors.Is() this to
+// show a "reconnect" prompt rather than an opaque HTTP error.
+var ErrReauthRequired = errors.New("Google authorization expired — please reconnect the account")
 
 const (
 	authURL  = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -158,7 +167,14 @@ func RefreshAccessToken(ctx context.Context, clientID, clientSecret string, stor
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("refresh returned HTTP %d", resp.StatusCode)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+		msg := strings.TrimSpace(string(body))
+		// invalid_grant means the refresh token is dead — surface as reauth-required
+		// so the UI prompts a reconnect instead of showing a raw HTTP 400.
+		if resp.StatusCode == http.StatusBadRequest && strings.Contains(msg, "invalid_grant") {
+			return ErrReauthRequired
+		}
+		return fmt.Errorf("refresh returned HTTP %d: %s", resp.StatusCode, msg)
 	}
 	var tr tokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tr); err != nil {

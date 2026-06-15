@@ -2,11 +2,22 @@
   import { onMount, tick } from 'svelte';
   import { page } from '$app/stores';
   import { api, getServerUrl, clearTauriToken, clearNativeToken, resetApiResolver } from '$lib/api';
+  import type { AiTitleConfig } from '$lib/api';
   import { theme } from '$lib/stores/theme.svelte';
-  import { prefs } from '$lib/stores/prefs.svelte';
+  import { prefs, AI_FEATURE_META } from '$lib/stores/prefs.svelte';
+  import { aiStatus as aiAvail } from '$lib/stores/aiStatus.svelte';
+  import { isTauri, openExternal } from '$lib/tauri/bridge';
+
+  // OAuth connect: on desktop open in the OS browser (navigating the main webview
+  // to a remote origin would strand the app off the local DB); on web follow the
+  // link normally.
+  function oauthConnect(e: MouseEvent, url: string) {
+    if (isTauri()) { e.preventDefault(); void openExternal(url); }
+  }
   import { mobile } from '$lib/stores/mobile.svelte';
   import { realtime } from '$lib/stores/realtime.svelte';
   import { goto } from '$app/navigation';
+  import UpdatesPanel from '$lib/components/UpdatesPanel.svelte';
 
   // ── Account / profile ──────────────────────────────────────────────────────
   let me = $state<{ authenticated: boolean; auth_enabled?: boolean; google_enabled?: boolean; email?: string }>({ authenticated: false });
@@ -62,11 +73,33 @@
   }>({ connected: false });
 
   // AI task-title cleanup (local Ollama model — tidies imported email subjects)
-  let aiTitle = $state<{ enabled: boolean; base_url: string; model: string; reachable: boolean; available_models: string[] }>(
+  let aiTitle = $state<AiTitleConfig>(
     { enabled: false, base_url: '', model: '', reachable: false, available_models: [] });
   let aiSaving = $state(false);
   let aiTesting = $state(false);
   let aiError = $state('');
+  let aiStatus = $state('');                 // transient success/info feedback
+  let aiBaseline: { enabled: boolean; base_url: string; model: string } | null = null;
+  let aiPullModel = $state('');              // model name to download
+  let aiPulling = $state(false);
+  let aiPullPct = $state(0);
+  let aiPullLabel = $state('');
+  let aiRemoving = $state('');               // model currently being removed
+  let aiStatusTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function fmtBytes(n: number): string {
+    if (!n) return '';
+    const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let v = n, i = 0;
+    while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+    return `${v.toFixed(v < 10 && i > 0 ? 1 : 0)} ${u[i]}`;
+  }
+
+  function flashAiStatus(msg: string) {
+    aiStatus = msg; aiError = '';
+    if (aiStatusTimer) clearTimeout(aiStatusTimer);
+    aiStatusTimer = setTimeout(() => { aiStatus = ''; }, 4000);
+  }
 
   // Fastmail connect form
   let fmEmail = $state('');
@@ -102,6 +135,7 @@
     { id: 'integrations', label: 'Integrations' },
     { id: 'tasks', label: 'Tasks' },
     { id: 'appearance', label: 'Appearance' },
+    { id: 'about', label: 'About' },
   ] as const;
 
   // Integrations (Gmail / Fastmail / Jira / calendar OAuth) are managed on
@@ -142,6 +176,7 @@
     jira      = val(5, { connected: false });
     caldav    = val(6, { connected: false });
     aiTitle   = val(7, { enabled: false, base_url: '', model: '', reachable: false, available_models: [] });
+    aiBaseline = { enabled: aiTitle.enabled, base_url: aiTitle.base_url, model: aiTitle.model };
 
     serverUnreachable = results.every((r) => r.status === 'rejected');
 
@@ -320,7 +355,13 @@
   }
 
   // ── AI task-title cleanup ──────────────────────────────────────────────────
-  async function saveAiTitle() {
+  async function saveAiTitle(successMsg = 'AI settings saved') {
+    // Skip a no-op save so the button always gives clear feedback.
+    const dirty = !aiBaseline
+      || aiBaseline.enabled !== aiTitle.enabled
+      || aiBaseline.base_url !== aiTitle.base_url.trim()
+      || aiBaseline.model !== aiTitle.model.trim();
+    if (!dirty) { flashAiStatus('Nothing to save'); return; }
     aiSaving = true;
     aiError = '';
     try {
@@ -329,11 +370,21 @@
         base_url: aiTitle.base_url.trim(),
         model: aiTitle.model.trim(),
       });
+      aiBaseline = { enabled: aiTitle.enabled, base_url: aiTitle.base_url, model: aiTitle.model };
+      void aiAvail.refresh();
+      flashAiStatus(successMsg);
     } catch (e) {
       aiError = e instanceof Error ? e.message : 'Failed to save';
     } finally {
       aiSaving = false;
     }
+  }
+
+  // Flip the feature on/off with explicit feedback (disabling keeps any
+  // downloaded model — remove it from the model list if you want the disk back).
+  async function toggleAi() {
+    aiTitle.enabled = !aiTitle.enabled;
+    await saveAiTitle(aiTitle.enabled ? 'AI enabled' : 'AI disabled');
   }
 
   async function testAiTitle() {
@@ -342,11 +393,68 @@
     try {
       const res = await api.integrations.aiTitle.test(aiTitle.base_url.trim());
       aiTitle = { ...aiTitle, reachable: res.reachable, available_models: res.models ?? [] };
-      if (!res.reachable) aiError = res.error ? `Not reachable: ${res.error}` : 'Not reachable';
+      if (res.reachable) {
+        void aiAvail.refresh();
+        const n = res.models?.length ?? 0;
+        flashAiStatus(`Connected · ${n} model${n === 1 ? '' : 's'} available`);
+      } else {
+        aiError = res.error ? `Not reachable: ${res.error}` : 'Not reachable';
+      }
     } catch (e) {
       aiError = e instanceof Error ? e.message : 'Test failed';
     } finally {
       aiTesting = false;
+    }
+  }
+
+  // Download a model, polling progress so the UI can show a bar. On success the
+  // model list refreshes and the new model becomes the active one.
+  async function pullAiModel() {
+    const name = aiPullModel.trim();
+    if (!name || aiPulling) return;
+    aiPulling = true; aiError = ''; aiStatus = ''; aiPullPct = 0; aiPullLabel = 'Starting…';
+    try {
+      const base = aiTitle.base_url.trim();
+      await api.integrations.aiTitle.pull(name, base);
+      // Poll until done or error.
+      for (;;) {
+        await new Promise((r) => setTimeout(r, 800));
+        const st = await api.integrations.aiTitle.pullStatus(name);
+        aiPullLabel = st.status || 'Downloading…';
+        if (st.total > 0) aiPullPct = Math.min(100, Math.round((st.completed / st.total) * 100));
+        if (st.error) { aiError = `Download failed: ${st.error}`; break; }
+        if (st.done) { aiPullPct = 100; break; }
+      }
+      if (!aiError) {
+        const cfg = await api.integrations.aiTitle.get();
+        aiTitle = { ...cfg, model: name };
+        await api.integrations.aiTitle.save({ enabled: aiTitle.enabled, base_url: base, model: name });
+        aiBaseline = { enabled: aiTitle.enabled, base_url: aiTitle.base_url, model: name };
+        flashAiStatus(`Downloaded ${name}`);
+        aiPullModel = '';
+      }
+    } catch (e) {
+      aiError = e instanceof Error ? e.message : 'Download failed';
+    } finally {
+      aiPulling = false;
+    }
+  }
+
+  // Delete a downloaded model to reclaim disk (with a confirm, since it must be
+  // re-downloaded to use again).
+  async function removeAiModel(name: string) {
+    if (!confirm(`Remove "${name}"?\n\nIt will be deleted from the server and must be downloaded again to use it.`)) return;
+    aiRemoving = name; aiError = ''; aiStatus = '';
+    try {
+      const cfg = await api.integrations.aiTitle.remove(name, aiTitle.base_url.trim());
+      aiTitle = cfg;
+      if (aiTitle.model === name) aiTitle.model = aiTitle.available_models[0]?.name ?? '';
+      aiBaseline = { enabled: aiTitle.enabled, base_url: aiTitle.base_url, model: aiTitle.model };
+      flashAiStatus(`Removed ${name}`);
+    } catch (e) {
+      aiError = e instanceof Error ? e.message : 'Remove failed';
+    } finally {
+      aiRemoving = '';
     }
   }
 
@@ -374,6 +482,10 @@
     <svg class="h-5 w-5" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
       <path stroke-linecap="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9 2 2 4-4"/>
     </svg>
+  {:else if id === 'about'}
+    <svg class="h-5 w-5" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 8h.01M11 12h1v4h1"/>
+    </svg>
   {:else}
     <svg class="h-5 w-5" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
       <circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.07 4.93A10 10 0 1 0 4.93 19.07M12 2v2m0 18v-2m8-8h2M2 12h2m13.66-7.07 1.41-1.41M4.93 19.07l1.41-1.41M19.07 19.07l1.41 1.41M4.93 4.93 3.51 3.51"/>
@@ -385,6 +497,7 @@
   {#if id === 'profile'}{accountEmail ?? 'Signed in'} · sign out
   {:else if id === 'integrations'}Gmail, Fastmail, Jira, Calendars
   {:else if id === 'tasks'}Tags, recurring templates
+  {:else if id === 'about'}Version &amp; updates
   {:else}Theme, text size, mode
   {/if}
 {/snippet}
@@ -466,6 +579,8 @@
             {@render tasksContent()}
           {:else if mobileSection === 'appearance'}
             {@render appearanceContent()}
+          {:else if mobileSection === 'about'}
+            {@render aboutContent()}
           {/if}
         </div>
       </div>
@@ -498,6 +613,7 @@
         {@render integrationsContent()}
         {@render tasksContent()}
         {@render appearanceContent()}
+        {@render aboutContent()}
       </div>
     </div>
   </div>
@@ -620,6 +736,7 @@
           </span>
         {:else}
           <a href={api.integrations.gmail.authUrl(false)}
+             onclick={(e) => oauthConnect(e, api.integrations.gmail.authUrl(false))}
              class="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
              style="border-color: var(--sempa-border); color: var(--sempa-text-soft);">
             Connect &rarr;
@@ -669,6 +786,7 @@
               </button>
             {:else}
               <a href={api.integrations.gmail.authUrl(true)}
+                 onclick={(e) => oauthConnect(e, api.integrations.gmail.authUrl(true))}
                  class="transition-colors"
                  style="color: var(--sempa-accent);">
                 Enable
@@ -1092,7 +1210,7 @@
         <div class="flex-1 min-w-0">
           <div class="flex items-center justify-between gap-2">
             <p class="text-sm font-semibold" style="color: var(--sempa-text);">AI task-title cleanup</p>
-            <button onclick={() => { aiTitle.enabled = !aiTitle.enabled; saveAiTitle(); }}
+            <button onclick={toggleAi}
                     disabled={aiSaving}
                     aria-label="Toggle AI task-title cleanup"
                     class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50"
@@ -1108,40 +1226,86 @@
           </p>
 
           {#if aiTitle.enabled}
-            <div class="mt-3 flex flex-col gap-2.5">
+            <div class="mt-3 flex flex-col gap-3">
+              <!-- Reachability -->
               <div class="flex items-center gap-2 text-xs">
-                <span class="h-1.5 w-1.5 rounded-full" style="background: {aiTitle.reachable ? '#22c55e' : '#f59e0b'};"></span>
+                <span class="h-1.5 w-1.5 rounded-full" style="background: {aiTitle.reachable ? 'var(--sempa-success)' : 'var(--sempa-amber)'};"></span>
                 <span style="color: var(--sempa-text-soft);">
                   {aiTitle.reachable ? 'Model server reachable' : 'Not reachable — falls back to the raw subject'}
                 </span>
               </div>
 
-              <div>
-                <label class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);" for="ai-model">Model</label>
-                {#if aiTitle.available_models.length > 0}
-                  <select id="ai-model" bind:value={aiTitle.model}
-                          class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-                          style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);">
-                    {#each aiTitle.available_models as m}
-                      <option value={m}>{m}</option>
+              <!-- Downloaded models: pick the active one, see its size, remove it -->
+              {#if aiTitle.available_models.length > 0}
+                <div>
+                  <p class="mb-1 text-xs font-medium" style="color: var(--sempa-text-soft);">Model</p>
+                  <div class="overflow-hidden rounded-lg border" style="border-color: var(--sempa-border);">
+                    {#each aiTitle.available_models as m, i (m.name)}
+                      <label class="flex cursor-pointer items-center gap-2.5 px-3 py-2"
+                             style={i < aiTitle.available_models.length - 1 ? 'border-bottom: 1px solid var(--sempa-border);' : ''}>
+                        <input type="radio" name="ai-active-model" value={m.name} checked={aiTitle.model === m.name}
+                               onchange={() => { aiTitle.model = m.name; saveAiTitle('Active model updated'); }}
+                               style="accent-color: var(--sempa-accent);" />
+                        <span class="flex-1 truncate text-sm font-mono" style="color: var(--sempa-text);">{m.name}</span>
+                        <span class="shrink-0 text-[11px] font-mono" style="color: var(--sempa-text-dim);">{fmtBytes(m.size)}</span>
+                        <button onclick={() => removeAiModel(m.name)} disabled={aiRemoving === m.name}
+                                class="shrink-0 rounded p-1 transition-colors disabled:opacity-50"
+                                aria-label="Remove {m.name}" title="Remove model"
+                                style="color: var(--sempa-text-dim);"
+                                onmouseenter={(e) => (e.currentTarget as HTMLElement).style.color = '#dc2626'}
+                                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text-dim)'}>
+                          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                          </svg>
+                        </button>
+                      </label>
                     {/each}
-                  </select>
+                  </div>
+                </div>
+              {/if}
+
+              <!-- Download a model (with progress) -->
+              <div>
+                <label class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);" for="ai-pull">Download a model</label>
+                {#if aiPulling}
+                  <div class="rounded-lg border p-3" style="border-color: var(--sempa-border);">
+                    <div class="mb-1.5 flex items-center justify-between text-[11px]" style="color: var(--sempa-text-soft);">
+                      <span class="truncate pr-2">{aiPullLabel}</span>
+                      <span class="font-mono">{aiPullPct}%</span>
+                    </div>
+                    <div class="h-1.5 overflow-hidden rounded-full" style="background: var(--sempa-border);">
+                      <div class="h-full rounded-full transition-all" style="width: {aiPullPct}%; background: var(--sempa-accent);"></div>
+                    </div>
+                  </div>
                 {:else}
-                  <input id="ai-model" bind:value={aiTitle.model} placeholder="qwen2.5:1.5b"
-                         class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-                         style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
+                  <div class="flex items-center gap-2">
+                    <input id="ai-pull" bind:value={aiPullModel} placeholder="e.g. qwen2.5:1.5b" spellcheck="false"
+                           onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); pullAiModel(); } }}
+                           class="flex-1 rounded-lg border px-3 py-2 text-sm font-mono outline-none"
+                           style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
+                    <button onclick={pullAiModel} disabled={!aiPullModel.trim()}
+                            class="shrink-0 rounded-lg px-3 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                            style="background: var(--sempa-accent);">
+                      Download
+                    </button>
+                  </div>
+                  <p class="mt-1 text-[11px]" style="color: var(--sempa-text-dim);">Find model names at ollama.com/library (e.g. qwen2.5:1.5b, llama3.2:3b).</p>
                 {/if}
               </div>
 
+              <!-- Model server URL -->
               <div>
                 <label class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);" for="ai-url">Model server URL (Ollama)</label>
-                <input id="ai-url" bind:value={aiTitle.base_url} placeholder="http://ollama:11434" spellcheck="false"
+                <input id="ai-url" bind:value={aiTitle.base_url} placeholder="http://127.0.0.1:11434" spellcheck="false"
                        class="w-full rounded-lg border px-3 py-2 text-sm font-mono outline-none"
                        style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
               </div>
 
+              <!-- Feedback -->
               {#if aiError}
-                <p class="text-xs" style="color: #ef4444;">{aiError}</p>
+                <p class="text-xs" style="color: #dc2626;">{aiError}</p>
+              {:else if aiStatus}
+                <p class="text-xs" style="color: var(--sempa-success);">{aiStatus}</p>
               {/if}
 
               <div class="flex items-center gap-2">
@@ -1150,11 +1314,34 @@
                         style="border-color: var(--sempa-border); color: var(--sempa-text-soft);">
                   {aiTesting ? 'Testing…' : 'Test connection'}
                 </button>
-                <button onclick={saveAiTitle} disabled={aiSaving}
-                        class="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-50"
+                <button onclick={() => saveAiTitle()} disabled={aiSaving}
+                        class="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                         style="background: var(--sempa-accent);">
                   {aiSaving ? 'Saving…' : 'Save'}
                 </button>
+              </div>
+
+              <!-- Per-feature controls — full control over where the model is used.
+                   Each is also gated by reachability above. -->
+              <div style="border-top: 1px solid var(--sempa-border); padding-top: 14px;">
+                <p class="mb-1 text-xs font-medium" style="color: var(--sempa-text-soft);">AI features</p>
+                <p class="mb-3 text-[11px]" style="color: var(--sempa-text-dim);">Choose where Sempa uses the model. Turn any off to hide it across the app.</p>
+                <div class="flex flex-col gap-3">
+                  {#each AI_FEATURE_META as f (f.key)}
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="min-w-0">
+                        <p class="text-xs" style="color: var(--sempa-text);">{f.label}</p>
+                        <p class="text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">{f.hint}</p>
+                      </div>
+                      <button onclick={() => prefs.setAiFeature(f.key, !prefs.aiOn(f.key))}
+                              role="switch" aria-checked={prefs.aiOn(f.key)} aria-label={f.label}
+                              class="relative shrink-0 rounded-full transition-colors"
+                              style="width:40px; height:22px; border:none; cursor:pointer; background: {prefs.aiOn(f.key) ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
+                        <span class="absolute rounded-full bg-white" style="top:3px; left:{prefs.aiOn(f.key) ? '21px' : '3px'}; width:16px; height:16px; transition: left 150ms ease;"></span>
+                      </button>
+                    </div>
+                  {/each}
+                </div>
               </div>
             </div>
           {/if}
@@ -1362,6 +1549,46 @@
           {/if}
         </div>
 
+        <!-- Sidebar navigation grouping (desktop rail only) -->
+        {#if !mobile.value}
+        <div style="border-top: 1px solid var(--sempa-border); padding-top: 20px;">
+          <p class="text-xs font-medium" style="color: var(--sempa-text-soft);">Sidebar grouping</p>
+          <p class="mb-3 mt-1 text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
+            How the left navigation rail is organised.
+          </p>
+          <div style="display:inline-flex; flex-wrap:wrap; border-radius:9999px; border:1px solid var(--sempa-border); padding:3px; gap:2px;">
+            {#each [['spaces', 'Spaces'], ['rhythm', 'Plan · Focus · Review'], ['flat', 'Flat']] as [val, label]}
+              <button onclick={() => prefs.setNavGrouping(val as 'spaces' | 'rhythm' | 'flat')}
+                      class="transition-colors"
+                      style="border-radius:9999px; padding:6px 14px; font-size:12px; border:none; cursor:pointer;
+                             {prefs.navGrouping === val
+                               ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent); font-weight:600;'
+                               : 'background: transparent; color: var(--sempa-text-soft);'}">
+                {label}
+              </button>
+            {/each}
+          </div>
+
+          <p class="mb-3 mt-5 text-xs font-medium" style="color: var(--sempa-text-soft);">Section style</p>
+          <div style="display:inline-flex; border-radius:9999px; border:1px solid var(--sempa-border); padding:3px; gap:2px;
+                      {prefs.navGrouping === 'flat' ? 'opacity:0.5; pointer-events:none;' : ''}">
+            {#each [['labels', 'Labels'], ['dividers', 'Dividers']] as [val, label]}
+              <button onclick={() => prefs.setNavSections(val as 'labels' | 'dividers')}
+                      class="transition-colors"
+                      style="border-radius:9999px; padding:6px 16px; font-size:12px; border:none; cursor:pointer;
+                             {prefs.navSections === val
+                               ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent); font-weight:600;'
+                               : 'background: transparent; color: var(--sempa-text-soft);'}">
+                {label}
+              </button>
+            {/each}
+          </div>
+          {#if prefs.navGrouping === 'flat'}
+            <p class="mt-2 text-[11px]" style="color: var(--sempa-text-dim);">Section labels apply to grouped layouts.</p>
+          {/if}
+        </div>
+        {/if}
+
         <!-- Contextual reflections toggle -->
         <div style="border-top: 1px solid var(--sempa-border); padding-top: 20px;">
           <div class="flex items-center justify-between gap-4">
@@ -1386,6 +1613,17 @@
         </div>
       </div>
     </section>
+  </div>
+{/snippet}
+
+{#snippet aboutContent()}
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SECTION: About / Updates
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div id="settings-about" class="mt-8 scroll-mt-6">
+    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
+     text-transform:uppercase; color:var(--sempa-text-dim)">About</p>
+    <UpdatesPanel />
   </div>
 {/snippet}
 
