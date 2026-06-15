@@ -169,7 +169,15 @@
   let aiParsing = $state(false);
   let aiTagging = $state(false);
   let aiBreaking = $state(false);
+  let aiAssistError = $state(''); // surfaced near the AI buttons so failures aren't silent
+  let aiErrTimer: ReturnType<typeof setTimeout> | null = null;
   let subtaskReloadKey = $state(0); // bump to remount SubTaskList after AI adds subtasks
+
+  function aiFail(e: unknown) {
+    aiAssistError = e instanceof Error ? e.message.replace(/^\d+\s/, '') : 'AI request failed';
+    if (aiErrTimer) clearTimeout(aiErrTimer);
+    aiErrTimer = setTimeout(() => { aiAssistError = ''; }, 6000);
+  }
   const aiQuickAddOn   = $derived(prefs.aiOn('quickAdd') && aiStatus.reachable);
   const aiSuggestTagsOn = $derived(prefs.aiOn('suggestTags') && aiStatus.reachable);
   const aiBreakdownOn  = $derived(prefs.aiOn('breakdown') && aiStatus.reachable);
@@ -188,7 +196,7 @@
         if (res.reminder_at) { const d = new Date(res.reminder_at); if (!isNaN(d.getTime())) { remindDate = res.reminder_at.slice(0, 10); remindTime = res.reminder_at.slice(11, 16); } }
         if (res.tags?.length) selectedTags = Array.from(new Set([...selectedTags, ...res.tags]));
       }
-    } catch { /* keep typed title on failure */ }
+    } catch (e) { aiFail(e); }
     finally { aiParsing = false; }
   }
 
@@ -198,7 +206,7 @@
     try {
       const res = await api.ai.suggestTags(title.trim(), description, tagStore.definitions.map(t => t.name));
       if (res.available && res.tags?.length) selectedTags = Array.from(new Set([...selectedTags, ...res.tags]));
-    } catch { /* ignore */ }
+    } catch (e) { aiFail(e); }
     finally { aiTagging = false; }
   }
 
@@ -216,7 +224,7 @@
         }
         subtaskReloadKey++; // force SubTaskList to reload
       }
-    } catch { /* ignore */ }
+    } catch (e) { aiFail(e); }
     finally { aiBreaking = false; }
   }
 
@@ -234,7 +242,7 @@
     try {
       const res = await api.ai.tidyNotes(description);
       if (res.available && res.notes) description = res.notes;
-    } catch { /* keep notes as-is on failure */ }
+    } catch (e) { aiFail(e); }
     finally { aiTidying = false; }
   }
 
@@ -702,6 +710,9 @@
             </button>
           {/if}
         </div>
+        {#if aiAssistError}
+          <p class="mt-1.5 text-xs" style="color: #dc2626;">AI: {aiAssistError}</p>
+        {/if}
       </div>
 
       <!-- Notes -->

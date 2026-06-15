@@ -181,14 +181,16 @@ func ImproveTitle(ctx context.Context, ollamaBaseURL, model, subject string) str
 			"company names, and urgency language. Return ONLY the task title.\n\n"+
 			"Subject: %q\n\nTask title:", subject)
 
+	// Use /api/chat (not /api/generate): some models only expose a chat template
+	// and reject generate with "does not support generate".
 	body, _ := json.Marshal(map[string]any{
-		"model":  model,
-		"prompt": prompt,
-		"stream": false,
+		"model":    model,
+		"messages": []map[string]string{{"role": "user", "content": prompt}},
+		"stream":   false,
 	})
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		ollamaBaseURL+"/api/generate", bytes.NewReader(body))
+		ollamaBaseURL+"/api/chat", bytes.NewReader(body))
 	if err != nil {
 		return subject
 	}
@@ -210,13 +212,15 @@ func ImproveTitle(ctx context.Context, ollamaBaseURL, model, subject string) str
 	}
 
 	var result struct {
-		Response string `json:"response"`
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
 	}
 	if err := json.Unmarshal(raw, &result); err != nil {
 		return subject
 	}
 
-	title := strings.TrimSpace(result.Response)
+	title := strings.TrimSpace(result.Message.Content)
 	title = strings.Trim(title, `"'`)
 	if title == "" {
 		return subject

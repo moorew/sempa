@@ -394,6 +394,9 @@ back to the manual path — nothing breaks.
   active model, **download a new model with a live progress bar**, or **remove** one
   to reclaim disk — all from Settings. The default is `qwen2.5:1.5b` (~1 GB,
   CPU-friendly); browse alternatives at [ollama.com/library](https://ollama.com/library).
+  Use any **chat/instruct** model (Sempa talks to Ollama's chat API). If a model
+  errors with *"does not support generate/chat"*, its local copy is stale from an
+  Ollama upgrade — re-pull it: `ollama pull <model>` (or remove + re-download in Settings).
 
 Nothing is automatic or destructive — the model **suggests**, you approve.
 

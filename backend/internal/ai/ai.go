@@ -25,9 +25,11 @@ type Config struct {
 // Ready reports whether AI calls can be made (a server URL is configured).
 func (c Config) Ready() bool { return strings.TrimSpace(c.BaseURL) != "" }
 
-// generate calls Ollama /api/generate once (non-streamed). When jsonMode is set,
+// generate calls Ollama's /api/chat once (non-streamed). When jsonMode is set,
 // Ollama is asked to emit strictly valid JSON (format:json), which makes parsing
-// reliable even with small models.
+// reliable even with small models. We use /api/chat rather than /api/generate
+// because some models (e.g. recent llama3.2 builds) only expose a chat template
+// and return "does not support generate" otherwise — chat works for both.
 func generate(ctx context.Context, c Config, prompt string, jsonMode bool) (string, error) {
 	if !c.Ready() {
 		return "", fmt.Errorf("AI model server not configured")
@@ -36,14 +38,18 @@ func generate(ctx context.Context, c Config, prompt string, jsonMode bool) (stri
 	if model == "" {
 		model = "qwen2.5:1.5b"
 	}
-	payload := map[string]any{"model": model, "prompt": prompt, "stream": false}
+	payload := map[string]any{
+		"model":    model,
+		"messages": []map[string]string{{"role": "user", "content": prompt}},
+		"stream":   false,
+	}
 	if jsonMode {
 		payload["format"] = "json"
 	}
 	body, _ := json.Marshal(payload)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		strings.TrimRight(c.BaseURL, "/")+"/api/generate", bytes.NewReader(body))
+		strings.TrimRight(c.BaseURL, "/")+"/api/chat", bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
@@ -61,12 +67,14 @@ func generate(ctx context.Context, c Config, prompt string, jsonMode bool) (stri
 		return "", fmt.Errorf("ollama returned %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
 	}
 	var out struct {
-		Response string `json:"response"`
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return "", err
 	}
-	return strings.TrimSpace(out.Response), nil
+	return strings.TrimSpace(out.Message.Content), nil
 }
 
 // Text returns a plain-text completion.

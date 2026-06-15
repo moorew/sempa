@@ -6,6 +6,21 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.122] - 2026-06-15
+
+### Fixed
+- **AI features that "did nothing" (tidy notes, suggest tags, quick add, etc.).**
+  Two causes: (1) the app called Ollama's `/api/generate`, which some models —
+  including recent `llama3.2` builds — reject with *"does not support generate"*;
+  it now uses `/api/chat`, which works across models. (2) AI failures were
+  swallowed silently — the task panel now shows the error instead. If a model
+  still errors with *"does not support generate/chat"*, re-pull it
+  (`ollama pull <model>`) — a stale manifest from an Ollama upgrade can break the
+  old copy.
+- **Quick-add extraction** is much better: it now reliably resolves relative days
+  ("tomorrow", weekday names), durations, and tags (added a worked example + the
+  weekday to the prompt).
+
 ## [1.0.121] - 2026-06-15
 
 ### Fixed

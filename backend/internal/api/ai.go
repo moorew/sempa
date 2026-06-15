@@ -49,13 +49,18 @@ func (h *integrationHandler) aiQuickAdd(w http.ResponseWriter, r *http.Request) 
 		weekday = t.Weekday().String()
 	}
 	tagsJSON, _ := json.Marshal(body.Tags)
-	prompt := fmt.Sprintf(`Today is %s (%s). Convert this quick note into a single task.
-Resolve relative days ("today", "tomorrow", "thursday", "next week") to an actual date.
-Return JSON with keys: "title" (concise, action-oriented, no date/time words),
-"planned_date" (YYYY-MM-DD if a day is implied else ""),
-"time_estimate_minutes" (integer, 0 if none implied),
-"reminder_at" (RFC3339 datetime if a specific time is implied else ""),
-"tags" (array, choose only from this allowed JSON list, else empty): %s
+	prompt := fmt.Sprintf(`Today is %s (%s). Convert this quick note into ONE task and extract its details.
+Resolve relative days ("today", "tomorrow", weekday names, "next week") to an actual YYYY-MM-DD date.
+Read times like "9am", "1pm", "14:30" and durations like "30min", "1h", "45m".
+Return JSON with exactly these keys:
+- "title": concise, action-oriented, WITHOUT any date/time/duration words
+- "planned_date": "YYYY-MM-DD" if a day is implied, else ""
+- "time_estimate_minutes": integer minutes if a duration is implied, else 0
+- "reminder_at": "YYYY-MM-DDTHH:MM:SS" if a specific time is implied, else ""
+- "tags": array, ONLY from this allowed JSON list (else []): %s
+
+Example — Today 2026-01-05 (Monday), Note: "submit taxes friday 2pm 45min #finance"
+→ {"title":"Submit taxes","planned_date":"2026-01-09","time_estimate_minutes":45,"reminder_at":"2026-01-09T14:00:00","tags":["finance"]}
 
 Note: %q`, body.Today, weekday, string(tagsJSON), body.Text)
 
