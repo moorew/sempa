@@ -32,7 +32,7 @@ Plan your day, track focused work, and end each day with intention — with your
 - **Jira sync** — bi-directional: import assigned issues, mark done in Sempa to close the ticket
 - **Reminders & notifications** — per-task reminders delivered by Web Push, Android, or a webhook, with selectable alert sounds
 - **Recurring tasks** — daily, weekly, and monthly templates
-- **Local AI title cleanup** — optional on-server model (Ollama) tidies imported email subjects into task titles; nothing leaves your box
+- **Local AI assist** — an optional on-server model (Ollama) powers quick-add parsing, task summaries, tag suggestions, subtask breakdown, day planning, weekly-review drafts and reflection prompts. **100% local & private — nothing ever leaves your server**, every feature is individually toggleable, and it's off until you turn it on. [See the AI section ↓](#ai-assist--local--private)
 - **In-app updates** — notices new releases, shows what's new, and points you to the installer (silent desktop self-update is opt-in)
 - **Six themes** — Terracotta, Forest, Plum, Slate, OLED Black, and Ocean, each in light + dark
 - **Keyboard shortcuts** — `n` new task, `t` today, `j/k` prev/next week, `?` help
@@ -258,7 +258,7 @@ All integrations are optional and configured through the Settings UI after first
 | **Jira** | Imports assigned issues as tasks. Marking a Jira-sourced task done closes the ticket. |
 | **Calendar feeds (ICS)** | Subscribe to any `.ics` / webcal URL for read-only events. |
 | **Email inbox** | Forward any email to a Fastmail address to auto-create a task. |
-| **AI task-title cleanup** | A local language model (Ollama running `qwen2.5:1.5b`) tidies imported email subjects into concise task titles. Runs entirely on your server — no data leaves it. **Opt-in:** enable it during `install.sh` (which starts Ollama, pulls the model, and tests the connection) or by setting `OLLAMA_BASE_URL`. Toggle, choose the model, and test connectivity in Settings → Integrations. |
+| **AI assist (local)** | A local language model (Ollama, default `qwen2.5:1.5b`) powers title cleanup plus quick-add parsing, tag suggestions, subtask breakdown, day planning, weekly-review drafts and reflection prompts. **Runs entirely on your server — no data leaves it, no API key.** Opt-in (during `install.sh` or by setting `OLLAMA_BASE_URL`); manage models and toggle each feature in Settings → Integrations → AI. [Details ↓](#ai-assist--local--private) |
 
 > **Note on the model-server URL (AI task-title cleanup).** The Ollama endpoint
 > is configurable in Settings → Integrations and may point at an internal /
@@ -370,9 +370,44 @@ Turn email into tasks several ways:
 
 - **Gmail / Fastmail:** star an email and it imports as a task (same OAuth app as sign-in for Gmail; an app password for Fastmail).
 - **Task inbox:** forward (or auto-forward) mail to a dedicated address to create tasks; allow-list senders in settings.
-- **AI title cleanup:** imported subjects are tidied into clean task titles by a local model (the optional `ollama` service running `qwen2.5:1.5b`) — no API key, no data leaves your server. Opt in during `install.sh` or by setting `OLLAMA_BASE_URL`.
+- **AI title cleanup:** imported subjects are tidied into clean task titles by your local model — no API key, no data leaves your server. Part of the broader [AI assist](#ai-assist--local--private) suite; opt in during `install.sh` or in Settings → Integrations → AI.
 
 The **Email** screen lets you triage incoming mail and convert messages to tasks, with the original linked.
+
+### AI assist — local & private
+
+Sempa can use a small language model to take friction out of capture and review.
+**Everything runs on a model you host yourself (Ollama), on your own server. No
+data is ever sent to any third party, there is no API key, and there are no usage
+costs or rate limits.** If the model is unavailable, every feature simply falls
+back to the manual path — nothing breaks.
+
+**You are in complete control:**
+
+- **Off by default.** AI does nothing until you enable it. Turn it on during
+  `install.sh` (which installs Ollama, pulls the model, and tests the connection)
+  or in **Settings → Integrations → AI**.
+- **Per-feature toggles.** Each AI feature below has its own on/off switch in
+  **Settings → Integrations → AI → “AI features”**. Turn off any you don't want and
+  it disappears from the app. Features only appear when the model is reachable.
+- **Model management.** See your downloaded models and their sizes, switch the
+  active model, **download a new model with a live progress bar**, or **remove** one
+  to reclaim disk — all from Settings. The default is `qwen2.5:1.5b` (~1 GB,
+  CPU-friendly); browse alternatives at [ollama.com/library](https://ollama.com/library).
+
+Nothing is automatic or destructive — the model **suggests**, you approve.
+
+**What each feature does:**
+
+| Feature | Where | What it does |
+|---------|-------|--------------|
+| **Natural-language quick add** | ✦ on a task's title | Type something like *“lunch with Sam thu 1pm 30m #personal”* and it fills in the title, date, time, time-estimate, and tags. |
+| **Suggest tags** | ✦ on the tag editor | Recommends tags for a task **only from your existing tag set**, so your taxonomy stays consistent. |
+| **Break into subtasks** | ✦ on a task | Splits a task into a few concrete, ordered subtasks you can keep or edit. |
+| **Title cleanup & summary** | Email / Jira import | Tidies imported email subjects (and issues) into concise, action-oriented task titles with a rough time estimate. |
+| **Plan my day** | Plan Day | Suggests a focused order for today's tasks around your calendar events, with a one-line rationale — applied to your board only when you click. |
+| **Draft weekly review** | Week Review | Drafts your **wins / challenges / next focus** from the week's completed tasks and objectives. You edit before saving. |
+| **Reflection prompts** | Shutdown | Offers a couple of context-aware end-of-day questions based on what you did and didn't finish. |
 
 ### Jira
 
@@ -442,7 +477,7 @@ Sempa checks GitHub for newer releases and surfaces them in-app: a subtle indica
 | Section | What you configure |
 |---------|--------------------|
 | **Account** | Sign-in, profile |
-| **Integrations** | Gmail, Fastmail, Jira, CalDAV, task inbox |
+| **Integrations** | Gmail, Fastmail, Jira, CalDAV, task inbox, and **AI** (local model: connection, model download/remove, and a per-feature on/off for each AI assist) |
 | **Calendars** | Connected calendars, ICS/webcal feeds, show/hide, colours |
 | **Tags** | Create/rename/recolour tags |
 | **Recurring Tasks** | Daily/weekly/monthly templates |
