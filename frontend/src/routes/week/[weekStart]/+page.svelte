@@ -4,7 +4,7 @@
   import { page } from '$app/stores';
   import { api } from '$lib/api';
   import type { Objective, Task, WeekReview } from '$lib/types';
-  import { appendPosition, formatWeekRange, offsetDate, today, weekStart as calcWeekStart } from '$lib/utils';
+  import { appendPosition, insertPosition, formatWeekRange, offsetDate, today, weekStart as calcWeekStart } from '$lib/utils';
   import { mobile } from '$lib/stores/mobile.svelte';
   import { prefs } from '$lib/stores/prefs.svelte';
   import SempaPattern from '$lib/components/ui/SempaPattern.svelte';
@@ -13,7 +13,7 @@
   import { swipeNavigate } from '$lib/actions/swipeNavigate';
   import { tagStore } from '$lib/stores/tags.svelte';
   import TagFilterBar from '$lib/components/TagFilterBar.svelte';
-  import { SlidersHorizontal, CalendarArrowDown } from 'lucide-svelte';
+  import { SlidersHorizontal, CalendarArrowDown, GripVertical } from 'lucide-svelte';
   import { moveObjectiveToNextWeek, moveAllUnfinishedToNextWeek, unfinishedObjectives } from '$lib/objectives';
 
   let weekStartDate = $derived($page.params.weekStart ?? calcWeekStart(today()));
@@ -144,6 +144,47 @@
   async function deleteObjective(id: string) {
     objectives = objectives.filter(o => o.id !== id);
     await api.objectives.delete(id).catch(() => {});
+  }
+
+  // ── Drag to reorder objectives ───────────────────────────────────────────────
+  // Mirrors task reordering: HTML5 DnD (works on desktop web + the Tauri shell,
+  // which has window drag-drop disabled so the webview gets the events). A
+  // fractional `position` is persisted so the order survives reload and sync.
+  let dragObjId    = $state<string | null>(null);
+  let dragOverObjId = $state<string | null>(null);
+
+  function onObjDragStart(e: DragEvent, id: string) {
+    dragObjId = id;
+    e.dataTransfer?.setData('application/x-sempa-objective', id);
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+  }
+  function onObjDragEnd() { dragObjId = null; dragOverObjId = null; }
+
+  async function onObjDrop(targetId: string) {
+    const id = dragObjId;
+    dragObjId = null;
+    dragOverObjId = null;
+    if (!id || id === targetId) return;
+
+    const ordered = [...objectives].sort((a, b) => a.position - b.position);
+    const fromIdx = ordered.findIndex(o => o.id === id);
+    const toIdx   = ordered.findIndex(o => o.id === targetId);
+    if (fromIdx < 0 || toIdx < 0) return;
+
+    const others = ordered.filter(o => o.id !== id);
+    // Drop below the target → land after it; drop above → land before it.
+    let insertIdx = others.findIndex(o => o.id === targetId);
+    if (toIdx > fromIdx) insertIdx += 1;
+    const newPos = insertPosition(others.map(o => o.position), insertIdx);
+
+    const dragged = ordered[fromIdx];
+    const reordered = [...others];
+    reordered.splice(insertIdx, 0, { ...dragged, position: newPos });
+
+    const prev = objectives;
+    objectives = reordered; // optimistic
+    try { await api.objectives.update(id, { position: newPos }); }
+    catch { objectives = prev; }
   }
 
   // ── Re-plan: carry unfinished objectives forward to next week ────────────────
@@ -457,12 +498,30 @@
         {@const isExp   = expandedId === obj.id}
         {@const isDone  = obj.status === 'completed'}
 
-        <div class="transition-shadow hover:shadow-md"
-             style="border-radius:12px; border: 1px solid var(--sempa-border);
-                    background: var(--sempa-bg-panel);">
+        <div class="transition-shadow hover:shadow-md {dragObjId === obj.id ? 'opacity-50' : ''}"
+             role="listitem"
+             ondragover={(e) => { e.preventDefault(); if (dragObjId && dragObjId !== obj.id) dragOverObjId = obj.id; }}
+             ondragleave={() => { if (dragOverObjId === obj.id) dragOverObjId = null; }}
+             ondrop={(e) => { e.preventDefault(); void onObjDrop(obj.id); }}
+             style="border-radius:12px; background: var(--sempa-bg-panel);
+                    border: 1px solid {dragOverObjId === obj.id ? 'var(--sempa-accent)' : 'var(--sempa-border)'};
+                    box-shadow: {dragOverObjId === obj.id ? '0 0 0 1px var(--sempa-accent)' : 'none'};">
 
           <!-- Objective header row -->
-          <div class="flex items-start gap-3 p-4">
+          <div class="flex items-start gap-2 p-4">
+            <!-- Drag handle (reorder) — only the handle is draggable so the card's
+                 buttons and the expanded add-task input stay fully interactive. -->
+            <div role="button" tabindex="-1" aria-label="Drag to reorder" title="Drag to reorder"
+                 draggable="true"
+                 ondragstart={(e) => onObjDragStart(e, obj.id)}
+                 ondragend={onObjDragEnd}
+                 class="mt-0.5 shrink-0 cursor-grab touch-none active:cursor-grabbing"
+                 style="color: var(--sempa-text-dim);"
+                 onmouseenter={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text)'}
+                 onmouseleave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text-dim)'}>
+              <GripVertical size={16} />
+            </div>
+
             <!-- Completion circle -->
             <button onclick={() => toggleStatus(obj)} title="{isDone ? 'Mark active' : 'Mark complete'}"
                     class="mt-0.5 h-5 w-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-all

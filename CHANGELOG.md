@@ -6,6 +6,13 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.125] - 2026-06-15
+
+### Added
+- **Drag to reorder weekly objectives.** Grab the handle on any objective on the
+  Week page and drop it to change the order — it persists and syncs, just like
+  reordering tasks. Works on desktop and the web app.
+
 ## [1.0.124] - 2026-06-15
 
 ### Fixed
