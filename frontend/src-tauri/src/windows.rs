@@ -74,6 +74,12 @@ pub fn create_reminder_popup(app: &AppHandle) -> Result<(), Box<dyn std::error::
     let width = 384.0;
     let height = 140.0; // initial; the webview resizes to fit its cards
 
+    // NOTE: transparent(false) is deliberate. A transparent, chromeless window on
+    // Windows paints its non-content area with the OS's grey window backing, which
+    // showed as a grey box around the reminder cards (it surrounds ALL of them
+    // because it's the single window's backing, not per-card). An opaque window
+    // whose webview is painted dark edge-to-edge has no such backing — Win11's DWM
+    // still rounds the corners. The webview owns the entire look.
     let mut builder = WebviewWindowBuilder::new(
         app,
         "reminder",
@@ -84,7 +90,7 @@ pub fn create_reminder_popup(app: &AppHandle) -> Result<(), Box<dyn std::error::
     .resizable(false)
     .decorations(false)
     .always_on_top(true)
-    .transparent(true)
+    .transparent(false)
     .skip_taskbar(true)
     .visible(true);
 

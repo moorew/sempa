@@ -32,6 +32,25 @@ export { isCapacitor, hasLocalDb } from '$lib/platform';
 
 // ── Commands ────────────────────────────────────────────────────────────────
 
+/**
+ * Open a URL in the OS's default browser. On desktop this is essential for OAuth
+ * flows: navigating the main webview to an external/remote URL would strand the
+ * app on a remote origin (where the local SQL plugin is correctly ACL-denied and
+ * the user appears "logged out"). Falls back to window.open on web.
+ */
+export async function openExternal(url: string): Promise<void> {
+    const t = getTauri();
+    if (t) {
+        try {
+            await t.invoke('plugin:shell|open', { path: url });
+            return;
+        } catch {
+            /* fall through to window.open */
+        }
+    }
+    if (typeof window !== 'undefined') window.open(url, '_blank', 'noopener');
+}
+
 export async function triggerSync(): Promise<void> {
     const t = getTauri();
     if (t) await t.invoke('trigger_sync');

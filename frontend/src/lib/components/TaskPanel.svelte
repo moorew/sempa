@@ -12,6 +12,9 @@
   import SempaDatePicker from '$lib/components/ui/SempaDatePicker.svelte';
   import { mobile } from '$lib/stores/mobile.svelte';
   import { viewport } from '$lib/stores/viewport.svelte';
+  import { prefs } from '$lib/stores/prefs.svelte';
+  import { aiStatus } from '$lib/stores/aiStatus.svelte';
+  import { Sparkles } from 'lucide-svelte';
   import { dismissibleSheet } from '$lib/actions/sheet';
   import { hapticTick } from '$lib/haptics';
 
@@ -161,6 +164,103 @@
   let saving = $state(false);
   let error = $state('');
   let titleInput: HTMLInputElement | undefined = $state();
+
+  // ── AI assist (quick-add parse / suggest tags / break into subtasks) ────────
+  let aiParsing = $state(false);
+  let aiTagging = $state(false);
+  let aiBreaking = $state(false);
+  let aiAssistError = $state(''); // surfaced near the AI buttons so failures aren't silent
+  let aiErrTimer: ReturnType<typeof setTimeout> | null = null;
+  let subtaskReloadKey = $state(0); // bump to remount SubTaskList after AI adds subtasks
+
+  function aiFail(e: unknown) {
+    aiAssistError = e instanceof Error ? e.message.replace(/^\d+\s/, '') : 'AI request failed';
+    if (aiErrTimer) clearTimeout(aiErrTimer);
+    aiErrTimer = setTimeout(() => { aiAssistError = ''; }, 6000);
+  }
+  // Transient, non-error message shown beside the Tags row (e.g. "no match"),
+  // so a click that legitimately finds nothing doesn't look broken.
+  let aiTagNotice = $state('');
+  let aiTagNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+  function aiNotice(msg: string) {
+    aiTagNotice = msg;
+    if (aiTagNoticeTimer) clearTimeout(aiTagNoticeTimer);
+    aiTagNoticeTimer = setTimeout(() => { aiTagNotice = ''; }, 4000);
+  }
+  const aiQuickAddOn   = $derived(prefs.aiOn('quickAdd') && aiStatus.reachable);
+  const aiSuggestTagsOn = $derived(prefs.aiOn('suggestTags') && aiStatus.reachable);
+  const aiBreakdownOn  = $derived(prefs.aiOn('breakdown') && aiStatus.reachable);
+
+  // Parse the typed title as a natural-language phrase into structured fields.
+  async function aiQuickParse() {
+    const text = title.trim();
+    if (!text || aiParsing) return;
+    aiParsing = true;
+    try {
+      const res = await api.ai.quickAdd(text, localDay(), tagStore.definitions.map(t => t.name));
+      if (res.available) {
+        if (res.title) title = res.title;
+        if (res.planned_date) plannedDate = res.planned_date;
+        if (res.time_estimate_minutes) estimateMinutes = res.time_estimate_minutes;
+        if (res.reminder_at) { const d = new Date(res.reminder_at); if (!isNaN(d.getTime())) { remindDate = res.reminder_at.slice(0, 10); remindTime = res.reminder_at.slice(11, 16); } }
+        if (res.tags?.length) selectedTags = Array.from(new Set([...selectedTags, ...res.tags]));
+      }
+    } catch (e) { aiFail(e); }
+    finally { aiParsing = false; }
+  }
+
+  async function aiSuggestTags() {
+    if (aiTagging || !title.trim()) return;
+    aiTagging = true;
+    try {
+      const res = await api.ai.suggestTags(title.trim(), description, tagStore.definitions.map(t => t.name));
+      if (res.available && res.tags?.length) {
+        const before = selectedTags.length;
+        selectedTags = Array.from(new Set([...selectedTags, ...res.tags]));
+        if (selectedTags.length === before) aiNotice('Those tags are already added');
+      } else {
+        // No match isn't an error, but say so — otherwise the click looks dead.
+        aiNotice('No matching tags found');
+      }
+    } catch (e) { aiFail(e); }
+    finally { aiTagging = false; }
+  }
+
+  async function aiBreakIntoSubtasks() {
+    if (aiBreaking || !task?.id || !title.trim()) return;
+    aiBreaking = true;
+    try {
+      const res = await api.ai.breakdown(title.trim(), description);
+      if (res.available && res.subtasks?.length) {
+        for (const sub of res.subtasks) {
+          await api.tasks.create({
+            title: sub, parent_task_id: task.id, status: 'planned',
+            planned_date: task.planned_date ?? undefined,
+          }).catch(() => {});
+        }
+        subtaskReloadKey++; // force SubTaskList to reload
+      }
+    } catch (e) { aiFail(e); }
+    finally { aiBreaking = false; }
+  }
+
+  function localDay(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  // Tidy the notes into clean Markdown (paragraphs + lists), preserving content.
+  let aiTidying = $state(false);
+  const aiTidyNotesOn = $derived(prefs.aiOn('tidyNotes') && aiStatus.reachable);
+  async function aiTidyNotes() {
+    if (aiTidying || !description.trim()) return;
+    aiTidying = true;
+    try {
+      const res = await api.ai.tidyNotes(description);
+      if (res.available && res.notes) description = res.notes;
+    } catch (e) { aiFail(e); }
+    finally { aiTidying = false; }
+  }
 
   // Inline delete confirmation (FIX 06)
   let deleteConfirm = $state(false);
@@ -605,24 +705,48 @@
         <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400" for="task-title">
           Title <span class="text-red-400">*</span>
         </label>
-        <input id="task-title"
-               bind:this={titleInput}
-               bind:value={title}
-               onkeydown={(e) => e.key === 'Escape' && onClose()}
-               type="text"
-               placeholder="What needs to get done?"
-               class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm
-                      text-gray-800 placeholder-gray-400 outline-none
-                      focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100
-                      dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-600
-                      dark:focus:border-blue-500 dark:focus:bg-gray-800 dark:focus:ring-blue-900/40" />
+        <div class="flex items-center gap-2">
+          <input id="task-title"
+                 bind:this={titleInput}
+                 bind:value={title}
+                 onkeydown={(e) => e.key === 'Escape' && onClose()}
+                 type="text"
+                 placeholder="What needs to get done?"
+                 class="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm
+                        text-gray-800 placeholder-gray-400 outline-none
+                        focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100
+                        dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-600
+                        dark:focus:border-blue-500 dark:focus:bg-gray-800 dark:focus:ring-blue-900/40" />
+          {#if aiQuickAddOn}
+            <button type="button" onclick={aiQuickParse} disabled={aiParsing || !title.trim()}
+                    class="shrink-0 rounded-lg border p-2.5 transition-colors disabled:opacity-40"
+                    style="border-color: var(--sempa-border); color: var(--sempa-accent);"
+                    title="Parse as natural language — pull out date, time, estimate & tags">
+              <span class:animate-pulse={aiParsing}><Sparkles size={16} strokeWidth={2} /></span>
+            </button>
+          {/if}
+        </div>
+        {#if aiAssistError}
+          <p class="mt-1.5 text-xs" style="color: #dc2626;">AI: {aiAssistError}</p>
+        {/if}
       </div>
 
       <!-- Notes -->
       <div>
-        <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400" for="task-notes">
-          Notes <span class="text-xs font-normal text-gray-400 dark:text-gray-600">— markdown supported</span>
-        </label>
+        <div class="mb-1.5 flex items-center justify-between gap-2">
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400" for="task-notes">
+            Notes <span class="text-xs font-normal text-gray-400 dark:text-gray-600">— markdown supported</span>
+          </label>
+          {#if aiTidyNotesOn && description.trim()}
+            <button type="button" onclick={aiTidyNotes} disabled={aiTidying}
+                    class="inline-flex items-center gap-1 text-[11px] font-medium transition-colors disabled:opacity-50"
+                    style="color: var(--sempa-accent);"
+                    title="Tidy these notes into clean paragraphs and lists">
+              <span class:animate-pulse={aiTidying}><Sparkles size={12} strokeWidth={2} /></span>
+              {aiTidying ? 'Tidying…' : 'Tidy up'}
+            </button>
+          {/if}
+        </div>
         <textarea id="task-notes" bind:value={description} rows="4"
                   placeholder="Add details, links, context...&#10;&#10;Supports **bold**, _italic_, [links](https://...)"
                   class="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm
@@ -727,7 +851,23 @@
 
       <!-- Tags -->
       <div>
-        <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400">Tags</label>
+        <div class="mb-1.5 flex items-center justify-between gap-2">
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Tags</label>
+          <div class="flex items-center gap-2">
+            {#if aiTagNotice}
+              <span class="text-[11px]" style="color: var(--sempa-text-dim);">{aiTagNotice}</span>
+            {/if}
+            {#if aiSuggestTagsOn && title.trim() && tagStore.definitions.length > 0}
+              <button type="button" onclick={aiSuggestTags} disabled={aiTagging}
+                      class="inline-flex items-center gap-1 text-[11px] font-medium transition-colors disabled:opacity-50"
+                      style="color: var(--sempa-accent);"
+                      title="Suggest tags from your existing set">
+                <Sparkles size={12} strokeWidth={2} />
+                {aiTagging ? 'Suggesting…' : 'Suggest'}
+              </button>
+            {/if}
+          </div>
+        </div>
         <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
         <div class="flex min-h-[42px] flex-wrap gap-1.5 items-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-2
                     focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100
@@ -840,7 +980,20 @@
       <!-- Sub-tasks (edit mode only) -->
       {#if isEdit && task}
         <div>
-          <SubTaskList parentId={task.id} parentDate={task.planned_date ?? undefined} />
+          {#if aiBreakdownOn}
+            <div class="mb-1.5 flex justify-end">
+              <button type="button" onclick={aiBreakIntoSubtasks} disabled={aiBreaking || !title.trim()}
+                      class="inline-flex items-center gap-1 text-[11px] font-medium transition-colors disabled:opacity-50"
+                      style="color: var(--sempa-accent);"
+                      title="Suggest subtasks for this task">
+                <Sparkles size={12} strokeWidth={2} />
+                {aiBreaking ? 'Breaking down…' : 'Break into subtasks'}
+              </button>
+            </div>
+          {/if}
+          {#key subtaskReloadKey}
+            <SubTaskList parentId={task.id} parentDate={task.planned_date ?? undefined} />
+          {/key}
         </div>
       {/if}
 
