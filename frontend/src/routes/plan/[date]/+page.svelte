@@ -62,12 +62,18 @@
   // ── AI: suggest an order for today's tasks (around calendar events) ──────────
   let aiPlanning = $state(false);
   let aiPlanNote = $state('');
+  let aiPlanError = $state('');
+  let aiPlanned  = $state(false); // true once an order has been applied (shows the list)
   const showAiPlan = $derived(prefs.aiOn('planDay') && aiStatus.reachable);
+  // The active tasks in their current (AI-applied or natural) order — rendered in
+  // step 3 so the user can actually SEE what "plan my day" did.
+  let planActive = $derived(todayTasks.filter(t => t.status !== 'done' && t.status !== 'cancelled'));
   async function aiPlanMyDay() {
     if (aiPlanning) return;
     const active = todayTasks.filter(t => t.status !== 'done' && t.status !== 'cancelled');
     if (active.length < 2) return;
     aiPlanning = true;
+    aiPlanError = '';
     try {
       let events: { title: string; start: string; end: string }[] = [];
       try {
@@ -79,16 +85,24 @@
         active.map(t => ({ id: t.id, title: t.title, minutes: t.time_estimate_minutes ?? 0 })),
         events,
       );
-      if (res.available && res.order?.length) {
+      if (!res.available) {
+        aiPlanError = 'AI is off or unreachable.';
+        return;
+      }
+      if (res.order?.length) {
         const byId = new Map(todayTasks.map(t => [t.id, t]));
         const ordered = res.order.map(id => byId.get(id)).filter(Boolean) as Task[];
         const rest = todayTasks.filter(t => !res.order!.includes(t.id));
         todayTasks = [...ordered, ...rest];
         aiPlanNote = res.note ?? '';
-        // Persist the new order so it sticks on the board.
+        aiPlanned = true;
+        // Persist the new order so it sticks on the board. position is a float
+        // sort key; the day view orders unscheduled tasks by it.
         await Promise.all(ordered.map((t, i) => api.tasks.update(t.id, { position: i }).catch(() => {})));
       }
-    } catch { /* keep current order on failure */ }
+    } catch (e) {
+      aiPlanError = e instanceof Error ? e.message.replace(/^\d+\s/, '') : 'Planning failed';
+    }
     finally { aiPlanning = false; }
   }
 
@@ -315,17 +329,36 @@
           {#if totalEstimate > 0}· {formatMinutes(totalEstimate)} estimated{/if}
         </p>
 
-        {#if showAiPlan && todayTasks.filter(t => t.status !== 'done' && t.status !== 'cancelled').length >= 2}
+        {#if showAiPlan && planActive.length >= 2}
           <div class="mt-3">
             <button onclick={aiPlanMyDay} disabled={aiPlanning}
                     class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
                     style="border: 1px solid var(--sempa-border); color: var(--sempa-accent);"
                     title="Suggest an order for today's tasks">
               <Sparkles size={13} strokeWidth={2} />
-              {aiPlanning ? 'Planning…' : 'AI: plan my day'}
+              {aiPlanning ? 'Planning…' : aiPlanned ? 'AI: re-plan' : 'AI: plan my day'}
             </button>
             {#if aiPlanNote}
               <p class="mt-2 rounded-lg px-3 py-2 text-left text-xs" style="background: var(--sempa-accent-bg); color: var(--sempa-text-soft);">{aiPlanNote}</p>
+            {/if}
+            {#if aiPlanError}
+              <p class="mt-2 text-left text-xs text-red-500">{aiPlanError}</p>
+            {/if}
+            {#if aiPlanned}
+              <!-- Show the applied order so the reorder is actually visible. -->
+              <ol class="mt-3 flex flex-col gap-1.5 text-left">
+                {#each planActive as t, i (t.id)}
+                  <li class="flex items-center gap-2.5 rounded-lg px-3 py-2"
+                      style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main);">
+                    <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold"
+                          style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">{i + 1}</span>
+                    <span class="flex-1 text-sm" style="color: var(--sempa-text);">{t.title}</span>
+                    {#if t.time_estimate_minutes}
+                      <span class="text-xs" style="color: var(--sempa-text-dim);">{formatMinutes(t.time_estimate_minutes)}</span>
+                    {/if}
+                  </li>
+                {/each}
+              </ol>
             {/if}
           </div>
         {/if}

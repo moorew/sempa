@@ -178,6 +178,15 @@
     if (aiErrTimer) clearTimeout(aiErrTimer);
     aiErrTimer = setTimeout(() => { aiAssistError = ''; }, 6000);
   }
+  // Transient, non-error message shown beside the Tags row (e.g. "no match"),
+  // so a click that legitimately finds nothing doesn't look broken.
+  let aiTagNotice = $state('');
+  let aiTagNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+  function aiNotice(msg: string) {
+    aiTagNotice = msg;
+    if (aiTagNoticeTimer) clearTimeout(aiTagNoticeTimer);
+    aiTagNoticeTimer = setTimeout(() => { aiTagNotice = ''; }, 4000);
+  }
   const aiQuickAddOn   = $derived(prefs.aiOn('quickAdd') && aiStatus.reachable);
   const aiSuggestTagsOn = $derived(prefs.aiOn('suggestTags') && aiStatus.reachable);
   const aiBreakdownOn  = $derived(prefs.aiOn('breakdown') && aiStatus.reachable);
@@ -205,7 +214,14 @@
     aiTagging = true;
     try {
       const res = await api.ai.suggestTags(title.trim(), description, tagStore.definitions.map(t => t.name));
-      if (res.available && res.tags?.length) selectedTags = Array.from(new Set([...selectedTags, ...res.tags]));
+      if (res.available && res.tags?.length) {
+        const before = selectedTags.length;
+        selectedTags = Array.from(new Set([...selectedTags, ...res.tags]));
+        if (selectedTags.length === before) aiNotice('Those tags are already added');
+      } else {
+        // No match isn't an error, but say so — otherwise the click looks dead.
+        aiNotice('No matching tags found');
+      }
     } catch (e) { aiFail(e); }
     finally { aiTagging = false; }
   }
@@ -837,15 +853,20 @@
       <div>
         <div class="mb-1.5 flex items-center justify-between gap-2">
           <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Tags</label>
-          {#if aiSuggestTagsOn && title.trim() && tagStore.definitions.length > 0}
-            <button type="button" onclick={aiSuggestTags} disabled={aiTagging}
-                    class="inline-flex items-center gap-1 text-[11px] font-medium transition-colors disabled:opacity-50"
-                    style="color: var(--sempa-accent);"
-                    title="Suggest tags from your existing set">
-              <Sparkles size={12} strokeWidth={2} />
-              {aiTagging ? 'Suggesting…' : 'Suggest'}
-            </button>
-          {/if}
+          <div class="flex items-center gap-2">
+            {#if aiTagNotice}
+              <span class="text-[11px]" style="color: var(--sempa-text-dim);">{aiTagNotice}</span>
+            {/if}
+            {#if aiSuggestTagsOn && title.trim() && tagStore.definitions.length > 0}
+              <button type="button" onclick={aiSuggestTags} disabled={aiTagging}
+                      class="inline-flex items-center gap-1 text-[11px] font-medium transition-colors disabled:opacity-50"
+                      style="color: var(--sempa-accent);"
+                      title="Suggest tags from your existing set">
+                <Sparkles size={12} strokeWidth={2} />
+                {aiTagging ? 'Suggesting…' : 'Suggest'}
+              </button>
+            {/if}
+          </div>
         </div>
         <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
         <div class="flex min-h-[42px] flex-wrap gap-1.5 items-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-2

@@ -6,6 +6,21 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.123] - 2026-06-15
+
+### Fixed
+- **AI "Suggest tags" returned nothing.** The prompt included a worked example
+  whose tag values (`finance`, `home`, `work`) leaked into small models' answers
+  (e.g. `llama3.2:3b` would reply `["work"]` for a Tailscale task). Since those
+  aren't your tags, they were filtered out and you saw nothing. The prompt now
+  restates *your* allowed tags and forbids inventing any — both `llama3.2:3b` and
+  `qwen2.5:1.5b` now pick the right tags. "Suggest" also tells you when no tag
+  matches instead of looking like a dead click.
+- **AI "Plan my day" gave no visible result.** It reordered your tasks and saved
+  the new order, but the Plan screen only showed a task *count*, so the change
+  was invisible. It now shows the suggested order as a numbered list, surfaces
+  any error, and the button becomes "re-plan" after running.
+
 ## [1.0.122] - 2026-06-15
 
 ### Fixed

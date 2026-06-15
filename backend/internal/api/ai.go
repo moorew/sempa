@@ -140,13 +140,16 @@ func (h *integrationHandler) aiSuggestTags(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	availJSON, _ := json.Marshal(body.Available)
-	prompt := fmt.Sprintf(`Choose the tags that fit this task, ONLY from the allowed JSON list.
-Be generous: assign every tag that is even loosely relevant — most tasks get at least one.
-Return JSON: "tags" (array, a subset of the allowed list; empty only if truly none apply).
-Example — Task: "Pay rent", Allowed: ["finance","home","work"] → {"tags":["finance","home"]}
-Allowed: %s
-Task: %q
-Notes: %q`, string(availJSON), body.Title, clip(body.Notes, 800))
+	// IMPORTANT: do NOT put example tag values in this prompt. Small models
+	// (e.g. llama3.2:3b, qwen2.5:1.5b) copy example tags like "work" verbatim
+	// into their answer; those aren't in the user's set, so filterAllowed strips
+	// everything and the UI shows nothing. Instead, restate the allowed list and
+	// forbid inventing tags.
+	prompt := fmt.Sprintf(`You assign tags to a task. You may ONLY use tags from this exact list, copied verbatim (keep their exact spelling and capitalisation): %s
+Do NOT invent tags or output any word that is not in that list. If a task relates to a tag even loosely, include it — most tasks get at least one.
+Return JSON: {"tags": [...]} where every element is copied EXACTLY from the allowed list above. Use an empty array only if truly none apply.
+Task title: %q
+Task notes: %q`, string(availJSON), body.Title, clip(body.Notes, 800))
 
 	var out struct {
 		Tags []string `json:"tags"`
