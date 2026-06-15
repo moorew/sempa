@@ -6,6 +6,27 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.121] - 2026-06-15
+
+### Fixed
+- **Desktop: connecting Google (Drive backup / Gmail) no longer logs you out or
+  makes data "disappear".** The consent flow used to navigate the desktop app's
+  main window to a remote page, stranding it on the server's web login where the
+  local database is (correctly) blocked — surfacing as
+  `Command plugin:sql|load not allowed by ACL`. Desktop now opens OAuth in your
+  **OS browser** and re-checks status when you return; the local DB is never left.
+  (If you hit this: just relaunch the desktop app — your data is safe on the
+  server and re-syncs.)
+- **AI suggest-tags and quick-add tag parsing.** The allowed-tag list was passed
+  to the model in a malformed shape, so tag suggestions came back empty / merged.
+  Tags are now passed as a proper list (with an example), and quick-add gets the
+  weekday so relative dates ("Thursday") resolve.
+
+### Added
+- **AI: Tidy up notes** — a ✦ on the task Notes field reformats messy / pasted
+  text into clean paragraphs and bullet lists, preserving all content and URLs.
+  Local-only, toggleable in Settings → Integrations → AI.
+
 ## [1.0.120] - 2026-06-14
 
 ### Added

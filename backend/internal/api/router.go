@@ -331,6 +331,7 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 				r.Post("/summarize", integrations.aiSummarizeTask)
 				r.Post("/suggest-tags", integrations.aiSuggestTags)
 				r.Post("/breakdown", integrations.aiBreakdown)
+				r.Post("/tidy-notes", integrations.aiTidyNotes)
 				r.Post("/plan-day", integrations.aiPlanDay)
 				r.Post("/weekly-review", integrations.aiWeeklyReview)
 				r.Post("/reflection-prompts", integrations.aiReflectionPrompts)

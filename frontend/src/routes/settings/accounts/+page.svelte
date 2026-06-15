@@ -6,6 +6,14 @@
   import { theme } from '$lib/stores/theme.svelte';
   import { prefs, AI_FEATURE_META } from '$lib/stores/prefs.svelte';
   import { aiStatus as aiAvail } from '$lib/stores/aiStatus.svelte';
+  import { isTauri, openExternal } from '$lib/tauri/bridge';
+
+  // OAuth connect: on desktop open in the OS browser (navigating the main webview
+  // to a remote origin would strand the app off the local DB); on web follow the
+  // link normally.
+  function oauthConnect(e: MouseEvent, url: string) {
+    if (isTauri()) { e.preventDefault(); void openExternal(url); }
+  }
   import { mobile } from '$lib/stores/mobile.svelte';
   import { realtime } from '$lib/stores/realtime.svelte';
   import { goto } from '$app/navigation';
@@ -728,6 +736,7 @@
           </span>
         {:else}
           <a href={api.integrations.gmail.authUrl(false)}
+             onclick={(e) => oauthConnect(e, api.integrations.gmail.authUrl(false))}
              class="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
              style="border-color: var(--sempa-border); color: var(--sempa-text-soft);">
             Connect &rarr;
@@ -777,6 +786,7 @@
               </button>
             {:else}
               <a href={api.integrations.gmail.authUrl(true)}
+                 onclick={(e) => oauthConnect(e, api.integrations.gmail.authUrl(true))}
                  class="transition-colors"
                  style="color: var(--sempa-accent);">
                 Enable

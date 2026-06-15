@@ -264,6 +264,9 @@ const httpApi = {
     breakdown: (title: string, notes: string) =>
       req<{ available: boolean; subtasks?: string[] }>(
         '/api/v1/ai/breakdown', { method: 'POST', body: body({ title, notes }) }, 90_000),
+    tidyNotes: (notes: string) =>
+      req<{ available: boolean; notes?: string }>(
+        '/api/v1/ai/tidy-notes', { method: 'POST', body: body({ notes }) }, 90_000),
     planDay: (date: string, tasks: { id: string; title: string; minutes: number }[], events: { title: string; start: string; end: string }[]) =>
       req<{ available: boolean; order?: string[]; note?: string }>(
         '/api/v1/ai/plan-day', { method: 'POST', body: body({ date, tasks, events }) }, 90_000),

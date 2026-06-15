@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { page } from '$app/stores';
   import { api } from '$lib/api';
+  import { isTauri, openExternal } from '$lib/tauri/bridge';
   import type { BackupDestination, BackupRun, BackupSettings, BackupDestinationType } from '$lib/types';
 
   let loading = $state(true);
@@ -24,6 +25,7 @@
   let driveConnected = $state(false);
   let driveNeedsReconnect = $state(false);
   let googleOAuth = $state(false);
+  let driveReturnPending = $state(false); // desktop: re-check Drive status on window refocus
 
   // Manual restore
   let restoreFile = $state<File | null>(null);
@@ -41,6 +43,7 @@
   let isNative = $state(false);
   let browserListener: { remove: () => void } | null = null;
   let messageListener: ((e: MessageEvent) => void) | null = null;
+  let focusListener: (() => void) | null = null;
 
   onMount(() => {
     void load();
@@ -57,10 +60,18 @@
       else if (e.data === 'sempa-drive-error') { error = 'Google Drive connection failed.'; }
     };
     window.addEventListener('message', messageListener);
+
+    // Desktop: the consent flow runs in the OS browser, so re-check status when
+    // the app window regains focus after the user comes back.
+    focusListener = () => {
+      if (driveReturnPending) { driveReturnPending = false; void refreshDriveStatus().then(() => { if (driveConnected) notice = 'Google Drive connected.'; }); }
+    };
+    window.addEventListener('focus', focusListener);
   });
 
   onDestroy(() => {
     if (messageListener) window.removeEventListener('message', messageListener);
+    if (focusListener) window.removeEventListener('focus', focusListener);
     browserListener?.remove();
   });
 
@@ -199,7 +210,17 @@
       await CapBrowser.open({ url });
       return;
     }
-    // Web/desktop: open a popup so we never navigate away from this page.
+    if (isTauri()) {
+      // Desktop: open the consent flow in the OS browser. Navigating the main
+      // webview here would strand the app on a remote origin (the SQL plugin is
+      // ACL-denied off the local app → "everything disappeared" + re-login). The
+      // auth URL already carries the desktop token, so the server completes it;
+      // we re-check status when the user returns to the window.
+      void openExternal(url);
+      driveReturnPending = true;
+      return;
+    }
+    // Web: open a popup so we never navigate away from this page.
     const popup = window.open(url, 'sempa-drive', 'popup,width=520,height=680');
     if (!popup) {
       // Popup blocked — fall back to a full-page redirect (lands back here).
