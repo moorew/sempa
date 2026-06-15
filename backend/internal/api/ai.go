@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/clevercode/sempa/internal/ai"
 )
@@ -43,14 +44,20 @@ func (h *integrationHandler) aiQuickAdd(w http.ResponseWriter, r *http.Request) 
 		respondError(w, http.StatusBadRequest, "text required")
 		return
 	}
-	prompt := fmt.Sprintf(`Today is %s. Convert this quick note into a single task.
+	weekday := ""
+	if t, err := time.Parse("2006-01-02", body.Today); err == nil {
+		weekday = t.Weekday().String()
+	}
+	tagsJSON, _ := json.Marshal(body.Tags)
+	prompt := fmt.Sprintf(`Today is %s (%s). Convert this quick note into a single task.
+Resolve relative days ("today", "tomorrow", "thursday", "next week") to an actual date.
 Return JSON with keys: "title" (concise, action-oriented, no date/time words),
 "planned_date" (YYYY-MM-DD if a day is implied else ""),
 "time_estimate_minutes" (integer, 0 if none implied),
-"reminder_at" (RFC3339 local datetime if a specific time is implied else ""),
-"tags" (array, only from this allowed list, else empty): %v
+"reminder_at" (RFC3339 datetime if a specific time is implied else ""),
+"tags" (array, choose only from this allowed JSON list, else empty): %s
 
-Note: %q`, body.Today, body.Tags, body.Text)
+Note: %q`, body.Today, weekday, string(tagsJSON), body.Text)
 
 	var out struct {
 		Title               string   `json:"title"`
@@ -127,11 +134,14 @@ func (h *integrationHandler) aiSuggestTags(w http.ResponseWriter, r *http.Reques
 		respond(w, http.StatusOK, map[string]any{"available": true, "tags": []string{}})
 		return
 	}
-	prompt := fmt.Sprintf(`Pick the tags that best fit this task, ONLY from the allowed list.
-Return JSON: "tags" (array, a subset of the allowed list; empty if none fit).
-Allowed: %v
+	availJSON, _ := json.Marshal(body.Available)
+	prompt := fmt.Sprintf(`Choose the tags that fit this task, ONLY from the allowed JSON list.
+Be generous: assign every tag that is even loosely relevant — most tasks get at least one.
+Return JSON: "tags" (array, a subset of the allowed list; empty only if truly none apply).
+Example — Task: "Pay rent", Allowed: ["finance","home","work"] → {"tags":["finance","home"]}
+Allowed: %s
 Task: %q
-Notes: %q`, body.Available, body.Title, clip(body.Notes, 800))
+Notes: %q`, string(availJSON), body.Title, clip(body.Notes, 800))
 
 	var out struct {
 		Tags []string `json:"tags"`
@@ -309,6 +319,46 @@ Not done: %s`, string(dj), string(uj))
 	respond(w, http.StatusOK, map[string]any{"available": true, "prompts": cleanList(out.Prompts, 3)})
 }
 
+// aiTidyNotes cleans up free-form notes into tidy Markdown (paragraphs + lists)
+// without changing the meaning or dropping any information.
+func (h *integrationHandler) aiTidyNotes(w http.ResponseWriter, r *http.Request) {
+	cfg, ok := h.aiCfg(r.Context())
+	if !ok {
+		aiUnavailable(w)
+		return
+	}
+	var body struct {
+		Notes string `json:"notes"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if strings.TrimSpace(body.Notes) == "" {
+		respondError(w, http.StatusBadRequest, "notes required")
+		return
+	}
+	// Plain-text generation (not JSON) — the output is one freeform block, and a
+	// small model reliably returns text but often gets a JSON key name wrong.
+	prompt := fmt.Sprintf(`Reformat the notes below into clean, readable Markdown.
+Rules:
+- Keep ALL the information and any URLs exactly. Do not invent or remove facts.
+- Turn run-on or pasted text into proper sentences and short paragraphs.
+- Use "- " bullet points for any list of items, and "1." numbered steps for a sequence.
+- Output ONLY the reformatted Markdown. No preamble, no explanation, no code fences.
+
+Notes:
+%s`, clip(body.Notes, 4000))
+
+	out, err := ai.Text(r.Context(), cfg, prompt)
+	if err != nil {
+		respondError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	cleaned := stripCodeFence(strings.TrimSpace(out))
+	if cleaned == "" {
+		cleaned = body.Notes
+	}
+	respond(w, http.StatusOK, map[string]any{"available": true, "notes": cleaned})
+}
+
 // ── helpers ────────────────────────────────────────────────────────────────
 
 // filterAllowed keeps only items present in allowed (case-insensitive), preserving order.
@@ -343,6 +393,19 @@ func cleanList(items []string, max int) []string {
 		}
 	}
 	return out
+}
+
+// stripCodeFence removes a leading/trailing ``` fence a model sometimes adds.
+func stripCodeFence(s string) string {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "```") {
+		return s
+	}
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		s = s[i+1:] // drop the opening ``` (and any language tag)
+	}
+	s = strings.TrimSuffix(strings.TrimSpace(s), "```")
+	return strings.TrimSpace(s)
 }
 
 func clip(s string, n int) string {

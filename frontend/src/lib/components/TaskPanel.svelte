@@ -225,6 +225,19 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
+  // Tidy the notes into clean Markdown (paragraphs + lists), preserving content.
+  let aiTidying = $state(false);
+  const aiTidyNotesOn = $derived(prefs.aiOn('tidyNotes') && aiStatus.reachable);
+  async function aiTidyNotes() {
+    if (aiTidying || !description.trim()) return;
+    aiTidying = true;
+    try {
+      const res = await api.ai.tidyNotes(description);
+      if (res.available && res.notes) description = res.notes;
+    } catch { /* keep notes as-is on failure */ }
+    finally { aiTidying = false; }
+  }
+
   // Inline delete confirmation (FIX 06)
   let deleteConfirm = $state(false);
   $effect(() => { if (!open) deleteConfirm = false; });
@@ -693,9 +706,20 @@
 
       <!-- Notes -->
       <div>
-        <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400" for="task-notes">
-          Notes <span class="text-xs font-normal text-gray-400 dark:text-gray-600">— markdown supported</span>
-        </label>
+        <div class="mb-1.5 flex items-center justify-between gap-2">
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400" for="task-notes">
+            Notes <span class="text-xs font-normal text-gray-400 dark:text-gray-600">— markdown supported</span>
+          </label>
+          {#if aiTidyNotesOn && description.trim()}
+            <button type="button" onclick={aiTidyNotes} disabled={aiTidying}
+                    class="inline-flex items-center gap-1 text-[11px] font-medium transition-colors disabled:opacity-50"
+                    style="color: var(--sempa-accent);"
+                    title="Tidy these notes into clean paragraphs and lists">
+              <span class:animate-pulse={aiTidying}><Sparkles size={12} strokeWidth={2} /></span>
+              {aiTidying ? 'Tidying…' : 'Tidy up'}
+            </button>
+          {/if}
+        </div>
         <textarea id="task-notes" bind:value={description} rows="4"
                   placeholder="Add details, links, context...&#10;&#10;Supports **bold**, _italic_, [links](https://...)"
                   class="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm
