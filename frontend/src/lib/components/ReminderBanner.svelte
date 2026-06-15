@@ -26,54 +26,52 @@
 </script>
 
 {#if show}
-  <div class="mx-auto flex max-w-3xl flex-col gap-2"
-       style="margin: max(40px, calc(env(safe-area-inset-top, 0px) + 12px)) 16px 0;">
+  <div class="flex flex-col gap-1.5">
     {#each reminderAlerts.alerts as a (a.taskId)}
-      <div class="flex flex-col gap-2.5 rounded-xl border px-4 py-3"
+      <!-- One compact row per reminder: icon + title on the left, quick actions
+           on the right. Wraps to a second line only on very narrow widths. -->
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-3 py-2"
            style="border-color: var(--sempa-accent); background: var(--sempa-accent-bg);">
-        <!-- Row 1: icon + reminder title + dismiss -->
-        <div class="flex items-center gap-3">
-          <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+        <div class="flex min-w-0 flex-1 items-center gap-2.5">
+          <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
                style="background: var(--sempa-bg-panel); color: var(--sempa-accent);">
-            <Bell size={17} strokeWidth={2} />
+            <Bell size={15} strokeWidth={2} />
           </div>
-
           <div class="min-w-0 flex-1">
-            <p class="font-semibold" style="font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--sempa-accent);">
+            <span class="font-semibold" style="font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--sempa-accent);">
               Reminder
-            </p>
-            <p class="truncate" style="font-size: 13.5px; color: var(--sempa-text);">{a.title}</p>
+            </span>
+            <p class="truncate" style="font-size: 13px; line-height: 1.25; color: var(--sempa-text);">{a.title}</p>
           </div>
-
-          <button
-            onclick={() => reminderAlerts.dismiss(a.taskId)}
-            aria-label="Dismiss"
-            class="shrink-0 rounded-lg p-1 transition-colors"
-            style="color: var(--sempa-text-dim);">
-            <X size={16} />
-          </button>
         </div>
 
-        <!-- Row 2: actions, evenly spread so nothing gets crammed -->
-        <div class="flex items-center gap-2">
+        <!-- Quick actions: compact, right-aligned, never grow to fill the row. -->
+        <div class="flex shrink-0 items-center gap-1.5">
           <button
             onclick={() => open(a.taskId)}
-            class="flex-1 rounded-lg px-3 py-1.5 font-semibold transition-opacity hover:opacity-90"
-            style="font-size: 12.5px; background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);">
+            class="rounded-md px-2.5 py-1 font-semibold transition-opacity hover:opacity-90"
+            style="font-size: 12px; background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);">
             Open
           </button>
           <button
             onclick={() => reminderAlerts.markDone(a.taskId)}
-            class="flex-1 rounded-lg px-2.5 py-1.5 font-medium transition-colors"
-            style="font-size: 12.5px; color: var(--sempa-text-soft); border: 1px solid var(--sempa-border);">
+            class="rounded-md px-2 py-1 font-medium transition-colors"
+            style="font-size: 12px; color: var(--sempa-text-soft); border: 1px solid var(--sempa-border);">
             Done
           </button>
           <button
             onclick={() => reminderAlerts.snooze(a.taskId)}
-            class="flex-1 rounded-lg px-2.5 py-1.5 font-medium transition-colors"
-            style="font-size: 12.5px; color: var(--sempa-text-soft); border: 1px solid var(--sempa-border);"
+            class="rounded-md px-2 py-1 font-medium transition-colors"
+            style="font-size: 12px; color: var(--sempa-text-soft); border: 1px solid var(--sempa-border);"
             title="Snooze 1 hour">
             Snooze
+          </button>
+          <button
+            onclick={() => reminderAlerts.dismiss(a.taskId)}
+            aria-label="Dismiss"
+            class="ml-0.5 shrink-0 rounded-md p-1 transition-colors"
+            style="color: var(--sempa-text-dim);">
+            <X size={15} />
           </button>
         </div>
       </div>

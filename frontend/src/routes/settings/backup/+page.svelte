@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { page } from '$app/stores';
   import { api } from '$lib/api';
+  import { isTauri, openExternal } from '$lib/tauri/bridge';
   import type { BackupDestination, BackupRun, BackupSettings, BackupDestinationType } from '$lib/types';
 
   let loading = $state(true);
@@ -22,7 +23,9 @@
   let lastRunAt = $state<string | null>(null);
   let lastStatus = $state<string | null>(null);
   let driveConnected = $state(false);
+  let driveNeedsReconnect = $state(false);
   let googleOAuth = $state(false);
+  let driveReturnPending = $state(false); // desktop: re-check Drive status on window refocus
 
   // Manual restore
   let restoreFile = $state<File | null>(null);
@@ -40,6 +43,7 @@
   let isNative = $state(false);
   let browserListener: { remove: () => void } | null = null;
   let messageListener: ((e: MessageEvent) => void) | null = null;
+  let focusListener: (() => void) | null = null;
 
   onMount(() => {
     void load();
@@ -56,10 +60,18 @@
       else if (e.data === 'sempa-drive-error') { error = 'Google Drive connection failed.'; }
     };
     window.addEventListener('message', messageListener);
+
+    // Desktop: the consent flow runs in the OS browser, so re-check status when
+    // the app window regains focus after the user comes back.
+    focusListener = () => {
+      if (driveReturnPending) { driveReturnPending = false; void refreshDriveStatus().then(() => { if (driveConnected) notice = 'Google Drive connected.'; }); }
+    };
+    window.addEventListener('focus', focusListener);
   });
 
   onDestroy(() => {
     if (messageListener) window.removeEventListener('message', messageListener);
+    if (focusListener) window.removeEventListener('focus', focusListener);
     browserListener?.remove();
   });
 
@@ -76,7 +88,11 @@
   }
 
   async function refreshDriveStatus() {
-    try { driveConnected = (await api.backup.driveStatus()).connected; } catch { /* ignore */ }
+    try {
+      const s = await api.backup.driveStatus();
+      driveConnected = s.connected;
+      driveNeedsReconnect = !!s.needs_reconnect;
+    } catch { /* ignore */ }
   }
 
   async function load() {
@@ -95,6 +111,9 @@
       lastStatus = s.last_status;
       driveConnected = r.drive_connected;
       googleOAuth = r.google_oauth;
+      // Probe the live Drive token so an expired/revoked one surfaces a reconnect
+      // prompt rather than reading as "connected" while every backup fails.
+      if (r.drive_connected) void refreshDriveStatus();
     } catch (e) {
       error = e instanceof Error ? e.message : 'Failed to load backup settings';
     } finally {
@@ -191,7 +210,17 @@
       await CapBrowser.open({ url });
       return;
     }
-    // Web/desktop: open a popup so we never navigate away from this page.
+    if (isTauri()) {
+      // Desktop: open the consent flow in the OS browser. Navigating the main
+      // webview here would strand the app on a remote origin (the SQL plugin is
+      // ACL-denied off the local app → "everything disappeared" + re-login). The
+      // auth URL already carries the desktop token, so the server completes it;
+      // we re-check status when the user returns to the window.
+      void openExternal(url);
+      driveReturnPending = true;
+      return;
+    }
+    // Web: open a popup so we never navigate away from this page.
     const popup = window.open(url, 'sempa-drive', 'popup,width=520,height=680');
     if (!popup) {
       // Popup blocked — fall back to a full-page redirect (lands back here).
@@ -398,9 +427,20 @@
               </div>
             {:else if dest.type === 'drive'}
               <div class="space-y-2">
-                {#if driveConnected}
+                {#if driveConnected && driveNeedsReconnect}
+                  <div class="rounded-lg border px-3 py-2" style="border-color: color-mix(in srgb, var(--sempa-amber) 40%, transparent); background: color-mix(in srgb, var(--sempa-amber) 8%, transparent);">
+                    <p class="text-xs" style="color: var(--sempa-amber);">
+                      Google access expired — backups are failing. Reconnect to restore them.
+                      <span style="color: var(--sempa-text-dim);">(Tip: publish your Google OAuth app to stop tokens expiring every 7 days.)</span>
+                    </p>
+                    <button onclick={connectDrive}
+                            class="mt-2 rounded-md px-3 py-1.5 text-xs font-medium text-white" style="background: var(--sempa-amber);">
+                      Reconnect Google Drive
+                    </button>
+                  </div>
+                {:else if driveConnected}
                   <p class="text-xs" style="color: var(--sempa-text-soft);">
-                    <span class="text-green-600">Connected.</span> Backups go to a “Sempa Backups” folder.
+                    <span style="color: var(--sempa-success);">Connected.</span> Backups go to a “Sempa Backups” folder.
                     <button onclick={disconnectDrive} class="ml-1 text-red-400 hover:text-red-500">Disconnect</button>
                   </p>
                 {:else if googleOAuth}
@@ -409,7 +449,7 @@
                     Connect Google Drive
                   </button>
                 {:else}
-                  <p class="text-xs text-amber-600">Google OAuth isn’t configured on this server (set GMAIL_CLIENT_ID/SECRET).</p>
+                  <p class="text-xs" style="color: var(--sempa-amber);">Google OAuth isn’t configured on this server (set GMAIL_CLIENT_ID/SECRET).</p>
                 {/if}
                 <input bind:value={dest.folder_id} placeholder="Advanced: specific Drive folder ID (blank = auto “Sempa Backups” folder)"
                        class="w-full rounded-md border px-2 py-1.5 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);" />
@@ -436,7 +476,7 @@
     </section>
 
     <!-- Restore -->
-    <section class="mb-6 rounded-xl border px-5 py-4" style="border-color: #f59e0b55; background: color-mix(in srgb, #f59e0b 6%, var(--sempa-bg-panel));">
+    <section class="mb-6 rounded-xl border px-5 py-4" style="border-color: color-mix(in srgb, var(--sempa-amber) 33%, transparent); background: color-mix(in srgb, var(--sempa-amber) 6%, var(--sempa-bg-panel));">
       <p class="mb-1 text-sm font-semibold" style="color: var(--sempa-text);">Restore from a backup</p>
       <p class="mb-3 text-xs" style="color: var(--sempa-text-soft);">
         This <strong>erases all current data</strong> and replaces it with the backup. Encrypted backups need their passphrase.
@@ -454,12 +494,12 @@
                class="mb-2 w-full rounded-md border px-2 py-1.5 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);" />
         {#if restorePct !== null}
           <div class="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-            <div class="h-full rounded-full bg-amber-500 transition-all" style="width: {restorePct}%"></div>
+            <div class="h-full rounded-full transition-all" style="width: {restorePct}%; background: var(--sempa-amber);"></div>
           </div>
         {/if}
         {#if !restoreConfirm}
           <button onclick={() => restoreConfirm = true} disabled={restoring}
-                  class="rounded-lg px-4 py-2 text-sm font-medium text-white" style="background: #f59e0b;">
+                  class="rounded-lg px-4 py-2 text-sm font-medium text-white" style="background: var(--sempa-amber);">
             Restore “{restoreFile.name}”
           </button>
         {:else}

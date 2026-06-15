@@ -6,6 +6,180 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.124] - 2026-06-15
+
+### Fixed
+- **Windows: grey box around reminder popups.** The floating reminder window was
+  transparent, so Windows painted its backing grey wherever the cards didn't —
+  showing as a grey box around the whole stack. The window is now opaque and
+  painted edge-to-edge as a single dark panel (reminders are rows separated by
+  hairlines, not separate floating cards), so there's no bare window area for the
+  grey to show. Win11 still rounds the corners.
+
+### Changed
+- **In-app reminder & routine banners are far more compact.** Each reminder is now
+  a single tidy row (icon + title + Open/Done/Snooze) instead of a tall two-row
+  card, the "Plan your week" / "Daily shutdown" prompt is slimmer, and the two no
+  longer leave a large gap between them. You still clearly see pending reminders
+  without them taking over half the screen.
+
+## [1.0.123] - 2026-06-15
+
+### Fixed
+- **AI "Suggest tags" returned nothing.** The prompt included a worked example
+  whose tag values (`finance`, `home`, `work`) leaked into small models' answers
+  (e.g. `llama3.2:3b` would reply `["work"]` for a Tailscale task). Since those
+  aren't your tags, they were filtered out and you saw nothing. The prompt now
+  restates *your* allowed tags and forbids inventing any — both `llama3.2:3b` and
+  `qwen2.5:1.5b` now pick the right tags. "Suggest" also tells you when no tag
+  matches instead of looking like a dead click.
+- **AI "Plan my day" gave no visible result.** It reordered your tasks and saved
+  the new order, but the Plan screen only showed a task *count*, so the change
+  was invisible. It now shows the suggested order as a numbered list, surfaces
+  any error, and the button becomes "re-plan" after running.
+
+## [1.0.122] - 2026-06-15
+
+### Fixed
+- **AI features that "did nothing" (tidy notes, suggest tags, quick add, etc.).**
+  Two causes: (1) the app called Ollama's `/api/generate`, which some models —
+  including recent `llama3.2` builds — reject with *"does not support generate"*;
+  it now uses `/api/chat`, which works across models. (2) AI failures were
+  swallowed silently — the task panel now shows the error instead. If a model
+  still errors with *"does not support generate/chat"*, re-pull it
+  (`ollama pull <model>`) — a stale manifest from an Ollama upgrade can break the
+  old copy.
+- **Quick-add extraction** is much better: it now reliably resolves relative days
+  ("tomorrow", weekday names), durations, and tags (added a worked example + the
+  weekday to the prompt).
+
+## [1.0.121] - 2026-06-15
+
+### Fixed
+- **Desktop: connecting Google (Drive backup / Gmail) no longer logs you out or
+  makes data "disappear".** The consent flow used to navigate the desktop app's
+  main window to a remote page, stranding it on the server's web login where the
+  local database is (correctly) blocked — surfacing as
+  `Command plugin:sql|load not allowed by ACL`. Desktop now opens OAuth in your
+  **OS browser** and re-checks status when you return; the local DB is never left.
+  (If you hit this: just relaunch the desktop app — your data is safe on the
+  server and re-syncs.)
+- **AI suggest-tags and quick-add tag parsing.** The allowed-tag list was passed
+  to the model in a malformed shape, so tag suggestions came back empty / merged.
+  Tags are now passed as a proper list (with an example), and quick-add gets the
+  weekday so relative dates ("Thursday") resolve.
+
+### Added
+- **AI: Tidy up notes** — a ✦ on the task Notes field reformats messy / pasted
+  text into clean paragraphs and bullet lists, preserving all content and URLs.
+  Local-only, toggleable in Settings → Integrations → AI.
+
+## [1.0.120] - 2026-06-14
+
+### Added
+- **AI assist (local model) across the app — all opt-in per feature** (Settings →
+  Integrations → AI → "AI features"; each also requires the model to be reachable):
+  - **Natural-language quick add** — the task title field gets a ✦ that parses
+    "lunch w/ Sam thu 1pm 30m #personal" into title, date, time, estimate, and tags.
+  - **Suggest tags** — ✦ on the task tag editor proposes tags from your existing set.
+  - **Break into subtasks** — ✦ on a task creates a few concrete subtasks.
+  - **Email/Jira → task summary + estimate** endpoint (shared helper).
+  - **Plan my day** — Plan Day suggests an order for today's tasks around your events.
+  - **Draft weekly review** — Week Review fills wins / challenges / next-focus from the week.
+  - **Reflection prompts** — Shutdown suggests context-aware end-of-day questions.
+  - New backend `internal/ai` client + `/api/v1/ai/*` endpoints; everything runs on
+    your local Ollama model — nothing leaves the server.
+
+### Changed
+- **Mobile sync status is now hidden at rest.** It only appears while
+  syncing/pending/offline/errored (bottom-left, above the tab bar) and disappears
+  when synced, so it never sits on top of content. Desktop keeps the permanent
+  bottom-right cloud.
+
+## [1.0.119] - 2026-06-14
+
+### Fixed
+- **Mobile: the floating sync status no longer covers the "+" button.** On mobile the
+  sync widget now sits in the bottom-left (above the tab bar); the bottom-right corner
+  is left to the task-creation FAB. Desktop is unchanged (bottom-right).
+
+## [1.0.118] - 2026-06-14
+
+### Fixed
+- **Backups failing silently with "refresh returned HTTP 400".** When the Google
+  Drive refresh token expires or is revoked (Google returns `invalid_grant` — OAuth
+  apps still in "Testing" status expire refresh tokens after 7 days), the error is now
+  recognised as **re-auth required**. Backup → Google Drive shows a clear amber
+  "Google access expired — Reconnect" banner (with a tip to publish the OAuth app so
+  tokens stop expiring weekly) instead of reading as "Connected" while every backup
+  fails. The token refresh error also now includes Google's actual message.
+
+## [1.0.117] - 2026-06-14
+
+### Added
+- **AI model management.** Settings → Integrations → AI now lists every downloaded
+  model with its on-disk **size**, lets you pick the active one, **download a new
+  model with a live progress bar**, and **remove** a model (with a confirm that it
+  must be re-downloaded). Backed by new server endpoints that proxy Ollama
+  pull/delete and report progress.
+- **Action feedback in AI settings.** Test/Save and model actions now report clearly
+  ("Connected · N models", "AI settings saved", "Nothing to save", "Downloaded X",
+  "Removed X") instead of silently doing nothing.
+
+### Changed
+- **Sync status is now a floating widget** (bottom-right): a permanent compact cloud
+  icon (cloud-off when offline) whose label fades in only on hover, while
+  syncing/pending/offline/errored, or briefly after a sync — freeing the left rail.
+  The sidebar footer (utility icons + account) is correspondingly shorter.
+- **Platform-correct keyboard shortcuts.** The Search hint shows `Ctrl+K` on
+  Windows/Linux and `⌘K` on macOS, and the shortcut now actually opens Search.
+
+## [1.0.116] - 2026-06-14
+
+### Fixed
+- **More theme-aware highlights.** The right-panel docks weren't fully themed: the
+  Inbox/Email tab underline, unread dot and "→ Task" button, the Jira issue keys and
+  links, the Jira "Medium" priority marker, and the weekly Goals progress bar/dots used
+  fixed blue/yellow/amber that ignored the active theme. They now follow `--sempa-accent`
+  (and `--sempa-amber` for the Medium-priority marker), matching the rest of the UI.
+- **Local AI connection (deploy).** On the default compose, `OLLAMA_BASE_URL` resolved to
+  a bridge hostname the host-networked app container couldn't reach. Combined with the
+  1.0.115 compose change, the app now talks to Ollama over loopback; existing servers just
+  set `OLLAMA_BASE_URL=http://127.0.0.1:11434`.
+
+### Changed
+- **Email view restyled.** The full Inbox now renders each message as a themed card (like
+  the Reminders view) instead of a flat divider list, with inline "→ Task" / "Archive"
+  actions — all using the theme tokens.
+
+## [1.0.115] - 2026-06-14
+
+### Added
+- **In-app updates.** A subtle update indicator in the left rail, a brand-controlled
+  "update available" toast (Download · What's new · Later), and **Settings → About**
+  showing the current version, update channel (Stable/Beta), automatic-checks toggle,
+  last-checked time, and a manual "Check for updates". Works on web and desktop by
+  polling GitHub Releases — no signing required. The full silent background
+  auto-update path (tauri-plugin-updater) is scaffolded and documented in
+  `docs/UPDATER.md`; it activates once an updater signing key is added to CI.
+- **Local AI is now opt-in at install.** `install.sh` asks whether you want local
+  AI for text processing; if yes it starts Ollama, pulls `qwen2.5:1.5b`, prefills
+  the in-app AI fields, and verifies the connection. Otherwise Ollama isn't started.
+- **Sectioned navigation rail** with a pinned Search pill and a configurable grouping
+  (Settings → Appearance: Spaces / Plan·Focus·Review / Flat, with Labels or Dividers).
+
+### Fixed
+- **Local AI connection.** Ollama ran on a bridge network the (host-networked) app
+  container couldn't resolve (`http://ollama:11434`), so the AI test returned 404 /
+  "not reachable". It now runs on the host namespace bound to loopback and the app
+  talks to it over `127.0.0.1` — and only runs when you opt in.
+- **Theme-aware highlights.** Orange/amber that ignored the active theme now follows
+  it: the Pomodoro timer, overdue/focus task badges, backup warnings, the AI status
+  dot, and the Schedule calendar swatches (no longer stuck orange in cool themes).
+- **Left rail polish.** Footer icons no longer squash (distorting their highlight),
+  the sync status no longer collides with the icons, and the account avatar is now a
+  proper chip (avatar + email + Sign out) instead of an orphaned button.
+
 ## [1.0.114] - 2026-06-14
 
 ### Fixed
