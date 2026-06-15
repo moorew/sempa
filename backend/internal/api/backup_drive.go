@@ -121,7 +121,14 @@ func (h *backupHandler) driveStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	var tok gmail.StoredToken
 	_ = json.Unmarshal([]byte(c.Config), &tok)
-	respond(w, http.StatusOK, map[string]any{"connected": true, "email": tok.Email})
+	// Probe the token so the UI can prompt a reconnect when it's expired/revoked
+	// (Google "Testing" apps expire refresh tokens after 7 days) instead of
+	// showing "connected" while every backup silently fails with invalid_grant.
+	needsReconnect := false
+	if _, terr := driveTokenFunc(h.configs, h.cfg)(r.Context()); terr != nil && errors.Is(terr, gmail.ErrReauthRequired) {
+		needsReconnect = true
+	}
+	respond(w, http.StatusOK, map[string]any{"connected": true, "email": tok.Email, "needs_reconnect": needsReconnect})
 }
 
 func (h *backupHandler) driveDisconnect(w http.ResponseWriter, r *http.Request) {

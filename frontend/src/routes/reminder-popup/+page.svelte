@@ -21,7 +21,7 @@
   }
 
   let cards = $state<Card[]>([]);
-  let stackEl: HTMLElement | undefined = $state();
+  let rootEl: HTMLElement | undefined = $state();
 
   // — Tauri bridges (loaded lazily; this route only ever runs in the desktop shell) —
   let emitFn: ((event: string, payload?: unknown) => Promise<void>) | null = null;
@@ -33,14 +33,17 @@
     await emitFn?.('reminder:action', { action, taskId });
   }
 
-  // Resize the window to hug the card stack. Width is fixed (set in Rust); only
-  // the height changes, so the top-right corner stays put.
+  // Resize the window to EXACTLY the painted panel — no slack. The window is
+  // opaque (transparent:false in Rust), so the panel paints every pixel; sizing
+  // it to the content means there's no leftover window area at all. (Previously
+  // the window was transparent and slightly larger than its content, so Windows'
+  // grey window backing showed through as a box around the cards.)
   async function fitWindow() {
     if (typeof window === 'undefined') return;
     try {
       const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow');
       const { LogicalSize } = await import('@tauri-apps/api/dpi');
-      const h = Math.max(80, Math.ceil((stackEl?.scrollHeight ?? 120) + 24));
+      const h = Math.max(48, Math.ceil(rootEl?.scrollHeight ?? 120));
       await getCurrentWebviewWindow().setSize(new LogicalSize(384, h));
     } catch {
       /* not in Tauri / API unavailable */
@@ -73,67 +76,67 @@
   });
 </script>
 
-<!-- Transparent window: only the cards are visible, floating over the desktop. -->
-<div class="popup-root">
-  <div class="stack" bind:this={stackEl}>
-    {#each cards as c (c.taskId)}
-      <div class="card">
-        <!-- Body = click to open the task -->
-        <button class="open" onclick={() => act('open', c.taskId)} title="Open task">
-          <span class="bar"></span>
-          <span class="icon"><Bell size={15} strokeWidth={2} /></span>
-          <span class="text">
-            <span class="label">Reminder</span>
-            <span class="title">{c.title}</span>
-            {#if c.subtitle}<span class="sub">{c.subtitle}</span>{/if}
-          </span>
-        </button>
+<!--
+  Opaque window (transparent:false in Rust). The panel paints EVERY pixel of the
+  window edge-to-edge, so there is no transparent region where Windows' grey
+  window backing could show through. Multiple reminders are rows inside this one
+  panel, separated by hairline dividers — NOT separate floating cards with gaps
+  (those gaps were the grey box the user saw).
+-->
+<div class="popup-root" bind:this={rootEl}>
+  {#each cards as c (c.taskId)}
+    <div class="card">
+      <!-- Body = click to open the task -->
+      <button class="open" onclick={() => act('open', c.taskId)} title="Open task">
+        <span class="bar"></span>
+        <span class="icon"><Bell size={15} strokeWidth={2} /></span>
+        <span class="text">
+          <span class="label">Reminder</span>
+          <span class="title">{c.title}</span>
+          {#if c.subtitle}<span class="sub">{c.subtitle}</span>{/if}
+        </span>
+      </button>
 
-        <div class="actions">
-          <button class="act-btn" onclick={() => act('done', c.taskId)} title="Mark done" aria-label="Mark done">
-            <Check size={15} strokeWidth={2.25} />
-          </button>
-          <button class="act-btn" onclick={() => act('dismiss', c.taskId)} title="Dismiss" aria-label="Dismiss">
-            <X size={15} strokeWidth={2.25} />
-          </button>
-        </div>
+      <div class="actions">
+        <button class="act-btn" onclick={() => act('done', c.taskId)} title="Mark done" aria-label="Mark done">
+          <Check size={15} strokeWidth={2.25} />
+        </button>
+        <button class="act-btn" onclick={() => act('dismiss', c.taskId)} title="Dismiss" aria-label="Dismiss">
+          <X size={15} strokeWidth={2.25} />
+        </button>
       </div>
-    {/each}
-  </div>
+    </div>
+  {/each}
 </div>
 
 <style>
+  /* Opaque dark background painted immediately so there's never a white/grey
+     flash before the panel renders, and never a bare window region. */
   :global(html), :global(body) {
-    background: transparent !important;
+    background: #1c1612 !important;
     margin: 0;
     overflow: hidden;
   }
 
+  /* The panel IS the window: full width, hugs its rows in height (the window is
+     resized to match), one solid fill. No padding/margin/radius — Win11's DWM
+     rounds the window corners for us, and painting every pixel means no grey. */
   .popup-root {
     width: 100vw;
-    min-height: 100vh;
-    padding: 8px;
-    box-sizing: border-box;
+    background: #1c1612;
+    overflow: hidden;
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   }
 
-  .stack {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  /* Dark card regardless of OS/app theme — reads cleanly over any wallpaper,
-     matching the Granola reference. */
+  /* Each reminder is a row on the shared panel, divided by a hairline — no
+     per-row background, radius, shadow or gap (all of which previously left
+     transparent seams the grey backing bled through). */
   .card {
     display: flex;
     align-items: stretch;
-    background: rgba(28, 22, 18, 0.97);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
-    overflow: hidden;
-    backdrop-filter: blur(8px);
+  }
+  .card:not(:last-child) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   }
 
   .open {
@@ -155,7 +158,6 @@
     width: 4px;
     align-self: stretch;
     margin-right: 8px;
-    border-radius: 0 3px 3px 0;
     background: #cc6e3a; /* terracotta accent */
     flex: 0 0 auto;
   }

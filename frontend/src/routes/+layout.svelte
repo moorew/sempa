@@ -24,6 +24,7 @@
   import { Capacitor } from '@capacitor/core';
   import { api, getServerUrl, getTauriToken, clearTauriToken, clearNativeToken, resetApiResolver } from '$lib/api';
   import { isTauri, hasLocalDb, onSyncTrigger } from '$lib/tauri/bridge';
+  import { shortcutLabel } from '$lib/platform';
   import { startSync, sync as runSync, syncStore } from '$lib/sync.svelte';
   import PomodoroTimer from '$lib/components/PomodoroTimer.svelte';
   import BottomSheet from '$lib/components/BottomSheet.svelte';
@@ -31,6 +32,7 @@
   import SyncIndicator from '$lib/components/SyncIndicator.svelte';
   import UpdateToast from '$lib/components/UpdateToast.svelte';
   import { updates } from '$lib/stores/updates.svelte';
+  import { aiStatus } from '$lib/stores/aiStatus.svelte';
   import { realtime } from '$lib/stores/realtime.svelte';
   import type { Snippet } from 'svelte';
 
@@ -60,6 +62,11 @@
     isReminderPopup ||
     ($page.url.pathname as string) === '/widget' ||
     ($page.url.pathname as string) === '/sticky'
+  );
+  // Whether any in-app banner (reminder alert or routine prompt) is showing —
+  // gates the shared spacing wrapper so there's no empty offset when none are.
+  let hasBanners = $derived(
+    reminderAlerts.alerts.length > 0 || routines.weeklyPlanDue || routines.shutdownDue
   );
   let shortcutsOpen      = $state(false);
   let userEmail          = $state<string | undefined>(undefined);
@@ -97,6 +104,12 @@
   function handleKeydown(e: KeyboardEvent) {
     if (isLoginPage) return;
     const tgt = e.target as HTMLElement;
+    // Cmd/Ctrl+K opens Search from anywhere (even while typing in a field).
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+      e.preventDefault();
+      goto('/search');
+      return;
+    }
     if (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
 
@@ -130,6 +143,10 @@
     // Background check for a newer release (throttled to ~6h; honours the user's
     // "Automatic checks" preference). Surfaces the rail indicator + update toast.
     updates.maybeAutoCheck();
+
+    // Learn whether the local AI model is reachable so AI-assist buttons only
+    // appear when they'll actually work.
+    void aiStatus.load();
 
     // Desktop floating reminder card (Tauri only; self-guards). Binds the popup
     // window's action listeners once, in the main window.
@@ -432,7 +449,7 @@
           <Search size={15} strokeWidth={1.75} />
           <span>Search</span>
           <kbd class="ml-auto rounded border px-1.5 font-mono text-[10.5px]"
-               style="border-color: var(--sempa-border);">⌘K</kbd>
+               style="border-color: var(--sempa-border);">{shortcutLabel('K')}</kbd>
         </button>
       {/if}
 
@@ -462,11 +479,10 @@
         </div>
       {/if}
 
-      <!-- Rail footer: utility icons spread across the row, the sync status, and
-           a full-width account chip (avatar + email + Sign out). Spreading the
-           icons (justify-between) and giving sync + account their own rows keeps
-           everything legible — no cramped clump, no orphaned avatar. -->
-      <div class="mt-auto flex flex-col gap-3.5 pt-4" style="border-top: 1px solid var(--sempa-border);">
+      <!-- Rail footer: a compact utility icon row and a full-width account chip
+           (avatar + email + Sign out). Sync status now lives in a floating
+           bottom-right widget, so the footer stays short. -->
+      <div class="mt-auto flex flex-col gap-2 pt-3" style="border-top: 1px solid var(--sempa-border);">
         <!-- Utility icon row -->
         <div class="flex items-center justify-between">
           {#if updates.available}
@@ -505,9 +521,6 @@
           {/if}
         </div>
 
-        <!-- Sync status (renders nothing on plain web). -->
-        <SyncIndicator />
-
         <!-- Account chip — avatar + identity; the "Sign out" line is the affordance. -->
         <button onclick={signOut} title={accountEmail ? `${accountEmail} — sign out` : 'Sign out'}
                 aria-label="Sign out"
@@ -539,8 +552,17 @@
   <!-- ── Main content ───────────────────────────────────────────────────── -->
   <div class="flex-1 overflow-auto" style="background: var(--sempa-bg-main);
        {mobile.value ? 'padding-bottom: 88px;' : ''}">
-    <ReminderBanner />
-    <RoutineBanner />
+    {#if hasBanners}
+      <!-- Shared spacing for the reminder/routine banners: one top offset (to
+           clear the custom titlebar) and a tight gap between them, instead of
+           each banner carrying its own 40px top margin (which left a big gap
+           between them when both showed). -->
+      <div class="mx-auto flex max-w-3xl flex-col gap-1.5"
+           style="margin: max(36px, calc(env(safe-area-inset-top, 0px) + 12px)) 16px 0;">
+        <ReminderBanner />
+        <RoutineBanner />
+      </div>
+    {/if}
     {#key $page.url.pathname}
       <div class="animate-page-in">{@render children()}</div>
     {/key}
@@ -695,9 +717,10 @@
   <PomodoroTimer />
 {/if}
 
-<!-- ── In-app update toast (main window only) ───────────────────────────── -->
+<!-- ── In-app update toast + floating sync status (main window only) ─────── -->
 {#if !isStandaloneWindow}
   <UpdateToast />
+  <SyncIndicator />
 {/if}
 
 <!-- ── Intro animation overlay ──────────────────────────────────────────── -->
