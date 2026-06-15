@@ -1,0 +1,20 @@
+# Gitleaks configuration for Sempa.
+#
+# Extends the built-in default ruleset and adds a narrow allowlist for one
+# known, intentional non-secret. The weekly scheduled scan walks the full git
+# history (`git log -p --all`), so a value committed once stays flagged until
+# allowlisted here — even though nothing sensitive is exposed.
+[extend]
+useDefault = true
+
+[allowlist]
+description = """
+Firebase Android client config (google-services.json) is shipped inside the
+APK and is meant to be public. Its api_key.current_key is a client identifier
+restricted by Android package name + SHA-1 signing cert, not a secret — see
+https://firebase.google.com/docs/projects/api-keys. The actual signing keystore
+is NOT in the repo (it was purged from history previously).
+"""
+paths = [
+  '''(^|/)google-services\.json$''',
+]
