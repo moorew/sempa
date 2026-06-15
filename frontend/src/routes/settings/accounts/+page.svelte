@@ -4,7 +4,8 @@
   import { api, getServerUrl, clearTauriToken, clearNativeToken, resetApiResolver } from '$lib/api';
   import type { AiTitleConfig } from '$lib/api';
   import { theme } from '$lib/stores/theme.svelte';
-  import { prefs } from '$lib/stores/prefs.svelte';
+  import { prefs, AI_FEATURE_META } from '$lib/stores/prefs.svelte';
+  import { aiStatus as aiAvail } from '$lib/stores/aiStatus.svelte';
   import { mobile } from '$lib/stores/mobile.svelte';
   import { realtime } from '$lib/stores/realtime.svelte';
   import { goto } from '$app/navigation';
@@ -362,6 +363,7 @@
         model: aiTitle.model.trim(),
       });
       aiBaseline = { enabled: aiTitle.enabled, base_url: aiTitle.base_url, model: aiTitle.model };
+      void aiAvail.refresh();
       flashAiStatus(successMsg);
     } catch (e) {
       aiError = e instanceof Error ? e.message : 'Failed to save';
@@ -384,6 +386,7 @@
       const res = await api.integrations.aiTitle.test(aiTitle.base_url.trim());
       aiTitle = { ...aiTitle, reachable: res.reachable, available_models: res.models ?? [] };
       if (res.reachable) {
+        void aiAvail.refresh();
         const n = res.models?.length ?? 0;
         flashAiStatus(`Connected · ${n} model${n === 1 ? '' : 's'} available`);
       } else {
@@ -1306,6 +1309,29 @@
                         style="background: var(--sempa-accent);">
                   {aiSaving ? 'Saving…' : 'Save'}
                 </button>
+              </div>
+
+              <!-- Per-feature controls — full control over where the model is used.
+                   Each is also gated by reachability above. -->
+              <div style="border-top: 1px solid var(--sempa-border); padding-top: 14px;">
+                <p class="mb-1 text-xs font-medium" style="color: var(--sempa-text-soft);">AI features</p>
+                <p class="mb-3 text-[11px]" style="color: var(--sempa-text-dim);">Choose where Sempa uses the model. Turn any off to hide it across the app.</p>
+                <div class="flex flex-col gap-3">
+                  {#each AI_FEATURE_META as f (f.key)}
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="min-w-0">
+                        <p class="text-xs" style="color: var(--sempa-text);">{f.label}</p>
+                        <p class="text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">{f.hint}</p>
+                      </div>
+                      <button onclick={() => prefs.setAiFeature(f.key, !prefs.aiOn(f.key))}
+                              role="switch" aria-checked={prefs.aiOn(f.key)} aria-label={f.label}
+                              class="relative shrink-0 rounded-full transition-colors"
+                              style="width:40px; height:22px; border:none; cursor:pointer; background: {prefs.aiOn(f.key) ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
+                        <span class="absolute rounded-full bg-white" style="top:3px; left:{prefs.aiOn(f.key) ? '21px' : '3px'}; width:16px; height:16px; transition: left 150ms ease;"></span>
+                      </button>
+                    </div>
+                  {/each}
+                </div>
               </div>
             </div>
           {/if}

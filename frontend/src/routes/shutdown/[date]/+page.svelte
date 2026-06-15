@@ -5,7 +5,9 @@
   import { api } from '$lib/api';
   import type { Task } from '$lib/types';
   import { formatDate, formatMinutes, isToday, today } from '$lib/utils';
-  import { Moon, Star, MessageSquare } from 'lucide-svelte';
+  import { Moon, Star, MessageSquare, Sparkles } from 'lucide-svelte';
+  import { prefs } from '$lib/stores/prefs.svelte';
+  import { aiStatus } from '$lib/stores/aiStatus.svelte';
 
   let date = $derived($page.params.date ?? today());
 
@@ -19,6 +21,26 @@
 
   let winInputs: (HTMLInputElement | undefined)[] = $state([]);
   let pendingOpen = $state(false);
+
+  // ── AI: context-aware reflection prompts ────────────────────────────────────
+  let aiPrompts = $state<string[]>([]);
+  let aiPromptsLoading = $state(false);
+  const showAiPrompts = $derived(prefs.aiOn('reflection') && aiStatus.reachable);
+  async function suggestPrompts() {
+    if (aiPromptsLoading) return;
+    aiPromptsLoading = true;
+    try {
+      const res = await api.ai.reflectionPrompts(
+        doneTasks.map(t => t.title),
+        pendingTasks.map(t => t.title),
+      );
+      if (res.available && res.prompts) aiPrompts = res.prompts;
+    } catch { /* ignore */ }
+    finally { aiPromptsLoading = false; }
+  }
+  function usePrompt(p: string) {
+    reflection = reflection.trim() ? `${reflection.trim()}\n\n${p} ` : `${p} `;
+  }
 
   onMount(async () => {
     try {
@@ -266,6 +288,31 @@
                  border-radius:12px; padding:14px; resize:none; width:100%;
                  font-size:14px; color: var(--sempa-text); outline:none;"
         ></textarea>
+
+        {#if showAiPrompts}
+          <div class="mt-3 text-left">
+            {#if aiPrompts.length === 0}
+              <button onclick={suggestPrompts} disabled={aiPromptsLoading}
+                      class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
+                      style="border: 1px solid var(--sempa-border); color: var(--sempa-accent);"
+                      title="Suggest reflection questions from today">
+                <Sparkles size={13} strokeWidth={2} />
+                {aiPromptsLoading ? 'Thinking…' : 'Suggest prompts'}
+              </button>
+            {:else}
+              <p class="mb-1.5 text-[11px]" style="color: var(--sempa-text-dim);">Tap a prompt to add it:</p>
+              <div class="flex flex-col gap-1.5">
+                {#each aiPrompts as p}
+                  <button onclick={() => usePrompt(p)}
+                          class="rounded-lg px-3 py-2 text-left text-xs transition-colors"
+                          style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft); background: var(--sempa-bg-panel);">
+                    {p}
+                  </button>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {/if}
 
         {#if error}<p class="mt-2 text-xs text-red-500">{error}</p>{/if}
 

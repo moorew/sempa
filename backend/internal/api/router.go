@@ -323,6 +323,18 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 					r.Post("/remove", integrations.aiTitleRemove)
 				})
 			})
+
+			// AI-assist features (all run on the local model; return
+			// {available:false} when AI is off so the UI hides them).
+			r.Route("/ai", func(r chi.Router) {
+				r.Post("/quick-add", integrations.aiQuickAdd)
+				r.Post("/summarize", integrations.aiSummarizeTask)
+				r.Post("/suggest-tags", integrations.aiSuggestTags)
+				r.Post("/breakdown", integrations.aiBreakdown)
+				r.Post("/plan-day", integrations.aiPlanDay)
+				r.Post("/weekly-review", integrations.aiWeeklyReview)
+				r.Post("/reflection-prompts", integrations.aiReflectionPrompts)
+			})
 		})
 	})
 

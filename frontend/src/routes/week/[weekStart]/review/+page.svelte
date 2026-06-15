@@ -6,7 +6,9 @@
   import type { Objective, Task, WeekReview } from '$lib/types';
   import { formatMinutes, formatWeekRange, today, weekStart as calcWeekStart } from '$lib/utils';
   import { moveAllUnfinishedToNextWeek, unfinishedObjectives } from '$lib/objectives';
-  import { CalendarArrowDown } from 'lucide-svelte';
+  import { CalendarArrowDown, Sparkles } from 'lucide-svelte';
+  import { prefs } from '$lib/stores/prefs.svelte';
+  import { aiStatus } from '$lib/stores/aiStatus.svelte';
 
   let ws = $derived($page.params.weekStart ?? calcWeekStart(today()));
 
@@ -71,6 +73,26 @@
   const totalTasks = $derived(tasks.filter(t => t.status !== 'cancelled'));
   const totalMins  = $derived(doneTasks.reduce((s, t) => s + (t.time_actual_minutes ?? t.time_estimate_minutes ?? 0), 0));
   const doneObjs   = $derived(objectives.filter(o => o.status === 'completed').length);
+
+  // ── AI: draft the review from the week's completed work ──────────────────────
+  let aiDrafting = $state(false);
+  const showAiDraft = $derived(prefs.aiOn('weeklyReview') && aiStatus.reachable);
+  async function aiDraftReview() {
+    if (aiDrafting) return;
+    aiDrafting = true;
+    try {
+      const res = await api.ai.weeklyReview(
+        doneTasks.map(t => t.title),
+        objectives.map(o => ({ title: o.title, status: o.status })),
+      );
+      if (res.available) {
+        if (res.wins?.length) wins = res.wins;
+        if (res.challenges?.length) challenges = res.challenges;
+        if (res.next_focus) nextFocus = res.next_focus;
+      }
+    } catch { /* keep manual entry on failure */ }
+    finally { aiDrafting = false; }
+  }
 
   function addBullet(arr: string[], setter: (v: string[]) => void) {
     setter([...arr, '']);
@@ -207,7 +229,18 @@
   <!-- Step 2: Reflection -->
   {:else if step === 2}
     <div class="space-y-6">
-      <h2 class="text-base font-semibold" style="color: var(--sempa-text);">How did the week go?</h2>
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="text-base font-semibold" style="color: var(--sempa-text);">How did the week go?</h2>
+        {#if showAiDraft}
+          <button onclick={aiDraftReview} disabled={aiDrafting}
+                  class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
+                  style="border: 1px solid var(--sempa-border); color: var(--sempa-accent);"
+                  title="Draft this review from your completed work">
+            <Sparkles size={13} strokeWidth={2} />
+            {aiDrafting ? 'Drafting…' : 'AI draft'}
+          </button>
+        {/if}
+      </div>
 
       <div>
         <label class="mb-2 block text-sm font-medium" style="color: var(--sempa-text-soft);">

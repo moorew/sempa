@@ -5,6 +5,9 @@
   import { api } from '$lib/api';
   import type { Task } from '$lib/types';
   import { formatDate, formatMinutes, isToday, offsetDate, today, weekStart } from '$lib/utils';
+  import { Sparkles } from 'lucide-svelte';
+  import { prefs } from '$lib/stores/prefs.svelte';
+  import { aiStatus } from '$lib/stores/aiStatus.svelte';
 
   let date       = $derived($page.params.date ?? today());
   let yesterday  = $derived(offsetDate(date, -1));
@@ -54,6 +57,39 @@
     const s = new Set(selected);
     s.has(id) ? s.delete(id) : s.add(id);
     selected = s;
+  }
+
+  // ── AI: suggest an order for today's tasks (around calendar events) ──────────
+  let aiPlanning = $state(false);
+  let aiPlanNote = $state('');
+  const showAiPlan = $derived(prefs.aiOn('planDay') && aiStatus.reachable);
+  async function aiPlanMyDay() {
+    if (aiPlanning) return;
+    const active = todayTasks.filter(t => t.status !== 'done' && t.status !== 'cancelled');
+    if (active.length < 2) return;
+    aiPlanning = true;
+    try {
+      let events: { title: string; start: string; end: string }[] = [];
+      try {
+        const evs = await api.ical.listEvents(date);
+        events = (evs ?? []).map(e => ({ title: e.summary, start: e.start_time, end: e.end_time }));
+      } catch { /* events optional */ }
+      const res = await api.ai.planDay(
+        date,
+        active.map(t => ({ id: t.id, title: t.title, minutes: t.time_estimate_minutes ?? 0 })),
+        events,
+      );
+      if (res.available && res.order?.length) {
+        const byId = new Map(todayTasks.map(t => [t.id, t]));
+        const ordered = res.order.map(id => byId.get(id)).filter(Boolean) as Task[];
+        const rest = todayTasks.filter(t => !res.order!.includes(t.id));
+        todayTasks = [...ordered, ...rest];
+        aiPlanNote = res.note ?? '';
+        // Persist the new order so it sticks on the board.
+        await Promise.all(ordered.map((t, i) => api.tasks.update(t.id, { position: i }).catch(() => {})));
+      }
+    } catch { /* keep current order on failure */ }
+    finally { aiPlanning = false; }
   }
 
   async function goToStep2() {
@@ -278,6 +314,21 @@
           {todayTasks.filter(t => t.status !== 'done').length} tasks on your board
           {#if totalEstimate > 0}· {formatMinutes(totalEstimate)} estimated{/if}
         </p>
+
+        {#if showAiPlan && todayTasks.filter(t => t.status !== 'done' && t.status !== 'cancelled').length >= 2}
+          <div class="mt-3">
+            <button onclick={aiPlanMyDay} disabled={aiPlanning}
+                    class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
+                    style="border: 1px solid var(--sempa-border); color: var(--sempa-accent);"
+                    title="Suggest an order for today's tasks">
+              <Sparkles size={13} strokeWidth={2} />
+              {aiPlanning ? 'Planning…' : 'AI: plan my day'}
+            </button>
+            {#if aiPlanNote}
+              <p class="mt-2 rounded-lg px-3 py-2 text-left text-xs" style="background: var(--sempa-accent-bg); color: var(--sempa-text-soft);">{aiPlanNote}</p>
+            {/if}
+          </div>
+        {/if}
 
         {#if error}<p class="mb-4 text-xs text-red-500">{error}</p>{/if}
 

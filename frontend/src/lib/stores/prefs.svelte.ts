@@ -5,6 +5,30 @@
 const CONTEXTUAL_KEY = 'sempa-contextual-reflections';
 const NAV_GROUPING_KEY = 'sempa.navGrouping';
 const NAV_SECTIONS_KEY = 'sempa.navSections';
+const AI_FEATURES_KEY = 'sempa.aiFeatures';
+
+// Per-feature toggles for the AI-assist features, so users are in full control of
+// where the local model is used. All default ON, but every feature is also gated
+// by AI being enabled + reachable on the server, so these only matter once AI is set up.
+export type AiFeature =
+  | 'quickAdd' | 'summarize' | 'suggestTags' | 'breakdown'
+  | 'planDay' | 'weeklyReview' | 'reflection';
+
+export const AI_FEATURE_META: { key: AiFeature; label: string; hint: string }[] = [
+  { key: 'quickAdd',     label: 'Natural-language quick add', hint: 'Type "lunch with Sam thu 1pm 30m #personal" → a structured task.' },
+  { key: 'summarize',    label: 'Email/Jira → task summary',  hint: 'Tidy imported items into a concise title with a time estimate.' },
+  { key: 'suggestTags',  label: 'Suggest tags',               hint: 'Recommend tags for a task from your existing set.' },
+  { key: 'breakdown',    label: 'Break into subtasks',        hint: 'Split a task into a few concrete subtasks.' },
+  { key: 'planDay',      label: 'Plan my day',                hint: 'Suggest an order for today’s tasks around your events.' },
+  { key: 'weeklyReview', label: 'Draft weekly review',        hint: 'Draft wins / challenges / next focus from the week.' },
+  { key: 'reflection',   label: 'Reflection prompts',         hint: 'Context-aware end-of-day questions in Shutdown.' },
+];
+
+type AiFeatures = Record<AiFeature, boolean>;
+const AI_FEATURES_DEFAULT: AiFeatures = {
+  quickAdd: true, summarize: true, suggestTags: true, breakdown: true,
+  planDay: true, weeklyReview: true, reflection: true,
+};
 
 // How the desktop navigation rail is organised. 'spaces' (default) groups by
 // place; 'rhythm' groups by plan→focus→review; 'flat' is the original one-list.
@@ -23,6 +47,7 @@ function createPrefsStore() {
   let contextualReflections = $state(true);
   let navGrouping = $state<NavGrouping>('spaces');
   let navSections = $state<NavSections>('labels');
+  let aiFeatures = $state<AiFeatures>({ ...AI_FEATURES_DEFAULT });
 
   function init() {
     if (typeof localStorage === 'undefined') return;
@@ -32,6 +57,10 @@ function createPrefsStore() {
     if (isGrouping(g)) navGrouping = g;
     const s = localStorage.getItem(NAV_SECTIONS_KEY);
     if (isSections(s)) navSections = s;
+    try {
+      const raw = localStorage.getItem(AI_FEATURES_KEY);
+      if (raw) aiFeatures = { ...AI_FEATURES_DEFAULT, ...JSON.parse(raw) };
+    } catch { /* keep defaults */ }
   }
 
   function setContextualReflections(on: boolean) {
@@ -51,15 +80,24 @@ function createPrefsStore() {
     if (typeof localStorage !== 'undefined') localStorage.setItem(NAV_SECTIONS_KEY, v);
   }
 
+  function setAiFeature(key: AiFeature, on: boolean) {
+    aiFeatures = { ...aiFeatures, [key]: on };
+    if (typeof localStorage !== 'undefined') localStorage.setItem(AI_FEATURES_KEY, JSON.stringify(aiFeatures));
+  }
+
   return {
     get contextualReflections() { return contextualReflections; },
     get navGrouping() { return navGrouping; },
     get navSections() { return navSections; },
+    get aiFeatures() { return aiFeatures; },
+    /** True when a given AI feature is switched on by the user. */
+    aiOn(key: AiFeature) { return aiFeatures[key]; },
     init,
     setContextualReflections,
     toggleContextualReflections: () => setContextualReflections(!contextualReflections),
     setNavGrouping,
     setNavSections,
+    setAiFeature,
   };
 }
 
