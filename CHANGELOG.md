@@ -6,6 +6,23 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.124] - 2026-06-15
+
+### Fixed
+- **Windows: grey box around reminder popups.** The floating reminder window was
+  transparent, so Windows painted its backing grey wherever the cards didn't —
+  showing as a grey box around the whole stack. The window is now opaque and
+  painted edge-to-edge as a single dark panel (reminders are rows separated by
+  hairlines, not separate floating cards), so there's no bare window area for the
+  grey to show. Win11 still rounds the corners.
+
+### Changed
+- **In-app reminder & routine banners are far more compact.** Each reminder is now
+  a single tidy row (icon + title + Open/Done/Snooze) instead of a tall two-row
+  card, the "Plan your week" / "Daily shutdown" prompt is slimmer, and the two no
+  longer leave a large gap between them. You still clearly see pending reminders
+  without them taking over half the screen.
+
 ## [1.0.123] - 2026-06-15
 
 ### Fixed

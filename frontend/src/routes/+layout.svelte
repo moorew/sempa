@@ -63,6 +63,11 @@
     ($page.url.pathname as string) === '/widget' ||
     ($page.url.pathname as string) === '/sticky'
   );
+  // Whether any in-app banner (reminder alert or routine prompt) is showing —
+  // gates the shared spacing wrapper so there's no empty offset when none are.
+  let hasBanners = $derived(
+    reminderAlerts.alerts.length > 0 || routines.weeklyPlanDue || routines.shutdownDue
+  );
   let shortcutsOpen      = $state(false);
   let userEmail          = $state<string | undefined>(undefined);
 
@@ -547,8 +552,17 @@
   <!-- ── Main content ───────────────────────────────────────────────────── -->
   <div class="flex-1 overflow-auto" style="background: var(--sempa-bg-main);
        {mobile.value ? 'padding-bottom: 88px;' : ''}">
-    <ReminderBanner />
-    <RoutineBanner />
+    {#if hasBanners}
+      <!-- Shared spacing for the reminder/routine banners: one top offset (to
+           clear the custom titlebar) and a tight gap between them, instead of
+           each banner carrying its own 40px top margin (which left a big gap
+           between them when both showed). -->
+      <div class="mx-auto flex max-w-3xl flex-col gap-1.5"
+           style="margin: max(36px, calc(env(safe-area-inset-top, 0px) + 12px)) 16px 0;">
+        <ReminderBanner />
+        <RoutineBanner />
+      </div>
+    {/if}
     {#key $page.url.pathname}
       <div class="animate-page-in">{@render children()}</div>
     {/key}
