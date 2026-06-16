@@ -66,10 +66,14 @@ func ReadCalendarEvents(ctx context.Context, c *Client, dateFrom, dateTo string)
 				if IsTaskUID(ev.UID) {
 					continue // our own task block — already shown as a task
 				}
-				if seen[ev.UID] {
+				// Dedup PER CALENDAR (not globally): a shared event legitimately
+				// living on two calendars should appear under each, otherwise a
+				// shared calendar (e.g. Family) gets zeroed out and disappears.
+				dedup := cal.Href + "\x00" + ev.UID
+				if seen[dedup] {
 					continue
 				}
-				seen[ev.UID] = true
+				seen[dedup] = true
 				out = append(out, db.FastmailCalEvent{
 					ID:           ev.UID,
 					UID:          ev.UID,

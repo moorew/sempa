@@ -1312,3 +1312,23 @@ func (h *integrationHandler) fastmailCalendarSync(w http.ResponseWriter, r *http
 	}
 	respond(w, http.StatusOK, map[string]any{"synced": count, "from": from, "to": to})
 }
+
+// fastmailListCalendars returns every calendar discovered on the connected
+// Fastmail account (name + colour), so the UI can show all of them — including
+// calendars with no events in the current window — for show/hide and colouring.
+func (h *integrationHandler) fastmailListCalendars(w http.ResponseWriter, r *http.Request) {
+	cals, err := calsync.ListFastmailCalendars(r.Context(), h.db)
+	if errors.Is(err, calsync.ErrFastmailCalendarDisabled) {
+		respond(w, http.StatusOK, []any{}) // not connected → nothing to list
+		return
+	}
+	if err != nil {
+		respondError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	out := make([]map[string]string, 0, len(cals))
+	for _, c := range cals {
+		out = append(out, map[string]string{"name": c.Name, "color": c.Color})
+	}
+	respond(w, http.StatusOK, out)
+}

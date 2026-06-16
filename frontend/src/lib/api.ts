@@ -494,6 +494,7 @@ const httpApi = {
         toggle: (enabled: boolean) =>
           req<{ enabled: boolean }>('/api/v1/integrations/fastmail/calendar', { method: 'PATCH', body: body({ enabled }) }),
         sync: () => req<{ synced: number; from: string; to: string }>('/api/v1/integrations/fastmail/calendar/sync', { method: 'POST' }),
+        list: () => req<{ name: string; color?: string }[]>('/api/v1/integrations/fastmail/calendar/list'),
       },
     },
 

@@ -71,33 +71,46 @@ var ErrFastmailCalendarDisabled = errors.New("fastmail calendar not enabled")
 
 // SyncFastmailCalendar re-reads the Fastmail calendar over CalDAV and replaces
 // the stored snapshot. Returns the event count and the synced date window.
-func SyncFastmailCalendar(ctx context.Context, database *sql.DB) (count int, from, to string, err error) {
+// FastmailCalDAVClient builds a CalDAV client from the stored Fastmail
+// credentials (CalDAV accepts the app password; JMAP rejects it). Returns
+// ErrFastmailCalendarDisabled when the calendar isn't connected/enabled.
+func FastmailCalDAVClient(ctx context.Context, database *sql.DB) (*caldav.Client, error) {
 	configs := db.NewIntegrationConfigStore(database)
-
-	// Only sync when the user has enabled the Fastmail calendar.
 	if cfg, gerr := configs.Get(ctx, "fastmail_calendar"); gerr != nil || !cfg.Enabled {
-		return 0, "", "", ErrFastmailCalendarDisabled
+		return nil, ErrFastmailCalendarDisabled
 	}
-
-	// CalDAV reuses the stored Fastmail app-password credentials (JMAP rejects
-	// them, CalDAV accepts them).
 	fmCfg, gerr := configs.Get(ctx, "fastmail")
 	if gerr != nil {
-		return 0, "", "", ErrFastmailCalendarDisabled
+		return nil, ErrFastmailCalendarDisabled
 	}
 	var fm struct {
 		Email       string `json:"email"`
 		AppPassword string `json:"app_password"`
 	}
 	if jerr := json.Unmarshal([]byte(fmCfg.Config), &fm); jerr != nil {
-		return 0, "", "", errors.New("malformed fastmail config")
+		return nil, errors.New("malformed fastmail config")
 	}
-
-	client, cerr := caldav.NewClient(caldav.Config{
+	return caldav.NewClient(caldav.Config{
 		BaseURL:  caldav.FastmailBaseURL,
 		Username: fm.Email,
 		Password: fm.AppPassword,
 	})
+}
+
+// ListFastmailCalendars discovers every calendar on the connected Fastmail
+// account (used to show all calendars in the UI, even ones with no events).
+func ListFastmailCalendars(ctx context.Context, database *sql.DB) ([]caldav.Calendar, error) {
+	client, err := FastmailCalDAVClient(ctx, database)
+	if err != nil {
+		return nil, err
+	}
+	return client.ListCalendars(ctx)
+}
+
+func SyncFastmailCalendar(ctx context.Context, database *sql.DB) (count int, from, to string, err error) {
+	configs := db.NewIntegrationConfigStore(database)
+
+	client, cerr := FastmailCalDAVClient(ctx, database)
 	if cerr != nil {
 		return 0, "", "", cerr
 	}

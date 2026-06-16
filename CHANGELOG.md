@@ -6,6 +6,139 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.138] - 2026-06-16
+
+### Fixed
+- **Some Fastmail calendars were missing** (e.g. a shared "Family" calendar). The
+  schedule only listed calendars that had an event on the day in view, and events
+  were de-duplicated globally by UID across calendars — so a shared calendar whose
+  events also live on another calendar could be zeroed out and vanish. Now **all
+  discovered calendars are listed** (so you can show/hide and recolour every one,
+  even with no events that day), and de-dup is per-calendar so shared calendars
+  keep their events.
+
+### Added
+- Documentation: today's changes captured in this changelog, the README User
+  Guide (schedule, tags export, objectives, calendars, Jira, daily encouragement),
+  and a new `docs/JIRA.md`.
+
+## [1.0.137] - 2026-06-16
+
+### Added
+- **Daily encouragement.** A quiet, rotating quote appears on the day view (stable
+  through the day) to add a little personality. Subtle by design; turn it off or
+  edit the list (add/remove/reset) in Settings → Accounts.
+
+## [1.0.136] - 2026-06-16
+
+### Added
+- **Jira filters are now multi-select.** Pick any number of values per facet —
+  e.g. Priority ∈ {P1, P2}, Status ∈ {To Do, Backlog} (OR within a facet, AND
+  across facets) — as toggleable chips.
+- **Your default Jira view.** The filters and scope you choose are saved and
+  restored automatically, so your configured view is your default. "Reset to
+  default view" returns to the built-in defaults.
+- **Undo delete.** Deleting a task shows an Undo toast (recreates non-Jira
+  tasks; Jira tasks return via re-sync — see below).
+- **`docs/JIRA.md`** documents the Jira integration end to end.
+
+### Fixed
+- **Deleting a Jira task no longer loses it.** A deleted Jira-linked task now
+  re-imports (an immediate re-sync on delete, plus Jira is now on the background
+  poller), so it returns to the Jira panel instead of vanishing until a manual
+  sync.
+
+## [1.0.135] - 2026-06-16
+
+### Added
+- **Richer Jira tasks.** The issue description is copied into the task notes on
+  import (offline-readable; existing tasks backfilled when their notes are empty,
+  without overwriting edits).
+- **Manage Jira from the task.** The task editor shows a live Jira section —
+  current status, type, priority, assignee, labels, an "Open in Jira" link, and
+  the issue's real workflow transitions as buttons, so you can change status
+  without leaving Sempa.
+
+## [1.0.134] - 2026-06-16
+
+### Fixed
+- **Email → task showed "task not found".** The task was created then immediately
+  updated to the dropped day in a second call that raced the new row. Email-to-task
+  now creates the task on the dropped day in a single request — no error, correct day.
+
+## [1.0.133] - 2026-06-16
+
+### Fixed
+- **Reordering tasks within a day** did nothing (the drop index was computed
+  against a differently-sorted list); it now reorders correctly.
+- **Dragging a Jira issue onto a day** now lands it even when the issue isn't yet
+  in the loaded board (it's fetched on drop).
+- **Failed drops are visible.** Email/Jira/move failures now show a toast instead
+  of being silently swallowed.
+
+## [1.0.132] - 2026-06-16
+
+### Fixed
+- **Critical: opening a task froze the app.** An internal effect looped
+  (`effect_update_depth_exceeded`), wedging clicks, typing (the Add button stayed
+  greyed) and drag-drop on web and desktop. Fixed.
+- **Duplicate link previews.** A pasted link showed two preview cards in the task
+  view; now one.
+
+## [1.0.131] - 2026-06-16
+
+### Fixed
+- **Update prompt could open the GitHub page mid-build.** The in-app update
+  notice is now held back until the platform's installer asset is actually
+  published, and re-checks shortly after so it appears soon after the build lands.
+
+## [1.0.130] - 2026-06-16
+
+### Added
+- **Proper right-click menus (desktop).** Right-click a task (Edit · Complete ·
+  Focus · Delete), a weekly objective, or empty board space (New task · Go to
+  today · Search). The generic webview menu is suppressed on desktop (text fields
+  keep native copy/paste).
+
+## [1.0.129] - 2026-06-16
+
+### Fixed
+- **Sync badge covered the Save button.** The floating online/offline indicator
+  now hides while the task editor is open, on mobile and Windows.
+
+## [1.0.128] - 2026-06-16
+
+### Added
+- **Recolour any calendar.** The schedule's Calendars panel now has a colour dot
+  per calendar — including each Fastmail sub-calendar — tap to change its hue.
+
+## [1.0.127] - 2026-06-16
+
+### Changed
+- **Calendars get distinct colours.** Each calendar is assigned its own brand hue
+  (no more two calendars sharing a colour), and event blocks show the source
+  calendar name so feeds stay distinguishable.
+- **Bigger weekly-goal cards** in the day sidebar — each objective is a bordered
+  card with a mini progress bar, easier to read and to drag.
+
+## [1.0.126] - 2026-06-16
+
+### Added
+- **Schedule ↔ task sync.** Dropping a task on the calendar moves it into that
+  day, snaps the block to the task's planned time (estimate, default 30 min), and
+  resizing the block updates the planned time. Edits in the list reflect live on
+  the calendar.
+- **Tagged task export.** On the Search page, export the filtered task list as CSV
+  or clean Markdown.
+- **Drag an objective onto a day** to create a linked task; completing an
+  objective's linked task(s) auto-completes the objective.
+
+### Fixed
+- **Android update download.** The updater now offers the Android APK on Android
+  (it previously always handed back the Windows installer).
+- **Objective Markdown export** is now a clean single-H1 bulleted list (no bold or
+  subheadings).
+
 ## [1.0.125] - 2026-06-15
 
 ### Added

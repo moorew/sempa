@@ -314,6 +314,8 @@ The core unit. Open any task to edit it in a panel (desktop) or bottom sheet (mo
 - **“Roughly at”:** a soft time hint (e.g. “around 2pm”) that orders a task in the day without committing to a hard block.
 - **Reminders:** set **Remind me** (date + time) for a hard alert — see [Reminders & notifications](#reminders-notifications--routines).
 - **Attachments:** attach files to a task (or objective); stored on your server.
+- **Right-click menu (desktop):** right-click a task for quick actions (Edit · Complete · Focus · Delete), a weekly objective for its actions, or empty board space for New task / Go to today / Search.
+- **Undo delete:** deleting a task shows an **Undo** toast; non-Jira tasks are restored, and a deleted Jira task returns to the Jira list automatically.
 
 Press `e` to edit the hovered task on a day view.
 
@@ -323,7 +325,7 @@ Press `e` to edit the hovered task on a day view.
 
 ### Week view
 
-The **Week** board is a Kanban across the seven days. Drag tasks between days and statuses, set **Weekly Objectives** (the handful of outcomes that matter this week), and link tasks to an objective so progress is visible.
+The **Week** board is a Kanban across the seven days. Drag tasks between days and statuses, set **Weekly Objectives** (the handful of outcomes that matter this week), and link tasks to an objective so progress is visible. You can **drag an objective from the sidebar onto a day** to create a task already linked to it; completing an objective's linked task(s) **auto-completes the objective**. "Copy as Markdown" exports a clean, single-heading bulleted list.
 
 ### Weekly planning & review
 
@@ -342,13 +344,17 @@ A single list of everything not yet scheduled. Use it as your inbox of ideas and
 
 The **Journal** collects your daily **intentions** and **reflections** and your weekly **wins / challenges / next focus** in one timeline. You can have intentions and reflections also appear inline on the day and week screens (toggle in **Settings → Appearance**, “contextual reflections”).
 
+### Daily encouragement
+
+A quiet, rotating quote appears on the day view (stable through the day) for a little personality. It's subtle by design — turn it off or edit the list (add/remove/reset) in **Settings → Accounts**.
+
 ### Focus & Pomodoro
 
 Open a task in **Focus** mode to work distraction-free with a built-in **Pomodoro** timer. Completed sessions are logged per task, so you can see time actually spent vs. your estimate.
 
 ### Search & tag filters
 
-**Search** looks across tasks, objectives, and journal entries. On list views you can switch into **tag filter mode** to show only tasks with a given tag.
+**Search** looks across tasks, objectives, and journal entries. On list views you can switch into **tag filter mode** to show only tasks with a given tag. When filtering by a tag, **export** the resulting task list as **CSV** or clean **Markdown** from the Search page.
 
 ### Recurring tasks
 
@@ -362,7 +368,12 @@ See calendar events beside your tasks in the **Schedule** tab of the day view's 
 - **CalDAV** — connect a CalDAV server and optionally push your time-blocks back to it.
 - **ICS / webcal feeds** — subscribe to any read-only calendar URL.
 
-In **Settings → Calendars** you can show/hide each calendar and cycle its colour through the brand palette.
+**Scheduling tasks onto the calendar:**
+
+- **Drag a task** onto the timeline to time-block it. The block moves the task into that day, snaps to the task's **planned time** (its estimate, or a 30-minute default), and edits in the list reflect live on the block.
+- **Resize** a block's top/bottom edge to change its length — this updates the task's planned time.
+
+**Calendar colours:** each calendar gets its own distinct brand hue automatically (including each individual Fastmail calendar — Family, personal, shared, etc.), and event blocks show the source calendar name so feeds stay distinguishable. In the schedule's **Calendars** panel (and **Settings → Calendars** for feeds) you can **show/hide** each calendar and **tap its colour dot to recolour** it. All your calendars are listed there, even ones with no events that day.
 
 ### Email → tasks
 
@@ -414,7 +425,12 @@ Nothing is automatic or destructive — the model **suggests**, you approve.
 
 ### Jira
 
-Connect Jira to import your assigned issues as tasks. Marking a Jira-sourced task **done** transitions/closes the linked ticket. You can also view issue details and available transitions from the task.
+Connect Jira to import your assigned issues as tasks. See **[docs/JIRA.md](docs/JIRA.md)** for the full guide. In brief:
+
+- **Rich import:** issues sync as tasks with a link to the ticket and the issue description copied into the task notes (offline-readable); re-sync keeps title/status/metadata current.
+- **Manage from the task:** the editor shows a live Jira section — status, type, priority, assignee, labels, an "Open in Jira" link, and the issue's real workflow **transitions as buttons**. Marking a Jira task **done** also transitions the ticket.
+- **Multi-select filters + your default view:** filter the Jira panel by any combination of Priority / Type / Status / Epic / Sprint (e.g. Status ∈ {To Do, Backlog}); your chosen filters and scope are saved as your default, with a Reset.
+- **Delete returns it to Jira:** deleting a Jira-linked task re-imports it (immediate re-sync + background poller), so it goes back to the Jira list rather than disappearing.
 
 ### Reminders, notifications & routines
 

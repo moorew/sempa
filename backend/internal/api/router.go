@@ -295,6 +295,7 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 					r.Post("/emails/{id}/unarchive", integrations.fastmailUnarchiveEmail)
 					r.Route("/calendar", func(r chi.Router) {
 						r.Get("/", integrations.fastmailCalendarGet)
+						r.Get("/list", integrations.fastmailListCalendars)
 						r.Patch("/", integrations.fastmailCalendarToggle)
 						r.Post("/sync", integrations.fastmailCalendarSync)
 					})

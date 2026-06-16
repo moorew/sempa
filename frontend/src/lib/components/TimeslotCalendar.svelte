@@ -43,9 +43,22 @@
   // by the Calendars settings tab), so toggling there updates the schedule live.
   let showFilter = $state(false);
 
-  // Distinct calendars present in the current day's events (key + label + colour).
+  // All Fastmail calendars discovered on the account (so calendars with no
+  // events in the window still appear — to show/hide and recolour). Fetched once.
+  let fastmailCalendars = $state<{ name: string; color?: string }[]>([]);
+  $effect(() => {
+    api.integrations.fastmail.calendar.list().then((cs) => { fastmailCalendars = cs; }).catch(() => {});
+  });
+
+  // The calendars to list in the filter panel: every discovered Fastmail
+  // calendar (keyed fastmail:<name>, matching event subscription_ids) UNIONed
+  // with any other calendars present in the day's events (ICS feeds, etc.).
   const eventCalendars = $derived.by(() => {
     const map = new Map<string, { key: string; name: string; color: string }>();
+    for (const c of fastmailCalendars) {
+      const key = 'fastmail:' + c.name;
+      map.set(key, { key, name: c.name, color: c.color || '#6b7280' });
+    }
     for (const ev of icalEvents) {
       if (!map.has(ev.subscription_id)) {
         map.set(ev.subscription_id, {
@@ -89,7 +102,10 @@
   // reads and writes the store's order array, so it's untracked to avoid the
   // effect depending on the state it mutates.
   $effect(() => {
-    const ids = icalEvents.map(e => e.subscription_id);
+    const ids = [
+      ...icalEvents.map(e => e.subscription_id),
+      ...fastmailCalendars.map(c => 'fastmail:' + c.name),
+    ];
     untrack(() => calendars.register(ids));
   });
 
