@@ -30,6 +30,7 @@
   import BottomSheet from '$lib/components/BottomSheet.svelte';
   import TitleBar from '$lib/components/TitleBar.svelte';
   import SyncIndicator from '$lib/components/SyncIndicator.svelte';
+  import ContextMenu from '$lib/components/ContextMenu.svelte';
   import UpdateToast from '$lib/components/UpdateToast.svelte';
   import { updates } from '$lib/stores/updates.svelte';
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
@@ -158,6 +159,18 @@
     // Tray "Sync Now" → run a sync cycle. Listener lives for the app's lifetime.
     if (isTauri()) {
       void onSyncTrigger(() => { void runSync(); });
+
+      // Desktop: suppress the webview's generic right-click menu (Reload /
+      // Inspect…). Surfaces that want a real menu call contextMenu.show(), which
+      // preventDefault()s first, so this only kills the leftover default. Text
+      // fields keep their native menu so copy/paste/spellcheck still work.
+      const killNativeMenu = (e: MouseEvent) => {
+        if (e.defaultPrevented) return;
+        const el = e.target as HTMLElement | null;
+        if (el?.closest('input, textarea, [contenteditable=""], [contenteditable="true"]')) return;
+        e.preventDefault();
+      };
+      window.addEventListener('contextmenu', killNativeMenu);
     }
 
     // Near-real-time reconnect sync (local-first platforms only). The browser
@@ -721,6 +734,7 @@
 {#if !isStandaloneWindow}
   <UpdateToast />
   <SyncIndicator />
+  <ContextMenu />
 {/if}
 
 <!-- ── Intro animation overlay ──────────────────────────────────────────── -->

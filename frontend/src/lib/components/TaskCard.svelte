@@ -5,6 +5,7 @@
   import { hapticClick } from '$lib/haptics';
   import { api } from '$lib/api';
   import { mobile } from '$lib/stores/mobile.svelte';
+  import { contextMenu, type MenuItem } from '$lib/stores/contextMenu.svelte';
 
   let {
     task, accent,
@@ -78,6 +79,20 @@
       streak = count;
     }).catch(() => {});
   });
+
+  // Right-click → task actions, reusing whichever handlers this card was given.
+  function onContextMenu(e: MouseEvent) {
+    const items: MenuItem[] = [];
+    if (onClick)    items.push({ label: 'Edit', onClick: () => onClick?.(task) });
+    if (onComplete) items.push({ label: isDone ? 'Mark not done' : 'Complete', onClick: () => onComplete?.(task.id) });
+    if (onFocusMode && !isDone)  items.push({ label: 'Focus mode', onClick: () => onFocusMode?.(task.id) });
+    if (onFocusClick && !isDone) items.push({ label: 'Start focus timer', onClick: () => onFocusClick?.(task.id, task.title) });
+    if (onTrash) {
+      items.push('separator');
+      items.push({ label: 'Delete', danger: true, onClick: () => onTrash?.(task.id, task.title) });
+    }
+    contextMenu.show(e, items);
+  }
 </script>
 
 <div
@@ -89,6 +104,7 @@
   }}
   onmouseenter={() => onHover?.(task.id)}
   onmouseleave={() => onHover?.(null)}
+  oncontextmenu={onContextMenu}
   class="group relative flex flex-col gap-2 rounded-[10px] shadow-sm cursor-grab
          active:cursor-grabbing active:scale-[0.98] active:shadow-none
          transition-all duration-100 hover:shadow-md min-h-[44px]"

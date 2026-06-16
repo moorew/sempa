@@ -1,7 +1,9 @@
 <script lang="ts">
   import type { Task } from '$lib/types';
   import TaskCard from './TaskCard.svelte';
-  import { compareTasksForDay } from '$lib/utils';
+  import { compareTasksForDay, today } from '$lib/utils';
+  import { goto } from '$app/navigation';
+  import { contextMenu } from '$lib/stores/contextMenu.svelte';
   import { Plus } from 'lucide-svelte';
 
   let {
@@ -81,9 +83,21 @@
     }
     return active.length;
   }
+
+  // Right-click empty column space → quick board actions. Right-clicks on a task
+  // card are handled by the card itself (it stops propagation), so this only
+  // fires for the day's background.
+  function onColumnContext(e: MouseEvent) {
+    contextMenu.show(e, [
+      { label: 'New task here', onClick: () => onAddClick(date) },
+      { label: 'Go to today', onClick: () => goto(`/day/${today()}`) },
+      { label: 'Search', onClick: () => goto('/search') },
+    ]);
+  }
 </script>
 
 <div class="flex flex-col"
+     oncontextmenu={onColumnContext}
      ondragover={(e) => { e.preventDefault(); insertIdx = calcInsertIdx(e); onDragOver(date); }}
      ondragleave={(e) => {
        if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {

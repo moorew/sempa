@@ -15,6 +15,7 @@
   import TagFilterBar from '$lib/components/TagFilterBar.svelte';
   import { SlidersHorizontal, CalendarArrowDown, GripVertical } from 'lucide-svelte';
   import { moveObjectiveToNextWeek, moveAllUnfinishedToNextWeek, unfinishedObjectives } from '$lib/objectives';
+  import { contextMenu, type MenuItem } from '$lib/stores/contextMenu.svelte';
 
   let weekStartDate = $derived($page.params.weekStart ?? calcWeekStart(today()));
 
@@ -144,6 +145,19 @@
   async function deleteObjective(id: string) {
     objectives = objectives.filter(o => o.id !== id);
     await api.objectives.delete(id).catch(() => {});
+  }
+
+  // Right-click an objective → its actions, mirroring the row's buttons.
+  function onObjContextMenu(e: MouseEvent, obj: Objective) {
+    const done = obj.status === 'completed';
+    const items: MenuItem[] = [
+      { label: done ? 'Mark active' : 'Mark complete', onClick: () => toggleStatus(obj) },
+      { label: 'Add task', onClick: () => { expandedId = obj.id; } },
+    ];
+    if (!done) items.push({ label: 'Move to next week', onClick: () => replanObjective(obj) });
+    items.push('separator');
+    items.push({ label: 'Delete', danger: true, onClick: () => deleteObjective(obj.id) });
+    contextMenu.show(e, items);
   }
 
   // ── Drag to reorder objectives ───────────────────────────────────────────────
@@ -499,6 +513,7 @@
 
         <div class="transition-shadow hover:shadow-md {dragObjId === obj.id ? 'opacity-50' : ''}"
              role="listitem"
+             oncontextmenu={(e) => onObjContextMenu(e, obj)}
              ondragover={(e) => { e.preventDefault(); if (dragObjId && dragObjId !== obj.id) dragOverObjId = obj.id; }}
              ondragleave={() => { if (dragOverObjId === obj.id) dragOverObjId = null; }}
              ondrop={(e) => { e.preventDefault(); void onObjDrop(obj.id); }}
