@@ -2,7 +2,7 @@
   import { api } from '$lib/api';
   import type { ICalEvent, Task } from '$lib/types';
   import { formatMinutes, today as getToday, weekStart } from '$lib/utils';
-  import { calendars, calFg, calBg } from '$lib/stores/calendars.svelte';
+  import { calendars, calFg, calBg, BRAND_CAL_LABEL } from '$lib/stores/calendars.svelte';
   import { openExternal } from '$lib/external';
 
   let {
@@ -432,22 +432,33 @@
       <div class="mt-2 flex flex-col gap-1.5">
         {#each eventCalendars as cal (cal.key)}
           {@const isHidden = calendars.isHidden(cal.key)}
-          {@const fg = calFg(calendars.colorKey(cal.key))}
-          <button onclick={() => calendars.toggleHidden(cal.key)}
-                  class="flex items-center gap-2 text-left transition-opacity"
-                  style="opacity: {isHidden ? 0.4 : 1};"
-                  title={isHidden ? 'Show this calendar' : 'Hide this calendar'}>
-            <span class="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px]"
-                  style="background: {isHidden ? 'transparent' : fg}; border: 1.5px solid {fg};">
-              {#if !isHidden}
-                <svg class="h-2 w-2 text-white" fill="none" stroke="currentColor" stroke-width="3.5" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                </svg>
-              {/if}
-            </span>
-            <span class="truncate text-[11px] {isHidden ? 'line-through' : ''}" style="color: var(--sempa-text-soft);">{cal.name}</span>
-          </button>
+          {@const key = calendars.colorKey(cal.key)}
+          {@const fg = calFg(key)}
+          <div class="flex items-center gap-2">
+            <!-- Show / hide this calendar -->
+            <button onclick={() => calendars.toggleHidden(cal.key)}
+                    class="flex min-w-0 flex-1 items-center gap-2 text-left transition-opacity"
+                    style="opacity: {isHidden ? 0.4 : 1};"
+                    title={isHidden ? 'Show this calendar' : 'Hide this calendar'}>
+              <span class="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px]"
+                    style="background: {isHidden ? 'transparent' : fg}; border: 1.5px solid {fg};">
+                {#if !isHidden}
+                  <svg class="h-2 w-2 text-white" fill="none" stroke="currentColor" stroke-width="3.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                  </svg>
+                {/if}
+              </span>
+              <span class="truncate text-[11px] {isHidden ? 'line-through' : ''}" style="color: var(--sempa-text-soft);">{cal.name}</span>
+            </button>
+            <!-- Change this calendar's colour (per calendar, e.g. each Fastmail calendar) -->
+            <button onclick={() => calendars.cycleColor(cal.key)}
+                    class="shrink-0 rounded-full transition-transform active:scale-90"
+                    style="width:12px; height:12px; background: {fg};"
+                    title="Colour: {BRAND_CAL_LABEL[key]} — tap to change"
+                    aria-label="Change calendar colour"></button>
+          </div>
         {/each}
+        <p class="mt-0.5 text-[10px]" style="color: var(--sempa-text-dim);">Tap a dot to recolour a calendar.</p>
       </div>
     {/if}
   </div>
