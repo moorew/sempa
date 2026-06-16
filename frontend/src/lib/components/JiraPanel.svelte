@@ -9,6 +9,9 @@
     optionsFor,
     activeSelectCount,
     defaultJiraFilterState,
+    loadJiraFilterState,
+    saveJiraFilterState,
+    toggleSelectValue,
   } from '$lib/jira/filters';
 
   let {
@@ -27,12 +30,30 @@
   let syncing       = $state(false);
   let connected     = $state(true);
   let error         = $state('');
-  let sempaFilter   = $state<SempaFilter>('unplanned');
+  // Sempa-side scope persists alongside the facet filters as part of the
+  // user's saved default view.
+  const SCOPE_KEY = 'sempa_jira_scope';
+  const savedScope = typeof localStorage !== 'undefined' ? localStorage.getItem(SCOPE_KEY) : null;
+  let sempaFilter   = $state<SempaFilter>(
+    savedScope === 'planned' || savedScope === 'all' || savedScope === 'unplanned' ? savedScope : 'unplanned'
+  );
   let view          = $state<View>('list');
 
-  // Modular Jira facet filters (Open, Assigned to me, Priority, Type, …).
-  let filterState   = $state(defaultJiraFilterState());
+  // Modular Jira facet filters (Open, Assigned to me, Priority, Type, …). The
+  // user's chosen filters are restored on load and persisted on change, so the
+  // configured view becomes their default. Reset returns to the built-in default.
+  let filterState   = $state(loadJiraFilterState());
   let showFilters   = $state(false);
+
+  $effect(() => { saveJiraFilterState(filterState); });
+  $effect(() => {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(SCOPE_KEY, sempaFilter);
+  });
+
+  function resetFilters() {
+    filterState = defaultJiraFilterState();
+    sempaFilter = 'unplanned';
+  }
 
   // Card view state
   let cardTask      = $state<Task | null>(null);
@@ -362,20 +383,33 @@
       </div>
 
       {#if showFilters}
-        <div class="space-y-1.5 pt-0.5">
+        <div class="space-y-2 pt-1">
+          <!-- Each facet is multi-select: pick any number of values (OR within a
+               facet). Choices persist as the user's default view. -->
           {#each JIRA_SELECT_DEFS as def (def.id)}
             {@const opts = optionsFor(def, allTasks)}
             {#if opts.length}
-              <select bind:value={filterState.selects[def.id]}
-                      class="w-full rounded border px-2 py-1"
-                      style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);">
-                <option value="">{def.label}: any</option>
-                {#each opts as o}
-                  <option value={o}>{o}</option>
-                {/each}
-              </select>
-            {/if}
+              <div>
+                <p class="mb-1 text-[10.5px] font-semibold uppercase tracking-wide" style="color: var(--sempa-text-dim);">{def.label}</p>
+                <div class="flex flex-wrap gap-1">
+                  {#each opts as o}
+                    {@const active = (filterState.selects[def.id] ?? []).includes(o)}
+                    <button onclick={() => toggleSelectValue(filterState, def.id, o)}
+                            aria-pressed={active}
+                            class="rounded-full border px-2 py-0.5 font-medium transition-colors"
+                            style={active
+                              ? 'border-color: transparent; background: var(--sempa-accent-bg); color: var(--sempa-accent);'
+                              : 'border-color: var(--sempa-border); color: var(--sempa-text-dim);'}>
+                      {o}
+                    </button>
+                  {/each}
+                </div>
+              </div>
+          {/if}
           {/each}
+          <button onclick={resetFilters} class="mt-1 text-[11px] hover:underline" style="color: var(--sempa-text-dim);">
+            Reset to default view
+          </button>
         </div>
       {/if}
     </div>

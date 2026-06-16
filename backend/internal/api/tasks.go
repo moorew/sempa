@@ -413,6 +413,9 @@ func (h *taskHandler) listTemplates(w http.ResponseWriter, r *http.Request) {
 
 func (h *taskHandler) delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	// Capture the task first so we know whether it came from Jira: deleting a
+	// Jira-linked task should return it to the Jira pool (re-import), not lose it.
+	existing, _ := h.store.Get(r.Context(), id)
 	err := h.store.Delete(r.Context(), id)
 	if errors.Is(err, db.ErrNotFound) {
 		respondError(w, http.StatusNotFound, "task not found")
@@ -421,6 +424,11 @@ func (h *taskHandler) delete(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete task")
 		return
+	}
+	// A deleted Jira ticket re-imports on the next sync; kick one now so it
+	// reappears in the Jira panel promptly instead of vanishing until the poller.
+	if h.configs != nil && existing.Source != nil && *existing.Source == "jira" {
+		go h.resyncJira()
 	}
 	if h.attach != nil {
 		h.attach.removeForOwner(r, "task", id)
@@ -433,6 +441,23 @@ func (h *taskHandler) delete(w http.ResponseWriter, r *http.Request) {
 	}
 	h.hub.Broadcast("task:change", map[string]string{"entity": "task"})
 	respond(w, http.StatusNoContent, nil)
+}
+
+// resyncJira re-imports Jira issues (used after deleting a Jira-linked task so
+// the ticket returns to the panel). Runs in a goroutine; errors are ignored.
+func (h *taskHandler) resyncJira() {
+	cfg, err := h.configs.Get(context.Background(), "jira")
+	if err != nil {
+		return
+	}
+	var jiraCfg jira.Config
+	if err := json.Unmarshal([]byte(cfg.Config), &jiraCfg); err != nil {
+		return
+	}
+	if _, err := jira.Sync(context.Background(), jiraCfg, h.store); err != nil {
+		return
+	}
+	h.hub.Broadcast("task:change", map[string]string{"entity": "task"})
 }
 
 // writeJiraTransition closes the linked Jira issue when a task is marked done.

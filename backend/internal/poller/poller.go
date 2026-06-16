@@ -9,6 +9,7 @@ import (
 
 	"github.com/clevercode/sempa/internal/db"
 	"github.com/clevercode/sempa/internal/integrations/fastmail"
+	"github.com/clevercode/sempa/internal/integrations/jira"
 )
 
 // StartInbox polls the task_inbox integration on the given interval.
@@ -63,4 +64,33 @@ func pollInbox(ctx context.Context, database *sql.DB, ollamaBaseURL, ollamaModel
 		slog.Info("inbox poller: sync complete", "new", result.New, "errors", result.Errors)
 	}
 	_ = configs.TouchSyncTime(ctx, "task_inbox")
+
+	// Keep Jira synced on the same cadence so issues stay fresh and a deleted
+	// Jira-linked task re-imports on its own (it used to require a manual sync).
+	pollJira(ctx, database)
+}
+
+func pollJira(ctx context.Context, database *sql.DB) {
+	configs := db.NewIntegrationConfigStore(database)
+	cfg, err := configs.Get(ctx, "jira")
+	if err != nil {
+		return // not configured
+	}
+	var jiraCfg jira.Config
+	if err := json.Unmarshal([]byte(cfg.Config), &jiraCfg); err != nil {
+		return
+	}
+	if jiraCfg.Host == "" || jiraCfg.APIToken == "" {
+		return
+	}
+	tasks := db.NewTaskStore(database)
+	result, err := jira.Sync(ctx, jiraCfg, tasks)
+	if err != nil {
+		slog.Error("jira poller: sync failed", "err", err)
+		return
+	}
+	if result.New > 0 || result.Updated > 0 || result.Errors > 0 {
+		slog.Info("jira poller: sync complete", "new", result.New, "updated", result.Updated, "errors", result.Errors)
+	}
+	_ = configs.TouchSyncTime(ctx, "jira")
 }

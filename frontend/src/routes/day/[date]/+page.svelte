@@ -582,12 +582,47 @@
   async function confirmTrash() {
     if (!trashTaskId) return;
     const id = trashTaskId;
+    const removed = tasks.find(t => t.id === id) ?? null;
     const prev = tasks.slice();
     tasks = tasks.filter(t => t.id !== id);
     trashConfirmOpen = false;
     trashTaskId = null;
-    try { await api.tasks.delete(id); }
+    try { await api.tasks.delete(id); if (removed) showUndo(removed); }
     catch { tasks = prev; }
+  }
+
+  // ── Undo a delete ───────────────────────────────────────────────────────────
+  // Non-Jira tasks are recreated from the captured snapshot. Jira tasks aren't
+  // recreated here (that would duplicate the ticket) — they re-import via the
+  // backend re-sync, so the toast just says so.
+  let undoTask = $state<Task | null>(null);
+  let undoTimer: ReturnType<typeof setTimeout> | null = null;
+  function showUndo(task: Task) {
+    undoTask = task;
+    if (undoTimer) clearTimeout(undoTimer);
+    undoTimer = setTimeout(() => { undoTask = null; }, 8000);
+  }
+  async function doUndo() {
+    const t = undoTask;
+    undoTask = null;
+    if (!t || t.source === 'jira') return;
+    try {
+      const recreated = await api.tasks.create({
+        title: t.title,
+        description: t.description ?? undefined,
+        planned_date: t.planned_date ?? undefined,
+        week_start: t.week_start ?? undefined,
+        status: t.status,
+        position: t.position,
+        time_estimate_minutes: t.time_estimate_minutes ?? undefined,
+        weekly_objective_id: t.weekly_objective_id ?? undefined,
+        tags: t.tags,
+        scheduled_start: t.scheduled_start ?? undefined,
+        scheduled_end: t.scheduled_end ?? undefined,
+        roughly_at: t.roughly_at,
+      });
+      tasks = [...tasks, recreated];
+    } catch (e: any) { showDropError(e?.message || 'Could not restore the task'); }
   }
 
   function cancelTrash() {
@@ -1207,6 +1242,23 @@
         </button>
       </div>
     </div>
+  </div>
+{/if}
+
+<!-- ── Undo-delete toast ──────────────────────────────────────────────────── -->
+{#if undoTask}
+  <div class="fixed left-1/2 bottom-6 z-[80] -translate-x-1/2 flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm shadow-2xl animate-slide-down"
+       style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border); color: var(--sempa-text); max-width: min(92vw, 28rem);"
+       role="status">
+    <span class="min-w-0 flex-1 truncate">
+      {undoTask.source === 'jira' ? 'Deleted — returning to the Jira list' : 'Task deleted'}
+    </span>
+    {#if undoTask.source !== 'jira'}
+      <button onclick={doUndo} class="shrink-0 font-semibold" style="color: var(--sempa-accent);">Undo</button>
+    {/if}
+    <button onclick={() => undoTask = null} aria-label="Dismiss" class="shrink-0" style="color: var(--sempa-text-dim);">
+      <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18 18 6M6 6l12 12"/></svg>
+    </button>
   </div>
 {/if}
 

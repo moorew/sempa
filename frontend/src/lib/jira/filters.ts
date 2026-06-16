@@ -100,23 +100,61 @@ export const JIRA_SELECT_DEFS = JIRA_FILTERS.filter((d) => d.kind === 'select');
 
 export interface JiraFilterState {
   toggles: Record<string, boolean>;
-  selects: Record<string, string>; // '' = any
+  /** Multi-select per facet: an array of accepted values. [] = any. Within a
+   *  facet the match is OR (e.g. priority ∈ {P1, P2}); across facets it's AND. */
+  selects: Record<string, string[]>;
   query: string;
 }
 
 export function defaultJiraFilterState(): JiraFilterState {
   const toggles: Record<string, boolean> = {};
-  const selects: Record<string, string> = {};
+  const selects: Record<string, string[]> = {};
   for (const d of JIRA_FILTERS) {
     if (d.kind === 'toggle') toggles[d.id] = d.defaultOn ?? false;
-    else selects[d.id] = '';
+    else selects[d.id] = [];
   }
   return { toggles, selects, query: '' };
 }
 
-/** Count of facet selects that are actively narrowing (non-"any"). */
+/** Count of facet selects that are actively narrowing (have ≥1 chosen value). */
 export function activeSelectCount(state: JiraFilterState): number {
-  return JIRA_SELECT_DEFS.reduce((n, d) => n + (state.selects[d.id] ? 1 : 0), 0);
+  return JIRA_SELECT_DEFS.reduce((n, d) => n + ((state.selects[d.id]?.length ?? 0) > 0 ? 1 : 0), 0);
+}
+
+/** Toggle a value in a facet's multi-select array (immutably, for rune state). */
+export function toggleSelectValue(state: JiraFilterState, facet: string, value: string): void {
+  const cur = state.selects[facet] ?? [];
+  state.selects[facet] = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
+}
+
+// ── Persisted default view ──────────────────────────────────────────────────
+// The user's chosen filters stick across sessions (their "default Jira view").
+// Only toggles + selects persist; the search query is always transient.
+
+const FILTER_KEY = 'sempa_jira_filter';
+
+export function loadJiraFilterState(): JiraFilterState {
+  const base = defaultJiraFilterState();
+  if (typeof localStorage === 'undefined') return base;
+  try {
+    const saved = JSON.parse(localStorage.getItem(FILTER_KEY) ?? 'null');
+    if (!saved) return base;
+    for (const d of JIRA_FILTERS) {
+      if (d.kind === 'toggle') {
+        if (typeof saved.toggles?.[d.id] === 'boolean') base.toggles[d.id] = saved.toggles[d.id];
+      } else if (Array.isArray(saved.selects?.[d.id])) {
+        base.selects[d.id] = saved.selects[d.id].filter((x: unknown) => typeof x === 'string');
+      }
+    }
+  } catch { /* ignore — fall back to defaults */ }
+  return base;
+}
+
+export function saveJiraFilterState(state: JiraFilterState): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(FILTER_KEY, JSON.stringify({ toggles: state.toggles, selects: state.selects }));
+  } catch { /* ignore */ }
 }
 
 /** Distinct, sorted values present in `tasks` for a select facet. */
@@ -152,8 +190,11 @@ export function applyJiraFilters(tasks: Task[], state: JiraFilterState): Task[] 
       if (def.kind === 'toggle') {
         if (state.toggles[def.id] && def.predicate && !def.predicate(meta, t)) return false;
       } else {
-        const sel = state.selects[def.id];
-        if (sel && def.facetValue?.(meta, t) !== sel) return false;
+        const sel = state.selects[def.id] ?? [];
+        if (sel.length) {
+          const v = def.facetValue?.(meta, t);
+          if (!v || !sel.includes(v)) return false;
+        }
       }
     }
     if (q) {
