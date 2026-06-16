@@ -8,6 +8,7 @@
   import AttachmentList from './AttachmentList.svelte';
   import LinkPreview from './LinkPreview.svelte';
   import RichText from './RichText.svelte';
+  import JiraTaskSection from './JiraTaskSection.svelte';
   import { Pencil } from 'lucide-svelte';
   import SempaSelect from '$lib/components/ui/SempaSelect.svelte';
   import SempaDatePicker from '$lib/components/ui/SempaDatePicker.svelte';
@@ -581,6 +582,13 @@
         {/each}
       </div>
 
+      <!-- Jira issue: live status + transitions + link -->
+      {#if task?.source === 'jira'}
+        <div class="py-4" style="border-bottom: 1px solid var(--sempa-border);">
+          <JiraTaskSection {task} />
+        </div>
+      {/if}
+
       <!-- Notes -->
       {#if task.description}
         <div class="py-4" style="border-bottom: 1px solid var(--sempa-border);">
@@ -778,6 +786,11 @@
           </div>
         {/if}
       </div>
+
+      <!-- Jira issue: live status + transitions + link -->
+      {#if isEdit && task?.source === 'jira'}
+        <JiraTaskSection {task} />
+      {/if}
 
       <!-- Links extracted from email -->
       {#if isEdit && task?.source_metadata}

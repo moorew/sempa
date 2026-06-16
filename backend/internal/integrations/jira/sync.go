@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -30,7 +31,7 @@ func Sync(ctx context.Context, cfg Config, tasks *db.TaskStore) (db.SyncResult, 
 		}
 
 		for i := range sr.Issues {
-			if err := syncIssue(ctx, &sr.Issues[i], cfg.Host, myAccountID, tasks, &result); err != nil {
+			if err := syncIssue(ctx, client, &sr.Issues[i], cfg.Host, myAccountID, tasks, &result); err != nil {
 				result.Errors++
 			}
 		}
@@ -44,7 +45,7 @@ func Sync(ctx context.Context, cfg Config, tasks *db.TaskStore) (db.SyncResult, 
 	return result, nil
 }
 
-func syncIssue(ctx context.Context, issue *Issue, host, myAccountID string, tasks *db.TaskStore, result *db.SyncResult) error {
+func syncIssue(ctx context.Context, client *Client, issue *Issue, host, myAccountID string, tasks *db.TaskStore, result *db.SyncResult) error {
 	result.Total++
 
 	metaMap := map[string]any{
@@ -72,9 +73,14 @@ func syncIssue(ctx context.Context, issue *Issue, host, myAccountID string, task
 
 	existing, err := tasks.FindBySource(ctx, "jira", issue.Key)
 	if errors.Is(err, db.ErrNotFound) {
+		// Pull the description into the task notes on first import (only here, so
+		// later edits to the notes are never clobbered by a re-sync). Best-effort:
+		// a fetch failure just leaves the notes empty.
+		desc := issueDescription(ctx, client, issue.Key)
 		_, createErr := tasks.Create(ctx, db.CreateTaskParams{
 			ID:             uuid.New().String(),
 			Title:          issue.Fields.Summary,
+			Description:    desc,
 			Status:         "backlog",
 			Position:       float64(result.Total) * 1000,
 			Source:         &source,
@@ -103,7 +109,17 @@ func syncIssue(ctx context.Context, issue *Issue, host, myAccountID string, task
 	existing.SourceMetadata = &meta
 	existing.SourceURL = &sourceURL
 
-	if titleChanged || metaChanged {
+	// Backfill the description for issues imported before notes-sync existed —
+	// but only when the notes are still empty, so user-written notes are kept.
+	descChanged := false
+	if existing.Description == nil || strings.TrimSpace(*existing.Description) == "" {
+		if desc := issueDescription(ctx, client, issue.Key); desc != nil {
+			existing.Description = desc
+			descChanged = true
+		}
+	}
+
+	if titleChanged || metaChanged || descChanged {
 		if _, updateErr := tasks.Update(ctx, existing); updateErr != nil {
 			return updateErr
 		}
@@ -111,6 +127,24 @@ func syncIssue(ctx context.Context, issue *Issue, host, myAccountID string, task
 	}
 
 	return nil
+}
+
+// issueDescription fetches an issue's description (plain text via the v2 API)
+// for the task notes. Returns nil when empty or on error so the caller can skip
+// it. Capped so a huge description can't bloat the row.
+func issueDescription(ctx context.Context, client *Client, key string) *string {
+	d, err := client.GetIssue(ctx, key)
+	if err != nil {
+		return nil
+	}
+	s := strings.TrimSpace(d.Fields.Description)
+	if s == "" {
+		return nil
+	}
+	if len(s) > 8000 {
+		s = s[:8000] + "…"
+	}
+	return &s
 }
 
 func priorityName(p *Priority) string {
