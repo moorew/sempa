@@ -6,6 +6,14 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.140] - 2026-06-16
+
+### Changed
+- **Settings is no longer one long scroll on desktop.** It now shows one section
+  at a time (Account · Integrations · Tasks · Appearance · About), selected from
+  the sub-nav — matching how mobile settings already worked. The active section is
+  reflected in the URL (`?section=…`) so sections are linkable.
+
 ## [1.0.139] - 2026-06-16
 
 ### Changed

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { api, getServerUrl, clearTauriToken, clearNativeToken, resetApiResolver } from '$lib/api';
   import type { AiTitleConfig } from '$lib/api';
@@ -133,8 +133,24 @@
   let syncResults = $state<Record<string, string>>({});
 
   // Sub-nav active section tracking
-  let activeSection = $state('integrations');
   let scrollContainer = $state<HTMLElement | undefined>();
+
+  // Desktop: show ONE section at a time (like mobile) instead of one long scroll.
+  // Seeded from ?section= so each settings section is linkable; kept in the URL.
+  const SECTION_IDS = ['profile', 'integrations', 'tasks', 'appearance', 'about'];
+  const initialSection = (() => {
+    const s = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('section') : null;
+    return s && SECTION_IDS.includes(s) ? s : 'profile';
+  })();
+  let desktopSection = $state(initialSection);
+  function selectSection(id: string) {
+    desktopSection = id;
+    if (typeof window !== 'undefined') {
+      const u = new URL(window.location.href);
+      u.searchParams.set('section', id);
+      window.history.replaceState({}, '', u);
+    }
+  }
 
   // Mobile section navigation
   let mobileSection = $state<string | null>(null);
@@ -193,34 +209,7 @@
     serverUrl = getServerUrl();
     accountPicture = typeof localStorage !== 'undefined' ? (localStorage.getItem('sempa_account_picture') ?? undefined) : undefined;
     try { me = await api.auth.me(); } catch { /* offline — accountEmail falls back to stored value */ }
-
-    // IntersectionObserver for sub-nav active state
-    await tick();
-    setupObserver();
   });
-
-  function setupObserver() {
-    if (!scrollContainer) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            activeSection = entry.target.id.replace('settings-', '');
-          }
-        }
-      },
-      { root: scrollContainer, rootMargin: '-10% 0px -80% 0px', threshold: 0 }
-    );
-    for (const s of NAV_SECTIONS) {
-      const el = document.getElementById(`settings-${s.id}`);
-      if (el) observer.observe(el);
-    }
-  }
-
-  function scrollTo(id: string) {
-    const el = document.getElementById(`settings-${id}`);
-    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
 
   async function syncService(name: string, fn: () => Promise<{ new: number; updated: number; errors: number }>) {
     syncing[name] = true; syncResults[name] = '';
@@ -605,9 +594,9 @@
          style="background: var(--sempa-bg-nav); border-right: 1px solid var(--sempa-border);">
       <h1 class="mb-4 px-3 text-base font-semibold" style="color: var(--sempa-text);">Settings</h1>
       {#each NAV_SECTIONS as section}
-        <button onclick={() => scrollTo(section.id)}
+        <button onclick={() => selectSection(section.id)}
                 class="rounded-lg px-3 py-2 text-left text-[13px] font-medium transition-colors"
-                style={activeSection === section.id
+                style={desktopSection === section.id
                   ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent);'
                   : 'color: var(--sempa-text-soft);'}>
           {section.label}
@@ -615,14 +604,20 @@
       {/each}
     </nav>
 
-    <!-- ── Scrollable content ────────────────────────────────────────────── -->
+    <!-- ── Active section (one at a time, not a long scroll) ─────────────────── -->
     <div bind:this={scrollContainer} class="flex-1 overflow-y-auto">
       <div class="mx-auto max-w-xl px-6 py-8 pb-16">
-        {@render profileContent()}
-        {@render integrationsContent()}
-        {@render tasksContent()}
-        {@render appearanceContent()}
-        {@render aboutContent()}
+        {#if desktopSection === 'profile'}
+          {@render profileContent()}
+        {:else if desktopSection === 'integrations'}
+          {@render integrationsContent()}
+        {:else if desktopSection === 'tasks'}
+          {@render tasksContent()}
+        {:else if desktopSection === 'appearance'}
+          {@render appearanceContent()}
+        {:else if desktopSection === 'about'}
+          {@render aboutContent()}
+        {/if}
       </div>
     </div>
   </div>
