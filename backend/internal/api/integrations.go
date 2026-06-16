@@ -1111,7 +1111,8 @@ func (h *integrationHandler) fastmailEmailToTask(w http.ResponseWriter, r *http.
 	}
 
 	var req struct {
-		Subject string `json:"subject"`
+		Subject     string `json:"subject"`
+		PlannedDate string `json:"planned_date"`
 	}
 	_ = decode(r, &req)
 	subject := req.Subject
@@ -1121,8 +1122,14 @@ func (h *integrationHandler) fastmailEmailToTask(w http.ResponseWriter, r *http.
 
 	bodyText, _ := fastmail.GetIMAPEmailBody(fmCfg.Email, fmCfg.AppPassword, uid)
 
-	today := time.Now().Format("2006-01-02")
-	ws := mondayOfDate(today)
+	// Plan for the day the email was dropped on (falls back to today). Doing it
+	// here avoids a create-then-update round-trip on the client, which raced and
+	// 404'd the freshly-created task.
+	plannedDate := req.PlannedDate
+	if plannedDate == "" {
+		plannedDate = time.Now().Format("2006-01-02")
+	}
+	ws := mondayOfDate(plannedDate)
 	source := "fastmail"
 	sourceID := "panel_" + chi.URLParam(r, "id")
 	sourceURL := "https://app.fastmail.com/mail/"
@@ -1138,7 +1145,7 @@ func (h *integrationHandler) fastmailEmailToTask(w http.ResponseWriter, r *http.
 
 	task, createErr := h.tasks.Create(r.Context(), db.CreateTaskParams{
 		ID: newID(), Title: subject, Description: desc,
-		Status: "planned", PlannedDate: &today, WeekStart: &ws,
+		Status: "planned", PlannedDate: &plannedDate, WeekStart: &ws,
 		Position: float64(time.Now().UnixMilli()),
 		Source:   &source, SourceID: &sourceID, SourceURL: &sourceURL,
 		Tags: []string{},

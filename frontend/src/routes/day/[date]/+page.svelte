@@ -613,11 +613,10 @@
   // ── Email drop ────────────────────────────────────────────────────────────
   async function handleEmailDrop(emailData: { id: string; subject: string }, targetDate: string) {
     try {
-      const task = await api.integrations.fastmail.toTask(emailData.id, emailData.subject);
-      const updated = await api.tasks.update(task.id, {
-        planned_date: targetDate, week_start: weekStart(targetDate), status: 'planned',
-      });
-      tasks = [...tasks, updated];
+      // toTask now creates the task already planned for the dropped day, so no
+      // fragile follow-up update (which 404'd on the just-created task).
+      const task = await api.integrations.fastmail.toTask(emailData.id, emailData.subject, targetDate);
+      tasks = tasks.some(t => t.id === task.id) ? tasks.map(t => t.id === task.id ? task : t) : [...tasks, task];
       emailPanel?.removeEmail(emailData.id);
     } catch (e: any) {
       // Surface it: the page-level `error` only renders by replacing the whole

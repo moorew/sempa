@@ -483,8 +483,8 @@ const httpApi = {
       delete: () => req<void>('/api/v1/integrations/fastmail', { method: 'DELETE' }),
       emails: () => req<FastmailEmail[]>('/api/v1/integrations/fastmail/emails'),
       archivedEmails: () => req<FastmailEmail[]>('/api/v1/integrations/fastmail/emails/archived'),
-      toTask: (id: string, subject: string) =>
-        req<Task>(`/api/v1/integrations/fastmail/emails/${id}/to-task`, { method: 'POST', body: body({ subject }) }),
+      toTask: (id: string, subject: string, plannedDate?: string) =>
+        req<Task>(`/api/v1/integrations/fastmail/emails/${id}/to-task`, { method: 'POST', body: body({ subject, planned_date: plannedDate }) }),
       archive: (id: string) =>
         req<void>(`/api/v1/integrations/fastmail/emails/${id}/archive`, { method: 'POST' }),
       unarchive: (id: string) =>
