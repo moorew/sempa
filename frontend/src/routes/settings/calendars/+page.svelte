@@ -22,6 +22,8 @@
     subsLoading = true; subsError = '';
     try {
       subs = await api.ical.listSubscriptions() ?? [];
+      // Register feeds so each is assigned its own distinct brand colour.
+      calendars.register(subs.map((s) => s.id));
     } catch (e) {
       subsError = (e as Error).message || 'Could not load feeds.';
     } finally {
@@ -212,7 +214,8 @@
           {/each}
         </section>
         <p class="mb-7 px-1" style="font-size:11px; color: var(--sempa-text-dim);">
-          Tap a colour swatch to cycle through Terracotta · Stone · Sage · Amber.
+          Each calendar gets its own colour automatically. Tap a swatch to change it
+          (Terracotta · Stone · Sage · Amber).
         </p>
       {/if}
 

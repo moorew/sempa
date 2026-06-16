@@ -77,23 +77,41 @@
     </button>
 
     {#if !collapsed}
-      <div class="px-4 pb-2.5 space-y-1">
+      <div class="px-3 pb-3 space-y-2">
         {#each objectives as obj (obj.id)}
           {@const p = objPct(obj.id)}
           {@const done = obj.status === 'completed'}
+          {@const total = objTotal(obj.id)}
           <a href="/week/{ws}"
              draggable="true"
              ondragstart={(e) => onObjDragStart(e, obj)}
              title="Drag onto a day to add a linked task"
-             class="flex cursor-grab items-center gap-2 rounded-lg py-1 px-1 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors active:cursor-grabbing">
-            <div class="h-1.5 w-1.5 shrink-0 rounded-full"
-                 style="background: {done || p === 100 ? 'var(--sempa-success)' : 'var(--sempa-accent)'};"></div>
-            <span class="flex-1 truncate text-xs {done ? 'line-through text-gray-400 dark:text-gray-600' : 'text-gray-600 dark:text-gray-400'}">
-              {obj.title}
-            </span>
-            <span class="shrink-0 text-[10.5px] font-mono {done || p === 100 ? 'text-green-500' : 'text-gray-400 dark:text-gray-600'}">
-              {p}%
-            </span>
+             class="block cursor-grab rounded-xl px-3 py-2.5 transition-colors active:cursor-grabbing"
+             style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main);"
+             onmouseenter={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'}
+             onmouseleave={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'}>
+            <div class="flex items-center gap-2">
+              <div class="h-2 w-2 shrink-0 rounded-full"
+                   style="background: {done || p === 100 ? 'var(--sempa-success)' : 'var(--sempa-accent)'};"></div>
+              <span class="flex-1 truncate text-[13px] {done ? 'line-through' : ''}"
+                    style="color: {done ? 'var(--sempa-text-dim)' : 'var(--sempa-text)'};">
+                {obj.title}
+              </span>
+              <span class="shrink-0 text-[11px] font-medium tabular-nums"
+                    style="color: {done || p === 100 ? 'var(--sempa-success)' : 'var(--sempa-text-dim)'};">
+                {p}%
+              </span>
+            </div>
+            <div class="mt-2 flex items-center gap-2">
+              <div class="h-1 flex-1 overflow-hidden rounded-full" style="background: var(--sempa-border);">
+                <div style="width:{p}%; height:100%; border-radius:9999px;
+                            background: {done || p === 100 ? 'var(--sempa-success)' : 'var(--sempa-accent)'};
+                            transition: width 400ms ease-out;"></div>
+              </div>
+              <span class="shrink-0 text-[10px]" style="color: var(--sempa-text-dim);">
+                {total === 0 ? 'No tasks' : `${objDone(obj.id)}/${total}`}
+              </span>
+            </div>
           </a>
         {/each}
       </div>

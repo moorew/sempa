@@ -84,6 +84,11 @@
     api.ical.listEvents(date).then(evs => { icalEvents = evs; }).catch(() => {});
   });
 
+  // Register each calendar so it gets a distinct, stable brand colour.
+  $effect(() => {
+    calendars.register(icalEvents.map(e => e.subscription_id));
+  });
+
   const scheduled = $derived(
     tasks.filter(t => t.scheduled_start && t.scheduled_start.startsWith(date))
   );
@@ -502,6 +507,9 @@
              onclick={(ce) => openPopover('event', ev.id, ce.clientX, ce.clientY)}
              oncontextmenu={(ce) => openContext(ce, 'event', ev.id)}>
           <p class="title leading-tight truncate">{ev.summary}</p>
+          {#if ev.calendar && height >= 32}
+            <p class="source leading-tight truncate">{ev.calendar}</p>
+          {/if}
         </button>
       {/each}
 

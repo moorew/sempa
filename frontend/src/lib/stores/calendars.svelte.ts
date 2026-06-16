@@ -30,6 +30,7 @@ const DEFAULT_DISPLAY: DisplayPrefs = {
 
 const HIDDEN_KEY  = 'sempa_hidden_calendars';
 const COLORS_KEY  = 'sempa_calendar_colors';
+const ORDER_KEY   = 'sempa_calendar_order';
 const DISPLAY_KEY = 'sempa_calendar_display';
 
 function load<T>(key: string, fallback: T): T {
@@ -40,8 +41,8 @@ function persist(key: string, v: unknown) {
   if (typeof localStorage !== 'undefined') localStorage.setItem(key, JSON.stringify(v));
 }
 
-// Deterministic default colour so every calendar gets a stable brand hue before
-// the user customises it (rather than everything defaulting to one colour).
+// Deterministic fallback hue for a calendar we haven't registered an order for
+// yet (so it still renders a stable brand colour rather than a blank).
 function hashColor(id: string): BrandCalKey {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
@@ -51,12 +52,31 @@ function hashColor(id: string): BrandCalKey {
 function createCalendarStore() {
   let hidden  = $state<string[]>(load(HIDDEN_KEY, []));
   let colors  = $state<Record<string, BrandCalKey>>(load(COLORS_KEY, {}));
+  // Stable assignment order of calendar ids → each gets a *distinct* brand hue
+  // by position (so the first four calendars never share a colour). A plain hash
+  // collides far too often with only four hues. Persisted so colours are stable
+  // across sessions; new calendars take the next free hue as they appear.
+  let order   = $state<string[]>(load(ORDER_KEY, []));
   let display = $state<DisplayPrefs>({ ...DEFAULT_DISPLAY, ...load<Partial<DisplayPrefs>>(DISPLAY_KEY, {}) });
+
+  // The colour currently shown for a calendar: an explicit override, else the
+  // distinct hue for its registered position, else a stable hash fallback.
+  const resolveKey = (id: string): BrandCalKey => {
+    if (colors[id]) return colors[id];
+    const idx = order.indexOf(id);
+    return idx >= 0 ? BRAND_CAL_KEYS[idx % BRAND_CAL_KEYS.length] : hashColor(id);
+  };
 
   return {
     get display() { return display; },
     isHidden: (id: string) => hidden.includes(id),
-    colorKey: (id: string): BrandCalKey => colors[id] ?? hashColor(id),
+    // Record calendars so each gets a distinct, stable default hue. Called by
+    // the schedule view and the Calendars settings tab as feeds load.
+    register(ids: string[]) {
+      const missing = ids.filter((id) => id && !order.includes(id)).sort();
+      if (missing.length) { order = [...order, ...missing]; persist(ORDER_KEY, order); }
+    },
+    colorKey: (id: string): BrandCalKey => resolveKey(id),
     toggleHidden(id: string) {
       hidden = hidden.includes(id) ? hidden.filter((x) => x !== id) : [...hidden, id];
       persist(HIDDEN_KEY, hidden);
@@ -68,7 +88,7 @@ function createCalendarStore() {
       persist(HIDDEN_KEY, hidden);
     },
     cycleColor(id: string) {
-      const cur = colors[id] ?? hashColor(id);
+      const cur = resolveKey(id);
       const next = BRAND_CAL_KEYS[(BRAND_CAL_KEYS.indexOf(cur) + 1) % BRAND_CAL_KEYS.length];
       colors = { ...colors, [id]: next };
       persist(COLORS_KEY, colors);
