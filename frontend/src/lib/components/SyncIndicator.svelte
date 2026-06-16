@@ -11,6 +11,7 @@
   import { syncStore, sync as runSync } from '$lib/sync.svelte';
   import { hasLocalDb } from '$lib/tauri/bridge';
   import { mobile } from '$lib/stores/mobile.svelte';
+  import { overlay } from '$lib/stores/overlay.svelte';
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
   import { RefreshCw, Cloud, CloudOff, CloudUpload, CloudAlert } from 'lucide-svelte';
@@ -90,7 +91,7 @@
   }
 </script>
 
-{#if hasLocalDb() && (!mobile.value || persistent)}
+{#if hasLocalDb() && !overlay.open && (!mobile.value || persistent)}
   <!-- Desktop: a permanent compact cloud, bottom-right. Mobile: stays HIDDEN in
        the resting "synced" state (it only appears while syncing/pending/offline/
        errored), so it never sits on top of content; shown bottom-left, above the

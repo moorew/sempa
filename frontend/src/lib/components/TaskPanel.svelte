@@ -12,6 +12,7 @@
   import SempaDatePicker from '$lib/components/ui/SempaDatePicker.svelte';
   import { mobile } from '$lib/stores/mobile.svelte';
   import { viewport } from '$lib/stores/viewport.svelte';
+  import { overlay } from '$lib/stores/overlay.svelte';
   import { prefs } from '$lib/stores/prefs.svelte';
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
   import { Sparkles } from 'lucide-svelte';
@@ -92,6 +93,15 @@
   $effect(() => {
     if (!open) return;
     viewMode = task && !mobile.value && !inline ? 'view' : 'edit';
+  });
+
+  // While the panel is open as a floating overlay (not the inline embed), mark a
+  // global overlay so ambient corner widgets (the SyncIndicator) hide and don't
+  // sit on top of the Save button.
+  $effect(() => {
+    if (!open || inline) return;
+    overlay.push();
+    return () => overlay.pop();
   });
 
   function startEdit() {
