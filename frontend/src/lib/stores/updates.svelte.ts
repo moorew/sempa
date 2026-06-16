@@ -13,7 +13,7 @@
  * and the desktop app updates in the background instead of opening the browser.
  */
 
-import { isCapacitor } from '$lib/platform';
+import { isCapacitor, hasLocalDb } from '$lib/platform';
 
 const REPO = 'moorew/sempa';
 const LAST_CHECK_KEY = 'sempa_update_last_check';
@@ -21,6 +21,11 @@ const DISMISSED_KEY  = 'sempa_update_dismissed';  // release version the user di
 const CHANNEL_KEY    = 'sempa_update_channel';     // 'stable' | 'prerelease'
 const AUTO_KEY       = 'sempa_update_auto';        // '0' disables background checks
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;       // re-check at most every 6h
+// When a new release is published but its installer asset hasn't finished
+// uploading yet (the release CI is still building), poll on this shorter cadence
+// so the prompt appears soon after the build lands — not up to 6h later.
+const ASSET_WAIT_MS = 10 * 60 * 1000;               // re-check every 10 min…
+const ASSET_WAIT_MAX_TRIES = 6;                     // …for up to ~1h, then give up
 
 export type UpdateChannel = 'stable' | 'prerelease';
 
@@ -29,6 +34,7 @@ export type UpdateInfo = {
   notes: string;        // release notes (markdown / plain)
   url: string;          // release page ("What's new")
   downloadUrl: string;  // platform-correct asset (APK on Android, installer on Windows), else the release page
+  hasAsset: boolean;    // true when a real installer asset for this platform exists in the release
   publishedAt: string;
 };
 
@@ -49,32 +55,33 @@ function isNewer(a: string, b: string): boolean {
   return false;
 }
 
-/** Pick the x64 NSIS installer if present (matches the release workflow names),
- *  else any .exe/.msi, else fall back to the release page. */
-function pickWindowsAsset(assets: { name: string; browser_download_url: string }[], fallback: string): string {
+type Asset = { name: string; browser_download_url: string };
+
+/** The x64 NSIS installer if present (matches the release workflow names), else
+ *  any .exe/.msi. Returns null when the release has no Windows installer yet. */
+function findWindowsAsset(assets: Asset[]): string | null {
   const byPref = (re: RegExp) => assets.find((a) => re.test(a.name))?.browser_download_url;
   return (
     byPref(/x64.*setup\.exe$/i) ||
     byPref(/setup\.exe$/i) ||
     byPref(/x64.*\.msi$/i) ||
     byPref(/\.(exe|msi)$/i) ||
-    fallback
+    null
   );
 }
 
-/** Pick the Android APK if present, else fall back to the release page. The
- *  release workflow uploads `app-release.apk` (and an `.aab`, which is for the
- *  Play Store, not a sideload — never offer that to the user). */
-function pickAndroidAsset(assets: { name: string; browser_download_url: string }[], fallback: string): string {
-  return assets.find((a) => /\.apk$/i.test(a.name))?.browser_download_url ?? fallback;
+/** The Android APK if present, else null. (The `.aab` is for the Play Store, not
+ *  a sideload — never offer that to the user.) */
+function findAndroidAsset(assets: Asset[]): string | null {
+  return assets.find((a) => /\.apk$/i.test(a.name))?.browser_download_url ?? null;
 }
 
-/** Choose the download asset for the running platform. Android (Capacitor) gets
- *  the APK; desktop and web get the Windows installer. Without this the updater
- *  always handed back a Windows `.exe`, so Android tapping "Download" opened the
- *  desktop installer instead of the APK. */
-function pickDownloadUrl(assets: { name: string; browser_download_url: string }[], fallback: string): string {
-  return isCapacitor() ? pickAndroidAsset(assets, fallback) : pickWindowsAsset(assets, fallback);
+/** The installer asset for the running platform — Android (Capacitor) gets the
+ *  APK, desktop/web the Windows installer — or null if it isn't published yet.
+ *  Returning null lets the store hold back the prompt until the asset exists,
+ *  so tapping "Download" never dumps the user on the GitHub page mid-build. */
+function findPlatformAsset(assets: Asset[]): string | null {
+  return isCapacitor() ? findAndroidAsset(assets) : findWindowsAsset(assets);
 }
 
 function createUpdateStore() {
@@ -91,6 +98,11 @@ function createUpdateStore() {
     void dismissTick;
     if (!info) return false;
     if (!isNewer(info.version, CURRENT)) return false;
+    // On desktop/Android, hold the prompt back until the platform installer is
+    // actually published — otherwise "Download" would open the GitHub release
+    // page while CI is still building the asset. Web has nothing to install, so
+    // it's informational either way.
+    if (hasLocalDb() && !info.hasAsset) return false;
     return ls()?.getItem(DISMISSED_KEY) !== info.version;
   });
 
@@ -111,17 +123,25 @@ function createUpdateStore() {
 
   function toInfo(rel: any): UpdateInfo {
     const version = String(rel.tag_name ?? rel.name ?? '').replace(/^v/, '');
+    const releasePage = rel.html_url ?? `https://github.com/${REPO}/releases`;
+    const asset = findPlatformAsset(rel.assets ?? []);
     return {
       version,
       notes: (rel.body ?? '').trim(),
-      url: rel.html_url ?? `https://github.com/${REPO}/releases`,
-      downloadUrl: pickDownloadUrl(rel.assets ?? [], rel.html_url ?? `https://github.com/${REPO}/releases`),
+      url: releasePage,
+      downloadUrl: asset ?? releasePage,
+      hasAsset: asset !== null,
       publishedAt: rel.published_at ?? '',
     };
   }
 
+  // While waiting for a published-but-still-building release's installer asset,
+  // we poll on the short cadence (capped) instead of the 6h one.
+  let assetWaitTimer: ReturnType<typeof setTimeout> | null = null;
+  let assetWaitTries = 0;
+
   /** Check for updates. `force` bypasses the 6h throttle (used by the manual
-   *  "Check for updates" button). */
+   *  "Check for updates" button and the asset-wait re-check). */
   async function check(force = false): Promise<void> {
     if (checking) return;
     if (!force && lastChecked) {
@@ -134,11 +154,30 @@ function createUpdateStore() {
       info = await fetchLatest(channel);
       lastChecked = new Date().toISOString();
       ls()?.setItem(LAST_CHECK_KEY, lastChecked);
+      scheduleAssetWait();
     } catch (e) {
       error = (e as Error).message || 'Update check failed';
     } finally {
       checking = false;
     }
+  }
+
+  /** If a newer release exists for this platform but its installer asset isn't
+   *  up yet, re-check shortly (CI is likely still building it). Otherwise cancel
+   *  any pending wait. Bounded so a failed/missing build doesn't poll forever. */
+  function scheduleAssetWait(): void {
+    if (assetWaitTimer) { clearTimeout(assetWaitTimer); assetWaitTimer = null; }
+    const waiting =
+      autoCheck &&
+      hasLocalDb() &&
+      !!info &&
+      isNewer(info.version, CURRENT) &&
+      !info.hasAsset &&
+      ls()?.getItem(DISMISSED_KEY) !== info.version;
+    if (!waiting) { assetWaitTries = 0; return; }
+    if (assetWaitTries >= ASSET_WAIT_MAX_TRIES) return;
+    assetWaitTries++;
+    assetWaitTimer = setTimeout(() => { void check(true); }, ASSET_WAIT_MS);
   }
 
   /** Background check on startup, only when auto-checks are enabled. */
