@@ -454,17 +454,30 @@
     if (!draggingId) return;
     const id = draggingId;
     draggingId = null; dragOverDate = null;
-    const task = tasks.find(t => t.id === id);
-    if (!task) return;
 
+    // The card may not be in the week-loaded pool yet — e.g. an unplanned Jira
+    // backlog task dragged in from the Jira panel. Fetch it so the drop still
+    // lands (and the task gets added to the board below).
+    let task = tasks.find(t => t.id === id);
+    const inPool = !!task;
+    if (!task) {
+      try { task = await api.tasks.get(id); }
+      catch (e: any) { showDropError(e?.message || 'Could not add that item'); return; }
+    }
+
+    // Compute the insert position against the SAME order the column displays
+    // (compareTasksForDay), so the index from the drop indicator lines up with
+    // the neighbours' positions. Sorting by raw position here was the bug:
+    // the displayed list is timed-first, so the index pointed at the wrong gap.
     const colTasks = tasks
       .filter(t => t.planned_date === targetDate && t.status !== 'cancelled' && t.id !== id)
-      .sort((a, b) => a.position - b.position);
+      .sort(compareTasksForDay);
     const positions = colTasks.map(t => t.position);
     const newPos = insertIdx !== undefined ? insertPosition(positions, insertIdx) : appendPosition(positions);
 
     const prev = tasks.slice();
-    tasks = tasks.map(t => t.id === id ? { ...t, planned_date: targetDate, position: newPos } : t);
+    const moved = { ...task, planned_date: targetDate, position: newPos };
+    tasks = inPool ? tasks.map(t => t.id === id ? moved : t) : [...tasks, moved];
     try {
       const updated = await api.tasks.update(id, {
         planned_date: targetDate,
@@ -473,7 +486,7 @@
         status: task.status === 'backlog' ? 'planned' : task.status,
       });
       tasks = tasks.map(t => t.id === updated.id ? updated : t);
-    } catch { tasks = prev; }
+    } catch (e: any) { tasks = prev; showDropError(e?.message || 'Could not move that task'); }
   }
 
   // ── Complete ──────────────────────────────────────────────────────────────
@@ -606,7 +619,21 @@
       });
       tasks = [...tasks, updated];
       emailPanel?.removeEmail(emailData.id);
-    } catch (e: any) { error = e.message; }
+    } catch (e: any) {
+      // Surface it: the page-level `error` only renders by replacing the whole
+      // board, so on a populated board a failed email→task looked like nothing
+      // happened. Show a transient toast instead.
+      showDropError(e?.message || 'Could not create a task from that email');
+    }
+  }
+
+  // ── Transient drop error toast (email/jira drops fail far from the board) ───
+  let dropError = $state<string | null>(null);
+  let dropErrorTimer: ReturnType<typeof setTimeout> | null = null;
+  function showDropError(msg: string) {
+    dropError = msg;
+    if (dropErrorTimer) clearTimeout(dropErrorTimer);
+    dropErrorTimer = setTimeout(() => { dropError = null; }, 6000);
   }
 
   // ── Calendar schedule / unschedule ────────────────────────────────────────
@@ -1180,6 +1207,25 @@
           Delete
         </button>
       </div>
+    </div>
+  </div>
+{/if}
+
+<!-- ── Drop error toast ─────────────────────────────────────────────────────
+     Drops (email→task, Jira→task, moves) fail far from the board, where the
+     page-level error banner would replace the whole board. This surfaces them. -->
+{#if dropError}
+  <div class="fixed left-1/2 bottom-6 z-[80] -translate-x-1/2 rounded-xl px-4 py-2.5 text-sm shadow-2xl animate-slide-down"
+       style="background: var(--sempa-bg-panel); border: 1px solid #ef4444; color: var(--sempa-text); max-width: min(92vw, 28rem);"
+       role="alert">
+    <div class="flex items-center gap-2.5">
+      <svg class="h-4 w-4 shrink-0 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>
+      </svg>
+      <span class="min-w-0 flex-1">{dropError}</span>
+      <button onclick={() => dropError = null} aria-label="Dismiss" class="shrink-0" style="color: var(--sempa-text-dim);">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18 18 6M6 6l12 12"/></svg>
+      </button>
     </div>
   </div>
 {/if}
