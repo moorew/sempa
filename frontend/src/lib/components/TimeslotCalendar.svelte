@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { api } from '$lib/api';
   import type { ICalEvent, Task } from '$lib/types';
   import { formatMinutes, today as getToday, weekStart } from '$lib/utils';
@@ -84,9 +85,12 @@
     api.ical.listEvents(date).then(evs => { icalEvents = evs; }).catch(() => {});
   });
 
-  // Register each calendar so it gets a distinct, stable brand colour.
+  // Register each calendar so it gets a distinct, stable brand colour. register()
+  // reads and writes the store's order array, so it's untracked to avoid the
+  // effect depending on the state it mutates.
   $effect(() => {
-    calendars.register(icalEvents.map(e => e.subscription_id));
+    const ids = icalEvents.map(e => e.subscription_id);
+    untrack(() => calendars.register(ids));
   });
 
   const scheduled = $derived(

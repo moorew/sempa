@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { Objective, PomodoroSession, Task, TaskStatus } from '$lib/types';
   import { tagStore } from '$lib/stores/tags.svelte';
   import { api } from '$lib/api';
@@ -97,11 +98,13 @@
 
   // While the panel is open as a floating overlay (not the inline embed), mark a
   // global overlay so ambient corner widgets (the SyncIndicator) hide and don't
-  // sit on top of the Save button.
+  // sit on top of the Save button. The push/pop mutate a counter (count++ reads
+  // AND writes it); that must be untracked, or the effect would depend on the
+  // very state it writes and loop forever (effect_update_depth_exceeded).
   $effect(() => {
     if (!open || inline) return;
-    overlay.push();
-    return () => overlay.pop();
+    untrack(() => overlay.push());
+    return () => untrack(() => overlay.pop());
   });
 
   function startEdit() {
@@ -583,13 +586,11 @@
         <div class="py-4" style="border-bottom: 1px solid var(--sempa-border);">
           <p class="mb-2 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Notes</p>
           <div class="text-sm leading-relaxed" style="color: var(--sempa-text-soft);">
+            <!-- RichText already lifts bare URLs out of the prose into preview
+                 cards, so we must NOT render a second noteUrls list here (that
+                 produced two copies of every link). -->
             <RichText text={task.description} />
           </div>
-          {#if noteUrls.length > 0}
-            <div class="mt-3 flex flex-col gap-2">
-              {#each noteUrls as url (url)}<LinkPreview {url} />{/each}
-            </div>
-          {/if}
         </div>
       {/if}
 
