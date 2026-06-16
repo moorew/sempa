@@ -8,7 +8,8 @@
   import { mobile } from '$lib/stores/mobile.svelte';
   import TagFilterBar from '$lib/components/TagFilterBar.svelte';
   import TaskPanel from '$lib/components/TaskPanel.svelte';
-  import { Search } from 'lucide-svelte';
+  import { downloadFile, tasksToCSV, tasksToMarkdown, slugify } from '$lib/export';
+  import { Search, FileSpreadsheet, FileText } from 'lucide-svelte';
 
   let q = $state('');
   let tags = $state<string[]>([]);
@@ -62,6 +63,24 @@
 
   function openTask(t: Task) { panelTask = t; panelOpen = true; }
   function onPanelSave() { panelOpen = false; runSearch(); }
+
+  // ── Export the filtered task list (CSV or clean Markdown) ──────────────────
+  // A human-readable label for the current filter, used as the file title.
+  const exportLabel = $derived(
+    tags.length
+      ? `Tasks tagged ${tags.join(', ')}`
+      : q.trim()
+        ? `Tasks matching “${q.trim()}”`
+        : 'Tasks'
+  );
+  const exportSlug = $derived(slugify(tags.length ? tags.join('-') : q.trim()));
+
+  function exportCSV() {
+    downloadFile(`tasks-${exportSlug}.csv`, tasksToCSV(results.tasks), 'text/csv');
+  }
+  function exportMarkdown() {
+    downloadFile(`tasks-${exportSlug}.md`, tasksToMarkdown(results.tasks, exportLabel), 'text/markdown');
+  }
 
   function fmtDate(d: string): string {
     const dt = new Date(d + 'T12:00:00');
@@ -126,6 +145,20 @@
           <div class="mb-2 flex items-center gap-2 px-1">
             <span class="type-label" style="color: var(--sempa-accent);">Tasks</span>
             <span class="type-label" style="color: var(--sempa-text-dim);">{results.tasks.length}</span>
+            <!-- Export the filtered list. Shown whenever there are task results;
+                 most useful when narrowed to a single tag (e.g. "Tailscale"). -->
+            <div class="ml-auto flex items-center gap-1.5">
+              <button onclick={exportCSV} title="Export as CSV"
+                      class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors"
+                      style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
+                <FileSpreadsheet size={12} /> CSV
+              </button>
+              <button onclick={exportMarkdown} title="Export as Markdown"
+                      class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors"
+                      style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
+                <FileText size={12} /> Markdown
+              </button>
+            </div>
           </div>
           <div style="border: 1px solid var(--sempa-border); border-radius: 12px; background: var(--sempa-bg-panel); overflow: hidden;">
             {#each results.tasks as task, i (task.id)}

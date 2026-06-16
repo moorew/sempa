@@ -2,6 +2,7 @@
   import { api } from '$lib/api';
   import type { Objective, Task } from '$lib/types';
   import { weekStart } from '$lib/utils';
+  import { realtime } from '$lib/stores/realtime.svelte';
 
   let { date }: { date: string } = $props();
 
@@ -11,6 +12,20 @@
   let collapsed  = $state(false);
 
   $effect(() => { ws; void load(); });
+
+  // Reflect changes made elsewhere (e.g. completing a linked task auto-completes
+  // its objective on the day board) without a manual refresh.
+  $effect(() => {
+    const ev = realtime.lastEvent;
+    if (!ev) return;
+    if (ev.type === 'task:change' || ev.type === 'objective:change') void load();
+  });
+
+  // Drag an objective out of the sidebar to create a linked task in a day column.
+  function onObjDragStart(e: DragEvent, obj: Objective) {
+    e.dataTransfer?.setData('application/x-sempa-objective', JSON.stringify({ id: obj.id, title: obj.title }));
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copy';
+  }
 
   async function load() {
     try {
@@ -67,7 +82,10 @@
           {@const p = objPct(obj.id)}
           {@const done = obj.status === 'completed'}
           <a href="/week/{ws}"
-             class="flex items-center gap-2 rounded-lg py-1 px-1 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
+             draggable="true"
+             ondragstart={(e) => onObjDragStart(e, obj)}
+             title="Drag onto a day to add a linked task"
+             class="flex cursor-grab items-center gap-2 rounded-lg py-1 px-1 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors active:cursor-grabbing">
             <div class="h-1.5 w-1.5 shrink-0 rounded-full"
                  style="background: {done || p === 100 ? 'var(--sempa-success)' : 'var(--sempa-accent)'};"></div>
             <span class="flex-1 truncate text-xs {done ? 'line-through text-gray-400 dark:text-gray-600' : 'text-gray-600 dark:text-gray-400'}">

@@ -6,6 +6,7 @@
    * Purely presentational on top of the `updates` store.
    */
   import { updates } from '$lib/stores/updates.svelte';
+  import { openExternal } from '$lib/external';
   import { Download, X, Sparkles } from 'lucide-svelte';
 
   let expanded = $state(false);
@@ -31,11 +32,11 @@
         {/if}
 
         <div class="mt-3 flex items-center gap-2">
-          <a href={updates.info.downloadUrl} target="_blank" rel="noopener noreferrer"
+          <button onclick={() => openExternal(updates.info!.downloadUrl)}
              class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
              style="background: var(--sempa-accent);">
             <Download size={13} strokeWidth={2} /> Download
-          </a>
+          </button>
           {#if updates.info.notes}
             <button onclick={() => (expanded = !expanded)}
                     class="rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors"

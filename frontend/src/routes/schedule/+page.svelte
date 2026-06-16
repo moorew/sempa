@@ -1,6 +1,6 @@
 <script lang="ts">
   import { api } from '$lib/api';
-  import type { Task } from '$lib/types';
+  import type { Task, UpdateTaskInput } from '$lib/types';
   import { today as getToday, offsetDate, weekStart, formatMinutes } from '$lib/utils';
   import { hapticTick } from '$lib/haptics';
   import TimeslotCalendar from '$lib/components/TimeslotCalendar.svelte';
@@ -79,10 +79,21 @@
   // ── Schedule / unschedule (same mutations as the desktop panel) ─────────────
   async function handleSchedule(taskId: string, start: string, end: string) {
     const prev = tasks.slice();
-    tasks = tasks.map(t => t.id === taskId ? { ...t, scheduled_start: start, scheduled_end: end } : t);
+    const t = tasks.find(x => x.id === taskId);
+    const plannedDate = start.slice(0, 10);
+    const durationMin = Math.max(15, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000));
+    const patch: UpdateTaskInput = {
+      scheduled_start: start,
+      scheduled_end: end,
+      planned_date: plannedDate,
+      week_start: weekStart(plannedDate),
+      time_estimate_minutes: durationMin,
+    };
+    if (t?.status === 'backlog') patch.status = 'planned';
+    tasks = tasks.map(x => x.id === taskId ? { ...x, ...patch } : x);
     try {
-      const updated = await api.tasks.update(taskId, { scheduled_start: start, scheduled_end: end });
-      tasks = tasks.map(t => t.id === updated.id ? updated : t);
+      const updated = await api.tasks.update(taskId, patch);
+      tasks = tasks.map(x => x.id === updated.id ? updated : x);
     } catch { tasks = prev; }
   }
 

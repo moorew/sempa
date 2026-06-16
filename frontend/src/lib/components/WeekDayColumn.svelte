@@ -21,6 +21,7 @@
     onTaskHover,
     onDrop,
     onEmailDrop,
+    onObjectiveDrop,
     onDragOver,
     onDragLeave,
     onAddClick,
@@ -37,6 +38,7 @@
     onTaskHover?: (id: string | null) => void;
     onDrop: (date: string, insertIndex?: number) => void;
     onEmailDrop?: (emailData: { id: string; subject: string }, date: string) => void;
+    onObjectiveDrop?: (objData: { id: string; title: string }, date: string) => void;
     onDragOver: (date: string) => void;
     onDragLeave: () => void;
     onAddClick: (date: string) => void;
@@ -91,7 +93,10 @@
      ondrop={(e) => {
        e.preventDefault();
        const emailData = e.dataTransfer?.getData('application/x-sempa-email');
-       if (emailData) {
+       const objData   = e.dataTransfer?.getData('application/x-sempa-objective');
+       if (objData) {
+         try { onObjectiveDrop?.(JSON.parse(objData), date); } catch {}
+       } else if (emailData) {
          try { onEmailDrop?.(JSON.parse(emailData), date); } catch {}
        } else {
          onDrop(date, insertIdx ?? undefined);

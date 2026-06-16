@@ -98,6 +98,18 @@
     return d.getHours() * 60 + d.getMinutes();
   }
 
+  // Duration of a task's calendar block in minutes — its "planned time". Driven
+  // by the task's time estimate, so editing the estimate in the list resizes the
+  // block here (two-way reactivity). Falls back to an existing scheduled span,
+  // then a 30-minute default for tasks with no planned time at all.
+  function plannedMin(task: Task): number {
+    if (task.time_estimate_minutes && task.time_estimate_minutes > 0) return task.time_estimate_minutes;
+    if (task.scheduled_start && task.scheduled_end) {
+      return Math.max(15, minutesOf(task.scheduled_end) - minutesOf(task.scheduled_start));
+    }
+    return 30;
+  }
+
   type LayoutItem = { key: string; start: number; end: number };
   const layout = $derived.by(() => {
     const items: LayoutItem[] = [];
@@ -106,7 +118,7 @@
     }
     for (const t of scheduled) {
       const s = minutesOf(t.scheduled_start!);
-      const e = t.scheduled_end ? minutesOf(t.scheduled_end) : s + 30;
+      const e = s + plannedMin(t);
       items.push({ key: 't:' + t.id, start: s, end: Math.max(e, s + 15) });
     }
     items.sort((a, b) => a.start - b.start || a.end - b.end);
@@ -159,7 +171,7 @@
       sMin = drag.curStartMin; eMin = drag.curEndMin;
     } else {
       sMin = minutesOf(task.scheduled_start);
-      eMin = task.scheduled_end ? minutesOf(task.scheduled_end) : sMin + 30;
+      eMin = sMin + plannedMin(task);
     }
     const top    = minToTop(sMin);
     const height = Math.max(20, ((eMin - sMin) / 60) * HOUR_PX);
@@ -209,8 +221,12 @@
     const taskId = e.dataTransfer?.getData('application/x-sempa-task');
     if (!taskId) return;
     const { hour, min } = snapToHalfHour(e.clientY);
-    const start = isoAt(hour, min);
-    const end   = isoAt(hour, min + 30 <= 60 ? min + 30 : 30);
+    // Block length = the task's planned time (estimate), defaulting to 30 min.
+    const task     = tasks.find(t => t.id === taskId);
+    const dur      = task ? plannedMin(task) : 30;
+    const startMin = hour * 60 + min;
+    const start    = isoFromMin(startMin);
+    const end      = isoFromMin(Math.min(startMin + dur, END_HOUR * 60));
     onSchedule?.(taskId, start, end);
     ghostHour = null;
   }

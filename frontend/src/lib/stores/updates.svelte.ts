@@ -13,6 +13,8 @@
  * and the desktop app updates in the background instead of opening the browser.
  */
 
+import { isCapacitor } from '$lib/platform';
+
 const REPO = 'moorew/sempa';
 const LAST_CHECK_KEY = 'sempa_update_last_check';
 const DISMISSED_KEY  = 'sempa_update_dismissed';  // release version the user dismissed
@@ -26,7 +28,7 @@ export type UpdateInfo = {
   version: string;      // latest release version, no leading "v"
   notes: string;        // release notes (markdown / plain)
   url: string;          // release page ("What's new")
-  downloadUrl: string;  // best Windows installer asset, else the release page
+  downloadUrl: string;  // platform-correct asset (APK on Android, installer on Windows), else the release page
   publishedAt: string;
 };
 
@@ -58,6 +60,21 @@ function pickWindowsAsset(assets: { name: string; browser_download_url: string }
     byPref(/\.(exe|msi)$/i) ||
     fallback
   );
+}
+
+/** Pick the Android APK if present, else fall back to the release page. The
+ *  release workflow uploads `app-release.apk` (and an `.aab`, which is for the
+ *  Play Store, not a sideload — never offer that to the user). */
+function pickAndroidAsset(assets: { name: string; browser_download_url: string }[], fallback: string): string {
+  return assets.find((a) => /\.apk$/i.test(a.name))?.browser_download_url ?? fallback;
+}
+
+/** Choose the download asset for the running platform. Android (Capacitor) gets
+ *  the APK; desktop and web get the Windows installer. Without this the updater
+ *  always handed back a Windows `.exe`, so Android tapping "Download" opened the
+ *  desktop installer instead of the APK. */
+function pickDownloadUrl(assets: { name: string; browser_download_url: string }[], fallback: string): string {
+  return isCapacitor() ? pickAndroidAsset(assets, fallback) : pickWindowsAsset(assets, fallback);
 }
 
 function createUpdateStore() {
@@ -98,7 +115,7 @@ function createUpdateStore() {
       version,
       notes: (rel.body ?? '').trim(),
       url: rel.html_url ?? `https://github.com/${REPO}/releases`,
-      downloadUrl: pickWindowsAsset(rel.assets ?? [], rel.html_url ?? `https://github.com/${REPO}/releases`),
+      downloadUrl: pickDownloadUrl(rel.assets ?? [], rel.html_url ?? `https://github.com/${REPO}/releases`),
       publishedAt: rel.published_at ?? '',
     };
   }

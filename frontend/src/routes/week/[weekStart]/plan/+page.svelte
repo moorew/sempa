@@ -135,30 +135,17 @@
 
   // ── Markdown ───────────────────────────────────────────────────────────────
 
+  // A clean bulleted list: one H1 title, objectives as top-level bullets and
+  // their linked tasks nested beneath. No bold, no subheadings — plain Markdown.
   function generateMarkdown(): string {
-    const lines = [
-      `# Week of ${formatWeekRange(ws)}`,
-      '',
-      '## Objectives',
-      '',
-    ];
+    const lines = [`# Week of ${formatWeekRange(ws)}`, ''];
     for (const obj of objectives) {
-      const linked = objectiveTasks(obj.id);
-      const p = pct(obj.id);
-      const icon = obj.status === 'completed' ? '✅' : '🎯';
-      lines.push(`### ${icon} ${obj.title}${linked.length ? ` — ${p}% complete` : ''}`);
-      if (linked.length === 0) {
-        lines.push('*No tasks yet*');
-      } else {
-        for (const t of linked) {
-          lines.push(`- [${t.status === 'done' ? 'x' : ' '}] ${t.title}`);
-        }
+      lines.push(`- [${obj.status === 'completed' ? 'x' : ' '}] ${obj.title}`);
+      for (const t of objectiveTasks(obj.id)) {
+        lines.push(`  - [${t.status === 'done' ? 'x' : ' '}] ${t.title}`);
       }
-      lines.push('');
     }
-    if (objectives.length === 0) lines.push('*No objectives set*\n');
-    lines.push('---');
-    lines.push(`*Sempa weekly plan · ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}*`);
+    if (objectives.length === 0) lines.push('- No objectives set');
     return lines.join('\n');
   }
 

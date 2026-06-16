@@ -232,6 +232,18 @@
   async function toggleTask(t: Task) {
     const newStatus = t.status === 'done' ? 'planned' : 'done';
     tasks = tasks.map(x => x.id === t.id ? { ...x, status: newStatus } : x);
+    // Linked completion: when every task under an objective is done, complete
+    // the objective too (and reopen it if a task is un-checked).
+    if (t.weekly_objective_id) {
+      const objId = t.weekly_objective_id;
+      const linked = tasks.filter(x => x.weekly_objective_id === objId && x.status !== 'cancelled');
+      const objStatus = linked.length > 0 && linked.every(x => x.status === 'done') ? 'completed' : 'active';
+      const cur = objectives.find(o => o.id === objId);
+      if (cur && cur.status !== objStatus) {
+        objectives = objectives.map(o => o.id === objId ? { ...o, status: objStatus } : o);
+        api.objectives.update(objId, { status: objStatus }).catch(() => {});
+      }
+    }
     try {
       const updated = await api.tasks.update(t.id, {
         status: newStatus,
@@ -242,30 +254,17 @@
   }
 
   // ── Markdown export ────────────────────────────────────────────────────────
+  // A clean bulleted list: one H1 title, objectives as top-level bullets and
+  // their linked tasks nested beneath. No bold, no subheadings — plain Markdown.
   function generateMarkdown(): string {
-    const lines = [
-      `# Week of ${formatWeekRange(weekStartDate)}`,
-      '',
-      '## Objectives',
-      '',
-    ];
+    const lines = [`# Week of ${formatWeekRange(weekStartDate)}`, ''];
     for (const obj of objectives) {
-      const linked = objectiveTasks(obj.id);
-      const p = progressPct(obj.id);
-      const icon = obj.status === 'completed' ? '✅' : '🎯';
-      lines.push(`### ${icon} ${obj.title}${linked.length ? ` — ${p}% complete` : ''}`);
-      if (linked.length === 0) {
-        lines.push('*No tasks linked*');
-      } else {
-        for (const t of linked) {
-          lines.push(`- [${t.status === 'done' ? 'x' : ' '}] ${t.title}`);
-        }
+      lines.push(`- [${obj.status === 'completed' ? 'x' : ' '}] ${obj.title}`);
+      for (const t of objectiveTasks(obj.id)) {
+        lines.push(`  - [${t.status === 'done' ? 'x' : ' '}] ${t.title}`);
       }
-      lines.push('');
     }
-    if (objectives.length === 0) lines.push('*No objectives set*\n');
-    lines.push('---');
-    lines.push(`*Sempa · ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}*`);
+    if (objectives.length === 0) lines.push('- No objectives set');
     return lines.join('\n');
   }
 

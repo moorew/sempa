@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { api } from '$lib/api';
-  import type { Task, TaskStatus } from '$lib/types';
+  import type { Task, TaskStatus, UpdateTaskInput } from '$lib/types';
   import { appendPosition, compareTasksForDay, formatMinutes, insertPosition, isToday, offsetDate, today, weekStart } from '$lib/utils';
   import { pomodoro } from '$lib/stores/pomodoro.svelte';
   import { mobile } from '$lib/stores/mobile.svelte';
@@ -489,7 +489,38 @@
         completed_at: newStatus === 'done' ? new Date().toISOString() : null,
       });
       tasks = tasks.map(t => t.id === updated.id ? updated : t);
+      syncLinkedObjective(task.weekly_objective_id);
     } catch { tasks = prev; }
+  }
+
+  // Keep a linked objective in step with its tasks: when every task linked to it
+  // is done the objective auto-completes; if one is reopened it returns to
+  // active. For an objective dragged in as a single task, completing that task
+  // completes the objective — the behaviour the linked-task workflow expects.
+  function syncLinkedObjective(objectiveId: string | null) {
+    if (!objectiveId) return;
+    const linked = tasks.filter(t => t.weekly_objective_id === objectiveId && t.status !== 'cancelled');
+    if (linked.length === 0) return;
+    const status = linked.every(t => t.status === 'done') ? 'completed' : 'active';
+    api.objectives.update(objectiveId, { status }).catch(() => {});
+  }
+
+  // ── Drag a weekly objective onto a day → create a linked task there ─────────
+  async function handleObjectiveDrop(obj: { id: string; title: string }, targetDate: string) {
+    dragOverDate = null;
+    const colTasks = tasks.filter(t => t.planned_date === targetDate && t.status !== 'cancelled');
+    const pos = appendPosition(colTasks.map(t => t.position));
+    try {
+      const t = await api.tasks.create({
+        title: obj.title,
+        weekly_objective_id: obj.id,
+        planned_date: targetDate,
+        week_start: weekStart(targetDate),
+        status: 'planned',
+        position: pos,
+      });
+      tasks = [...tasks, t];
+    } catch (e) { error = e instanceof Error ? e.message : 'Failed to add task'; }
   }
 
   // ── Focus (Pomodoro) ──────────────────────────────────────────────────────
@@ -579,12 +610,27 @@
   }
 
   // ── Calendar schedule / unschedule ────────────────────────────────────────
+  // Placing or resizing a block keeps the task and its calendar block in sync:
+  // the drop day becomes the task's planned_date (so it moves into that day's
+  // column), and the block length is written back as the task's planned time
+  // (time_estimate_minutes) so a resize updates the estimate and vice-versa.
   async function handleSchedule(taskId: string, start: string, end: string) {
     const prev = tasks.slice();
-    tasks = tasks.map(t => t.id === taskId ? { ...t, scheduled_start: start, scheduled_end: end } : t);
+    const t = tasks.find(x => x.id === taskId);
+    const plannedDate = start.slice(0, 10);
+    const durationMin = Math.max(15, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000));
+    const patch: UpdateTaskInput = {
+      scheduled_start: start,
+      scheduled_end: end,
+      planned_date: plannedDate,
+      week_start: weekStart(plannedDate),
+      time_estimate_minutes: durationMin,
+    };
+    if (t?.status === 'backlog') patch.status = 'planned';
+    tasks = tasks.map(x => x.id === taskId ? { ...x, ...patch } : x);
     try {
-      const updated = await api.tasks.update(taskId, { scheduled_start: start, scheduled_end: end });
-      tasks = tasks.map(t => t.id === updated.id ? updated : t);
+      const updated = await api.tasks.update(taskId, patch);
+      tasks = tasks.map(x => x.id === updated.id ? updated : x);
     } catch { tasks = prev; }
   }
 
@@ -1003,6 +1049,7 @@
               onTaskHover={handleTaskHover}
               onDrop={handleDrop}
               onEmailDrop={handleEmailDrop}
+              onObjectiveDrop={handleObjectiveDrop}
               onDragOver={(d) => (dragOverDate = d)}
               onDragLeave={() => (dragOverDate = null)}
               onAddClick={openCreate}

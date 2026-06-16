@@ -8,6 +8,7 @@
    */
   import { onMount } from 'svelte';
   import { updates, type UpdateChannel } from '$lib/stores/updates.svelte';
+  import { openExternal } from '$lib/external';
   import { RefreshCw, Download, CheckCircle2, Sparkles } from 'lucide-svelte';
 
   let now = $state(Date.now());
@@ -69,16 +70,16 @@
           <div class="mt-2 max-h-44 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed" style="color: var(--sempa-text-soft);">{updates.info.notes}</div>
         {/if}
         <div class="mt-3 flex flex-wrap items-center gap-2">
-          <a href={updates.info.downloadUrl} target="_blank" rel="noopener noreferrer"
+          <button onclick={() => openExternal(updates.info!.downloadUrl)}
              class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
              style="background: var(--sempa-accent);">
             <Download size={14} strokeWidth={2} /> Download update
-          </a>
-          <a href={updates.info.url} target="_blank" rel="noopener noreferrer"
+          </button>
+          <button onclick={() => openExternal(updates.info!.url)}
              class="rounded-lg px-3 py-1.5 text-xs font-medium"
              style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
             What’s new
-          </a>
+          </button>
         </div>
       </div>
     {/if}
