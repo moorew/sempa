@@ -7,6 +7,7 @@
   import { pomodoro } from '$lib/stores/pomodoro.svelte';
   import { theme } from '$lib/stores/theme.svelte';
   import { prefs } from '$lib/stores/prefs.svelte';
+  import { quotes } from '$lib/stores/quotes.svelte';
   import { tagStore } from '$lib/stores/tags.svelte';
   import { mobile } from '$lib/stores/mobile.svelte';
   import { viewport } from '$lib/stores/viewport.svelte';
@@ -138,6 +139,7 @@
     if (isStandaloneWindow) return;
 
     prefs.init();
+    quotes.init();
     mobile.init();
     viewport.init();
 

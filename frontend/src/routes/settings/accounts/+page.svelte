@@ -5,6 +5,15 @@
   import type { AiTitleConfig } from '$lib/api';
   import { theme } from '$lib/stores/theme.svelte';
   import { prefs, AI_FEATURE_META } from '$lib/stores/prefs.svelte';
+  import { quotes } from '$lib/stores/quotes.svelte';
+
+  let newQuoteText = $state('');
+  let newQuoteAuthor = $state('');
+  function addQuote() {
+    if (!newQuoteText.trim()) return;
+    quotes.add(newQuoteText, newQuoteAuthor || 'Unknown');
+    newQuoteText = ''; newQuoteAuthor = '';
+  }
   import { aiStatus as aiAvail } from '$lib/stores/aiStatus.svelte';
   import { isTauri, openExternal } from '$lib/tauri/bridge';
 
@@ -1610,6 +1619,59 @@
                            transition: left 150ms ease;"></span>
             </button>
           </div>
+        </div>
+
+        <!-- Daily encouragement (rotating quote) -->
+        <div style="border-top: 1px solid var(--sempa-border); padding-top: 20px;">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0">
+              <p class="text-xs font-medium" style="color: var(--sempa-text-soft);">Daily encouragement</p>
+              <p class="mt-1 text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
+                A quiet, rotating quote on the day view — subtle by design. Edit the list or turn it off.
+              </p>
+            </div>
+            <button onclick={() => quotes.setEnabled(!quotes.enabled)}
+                    role="switch" aria-checked={quotes.enabled} aria-label="Daily encouragement"
+                    class="relative shrink-0 rounded-full transition-colors"
+                    style="width:44px; height:24px; padding:0; border:none; appearance:none; -webkit-appearance:none; cursor:pointer;
+                           background: {quotes.enabled ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
+              <span class="absolute rounded-full bg-white"
+                    style="top:4px; left:{quotes.enabled ? '24px' : '4px'}; width:16px; height:16px; transition: left 150ms ease;"></span>
+            </button>
+          </div>
+
+          {#if quotes.enabled}
+            <div class="mt-3 space-y-1">
+              {#each quotes.list as q, i (q.text + i)}
+                <div class="flex items-start gap-2 rounded-lg px-2 py-1.5" style="background: var(--sempa-bg-main);">
+                  <span class="min-w-0 flex-1 text-[11px] leading-relaxed" style="color: var(--sempa-text-soft);">
+                    “{q.text}” <span style="color: var(--sempa-text-dim);">— {q.author}</span>
+                  </span>
+                  <button onclick={() => quotes.remove(i)} aria-label="Remove quote"
+                          class="shrink-0" style="color: var(--sempa-text-dim);">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
+              {/each}
+
+              <div class="flex flex-wrap items-center gap-2 pt-1.5">
+                <input bind:value={newQuoteText} placeholder="Quote"
+                       onkeydown={(e) => { if (e.key === 'Enter') addQuote(); }}
+                       class="min-w-0 flex-1 rounded-lg border px-2.5 py-1.5 text-xs outline-none"
+                       style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
+                <input bind:value={newQuoteAuthor} placeholder="Author"
+                       onkeydown={(e) => { if (e.key === 'Enter') addQuote(); }}
+                       class="w-28 rounded-lg border px-2.5 py-1.5 text-xs outline-none"
+                       style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
+                <button onclick={addQuote} disabled={!newQuoteText.trim()}
+                        class="rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-40"
+                        style="background: var(--sempa-accent); color: var(--sempa-btn-fg);">Add</button>
+              </div>
+              <button onclick={() => quotes.reset()} class="mt-1 text-[11px] hover:underline" style="color: var(--sempa-text-dim);">
+                Reset to defaults
+              </button>
+            </div>
+          {/if}
         </div>
       </div>
     </section>

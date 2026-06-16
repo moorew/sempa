@@ -26,6 +26,7 @@
   import { swipeNavigate } from '$lib/actions/swipeNavigate';
   import { prefs } from '$lib/stores/prefs.svelte';
   import ReflectionCard from '$lib/components/ReflectionCard.svelte';
+  import DailyQuote from '$lib/components/DailyQuote.svelte';
   import type { DailyPlan } from '$lib/types';
 
   // "date" is used to anchor the week and mark today
@@ -841,6 +842,7 @@
   <!-- Mobile task list -->
   <main class="px-4 pb-24 animate-fade-in"
         use:swipeNavigate={{ onPrev: () => navigateDay(-1), onNext: () => navigateDay(1) }}>
+    <div class="mb-3 mt-1 px-2"><DailyQuote /></div>
     {#if loading}
       <div class="flex h-48 items-center justify-center text-sm" style="color: var(--sempa-text-dim);">Loading...</div>
     {:else if error}
@@ -1011,6 +1013,8 @@
        so its horizontal scrollbar lands at the very BOTTOM of the page rather
        than floating halfway up where the tallest column happens to end. -->
   <main bind:this={kanbanScroll} class="flex-1 flex flex-col overflow-hidden px-4 pt-5 pb-2 animate-fade-in">
+
+    <div class="mb-3 shrink-0"><DailyQuote /></div>
 
     <!-- Intention / reflection (moved out of the sidebar into a slim disclosure
          so it never pushes the schedule/inbox/jira panels off-screen). -->
