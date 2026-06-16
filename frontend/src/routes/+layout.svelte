@@ -32,6 +32,7 @@
   import TitleBar from '$lib/components/TitleBar.svelte';
   import SyncIndicator from '$lib/components/SyncIndicator.svelte';
   import ContextMenu from '$lib/components/ContextMenu.svelte';
+  import QuoteMoment from '$lib/components/QuoteMoment.svelte';
   import UpdateToast from '$lib/components/UpdateToast.svelte';
   import { updates } from '$lib/stores/updates.svelte';
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
@@ -737,6 +738,7 @@
   <UpdateToast />
   <SyncIndicator />
   <ContextMenu />
+  <QuoteMoment />
 {/if}
 
 <!-- ── Intro animation overlay ──────────────────────────────────────────── -->
@@ -750,6 +752,9 @@
       <circle class="dot" cx="50" cy="35" r="7.5" fill="var(--sempa-accent)"/>
     </svg>
     <span class="wordmark">sempa</span>
+    {#if quotes.todays}
+      <p class="intro-quote">“{quotes.todays.text}”<span style="opacity:.6;"> — {quotes.todays.author}</span></p>
+    {/if}
   </div>
 {/if}
 
@@ -818,6 +823,17 @@
     font-size: 24px;
     letter-spacing: -0.02em;
     color: var(--sempa-text);
+  }
+  .intro-quote {
+    margin-top: 14px;
+    max-width: 320px;
+    text-align: center;
+    font-size: 12px;
+    font-style: italic;
+    line-height: 1.5;
+    color: var(--sempa-text-dim);
+    opacity: 0.85;
+    animation: sempa-fade-in 600ms ease both 300ms;
   }
 
   @keyframes arc-draw {

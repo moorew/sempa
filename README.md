@@ -346,7 +346,7 @@ The **Journal** collects your daily **intentions** and **reflections** and your 
 
 ### Daily encouragement
 
-A quiet, rotating quote appears on the day view (stable through the day) for a little personality. It's subtle by design — turn it off or edit the list (add/remove/reset) in **Settings → Accounts**.
+A quiet, rotating quote appears with the logo animation when you open Sempa, and flashes briefly when you complete a task — a small bit of encouragement, never fixed on screen. Turn it off or edit the list (add/remove/reset) in **Settings → Accounts**.
 
 ### Focus & Pomodoro
 

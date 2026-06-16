@@ -45,6 +45,12 @@ function createQuotesStore() {
   let enabled = $state(true);
   let list = $state<Quote[]>([...DEFAULT_QUOTES]);
 
+  // A brief, transient quote shown on certain moments (app open, completing a
+  // task). It auto-clears, so it's a quiet flourish rather than fixed UI.
+  let momentQuote = $state<Quote | null>(null);
+  let momentIdx = 0;
+  let momentTimer: ReturnType<typeof setTimeout> | null = null;
+
   function init() {
     if (typeof localStorage === 'undefined') return;
     const e = localStorage.getItem(ENABLED_KEY);
@@ -69,6 +75,19 @@ function createQuotesStore() {
     get todays(): Quote | null {
       if (!enabled || list.length === 0) return null;
       return list[hashDay(today()) % list.length];
+    },
+    /** The current transient "moment" quote (or null). Cleared automatically. */
+    get moment(): Quote | null {
+      return momentQuote;
+    },
+    /** Briefly surface a quote (rotates through the list) on a small action,
+     *  e.g. completing a task. No-op when disabled or empty. */
+    flash() {
+      if (!enabled || list.length === 0) return;
+      momentQuote = list[momentIdx % list.length];
+      momentIdx++;
+      if (momentTimer) clearTimeout(momentTimer);
+      momentTimer = setTimeout(() => { momentQuote = null; }, 2600);
     },
     init,
     setEnabled(v: boolean) {

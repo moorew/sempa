@@ -6,6 +6,14 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.139] - 2026-06-16
+
+### Changed
+- **Daily encouragement is now much more subtle.** Instead of a fixed line on the
+  day view, the quote appears with the logo animation when you open Sempa and
+  flashes briefly when you complete a task, then fades. (Still toggleable/editable
+  in Settings → Accounts.)
+
 ## [1.0.138] - 2026-06-16
 
 ### Fixed
