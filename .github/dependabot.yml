@@ -6,6 +6,10 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Wait a few days before opening update PRs, so a malicious or broken release
+    # has time to be yanked before it reaches us (supply-chain hygiene).
+    cooldown:
+      default-days: 7
     groups:
       go-deps:
         patterns: ["*"]
@@ -17,6 +21,10 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Wait a few days before opening update PRs, so a malicious or broken release
+    # has time to be yanked before it reaches us (supply-chain hygiene).
+    cooldown:
+      default-days: 7
     groups:
       npm-deps:
         patterns: ["*"]
@@ -28,6 +36,10 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Wait a few days before opening update PRs, so a malicious or broken release
+    # has time to be yanked before it reaches us (supply-chain hygiene).
+    cooldown:
+      default-days: 7
     groups:
       cargo-deps:
         patterns: ["*"]
@@ -56,6 +68,10 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Wait a few days before opening update PRs, so a malicious or broken release
+    # has time to be yanked before it reaches us (supply-chain hygiene).
+    cooldown:
+      default-days: 7
 
   # Base image in the Dockerfile
   - package-ecosystem: docker
@@ -63,3 +79,7 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Wait a few days before opening update PRs, so a malicious or broken release
+    # has time to be yanked before it reaches us (supply-chain hygiene).
+    cooldown:
+      default-days: 7

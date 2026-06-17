@@ -110,6 +110,43 @@ are dismissed in the Security tab with a justification and documented here:
   requires the whole gtk-rs stack to move to 0.20, which is gated on Tauri/`wry`
   support; we will pick it up with the next Tauri upgrade. Accepted until then.
 
+- **CodeQL `go/request-forgery` (SSRF) — link-preview / unfurl fetcher.**
+  `unfurl.Fetch` / `FetchImage` deliberately fetch a user-supplied URL (to build
+  a link preview), but they are **mitigated**: every request is gated by
+  `ValidatePublicURL`, which requires an `http(s)` scheme and refuses any host
+  that resolves to a loopback/private/link-local/unspecified address — and the
+  check is re-run on each redirect hop. (See the `isPrivateIP` table test.)
+  CodeQL doesn't model the validator, so it still flags the call; accepted.
+
+- **CodeQL `go/request-forgery` (SSRF) — notification webhook.** The reminder
+  webhook posts to `cfg.Endpoint`, which the **instance owner** sets in
+  notification settings. Sending to an owner-chosen URL *is* the feature, and on
+  a single-user, self-hosted instance the owner already controls the host, so
+  this is not a privilege boundary. Accepted (revisit if multi-user roles land).
+
+- **CodeQL `go/unsafe-quoting` — AI quick-add prompt (`api/ai.go`).** The flagged
+  string is a **natural-language prompt** sent to the local LLM, not structured
+  data: `%q` safely escapes the user's text for display, and the *model's* reply
+  is what gets parsed — then validated/filtered before use. Sempa never
+  interprets this string as JSON, so there is nothing to "break out of." Not
+  applicable.
+
+- **Trivy `DS-0002` — container runs as root.** The server image still runs as
+  root. Switching to a non-root user is deferred, not ignored: the `/data` SQLite
+  volume on existing self-hosted installs is root-owned, so changing the runtime
+  user would break writes on upgrade without a coordinated one-time volume
+  `chown`. We'll do it with a startup privilege-drop (and a documented migration)
+  in a future release. The base image is pinned and a health check is defined.
+
+- **OpenSSF Scorecard posture signals.** A few Scorecard checks reflect this
+  being a small, single-maintainer project rather than fixable defects:
+  *Code-Review* (no second reviewer on a solo project), *Branch-Protection*
+  (rulesets are enabled, but the owner can admin-merge), *Binary-Artifacts* (the
+  checked-in Gradle wrapper JAR, a standard verified Android build file), and
+  *Pinned-Dependencies* (base images are version-pinned and kept current by
+  Dependabot rather than digest-pinned, a deliberate maintenance trade-off).
+  Accepted.
+
 ## Reporting a vulnerability
 
 Open a private security advisory via **Security → Advisories**, or contact the maintainer directly.

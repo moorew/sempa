@@ -6,6 +6,24 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.145] - 2026-06-17
+
+### Security
+- **Triaged the GitHub code-scanning backlog to zero open items** — fixed the
+  genuinely actionable findings and documented the rest (with rationale) in
+  [SECURITY.md](SECURITY.md):
+  - The session **logout** cookie now carries `HttpOnly` / `Secure` / `SameSite`,
+    matching the active session cookie.
+  - **Pinned the Docker base image** (no longer `:latest`) and added a container
+    **health check**.
+  - **Least-privilege CI**: release workflows are now read-only by default, with
+    write scopes granted per-job.
+  - Removed a **stray committed build binary** (`backend/server`) and ignored it;
+    added a **Dependabot cooldown** to slow supply-chain churn.
+  - Documented the accepted/mitigated findings — link-preview & webhook SSRF
+    (owner-configured / IP-validated), the Linux-only `glib` advisory,
+    container-as-root (deferred), and the single-maintainer Scorecard signals.
+
 ## [1.0.144] - 2026-06-17
 
 ### Security

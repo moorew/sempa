@@ -2,6 +2,7 @@
 backend/data/
 backend/bin/
 backend/aura
+backend/server
 
 # Go build artifacts
 *.exe

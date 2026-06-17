@@ -349,11 +349,17 @@ func (h *authHandler) logout(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie(sessionCookieName); err == nil {
 		h.sessions.delete(c.Value)
 	}
+	// Mirror the attributes of the cookie set in setSessionCookie so the
+	// deletion is treated identically by the browser (and so static analysis
+	// sees the sensitive cookie consistently flagged HttpOnly/Secure).
 	http.SetCookie(w, &http.Cookie{
-		Name:   sessionCookieName,
-		Value:  "",
-		MaxAge: -1,
-		Path:   "/",
+		Name:     sessionCookieName,
+		Value:    "",
+		HttpOnly: true,
+		Secure:   h.cfg.Env == "production",
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   -1,
 	})
 	w.WriteHeader(http.StatusNoContent)
 }

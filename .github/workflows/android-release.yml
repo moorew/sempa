@@ -6,13 +6,16 @@ on:
       - 'v*'
   workflow_dispatch:
 
+# Read-only by default; the build job widens to publish the release.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     name: Build & Release Android
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # create the GitHub Release + upload assets
 
     steps:
       - name: Checkout

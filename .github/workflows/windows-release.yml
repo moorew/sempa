@@ -6,13 +6,16 @@ on:
       - 'v*'
   workflow_dispatch:
 
+# Read-only by default; the build job widens to publish the release.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     name: Build & Release Windows (x64 + ARM64)
     runs-on: windows-latest
+    permissions:
+      contents: write   # create the GitHub Release + upload assets
 
     # Updater signing. These are SAFE no-ops until you add the secrets: Tauri only
     # signs (and only emits the .sig / updater artifacts) when the private key is
