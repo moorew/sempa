@@ -6,6 +6,24 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.143] - 2026-06-17
+
+### Security
+- **Hardened the dependency supply chain.** Pinned patched versions of vulnerable
+  build-time transitive dependencies (`tar`, `uuid`, `minimatch`, `cookie`) via
+  npm `overrides` — these tools (Capacitor asset generation, xcode project
+  tooling) never ship in the server, web bundle, or apps. Documented the
+  dependency- and vulnerability-remediation process in `SECURITY.md`, including
+  the one reviewed/accepted finding (`glib`, a Linux-only Tauri build-graph
+  dependency that isn't in any shipped artifact).
+
+### Internal
+- **CI now runs the full test suite** (Go tests, frontend type-check, Vitest, and
+  the UX invariant scripts) on every push and pull request to `main`.
+- **GitHub Release notes are now drawn from this CHANGELOG** rather than an
+  auto-generated commit list.
+- Documentation now links to the full docs at [sempa.ca/docs.html](https://sempa.ca/docs.html).
+
 ## [1.0.142] - 2026-06-17
 
 ### Added

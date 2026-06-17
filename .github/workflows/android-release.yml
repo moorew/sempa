@@ -72,10 +72,31 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease bundleRelease
 
+      # Pull the human-written summary for this version out of CHANGELOG.md so the
+      # GitHub Release leads with it (generate_release_notes appends the auto
+      # contributor/compare list below). REF_NAME via env, never interpolated into
+      # the script body (zizmor).
+      - name: Extract release notes from CHANGELOG
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          ver="${REF_NAME#v}"
+          notes="$(awk -v v="$ver" '
+            index($0, "## [" v "]") == 1 {cap=1; next}
+            cap && /^## \[/ {exit}
+            cap {print}
+          ' CHANGELOG.md)"
+          notes="$(printf '%s\n' "$notes" | sed -e 's/[[:space:]]*$//')"
+          [ -z "$(printf '%s' "$notes" | tr -d '[:space:]')" ] && notes="See CHANGELOG.md for details."
+          { printf '## Sempa %s\n\n' "$REF_NAME"; printf '%s\n' "$notes"; } > release-notes.md
+          cat release-notes.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         if: startsWith(github.ref, 'refs/tags/')
         with:
+          body_path: release-notes.md
           generate_release_notes: true
           files: |
             frontend/android/app/build/outputs/apk/release/app-release.apk

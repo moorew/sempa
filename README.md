@@ -19,6 +19,8 @@ Plan your day, track focused work, and end each day with intention — with your
 
 ## Full details, docs and downloads available at [sempa.ca](https://sempa.ca)
 
+📚 **Documentation:** [sempa.ca/docs.html](https://sempa.ca/docs.html) (full user & self-hosting docs) · in-repo [User Guide](#user-guide) · [Development](#development) · [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md)
+
 ---
 
 ## Features

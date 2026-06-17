@@ -19,6 +19,27 @@ and GitHub Actions.
 Results land in the repo's **Security → Code scanning** tab where available, and
 always in the workflow logs.
 
+The full test suite (Go + frontend) runs in CI on every push/PR via
+[`.github/workflows/test.yml`](.github/workflows/test.yml); `main` is protected,
+so changes land only through reviewed PRs with these checks green.
+
+## Dependency & vulnerability remediation
+
+- **Dependencies** are kept current by **Dependabot** (weekly PRs across Go, npm,
+  Cargo, Docker, and GitHub Actions) and watched by **govulncheck** (Go,
+  reachability-aware) and **Trivy** (npm/Go/Cargo CVEs). Trivy fails the build on
+  fixable HIGH/CRITICAL CVEs.
+- **Transitive dev-tooling CVEs** that have no upstream fix in the pinned parent
+  are pinned forward with npm `overrides` (see `frontend/package.json`). These
+  packages (Capacitor asset/icon generation, `xcode` project tooling) are
+  build-time only — they ship in neither the server, the web bundle, nor the
+  desktop/mobile apps.
+- **Remediation targets:** medium-or-higher severity vulnerabilities that are
+  reachable in shipped code are fixed promptly (well within 60 days of public
+  disclosure); criticals are addressed as fast as practical. Findings that are
+  not applicable to shipped artifacts are recorded under *Accepted findings*
+  below with a rationale.
+
 ## Enable the free native GitHub features
 
 In **Settings → Code security and analysis**, turn on:
@@ -51,6 +72,17 @@ are dismissed in the Security tab with a justification and documented here:
   validates it is a well-formed `http(s)` URL (`validModelServerURL`). The residual
   risk is accepted. See `backend/internal/integrations/fastmail/aititle.go`. If
   Sempa ever gains lower-privilege/multi-user roles, revisit this.
+
+- **`glib` < 0.20 unsoundness (GHSA-wrw7-89jp-8q8g) — Linux-only Tauri build
+  graph.** `glib` 0.18 is pulled in transitively by the gtk-rs / `webkit2gtk`
+  stack that Tauri uses **only on Linux**. Sempa ships a **Windows** desktop app
+  (which uses the WebView2 runtime — no gtk/glib) and an **Android** app; there
+  is **no Linux desktop release**, so `glib` never appears in a shipped artifact.
+  The advisory is a Rust *soundness* issue in the gtk-rs `glib` bindings (unsound
+  `Variant`/value iterators), reachable only by specific misuse of those APIs
+  within the process — Sempa's own code never calls `glib` directly. A fix
+  requires the whole gtk-rs stack to move to 0.20, which is gated on Tauri/`wry`
+  support; we will pick it up with the next Tauri upgrade. Accepted until then.
 
 ## Reporting a vulnerability
 

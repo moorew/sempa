@@ -111,10 +111,36 @@ jobs:
             ConvertTo-Json -Depth 5 | Out-File -FilePath "latest.json" -Encoding utf8
           Get-Content latest.json
 
+      # Pull the human-written summary for this version out of CHANGELOG.md so the
+      # GitHub Release leads with it (generate_release_notes appends the auto
+      # contributor/compare list below). REF_NAME via env, never interpolated into
+      # the script body (zizmor).
+      - name: Extract release notes from CHANGELOG
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          $ver = "$env:REF_NAME".TrimStart('v')
+          $notes = ""
+          if (Test-Path CHANGELOG.md) {
+            $capture = $false
+            foreach ($line in (Get-Content CHANGELOG.md)) {
+              if ($line -match "^##\s+\[$([regex]::Escape($ver))\]") { $capture = $true; continue }
+              elseif ($capture -and $line -match "^##\s+\[") { break }
+              elseif ($capture) { $notes += "$line`n" }
+            }
+          }
+          $notes = $notes.Trim()
+          if (-not $notes) { $notes = "See CHANGELOG.md for details." }
+          "## Sempa $env:REF_NAME`n`n$notes" | Out-File -FilePath release-notes.md -Encoding utf8
+          Get-Content release-notes.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         if: startsWith(github.ref, 'refs/tags/')
         with:
+          body_path: release-notes.md
           generate_release_notes: true
           files: |
             frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/Sempa_*_x64-setup.exe

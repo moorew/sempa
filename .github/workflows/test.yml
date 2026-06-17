@@ -1,0 +1,66 @@
+name: Test
+
+# Runs the automated test suites on every push/PR to main, so regressions are
+# caught before merge. Third-party actions are pinned to commit SHAs (version in
+# the trailing comment); Dependabot's github-actions updates keep them current.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Go backend — unit tests across db, sync, recurrence, search, backup, notify
+  # and the integration clients.
+  # ---------------------------------------------------------------------------
+  backend:
+    name: Backend (go test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: go vet
+        working-directory: backend
+        run: go vet ./...
+      - name: go test
+        working-directory: backend
+        run: go test ./...
+
+  # ---------------------------------------------------------------------------
+  # Frontend — type-check (svelte-check + tsc), Vitest unit tests, and the
+  # UX invariant scripts. Node 22 so the node:sqlite-backed sync test runs.
+  # ---------------------------------------------------------------------------
+  frontend:
+    name: Frontend (check · vitest · ux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Type-check
+        working-directory: frontend
+        run: npm run check
+      - name: Unit tests
+        working-directory: frontend
+        run: npm test
+      - name: UX invariants
+        working-directory: frontend
+        run: npm run verify:ux
