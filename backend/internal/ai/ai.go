@@ -25,12 +25,35 @@ type Config struct {
 // Ready reports whether AI calls can be made (a server URL is configured).
 func (c Config) Ready() bool { return strings.TrimSpace(c.BaseURL) != "" }
 
+// Options tunes a single generation. Lower temperature (near 0) suits structured
+// extraction; higher (~0.6) suits the creative drafting features. NumPredict caps
+// the generated tokens to keep CPU inference snappy and bound runaway output.
+type Options struct {
+	Temperature float64
+	NumPredict  int
+}
+
+// defaultOptions are used when a caller passes no Options: cool and bounded, the
+// right baseline for the extraction-style endpoints that dominate.
+var defaultOptions = Options{Temperature: 0.2, NumPredict: 512}
+
+func resolveOptions(opts []Options) Options {
+	if len(opts) == 0 {
+		return defaultOptions
+	}
+	o := opts[0]
+	if o.NumPredict <= 0 {
+		o.NumPredict = defaultOptions.NumPredict
+	}
+	return o
+}
+
 // generate calls Ollama's /api/chat once (non-streamed). When jsonMode is set,
 // Ollama is asked to emit strictly valid JSON (format:json), which makes parsing
 // reliable even with small models. We use /api/chat rather than /api/generate
 // because some models (e.g. recent llama3.2 builds) only expose a chat template
 // and return "does not support generate" otherwise — chat works for both.
-func generate(ctx context.Context, c Config, prompt string, jsonMode bool) (string, error) {
+func generate(ctx context.Context, c Config, prompt string, jsonMode bool, opts Options) (string, error) {
 	if !c.Ready() {
 		return "", fmt.Errorf("AI model server not configured")
 	}
@@ -42,6 +65,10 @@ func generate(ctx context.Context, c Config, prompt string, jsonMode bool) (stri
 		"model":    model,
 		"messages": []map[string]string{{"role": "user", "content": prompt}},
 		"stream":   false,
+		"options": map[string]any{
+			"temperature": opts.Temperature,
+			"num_predict": opts.NumPredict,
+		},
 	}
 	if jsonMode {
 		payload["format"] = "json"
@@ -77,15 +104,17 @@ func generate(ctx context.Context, c Config, prompt string, jsonMode bool) (stri
 	return strings.TrimSpace(out.Message.Content), nil
 }
 
-// Text returns a plain-text completion.
-func Text(ctx context.Context, c Config, prompt string) (string, error) {
-	return generate(ctx, c, prompt, false)
+// Text returns a plain-text completion. An optional Options tunes temperature
+// and the token cap; omit it for the cool, bounded defaults.
+func Text(ctx context.Context, c Config, prompt string, opts ...Options) (string, error) {
+	return generate(ctx, c, prompt, false, resolveOptions(opts))
 }
 
 // JSON runs a completion in JSON mode and unmarshals it into v. It tolerates a
-// model that wraps the object in prose by extracting the outermost {...}.
-func JSON(ctx context.Context, c Config, prompt string, v any) error {
-	s, err := generate(ctx, c, prompt, true)
+// model that wraps the object in prose by extracting the outermost {...}. An
+// optional Options tunes temperature and the token cap.
+func JSON(ctx context.Context, c Config, prompt string, v any, opts ...Options) error {
+	s, err := generate(ctx, c, prompt, true, resolveOptions(opts))
 	if err != nil {
 		return err
 	}

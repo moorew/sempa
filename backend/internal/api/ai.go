@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/clevercode/sempa/internal/ai"
 )
@@ -50,17 +51,23 @@ func (h *integrationHandler) aiQuickAdd(w http.ResponseWriter, r *http.Request) 
 	}
 	tagsJSON, _ := json.Marshal(body.Tags)
 	prompt := fmt.Sprintf(`Today is %s (%s). Convert this quick note into ONE task and extract its details.
-Resolve relative days ("today", "tomorrow", weekday names, "next week") to an actual YYYY-MM-DD date.
+Resolve relative days ("today", "tomorrow", weekday names) to an actual YYYY-MM-DD date.
+Treat "next week" as the upcoming Monday.
 Read times like "9am", "1pm", "14:30" and durations like "30min", "1h", "45m".
 Return JSON with exactly these keys:
-- "title": concise, action-oriented, WITHOUT any date/time/duration words
-- "planned_date": "YYYY-MM-DD" if a day is implied, else ""
-- "time_estimate_minutes": integer minutes if a duration is implied, else 0
-- "reminder_at": "YYYY-MM-DDTHH:MM:SS" if a specific time is implied, else ""
-- "tags": array, ONLY from this allowed JSON list (else []): %s
+"title": concise, action-oriented, WITHOUT any date/time/duration words
+"planned_date": "YYYY-MM-DD" if a day is implied, else ""
+"time_estimate_minutes": integer minutes if a duration is implied, else 0
+"reminder_at": "YYYY-MM-DDTHH:MM:SS" if a specific time is implied, else ""
+"tags": array, ONLY from this allowed JSON list (else []): %s
 
-Example — Today 2026-01-05 (Monday), Note: "submit taxes friday 2pm 45min #finance"
-→ {"title":"Submit taxes","planned_date":"2026-01-09","time_estimate_minutes":45,"reminder_at":"2026-01-09T14:00:00","tags":["finance"]}
+Example 1:
+Today 2026-01-05 (Monday), Note: "submit taxes friday 2pm 45min #finance"
+{"title":"Submit taxes","planned_date":"2026-01-09","time_estimate_minutes":45,"reminder_at":"2026-01-09T14:00:00","tags":["finance"]}
+
+Example 2:
+Today 2026-01-05 (Monday), Note: "buy milk"
+{"title":"Buy milk","planned_date":"","time_estimate_minutes":0,"reminder_at":"","tags":[]}
 
 Note: %q`, body.Today, weekday, string(tagsJSON), body.Text)
 
@@ -101,8 +108,12 @@ func (h *integrationHandler) aiSummarizeTask(w http.ResponseWriter, r *http.Requ
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	prompt := fmt.Sprintf(`Summarize this into an actionable task.
-Return JSON: "summary" (a clear task title, max 10 words, start with a verb),
-"time_estimate_minutes" (integer best-guess effort, 0 if unsure).
+Return JSON: "summary" (a clear task title, max 10 words, start with a verb), "time_estimate_minutes" (integer best-guess effort, 0 if unsure).
+
+Example:
+Subject: "Server down"
+Body: "The main database server keeps dropping connections."
+Output: {"summary": "Troubleshoot database server connection drops", "time_estimate_minutes": 30}
 
 Subject: %q
 Body: %q`, body.Title, clip(body.Body, 1500))
@@ -146,8 +157,9 @@ func (h *integrationHandler) aiSuggestTags(w http.ResponseWriter, r *http.Reques
 	// everything and the UI shows nothing. Instead, restate the allowed list and
 	// forbid inventing tags.
 	prompt := fmt.Sprintf(`You assign tags to a task. You may ONLY use tags from this exact list, copied verbatim (keep their exact spelling and capitalisation): %s
-Do NOT invent tags or output any word that is not in that list. If a task relates to a tag even loosely, include it — most tasks get at least one.
-Return JSON: {"tags": [...]} where every element is copied EXACTLY from the allowed list above. Use an empty array only if truly none apply.
+Do NOT invent tags or output any word that is not in that list.
+Include a tag only if it clearly applies. It is perfectly fine to return none.
+Return JSON: {"tags": [...]} where every element is copied EXACTLY from the allowed list above. Use an empty array if none apply.
 Task title: %q
 Task notes: %q`, string(availJSON), body.Title, clip(body.Notes, 800))
 
@@ -177,7 +189,8 @@ func (h *integrationHandler) aiBreakdown(w http.ResponseWriter, r *http.Request)
 		respondError(w, http.StatusBadRequest, "title required")
 		return
 	}
-	prompt := fmt.Sprintf(`Break this task into 3-6 concrete, ordered subtasks.
+	prompt := fmt.Sprintf(`Break this task into 3 to 6 concrete, ordered subtasks.
+Each subtask must be 8 words or fewer.
 Return JSON: "subtasks" (array of short action strings, each starting with a verb).
 Task: %q
 Notes: %q`, body.Title, clip(body.Notes, 800))
@@ -221,8 +234,12 @@ func (h *integrationHandler) aiPlanDay(w http.ResponseWriter, r *http.Request) {
 	ej, _ := json.Marshal(body.Events)
 	prompt := fmt.Sprintf(`Plan a focused order for today's tasks, accounting for fixed calendar events.
 Front-load important/quick wins, group similar work, and keep it realistic.
-Return JSON: "order" (array of task ids in the suggested order, every id exactly once),
-"note" (one short sentence of guidance).
+You MUST use the exact ID strings from the Tasks list.
+Return JSON: "order" (array of task ids in the suggested order, every id exactly once), "note" (one short sentence of guidance).
+
+Example JSON output:
+{"order":["a3","a1"],"note":"Tackle the writing tasks first before your afternoon meetings."}
+
 Tasks: %s
 Events: %s`, string(tj), string(ej))
 
@@ -277,6 +294,7 @@ Return JSON: "wins" (array of 2-4 short bullet strings),
 "challenges" (array of 1-3 short bullet strings),
 "next_focus" (one or two sentences).
 Be specific and grounded in the data; don't invent work that isn't listed.
+Keep every bullet point under 15 words. Do not invent work that is not explicitly listed.
 Completed tasks: %s
 Objectives: %s`, string(cj), string(oj))
 
@@ -285,7 +303,7 @@ Objectives: %s`, string(cj), string(oj))
 		Challenges []string `json:"challenges"`
 		NextFocus  string   `json:"next_focus"`
 	}
-	if err := ai.JSON(r.Context(), cfg, prompt, &out); err != nil {
+	if err := ai.JSON(r.Context(), cfg, prompt, &out, ai.Options{Temperature: 0.6}); err != nil {
 		respondError(w, http.StatusBadGateway, err.Error())
 		return
 	}
@@ -314,13 +332,14 @@ func (h *integrationHandler) aiReflectionPrompts(w http.ResponseWriter, r *http.
 	prompt := fmt.Sprintf(`Write 2-3 short, thoughtful end-of-day reflection questions, tailored to what got
 done and what didn't. Calm and constructive, not preachy.
 Return JSON: "prompts" (array of question strings).
+Keep every question under 15 words. Do not invent work that is not explicitly listed.
 Done: %s
 Not done: %s`, string(dj), string(uj))
 
 	var out struct {
 		Prompts []string `json:"prompts"`
 	}
-	if err := ai.JSON(r.Context(), cfg, prompt, &out); err != nil {
+	if err := ai.JSON(r.Context(), cfg, prompt, &out, ai.Options{Temperature: 0.6}); err != nil {
 		respondError(w, http.StatusBadGateway, err.Error())
 		return
 	}
@@ -348,14 +367,17 @@ func (h *integrationHandler) aiTidyNotes(w http.ResponseWriter, r *http.Request)
 	prompt := fmt.Sprintf(`Reformat the notes below into clean, readable Markdown.
 Rules:
 - Keep ALL the information and any URLs exactly. Do not invent or remove facts.
+- Do not summarize or shorten. You must preserve every detail.
 - Turn run-on or pasted text into proper sentences and short paragraphs.
-- Use "- " bullet points for any list of items, and "1." numbered steps for a sequence.
+- Use "*" bullet points for any list of items, and "1." numbered steps for a sequence.
 - Output ONLY the reformatted Markdown. No preamble, no explanation, no code fences.
 
 Notes:
 %s`, clip(body.Notes, 4000))
 
-	out, err := ai.Text(r.Context(), cfg, prompt)
+	// Reformatting preserves every detail, so the output can be as long as the
+	// input — raise the token cap well above the 512 default to avoid truncation.
+	out, err := ai.Text(r.Context(), cfg, prompt, ai.Options{Temperature: 0.2, NumPredict: 2048})
 	if err != nil {
 		respondError(w, http.StatusBadGateway, err.Error())
 		return
@@ -418,8 +440,12 @@ func stripCodeFence(s string) string {
 
 func clip(s string, n int) string {
 	s = strings.TrimSpace(s)
-	if len(s) > n {
-		return s[:n]
+	if len(s) <= n {
+		return s
 	}
-	return s
+	// Back up to a rune boundary so we never split a multibyte UTF-8 character.
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
+	}
+	return s[:n]
 }

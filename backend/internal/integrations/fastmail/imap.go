@@ -328,7 +328,8 @@ func SyncIMAPTaskInbox(ctx context.Context, cfg InboxConfig, tasks *db.TaskStore
 		}
 
 		// AI-powered title if API key is available; else use stripped subject.
-		title := ImproveTitle(ctx, cfg.OllamaBaseURL, cfg.OllamaModel, rawSubject)
+		// Pass a body snippet so the model preserves names/projects in the title.
+		title := ImproveTitle(ctx, cfg.OllamaBaseURL, cfg.OllamaModel, rawSubject, bodyText)
 
 		// Extract URLs from body and store as metadata.
 		links := extractLinks(bodyText)

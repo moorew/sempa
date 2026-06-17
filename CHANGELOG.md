@@ -6,6 +6,16 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.141] - 2026-06-17
+
+### Changed
+- **Sharper local-AI assists.** Reworked the prompts behind quick-add, task
+  summaries, tag suggestions, breakdown, day planning, weekly review, reflection
+  questions, tidy-notes, and email task-title cleanup so the small local model
+  keeps specific names/projects, stops over-tagging, and respects length limits.
+  Email titles now get a short body snippet for context, and the model runs at a
+  lower temperature with a bounded token budget for faster, steadier output.
+
 ## [1.0.140] - 2026-06-16
 
 ### Changed

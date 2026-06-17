@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // SECURITY — accepted request-forgery (SSRF) finding [go/request-forgery].
@@ -165,9 +166,11 @@ func DeleteModel(ctx context.Context, baseURL, model string) error {
 }
 
 // ImproveTitle uses a local Ollama model to turn an email subject into a
-// concise action-oriented task title. Falls back to the stripped subject on
-// any error or if Ollama is not configured.
-func ImproveTitle(ctx context.Context, ollamaBaseURL, model, subject string) string {
+// concise action-oriented task title. The bodyContext (a short snippet of the
+// email body) lets the model preserve the specific names/projects/systems that
+// matter — small models otherwise strip them out as "company names". Falls back
+// to the stripped subject on any error or if Ollama is not configured.
+func ImproveTitle(ctx context.Context, ollamaBaseURL, model, subject, bodyContext string) string {
 	if ollamaBaseURL == "" || subject == "" {
 		return subject
 	}
@@ -175,11 +178,22 @@ func ImproveTitle(ctx context.Context, ollamaBaseURL, model, subject string) str
 		model = "qwen2.5:1.5b"
 	}
 
+	// Keep the snippet small: 300 chars is enough context to disambiguate the
+	// subject without bloating the prompt for a slow CPU model.
+	bodyContext = clipRunes(strings.TrimSpace(bodyContext), 300)
+
 	prompt := fmt.Sprintf(
-		"Convert this email subject into a brief, action-oriented task title. "+
-			"Maximum 8 words. Start with a verb. Remove newsletter boilerplate, "+
-			"company names, and urgency language. Return ONLY the task title.\n\n"+
-			"Subject: %q\n\nTask title:", subject)
+		"Convert this input into a brief, action-oriented task title (max 8 words).\n"+
+			"Start with a verb.\n"+
+			"You MUST preserve specific names, projects, or systems (e.g., \"Avery\", \"Docker\", \"Finance\").\n"+
+			"Remove standard email boilerplate, \"FWD:\", and generic urgency language.\n"+
+			"Return ONLY the task title.\n\n"+
+			"Subject: %q\n"+
+			"Body context: %q\n\n"+
+			"Example:\n"+
+			"Subject: \"FWD: Avery video options - urgent!\"\n"+
+			"Body context: \"Hey, can you review the video rendering options Avery sent over for the new campaign?\"\n"+
+			"Output: Review Avery video rendering options", subject, bodyContext)
 
 	// Use /api/chat (not /api/generate): some models only expose a chat template
 	// and reject generate with "does not support generate".
@@ -187,6 +201,7 @@ func ImproveTitle(ctx context.Context, ollamaBaseURL, model, subject string) str
 		"model":    model,
 		"messages": []map[string]string{{"role": "user", "content": prompt}},
 		"stream":   false,
+		"options":  map[string]any{"temperature": 0.2, "num_predict": 64},
 	})
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
@@ -226,4 +241,15 @@ func ImproveTitle(ctx context.Context, ollamaBaseURL, model, subject string) str
 		return subject
 	}
 	return title
+}
+
+// clipRunes truncates s to at most n bytes without splitting a multibyte rune.
+func clipRunes(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
+	}
+	return s[:n]
 }
