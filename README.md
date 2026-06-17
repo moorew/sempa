@@ -65,6 +65,34 @@ The installer asks a few questions (URL, auth method, and optional extras like T
 
 Open the URL it prints and follow the in-app setup wizard to connect your email and calendar.
 
+### Run from the prebuilt image (optional)
+
+Each release also publishes a multi-arch (amd64/arm64) server image to the GitHub
+Container Registry, if you'd rather pull than build from source:
+
+```bash
+docker pull ghcr.io/moorew/sempa:latest      # or a pinned tag, e.g. :1.0.146
+```
+
+`install.sh` still **builds from source by default** (the reliable, audit-from-source
+path); to use the image instead, set `image: ghcr.io/moorew/sempa:latest` and drop
+`build: .` on the `sempa` service in `docker-compose.yml`.
+
+### Verifying release downloads
+
+Desktop/mobile release artifacts are **signed with [cosign](https://docs.sigstore.dev/)**
+(keyless / Sigstore). Each download has a matching `.cosign.sig` + `.cosign.pem` on the
+release. To verify, e.g. the Android APK:
+
+```bash
+cosign verify-blob \
+  --certificate app-release.apk.cosign.pem \
+  --signature  app-release.apk.cosign.sig \
+  --certificate-identity-regexp 'https://github.com/moorew/sempa/.*' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  app-release.apk
+```
+
 ---
 
 ## Self-hosting with Tailscale (recommended)

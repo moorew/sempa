@@ -6,6 +6,22 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.146] - 2026-06-17
+
+### Security
+- **Signed releases.** Desktop and Android release artifacts are now signed with
+  **cosign** (keyless / Sigstore — no private keys to manage). Each download ships
+  with a `.cosign.sig` + `.cosign.pem`; verify with `cosign verify-blob` (see the
+  README → *Verifying release downloads*). Satisfies OpenSSF Scorecard
+  Signed-Releases.
+- **Prebuilt images on GHCR.** Each release now publishes a multi-arch
+  (amd64/arm64) server image to `ghcr.io/moorew/sempa`, so you can pull instead of
+  building from source. `install.sh` still builds from source by default.
+- **Digest-pinned Docker base images** (reproducible builds; Scorecard
+  Pinned-Dependencies).
+- Documented the remaining OpenSSF Scorecard posture (single-maintainer and
+  Tauri-Linux-build-graph items) in `SECURITY.md`.
+
 ## [1.0.145] - 2026-06-17
 
 ### Security

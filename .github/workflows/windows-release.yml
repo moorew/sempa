@@ -16,6 +16,7 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write   # create the GitHub Release + upload assets
+      id-token: write   # keyless cosign signing of the release artifacts (OIDC)
 
     # Updater signing. These are SAFE no-ops until you add the secrets: Tauri only
     # signs (and only emits the .sig / updater artifacts) when the private key is
@@ -84,6 +85,30 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Sign the installers with cosign keyless (Sigstore OIDC — no secrets).
+      # Produces .cosign.sig + .cosign.pem per installer, uploaded with them so
+      # they verify with `cosign verify-blob` (see README). Satisfies OpenSSF
+      # Scorecard Signed-Releases.
+      - name: Install cosign
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Sign release artifacts (keyless cosign)
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $globs = @(
+            "frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/Sempa_*_x64-setup.exe",
+            "frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/Sempa_*_x64_en-US.msi",
+            "frontend/src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/Sempa_*_arm64-setup.exe"
+          )
+          foreach ($g in $globs) {
+            Get-ChildItem $g -ErrorAction SilentlyContinue | ForEach-Object {
+              $f = $_.FullName
+              cosign sign-blob --yes --output-signature "$f.cosign.sig" --output-certificate "$f.cosign.pem" "$f"
+              if ($LASTEXITCODE -ne 0) { throw "cosign failed for $f" }
+            }
+          }
+
       # Build the Tauri updater manifest (latest.json) from the signed bundles so
       # the desktop app can silently self-update. GUARDED: only runs once the
       # signing key secret exists (until then .sig files aren't produced and this
@@ -151,6 +176,12 @@ jobs:
             frontend/src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/Sempa_*_arm64-setup.exe
             frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/Sempa_*_x64-setup.exe.sig
             frontend/src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/Sempa_*_arm64-setup.exe.sig
+            frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.cosign.sig
+            frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.cosign.pem
+            frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.cosign.sig
+            frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.cosign.pem
+            frontend/src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/*.cosign.sig
+            frontend/src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/*.cosign.pem
             latest.json
 
       - name: Upload artifacts (manual runs)

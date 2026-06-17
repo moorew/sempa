@@ -138,14 +138,25 @@ are dismissed in the Security tab with a justification and documented here:
   `chown`. We'll do it with a startup privilege-drop (and a documented migration)
   in a future release. The base image is pinned and a health check is defined.
 
-- **OpenSSF Scorecard posture signals.** A few Scorecard checks reflect this
-  being a small, single-maintainer project rather than fixable defects:
-  *Code-Review* (no second reviewer on a solo project), *Branch-Protection*
-  (rulesets are enabled, but the owner can admin-merge), *Binary-Artifacts* (the
-  checked-in Gradle wrapper JAR, a standard verified Android build file), and
-  *Pinned-Dependencies* (base images are version-pinned and kept current by
-  Dependabot rather than digest-pinned, a deliberate maintenance trade-off).
-  Accepted.
+- **OpenSSF Scorecard.** Most checks pass. Release artifacts are **cosign-signed**
+  (keyless/Sigstore — see *Verifying release downloads* in the README), base
+  images are **digest-pinned**, and a server image is **published to GHCR** on each
+  release. The remaining lower scores reflect this being a small, single-maintainer,
+  recently-created project rather than fixable defects, and are accepted:
+  - *Code-Review* / *Contributors* — a solo project has no second reviewer; these
+    can't be satisfied without additional maintainers.
+  - *Branch-Protection* — `main` blocks force-pushes and deletions and requires
+    PRs via a ruleset, but "apply to administrators" and required approving
+    reviews are intentionally **not** enabled: on a single-maintainer repo they
+    would make the project unmergeable. Revisit if more maintainers join.
+  - *Binary-Artifacts* — the only checked-in binary is the standard Gradle wrapper
+    JAR (a verified Android build file).
+  - *Maintained* — time-based ("created in the last 90 days"); resolves on its own.
+  - *Vulnerabilities* — the 18 findings are RUSTSEC advisories in the **Tauri Linux
+    desktop build graph** (gtk-rs / `webkit2gtk` stack) in `Cargo.lock`. Sempa ships
+    no Linux desktop build today, so none are in a shipped artifact. They'll be
+    addressed (via a Tauri/gtk-rs upgrade and `cargo update`) when the Linux client
+    lands. See the `glib` entry above.
 
 ## Reporting a vulnerability
 
