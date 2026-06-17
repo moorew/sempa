@@ -33,8 +33,10 @@ class El {
   }
   closest(sel) {
     if (sel === '[data-sheet-handle]') return this.attrs.handle ? this : null;
+    if (sel === '[data-no-sheet-drag]') return this.attrs.noDrag ? this : null;
     return null;
   }
+  get parentElement() { return this.attrs._parent ?? null; }
   querySelector() { return this._child; }
   addEventListener(type, fn) { (this._listeners[type] ||= []).push(fn); }
   removeEventListener(type, fn) {
@@ -46,6 +48,8 @@ class El {
 globalThis.HTMLElement = El;
 globalThis.Element = El;
 globalThis.document = { activeElement: null };
+// overflowY comes from each element's mock attrs; default non-scrollable.
+globalThis.getComputedStyle = (el) => ({ overflowY: el?.attrs?._overflowY ?? 'visible' });
 
 function touch(node, target, x, y) {
   return { touches: [{ clientX: x, clientY: y }], target, preventDefault() { this._pd = true; } };
@@ -96,11 +100,11 @@ console.log('dismissibleSheet behaviour:');
   check('scrolled content: native scroll preserved (no preventDefault)', prevented === false);
 }
 
-// B) at top, pull DOWN past threshold → dismiss
+// B) at top, deliberate pull DOWN past (slop + threshold) → dismiss
 {
   const s = makeSheet({ scrollTop: 0 });
-  const prevented = gesture(s.node, s.content, [{ x: 100, y: 100 }, { x: 100, y: 180 }, { x: 100, y: 240 }]);
-  check('at top: pull down past threshold dismisses', s.isClosed());
+  const prevented = gesture(s.node, s.content, [{ x: 100, y: 100 }, { x: 100, y: 180 }, { x: 100, y: 270 }]);
+  check('at top: deliberate pull past threshold dismisses', s.isClosed());
   check('at top: drag owns gesture (preventDefault fired)', prevented === true);
 }
 
@@ -140,9 +144,36 @@ console.log('dismissibleSheet behaviour:');
   const input = new El({ _tag: 'input' });
   input.blur = () => { blurred = true; };
   globalThis.document.activeElement = input;
-  gesture(s.node, s.content, [{ x: 100, y: 100 }, { x: 100, y: 180 }, { x: 100, y: 240 }]);
+  gesture(s.node, s.content, [{ x: 100, y: 100 }, { x: 100, y: 180 }, { x: 100, y: 270 }]);
   globalThis.document.activeElement = null;
   check('drag start blurs focused input (keyboard retracts)', blurred);
+}
+
+// H) touch begins inside a NESTED scrollable (a menu/list) → never dismiss,
+//    even at the top, so scrolling a menu can't tear the sheet away.
+{
+  const s = makeSheet({ scrollTop: 0 });
+  const menu = new El({ _tag: 'div', _overflowY: 'auto' });
+  menu.scrollHeight = 400; menu.clientHeight = 120;
+  const prevented = gesture(s.node, menu, [{ x: 100, y: 100 }, { x: 100, y: 180 }, { x: 100, y: 270 }]);
+  check('nested scrollable: pull does NOT dismiss the sheet', !s.isClosed());
+  check('nested scrollable: native scroll preserved (no preventDefault)', prevented === false);
+}
+
+// I) region opted out via [data-no-sheet-drag] → never starts a dismiss
+{
+  const s = makeSheet({ scrollTop: 0 });
+  const region = new El({ _tag: 'div', noDrag: true });
+  gesture(s.node, region, [{ x: 100, y: 100 }, { x: 100, y: 180 }, { x: 100, y: 270 }]);
+  check('opted-out region: pull does NOT dismiss the sheet', !s.isClosed());
+}
+
+// J) small, lazy pull below the content slop → treated as scroll, never grabs
+{
+  const s = makeSheet({ scrollTop: 0 });
+  const prevented = gesture(s.node, s.content, [{ x: 100, y: 100 }, { x: 100, y: 112 }, { x: 100, y: 122 }]);
+  check('tiny pull under content slop does NOT dismiss', !s.isClosed());
+  check('tiny pull under content slop does NOT hijack scroll', prevented === false);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

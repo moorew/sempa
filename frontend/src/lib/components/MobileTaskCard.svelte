@@ -10,12 +10,23 @@
     onTrash,
     onClick,
     onFocusClick,
+    onReorderStart,
+    onReorderMove,
+    onReorderEnd,
+    dragging = false,
   }: {
     task: Task;
     onComplete?: (id: string) => void;
     onTrash?: (id: string, title: string) => void;
     onClick?: (task: Task) => void;
     onFocusClick?: (id: string, title: string) => void;
+    // Long-press drag-to-reorder. When these are supplied the card enters a
+    // reorder gesture after a brief hold; the parent owns the live ordering.
+    onReorderStart?: (id: string) => void;
+    onReorderMove?: (clientY: number) => void;
+    onReorderEnd?: () => void;
+    /** True when THIS card is the one currently being dragged (lifts it). */
+    dragging?: boolean;
   } = $props();
 
   const isDone      = $derived(task.status === 'done');
@@ -47,6 +58,15 @@
   const SWIPE_THRESHOLD = 60;
   const MAX_SWIPE = 80;
   const TRIGGER = SWIPE_THRESHOLD * 0.4;
+  const LONG_PRESS_MS = 380;   // hold this long (without moving) to pick up
+  const MOVE_SLOP = 8;         // finger travel that cancels the long-press
+
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  let reorderActive = $state(false); // this card is being dragged to reorder
+
+  function cancelLongPress() {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+  }
 
   function handleTouchStart(e: TouchEvent) {
     startX = e.touches[0].clientX;
@@ -54,12 +74,39 @@
     deltaX = 0;
     locked = null;
     swiping = true;
+    reorderActive = false;
+    // Arm long-press → drag-to-reorder, only where the parent wired it up
+    // (active list, never the completed section).
+    cancelLongPress();
+    if (onReorderStart) {
+      longPressTimer = setTimeout(() => {
+        longPressTimer = null;
+        reorderActive = true;
+        swiping = false;   // hand the gesture over to reorder; cancel any swipe
+        deltaX = 0;
+        hapticClick();
+        onReorderStart?.(task.id);
+      }, LONG_PRESS_MS);
+    }
   }
 
   function handleTouchMove(e: TouchEvent) {
+    // Reorder owns the gesture: feed the parent the finger position and block
+    // the page from scrolling underneath the pick-up.
+    if (reorderActive) {
+      e.preventDefault();
+      onReorderMove?.(e.touches[0].clientY);
+      return;
+    }
     if (!swiping) return;
     const dx = e.touches[0].clientX - startX;
     const dy = e.touches[0].clientY - startY;
+
+    // Any real movement before the hold completes means this is a scroll/swipe,
+    // not a pick-up — disarm the long-press.
+    if (longPressTimer && (Math.abs(dx) > MOVE_SLOP || Math.abs(dy) > MOVE_SLOP)) {
+      cancelLongPress();
+    }
 
     // Decide once whether this is a horizontal swipe or a vertical scroll, so
     // list scrolling never fights the swipe-to-complete gesture.
@@ -75,6 +122,16 @@
   }
 
   function handleTouchEnd() {
+    cancelLongPress();
+    if (reorderActive) {
+      reorderActive = false;
+      onReorderEnd?.();
+      // Suppress the trailing synthetic click so the drop doesn't also open the
+      // task detail.
+      suppressClick = true;
+      setTimeout(() => { suppressClick = false; }, 350);
+      return;
+    }
     if (!swiping) return;
     swiping = false;
     if (deltaX > TRIGGER) {
@@ -112,12 +169,16 @@
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div
     class="relative flex items-start gap-3 rounded-xl border p-3.5"
+    class:reordering={dragging}
     style="background: var(--card-bg); border-color: var(--card-border);
-           transform: translateX({deltaX}px);
-           transition: {swiping ? 'none' : 'transform 200ms ease-out'};"
+           transform: {dragging ? 'scale(1.02)' : `translateX(${deltaX}px)`};
+           transition: {swiping || dragging ? 'none' : 'transform 200ms ease-out'};
+           {dragging ? 'box-shadow: 0 12px 28px -6px rgba(0,0,0,0.35); z-index: 5;' : ''}
+           -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
     ontouchstart={handleTouchStart}
     ontouchmove={handleTouchMove}
     ontouchend={handleTouchEnd}
+    ontouchcancel={handleTouchEnd}
     onclick={handleClick}
   >
     <!-- Complete circle -->

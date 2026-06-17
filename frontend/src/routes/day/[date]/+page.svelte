@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
+  import { flip } from 'svelte/animate';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { api } from '$lib/api';
   import type { Task, TaskStatus, UpdateTaskInput } from '$lib/types';
-  import { appendPosition, compareTasksForDay, formatMinutes, insertPosition, isToday, offsetDate, today, weekStart } from '$lib/utils';
+  import { appendPosition, compareTasksForDay, formatMinutes, isToday, offsetDate, today, weekStart } from '$lib/utils';
   import { pomodoro } from '$lib/stores/pomodoro.svelte';
   import { mobile } from '$lib/stores/mobile.svelte';
   import { hapticTick } from '$lib/haptics';
@@ -364,6 +365,68 @@
   const mobileDone      = $derived(mobileDayTasks.filter(t => t.status === 'done'));
   const mobileDayEstimate = $derived(mobileDayTasks.reduce((s, t) => s + (t.time_estimate_minutes ?? 0), 0));
 
+  // ── Mobile long-press drag-to-reorder ──────────────────────────────────────
+  // While a card is picked up we drive a live order of ids (reorderOrder) so the
+  // list reshuffles under the finger; on release we renormalise positions and
+  // persist. `mobileActiveOrdered` is what the list renders.
+  let mobileListEl  = $state<HTMLElement | undefined>();
+  let reorderId     = $state<string | null>(null);
+  let reorderOrder  = $state<string[] | null>(null);
+
+  const mobileActiveOrdered = $derived.by(() => {
+    if (!reorderOrder) return mobileActive;
+    const byId = new Map(mobileActive.map(t => [t.id, t]));
+    const ordered = reorderOrder.map(id => byId.get(id)).filter((t): t is Task => !!t);
+    // Include any card that appeared mid-drag (shouldn't normally happen) so
+    // nothing is dropped from the list.
+    for (const t of mobileActive) if (!reorderOrder.includes(t.id)) ordered.push(t);
+    return ordered;
+  });
+
+  function mobileReorderStart(id: string) {
+    reorderId = id;
+    reorderOrder = mobileActive.map(t => t.id);
+  }
+
+  function mobileReorderMove(clientY: number) {
+    if (!reorderId || !reorderOrder || !mobileListEl) return;
+    const els = Array.from(mobileListEl.querySelectorAll<HTMLElement>('[data-task-id]'));
+    let target = reorderOrder.length - 1;
+    for (let i = 0; i < els.length; i++) {
+      const r = els[i].getBoundingClientRect();
+      if (clientY < r.top + r.height / 2) { target = i; break; }
+    }
+    const from = reorderOrder.indexOf(reorderId);
+    if (from === -1 || from === target) return;
+    const next = reorderOrder.slice();
+    next.splice(from, 1);
+    next.splice(target, 0, reorderId);
+    reorderOrder = next;
+  }
+
+  async function mobileReorderEnd() {
+    const order = reorderOrder;
+    reorderId = null;
+    reorderOrder = null;
+    if (!order) return;
+
+    const newPosOf = new Map<string, number>();
+    order.forEach((id, i) => newPosOf.set(id, (i + 1) * 1000));
+
+    const prev = tasks.slice();
+    const changed = prev.filter(t => newPosOf.has(t.id) && newPosOf.get(t.id) !== t.position);
+    if (changed.length === 0) return;
+
+    tasks = tasks.map(t => newPosOf.has(t.id) ? { ...t, position: newPosOf.get(t.id)! } : t);
+    try {
+      const updated = await Promise.all(
+        changed.map(t => api.tasks.update(t.id, { position: newPosOf.get(t.id)! })),
+      );
+      const byId = new Map(updated.map(t => [t.id, t]));
+      tasks = tasks.map(t => byId.get(t.id) ?? t);
+    } catch (e: any) { tasks = prev; showDropError(e?.message || 'Could not reorder tasks'); }
+  }
+
   // ── Infinite board scroll ──────────────────────────────────────────────────
   // Measure the real per-column stride from the DOM so prepend compensation and
   // week jumps stay exact under browser zoom (rem-based widths drift otherwise).
@@ -467,27 +530,69 @@
       catch (e: any) { showDropError(e?.message || 'Could not add that item'); return; }
     }
 
-    // Compute the insert position against the SAME order the column displays
-    // (compareTasksForDay), so the index from the drop indicator lines up with
-    // the neighbours' positions. Sorting by raw position here was the bug:
-    // the displayed list is timed-first, so the index pointed at the wrong gap.
-    const colTasks = tasks
-      .filter(t => t.planned_date === targetDate && t.status !== 'cancelled' && t.id !== id)
-      .sort(compareTasksForDay);
-    const positions = colTasks.map(t => t.position);
-    const newPos = insertIdx !== undefined ? insertPosition(positions, insertIdx) : appendPosition(positions);
+    const newStatus = task.status === 'backlog' ? 'planned' : task.status;
 
+    // Reorder among the day's ACTIVE list (the same set the column renders with
+    // [data-task-idx]); completed tasks keep their own order. We rebuild that
+    // list with the moved card spliced in at the drop point, then hand every
+    // card a fresh, evenly-spaced position. Renormalising (rather than computing
+    // a single midpoint) is what makes "reorder within a day" actually stick:
+    // many tasks ship with position 0, so midpoints between equal neighbours
+    // collapsed to the same value and nothing visibly moved.
+    const others = tasks
+      .filter(t => t.planned_date === targetDate && t.status !== 'cancelled'
+                   && t.status !== 'done' && t.id !== id)
+      .sort(compareTasksForDay);
+
+    // The drop index is measured against the rendered active list, which on a
+    // same-day move still includes the dragged card. Once we remove it, every
+    // slot below its old position shifts up by one — so decrement to compensate.
+    let idx = insertIdx ?? others.length;
+    if (inPool && task.planned_date === targetDate && task.status !== 'done') {
+      const prevIdx = tasks
+        .filter(t => t.planned_date === targetDate && t.status !== 'cancelled'
+                     && t.status !== 'done')
+        .sort(compareTasksForDay)
+        .findIndex(t => t.id === id);
+      if (prevIdx !== -1 && idx > prevIdx) idx -= 1;
+    }
+    idx = Math.max(0, Math.min(idx, others.length));
+
+    const moved = { ...task, planned_date: targetDate, status: newStatus };
+    const orderedIds = [...others.slice(0, idx), moved, ...others.slice(idx)].map(t => t.id);
+    const newPosOf = new Map<string, number>();
+    orderedIds.forEach((tid, i) => newPosOf.set(tid, (i + 1) * 1000));
+    const movedPos = newPosOf.get(id)!;
+
+    // Optimistic: apply the new positions (and the moved card's new day/status)
+    // locally so the board reorders instantly.
     const prev = tasks.slice();
-    const moved = { ...task, planned_date: targetDate, position: newPos };
-    tasks = inPool ? tasks.map(t => t.id === id ? moved : t) : [...tasks, moved];
+    const applyLocal = (t: Task): Task => {
+      if (t.id === id) return { ...moved, position: movedPos };
+      const p = newPosOf.get(t.id);
+      return p !== undefined ? { ...t, position: p } : t;
+    };
+    tasks = inPool
+      ? tasks.map(applyLocal)
+      : [...tasks, { ...moved, position: movedPos }];
+
     try {
-      const updated = await api.tasks.update(id, {
+      // Persist the moved card (it also changes day/status), plus any sibling
+      // whose position actually shifted. Columns are small, so a handful of
+      // PATCHes in parallel is cheap and keeps every client's order identical.
+      const movedReq = api.tasks.update(id, {
         planned_date: targetDate,
         week_start: weekStart(targetDate),
-        position: newPos,
-        status: task.status === 'backlog' ? 'planned' : task.status,
+        position: movedPos,
+        status: newStatus,
       });
-      tasks = tasks.map(t => t.id === updated.id ? updated : t);
+      const siblingReqs = others
+        .filter(t => newPosOf.get(t.id) !== t.position)
+        .map(t => api.tasks.update(t.id, { position: newPosOf.get(t.id)! }));
+
+      const [updatedMoved, ...updatedSiblings] = await Promise.all([movedReq, ...siblingReqs]);
+      const byId = new Map<string, Task>([updatedMoved, ...updatedSiblings].map(t => [t.id, t]));
+      tasks = tasks.map(t => byId.get(t.id) ?? t);
     } catch (e: any) { tasks = prev; showDropError(e?.message || 'Could not move that task'); }
   }
 
@@ -825,8 +930,9 @@
     {/if}
   </header>
 
-  <!-- Daily encouragement — one quiet line under the mobile header. -->
-  <div class="px-5 pt-1 pb-2">
+  <!-- Daily encouragement — greets under the mobile header, then eases away.
+       Horizontal padding only; DailyQuote owns the vertical space it collapses. -->
+  <div class="px-5">
     <DailyQuote />
   </div>
 
@@ -902,16 +1008,22 @@
         </button>
       </div>
     {:else}
-      <!-- Active tasks -->
-      <div class="flex flex-col gap-2">
-        {#each mobileActive as task (task.id)}
-          <MobileTaskCard
-            {task}
-            onComplete={handleComplete}
-            onTrash={handleTrashRequest}
-            onClick={openMobileView}
-            onFocusClick={handleFocus}
-          />
+      <!-- Active tasks — long-press a card to drag it into priority order -->
+      <div bind:this={mobileListEl} class="flex flex-col gap-2">
+        {#each mobileActiveOrdered as task (task.id)}
+          <div animate:flip={{ duration: 200 }}>
+            <MobileTaskCard
+              {task}
+              onComplete={handleComplete}
+              onTrash={handleTrashRequest}
+              onClick={openMobileView}
+              onFocusClick={handleFocus}
+              onReorderStart={mobileReorderStart}
+              onReorderMove={mobileReorderMove}
+              onReorderEnd={mobileReorderEnd}
+              dragging={reorderId === task.id}
+            />
+          </div>
         {/each}
       </div>
 
@@ -989,6 +1101,12 @@
       </button>
     </div>
 
+    <!-- Daily encouragement — set to the SIDE of the header (no extra row), so it
+         adds no vertical height. Collapses out on narrower windows (<xl). -->
+    <div class="hidden xl:flex min-w-0 flex-1 justify-center px-6">
+      <DailyQuote variant="inline" />
+    </div>
+
     <!-- Stats — uniform size/colour across the row (spec 4g) -->
     {#if !loading && totalTasks.length > 0}
       <div class="hidden md:flex items-center gap-4" style="font-size: 12.5px; color: var(--sempa-text-soft);">
@@ -1040,10 +1158,6 @@
         New task
       </button>
     </div>
-  </div>
-  <!-- Daily encouragement — one quiet line, centered under the header. -->
-  <div class="px-6 pb-2.5">
-    <DailyQuote />
   </div>
 </header>
 

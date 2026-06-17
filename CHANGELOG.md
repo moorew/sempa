@@ -6,6 +6,28 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.150] - 2026-06-17
+
+### Changed
+- **The daily quote no longer makes the top of the day/home views taller.** On
+  mobile it greets you under the header and then smoothly eases out of the way;
+  on desktop it sits beside the header (no extra row) and collapses out of sight
+  when the window is too narrow to spare the room.
+
+### Added
+- **Reorder tasks within a day on mobile.** Long-press a task card to pick it up,
+  then drag it into the order you want — the list reshuffles under your finger
+  and the new priority order is saved.
+
+### Fixed
+- **Same-day drag-to-reorder now reliably sticks.** Dropping a card in a new spot
+  renormalises the day's ordering, so reordering works even when several tasks
+  shared the same stored position (previously the move could silently do nothing).
+- **The task editor is far less twitchy on Android.** Scrolling a menu or list
+  inside the editor, or a small flick near the top, no longer tears the whole
+  sheet away — a dismiss now needs a deliberate pull on the body (or the handle),
+  and gestures that begin inside a nested scrollable are left to scroll.
+
 ## [1.0.149] - 2026-06-17
 
 ### Security
