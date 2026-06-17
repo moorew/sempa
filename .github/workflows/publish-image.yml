@@ -19,6 +19,10 @@ jobs:
   publish:
     name: Build & push to GHCR
     runs-on: ubuntu-latest
+    # Successful runs finish in ~8 min; the emulated arm64 build can intermittently
+    # stall under QEMU (it once hung ~2h before being cancelled). Fail fast instead
+    # so a stuck build is obvious and re-runnable rather than churning for hours.
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write   # push to ghcr.io/<owner>/<repo>
