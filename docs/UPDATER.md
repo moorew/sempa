@@ -1,5 +1,11 @@
 # In-app updates
 
+> **Audience: maintainers / people building Sempa from source.** This is a
+> developer reference for how the updater works and how to enable signed silent
+> auto-update. **If you just use Sempa, you don't need any of this** — updates
+> surface automatically in the app; see [Updates](../README.md#updates) in the
+> README for what that looks like.
+
 Sempa ships with a **brand-controlled in-app update experience**:
 
 - A subtle **update indicator** in the left rail when a newer version exists.

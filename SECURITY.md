@@ -62,13 +62,17 @@ DAST tooling for unsafe languages is not applicable.)
   not applicable to shipped artifacts are recorded under *Accepted findings*
   below with a rationale.
 
-## Enable the free native GitHub features
+## GitHub-native protections
 
-In **Settings → Code security and analysis**, turn on:
+Alongside the CI scanning above, the repository has GitHub's native security
+features enabled:
 
-- **Secret scanning** + **Push protection** — blocks commits containing secrets before they land
-- **Dependabot alerts**
-- **CodeQL / Code scanning** (auto-enabled by the workflow above)
+- **Secret scanning** + **push protection** — blocks commits containing known
+  secret formats before they land
+- **Dependabot alerts** + security updates — flags and patches vulnerable dependencies
+- **CodeQL code scanning** — enabled via the workflow above
+
+Results surface in the repo's **Security** tab.
 
 ## Handling secrets
 
