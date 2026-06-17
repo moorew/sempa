@@ -6,6 +6,14 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.148] - 2026-06-17
+
+### Fixed
+- **Release signing is now resilient.** The cosign signing step retries up to 3×
+  to ride out transient Sigstore/Fulcio OIDC hiccups (one such hiccup failed the
+  1.0.147 signing). This is the version that actually ships cosign-signed
+  installers + the GHCR image.
+
 ## [1.0.147] - 2026-06-17
 
 ### Fixed

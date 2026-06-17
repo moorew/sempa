@@ -93,11 +93,20 @@ jobs:
         working-directory: frontend/android/app/build/outputs
         run: |
           set -e
+          sign() {
+            for attempt in 1 2 3; do
+              if cosign sign-blob --yes \
+                   --output-signature "$1.cosign.sig" \
+                   --output-certificate "$1.cosign.pem" "$1"; then
+                return 0
+              fi
+              echo "cosign attempt $attempt for $1 failed; retrying in 15s…"
+              sleep 15
+            done
+            return 1
+          }
           for f in apk/release/app-release.apk bundle/release/app-release.aab; do
-            cosign sign-blob --yes \
-              --output-signature "$f.cosign.sig" \
-              --output-certificate "$f.cosign.pem" \
-              "$f"
+            sign "$f"
           done
 
       # Pull the human-written summary for this version out of CHANGELOG.md so the

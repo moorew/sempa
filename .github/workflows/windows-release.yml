@@ -109,8 +109,14 @@ jobs:
           foreach ($g in $globs) {
             Get-ChildItem $g -ErrorAction SilentlyContinue | ForEach-Object {
               $f = $_.FullName
-              cosign sign-blob --yes --output-signature "$f.cosign.sig" --output-certificate "$f.cosign.pem" "$f"
-              if ($LASTEXITCODE -ne 0) { throw "cosign failed for $f" }
+              $ok = $false
+              for ($i = 1; $i -le 3; $i++) {
+                cosign sign-blob --yes --output-signature "$f.cosign.sig" --output-certificate "$f.cosign.pem" "$f"
+                if ($LASTEXITCODE -eq 0) { $ok = $true; break }
+                Write-Host "cosign attempt $i for $f failed; retrying in 15s…"
+                Start-Sleep -Seconds 15
+              }
+              if (-not $ok) { throw "cosign failed for $f after retries" }
             }
           }
 
