@@ -133,8 +133,9 @@ are dismissed in the Security tab with a justification and documented here:
 
 - **OpenSSF Scorecard.** Most checks pass. Release artifacts are **cosign-signed**
   (keyless/Sigstore — see *Verifying release downloads* in the README), base
-  images are **digest-pinned**, and a server image is **published to GHCR** on each
-  release. The remaining lower scores reflect this being a small, single-maintainer,
+  images are **digest-pinned**, a server image is **published to GHCR** on each
+  release, and the container **runs as a non-root user** (uid 10001). The
+  remaining lower scores reflect this being a small, single-maintainer,
   recently-created project rather than fixable defects, and are accepted:
   - *Code-Review* / *Contributors* — a solo project has no second reviewer; these
     can't be satisfied without additional maintainers.

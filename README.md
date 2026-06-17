@@ -71,7 +71,7 @@ Each release also publishes a multi-arch (amd64/arm64) server image to the GitHu
 Container Registry, if you'd rather pull than build from source:
 
 ```bash
-docker pull ghcr.io/moorew/sempa:latest      # or a pinned tag, e.g. :1.0.148
+docker pull ghcr.io/moorew/sempa:latest      # or a pinned tag, e.g. :1.0.149
 ```
 
 `install.sh` **builds from source by default** but offers a "pull prebuilt image"
