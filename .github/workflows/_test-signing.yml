@@ -1,0 +1,19 @@
+name: _test-signing
+on: workflow_dispatch
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "hello-$GITHUB_SHA" > blob.txt
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: 'v2.6.3'
+      - name: probe OIDC env
+        run: |
+          echo "REQ_URL set: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
+          echo "REQ_TOKEN set: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+yes}"
+      - name: cosign sign-blob (keyless)
+        run: cosign sign-blob --yes --output-signature blob.sig --output-certificate blob.pem blob.txt && echo "SIGNED OK" && ls -la blob.*
