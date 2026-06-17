@@ -18,16 +18,6 @@ func FuzzParseMeta(f *testing.F) {
 	})
 }
 
-// ValidatePublicURL is the SSRF gate for the unfurl/link-preview fetcher; it
-// must reject (not crash on) any malformed or internal URL.
-func FuzzValidatePublicURL(f *testing.F) {
-	for _, s := range []string{
-		"https://example.com", "http://localhost:8080/x", "ftp://example.com",
-		"http://169.254.169.254/latest", "http://[::1]/", "", "https://",
-	} {
-		f.Add(s)
-	}
-	f.Fuzz(func(t *testing.T, raw string) {
-		_, _ = ValidatePublicURL(raw)
-	})
-}
+// Note: ValidatePublicURL is intentionally NOT fuzzed — it performs a live DNS
+// lookup (net.LookupIP), so it isn't a deterministic, side-effect-free target.
+// Its URL/scheme/host validation is covered by the unit tests in unfurl_test.go.

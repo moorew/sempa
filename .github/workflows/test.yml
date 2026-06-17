@@ -97,7 +97,6 @@ jobs:
             ./internal/integrations/ical/:FuzzParse
             ./internal/db/:FuzzIsDueOn
             ./internal/integrations/unfurl/:FuzzParseMeta
-            ./internal/integrations/unfurl/:FuzzValidatePublicURL
             ./internal/integrations/fastmail/:FuzzStripEmailPrefixes
             ./internal/integrations/fastmail/:FuzzExtractLinks
             ./internal/ai/:FuzzExtractJSON
