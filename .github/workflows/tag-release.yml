@@ -54,3 +54,4 @@ jobs:
           echo "Created tag $V at $GITHUB_SHA"
           gh workflow run windows-release.yml --ref "$V"
           gh workflow run android-release.yml --ref "$V"
+          gh workflow run publish-image.yml --ref "$V"

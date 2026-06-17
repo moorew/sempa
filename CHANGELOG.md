@@ -6,6 +6,15 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.147] - 2026-06-17
+
+### Fixed
+- **Release tooling** so the 1.0.146 signing/GHCR work actually ships: pin
+  **cosign to v2** (v4 deprecated the `--output-signature`/`--output-certificate`
+  flags, which broke the 1.0.146 signing step), and have the tagger dispatch the
+  new **publish-image** workflow (bot-created tags don't trigger tag workflows on
+  their own). Signed releases + the GHCR image land from this version.
+
 ## [1.0.146] - 2026-06-17
 
 ### Security
