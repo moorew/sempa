@@ -6,6 +6,7 @@ const CONTEXTUAL_KEY = 'sempa-contextual-reflections';
 const NAV_GROUPING_KEY = 'sempa.navGrouping';
 const NAV_SECTIONS_KEY = 'sempa.navSections';
 const AI_FEATURES_KEY = 'sempa.aiFeatures';
+const CELEBRATE_SOUND_KEY = 'sempa.celebrateSound';
 
 // Per-feature toggles for the AI-assist features, so users are in full control of
 // where the local model is used. All default ON, but every feature is also gated
@@ -49,6 +50,9 @@ function createPrefsStore() {
   let navGrouping = $state<NavGrouping>('spaces');
   let navSections = $state<NavSections>('labels');
   let aiFeatures = $state<AiFeatures>({ ...AI_FEATURES_DEFAULT });
+  // Soft chime on the day/week celebration moments. Off by default — the
+  // celebrations are visual-first; sound is opt-in.
+  let celebrateSound = $state(false);
 
   function init() {
     if (typeof localStorage === 'undefined') return;
@@ -58,6 +62,8 @@ function createPrefsStore() {
     if (isGrouping(g)) navGrouping = g;
     const s = localStorage.getItem(NAV_SECTIONS_KEY);
     if (isSections(s)) navSections = s;
+    const cs = localStorage.getItem(CELEBRATE_SOUND_KEY);
+    if (cs !== null) celebrateSound = cs === '1';
     try {
       const raw = localStorage.getItem(AI_FEATURES_KEY);
       if (raw) aiFeatures = { ...AI_FEATURES_DEFAULT, ...JSON.parse(raw) };
@@ -86,11 +92,17 @@ function createPrefsStore() {
     if (typeof localStorage !== 'undefined') localStorage.setItem(AI_FEATURES_KEY, JSON.stringify(aiFeatures));
   }
 
+  function setCelebrateSound(on: boolean) {
+    celebrateSound = on;
+    if (typeof localStorage !== 'undefined') localStorage.setItem(CELEBRATE_SOUND_KEY, on ? '1' : '0');
+  }
+
   return {
     get contextualReflections() { return contextualReflections; },
     get navGrouping() { return navGrouping; },
     get navSections() { return navSections; },
     get aiFeatures() { return aiFeatures; },
+    get celebrateSound() { return celebrateSound; },
     /** True when a given AI feature is switched on by the user. */
     aiOn(key: AiFeature) { return aiFeatures[key]; },
     init,
@@ -99,6 +111,8 @@ function createPrefsStore() {
     setNavGrouping,
     setNavSections,
     setAiFeature,
+    setCelebrateSound,
+    toggleCelebrateSound: () => setCelebrateSound(!celebrateSound),
   };
 }
 

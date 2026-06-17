@@ -26,7 +26,8 @@
   import { swipeNavigate } from '$lib/actions/swipeNavigate';
   import { prefs } from '$lib/stores/prefs.svelte';
   import ReflectionCard from '$lib/components/ReflectionCard.svelte';
-  import { quotes } from '$lib/stores/quotes.svelte';
+  import DailyQuote from '$lib/components/DailyQuote.svelte';
+  import { celebrate } from '$lib/celebrate';
   import type { DailyPlan } from '$lib/types';
 
   // "date" is used to anchor the week and mark today
@@ -495,9 +496,11 @@
     const task = tasks.find(t => t.id === id);
     if (!task) return;
     const newStatus = task.status === 'done' ? 'planned' : 'done';
-    if (newStatus === 'done') quotes.flash(); // a quiet bit of encouragement
     const prev = tasks.slice();
     tasks = tasks.map(t => t.id === id ? { ...t, status: newStatus } : t);
+    // Calm celebration — Tier 1 on completion, escalating to a Tier 2 "day
+    // complete" moment when this was the last open task for its day.
+    if (newStatus === 'done') celebrateCompletion(task);
     try {
       const updated = await api.tasks.update(id, {
         status: newStatus,
@@ -506,6 +509,36 @@
       tasks = tasks.map(t => t.id === updated.id ? updated : t);
       syncLinkedObjective(task.weekly_objective_id);
     } catch { tasks = prev; }
+  }
+
+  // Fire the celebration layer for a freshly-completed task. Reads the live DOM
+  // for the card / day-column origin so particles bloom from the right place.
+  function celebrateCompletion(task: Task) {
+    const cardEl = document.querySelector(`[data-task-id="${task.id}"]`);
+    celebrate.task(cardEl);
+
+    const d = task.planned_date;
+    if (!d) return;
+    // `tasks` already carries the optimistic completion, so this reflects the
+    // day's state the user is about to see.
+    const dayList = dayTasks(d);
+    if (dayList.length === 0 || !dayList.every(t => t.status === 'done')) return;
+
+    const label = new Date(d + 'T12:00:00')
+      .toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+    const logged = dayList.reduce((s, t) => s + (t.time_actual_minutes ?? 0), 0);
+    const copy = `${label} complete · ${dayList.length} done`
+      + (logged > 0 ? ` · ${formatMinutes(logged)} logged` : '');
+
+    // Light sweep across that day's progress bar as it reaches 100%.
+    const track = document.querySelector(`#day-col-${d} .day-bar-track`);
+    if (track) {
+      track.classList.add('sc-sweep');
+      setTimeout(() => track.classList.remove('sc-sweep'), 760);
+    }
+    // Let Tier 1 land first, then the day moment.
+    const colEl = document.getElementById(`day-col-${d}`);
+    setTimeout(() => celebrate.day(colEl, copy), 200);
   }
 
   // Keep a linked objective in step with its tasks: when every task linked to it
@@ -792,6 +825,11 @@
     {/if}
   </header>
 
+  <!-- Daily encouragement — one quiet line under the mobile header. -->
+  <div class="px-5 pt-1 pb-2">
+    <DailyQuote />
+  </div>
+
   <!-- Tag filter (in-place) -->
   {#if tagStore.definitions.length}
     <div class="px-4 pb-1">
@@ -1003,6 +1041,10 @@
       </button>
     </div>
   </div>
+  <!-- Daily encouragement — one quiet line, centered under the header. -->
+  <div class="px-6 pb-2.5">
+    <DailyQuote />
+  </div>
 </header>
 
 <!-- ── Body ───────────────────────────────────────────────────────────────── -->
@@ -1167,36 +1209,43 @@
       {/each}
     </div>
 
-    <!-- Active tab content (full remaining height) -->
+    <!-- Active tab content (full remaining height). Keyed on the active tab so a
+         switch crossfades the pane in (~240ms) rather than snapping. The panels
+         already mount/unmount per tab via the if/else, so keying changes only
+         the entrance, not data-loading behaviour. -->
     <div class="flex-1 overflow-hidden">
-      {#if rightPanel === 'schedule'}
-        <TimeslotCalendar
-          date={date}
-          tasks={tasks}
-          onSchedule={handleSchedule}
-          onUnschedule={handleUnschedule}
-          onOpenTask={(id) => { const t = tasks.find(t => t.id === id); if (t) openEdit(t); }}
-          onEventConverted={(t) => { tasks = [...tasks, t]; }}
-        />
-      {:else if rightPanel === 'mail'}
-        <EmailPanel bind:this={emailPanel} onTaskCreated={(t) => { tasks = [...tasks, t]; }} />
-      {:else if rightPanel === 'jira'}
-        <JiraPanel
-          onTaskDragStart={(id) => { draggingId = id; }}
-          onTasksReloaded={reloadLoaded}
-        />
-      {:else}
-        <!-- Objectives: weekly goals + a jump to the full planner -->
-        <div class="h-full overflow-y-auto">
-          <WeeklyObjectivesWidget {date} />
-          <a href="/week/{ws}"
-             class="m-3 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium transition-colors"
-             style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
-            <Target size={13} />
-            Open weekly planner
-          </a>
+      {#key rightPanel}
+        <div class="h-full animate-pane-in">
+          {#if rightPanel === 'schedule'}
+            <TimeslotCalendar
+              date={date}
+              tasks={tasks}
+              onSchedule={handleSchedule}
+              onUnschedule={handleUnschedule}
+              onOpenTask={(id) => { const t = tasks.find(t => t.id === id); if (t) openEdit(t); }}
+              onEventConverted={(t) => { tasks = [...tasks, t]; }}
+            />
+          {:else if rightPanel === 'mail'}
+            <EmailPanel bind:this={emailPanel} onTaskCreated={(t) => { tasks = [...tasks, t]; }} />
+          {:else if rightPanel === 'jira'}
+            <JiraPanel
+              onTaskDragStart={(id) => { draggingId = id; }}
+              onTasksReloaded={reloadLoaded}
+            />
+          {:else}
+            <!-- Objectives: weekly goals + a jump to the full planner -->
+            <div class="h-full overflow-y-auto">
+              <WeeklyObjectivesWidget {date} />
+              <a href="/week/{ws}"
+                 class="m-3 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium transition-colors"
+                 style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
+                <Target size={13} />
+                Open weekly planner
+              </a>
+            </div>
+          {/if}
         </div>
-      {/if}
+      {/key}
     </div>
   </aside>
 </div>

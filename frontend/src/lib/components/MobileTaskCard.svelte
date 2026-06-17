@@ -97,7 +97,7 @@
   }
 </script>
 
-<div class="relative overflow-hidden rounded-xl">
+<div class="relative overflow-hidden rounded-xl" data-task-id={task.id}>
   <!-- Swipe reveal (green check) -->
   {#if deltaX > 0}
     <div class="absolute inset-y-0 left-0 flex items-center pl-4"

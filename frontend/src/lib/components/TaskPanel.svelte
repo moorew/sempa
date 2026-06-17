@@ -19,7 +19,10 @@
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
   import { Sparkles } from 'lucide-svelte';
   import { dismissibleSheet } from '$lib/actions/sheet';
+  import { portal } from '$lib/actions/portal';
   import { hapticTick } from '$lib/haptics';
+  import { fade } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
 
   // Time slots for scheduled start/end (FIX 02) — every 30 min, plus "No time".
   const TIME_SLOTS: { value: string; label: string }[] = [
@@ -95,6 +98,34 @@
   $effect(() => {
     if (!open) return;
     viewMode = task && !mobile.value && !inline ? 'view' : 'edit';
+  });
+
+  // ── Desktop centered-modal entrance + readable notes ──────────────────────
+  let reduced = $state(false);
+  $effect(() => { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; });
+
+  // The modal scales + rises in (and reverses out via Svelte's transition).
+  function modalPop(_node: HTMLElement) {
+    return {
+      duration: reduced ? 0 : 240,
+      easing: cubicOut,
+      css: (t: number) => `opacity:${t}; transform: translateY(${(1 - t) * 12}px) scale(${0.98 + 0.02 * t});`,
+    };
+  }
+
+  // Long notes / forwarded-email bodies are collapsed with a soft fade and a
+  // toggle, so a pasted thread can't blow out the task body. `notesCanToggle` is
+  // measured in the collapsed state; once true it stays true so "Show less" /
+  // "Read full message" keeps showing while expanded.
+  const isEmailSource = $derived(task?.source === 'gmail' || task?.source === 'fastmail');
+  let notesExpanded = $state(false);
+  let notesEl = $state<HTMLElement>();
+  let notesCanToggle = $state(false);
+  $effect(() => { task?.id; open; notesExpanded = false; });
+  $effect(() => {
+    task?.description; viewMode; notesExpanded;
+    if (!notesEl || notesExpanded) return;
+    notesCanToggle = notesEl.scrollHeight > notesEl.clientHeight + 4;
   });
 
   // While the panel is open as a floating overlay (not the inline embed), mark a
@@ -589,16 +620,68 @@
         </div>
       {/if}
 
-      <!-- Notes -->
+      <!-- Notes / forwarded message -->
       {#if task.description}
         <div class="py-4" style="border-bottom: 1px solid var(--sempa-border);">
-          <p class="mb-2 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Notes</p>
-          <div class="text-sm leading-relaxed" style="color: var(--sempa-text-soft);">
+          <p class="mb-2 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">
+            {isEmailSource ? 'Message' : 'Notes'}
+          </p>
+
+          {#if isEmailSource}
+            <!-- A bordered reader card: the message body is collapsed with a soft
+                 fade so a pasted thread can't run on endlessly. -->
+            <div class="overflow-hidden rounded-xl" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main);">
+              <div class="flex items-center gap-2.5 px-3 py-2.5" style="border-bottom: 1px solid var(--sempa-border);">
+                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                      style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-[12.5px] font-medium" style="color: var(--sempa-text);">{sourceLabel[task.source ?? ''] ?? 'Mail'}</p>
+                  <p class="truncate text-[11px]" style="color: var(--sempa-text-dim);">{task.title}</p>
+                </div>
+                <span class="shrink-0 rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider"
+                      style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">Mail</span>
+              </div>
+              <div bind:this={notesEl}
+                   class="px-3 py-3 text-sm leading-relaxed {notesExpanded ? '' : 'reader-collapsed'} {!notesExpanded && notesCanToggle ? 'notes-faded' : ''}"
+                   style="color: var(--sempa-text-soft);">
+                <RichText text={task.description} />
+              </div>
+              {#if notesCanToggle || task.source_url}
+                <div class="flex items-center gap-3 px-3 py-2" style="border-top: 1px solid var(--sempa-border);">
+                  {#if notesCanToggle}
+                    <button onclick={() => notesExpanded = !notesExpanded}
+                            class="text-[12px] font-medium" style="color: var(--sempa-accent);">
+                      {notesExpanded ? 'Show less' : 'Read full message'}
+                    </button>
+                  {/if}
+                  {#if task.source_url}
+                    <a href={task.source_url} target="_blank" rel="noopener"
+                       class="ml-auto inline-flex items-center gap-1 text-[12px] font-medium" style="color: var(--sempa-text-soft);">
+                      Open in mail
+                      <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M7 17L17 7M7 7h10v10"/></svg>
+                    </a>
+                  {/if}
+                </div>
+              {/if}
+            </div>
+          {:else}
             <!-- RichText already lifts bare URLs out of the prose into preview
                  cards, so we must NOT render a second noteUrls list here (that
-                 produced two copies of every link). -->
-            <RichText text={task.description} />
-          </div>
+                 produced two copies of every link). Long notes clamp to 4 lines. -->
+            <div bind:this={notesEl}
+                 class="text-sm leading-relaxed {notesExpanded ? '' : 'notes-clamp'} {!notesExpanded && notesCanToggle ? 'notes-faded' : ''}"
+                 style="color: var(--sempa-text-soft);">
+              <RichText text={task.description} />
+            </div>
+            {#if notesCanToggle}
+              <button onclick={() => notesExpanded = !notesExpanded}
+                      class="mt-1.5 text-[12px] font-medium" style="color: var(--sempa-accent);">
+                {notesExpanded ? 'Show less' : 'Show more'}
+              </button>
+            {/if}
+          {/if}
         </div>
       {/if}
 
@@ -1121,6 +1204,10 @@
     {/if}
 {/snippet}
 
+<!-- Esc closes the desktop centered modal (not the inline embed or mobile sheet,
+     which dismiss by their own means). Top-level so Svelte accepts the tag. -->
+<svelte:window onkeydown={(e) => { if (open && !inline && !mobile.value && e.key === 'Escape') onClose(); }} />
+
 {#if open}
   {#if inline}
     <div class="flex flex-col">
@@ -1161,20 +1248,28 @@
       </div>
     </div>
   {:else}
-    <!-- Desktop right-side drawer (unchanged) -->
+    <!-- Desktop: a centered modal, portalled to <body> so it sits above the app
+         shell and the page-in entrance can never become its containing block.
+         Scrim click + Esc close it; it scales + rises in (and reverses out). -->
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-    <div class="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm animate-fade-in"
-         onclick={onClose}></div>
-    <aside role="dialog" aria-modal="true"
+    <div class="fixed inset-0 z-[60] flex items-center justify-center p-6" use:portal>
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"
+           transition:fade={{ duration: reduced ? 0 : 180 }}
+           onclick={onClose}></div>
+      <div role="dialog" aria-modal="true"
            aria-label="{isEdit ? 'Edit task' : 'New task'}"
-           class="fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col shadow-2xl animate-slide-right"
-           style="border-left: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
-      {#if canView && viewMode === 'view'}
-        {@render taskView()}
-      {:else}
-        {@render panelContent()}
-      {/if}
-    </aside>
+           transition:modalPop
+           class="relative flex w-full max-w-[720px] flex-col overflow-hidden"
+           style="max-height: 86vh; border-radius: 16px; background: var(--card-bg);
+                  border: 1px solid var(--card-border);
+                  box-shadow: var(--shadow-float, 0 24px 64px -16px rgba(0,0,0,0.5));">
+        {#if canView && viewMode === 'view'}
+          {@render taskView()}
+        {:else}
+          {@render panelContent()}
+        {/if}
+      </div>
+    </div>
   {/if}
 {/if}
 
@@ -1182,5 +1277,22 @@
   @keyframes sempa-sheet-up {
     from { transform: translateY(100%); }
     to   { transform: translateY(0); }
+  }
+
+  /* Long-notes clamp (4 lines) and forwarded-email reader collapse, each with a
+     soft bottom fade. Applied only while collapsed (see notesCanToggle). */
+  .notes-clamp {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    overflow: hidden;
+  }
+  .reader-collapsed {
+    max-height: 132px;
+    overflow: hidden;
+  }
+  .notes-faded {
+    -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent);
+    mask-image: linear-gradient(to bottom, #000 62%, transparent);
   }
 </style>

@@ -16,6 +16,7 @@
   import { SlidersHorizontal, CalendarArrowDown, GripVertical } from 'lucide-svelte';
   import { moveObjectiveToNextWeek, moveAllUnfinishedToNextWeek, unfinishedObjectives } from '$lib/objectives';
   import { contextMenu, type MenuItem } from '$lib/stores/contextMenu.svelte';
+  import { celebrate } from '$lib/celebrate';
 
   let weekStartDate = $derived($page.params.weekStart ?? calcWeekStart(today()));
 
@@ -118,6 +119,11 @@
   async function toggleStatus(obj: Objective) {
     const next = obj.status === 'completed' ? 'active' : 'completed';
     objectives = objectives.map(o => o.id === obj.id ? { ...o, status: next } : o);
+    // Tier 3 — the full cradle-mark moment when this completes the last open
+    // objective of the week.
+    if (next === 'completed' && objectives.length > 0 && objectives.every(o => o.status === 'completed')) {
+      celebrate.week('the week is complete.');
+    }
     try { await api.objectives.update(obj.id, { status: next }); }
     catch { objectives = objectives.map(o => o.id === obj.id ? obj : o); }
   }

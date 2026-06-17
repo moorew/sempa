@@ -98,6 +98,7 @@
 <div
   draggable="true"
   role="listitem"
+  data-task-id={task.id}
   ondragstart={(e) => {
     e.dataTransfer?.setData('application/x-sempa-task', task.id);
     onDragStart(task.id);

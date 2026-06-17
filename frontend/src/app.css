@@ -8,6 +8,11 @@
    data-theme. See theme.svelte.ts for the selection/persistence logic. */
 @import "./themes.css";
 
+/* ── Celebration layer (bloom / embers / ripple, three tiers) ─────────────────
+   Pairs with lib/celebrate.ts + lib/celebrations-engine.js. All colour comes
+   from the live --sempa-* tokens, so celebrations follow the active theme. */
+@import "./celebrations.css";
+
 /* Class-based dark mode */
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -132,24 +137,32 @@
 
 /* ── Sempa animation library ─────────────────────────────────────────────── */
 @keyframes sempa-fade-in    { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
-/* Opacity-only — for wrappers that contain position:fixed children. A transform
-   keyframe (even ending at `none`) leaves a computed identity matrix under
-   animation-fill-mode, which establishes a containing block and breaks fixed
-   positioning of descendant modals/drawers. Keep this transform-free. */
-@keyframes sempa-page-in    { from{opacity:0} to{opacity:1} }
+/* Page-in: a gentle opacity + rise. The page wrapper CONTAINS position:fixed
+   descendants (modals/drawers/sheets), and a transform retained after the
+   animation establishes a containing block that breaks their fixed positioning
+   (this previously cut off the task drawer's Save button). We avoid that two
+   ways: the keyframe ends at `transform: none`, AND the class uses fill-mode
+   `backwards` (not `both`), so NO transform is retained once the ~340ms entrance
+   finishes — the wrapper reverts to its own untransformed style. A fixed child
+   is only ever contained during the brief entrance, and those open on user
+   action (and the task modal is portalled to <body>), never mid-navigation. */
+@keyframes sempa-page-in    { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
 @keyframes sempa-slide-right{ from{opacity:0;transform:translateX(16px)} to{opacity:1;transform:none} }
 @keyframes sempa-scale-in   { from{opacity:0;transform:scale(0.96)} to{opacity:1;transform:none} }
 @keyframes sempa-slide-down { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:none} }
+@keyframes sempa-pane-in    { from{opacity:0} to{opacity:1} }
 
 .animate-fade-in     { animation: sempa-fade-in     350ms cubic-bezier(0,0,0.2,1) both }
-.animate-page-in     { animation: sempa-page-in     350ms cubic-bezier(0,0,0.2,1) both }
+.animate-page-in     { animation: sempa-page-in     340ms cubic-bezier(.16,.84,.44,1) backwards }
 .animate-slide-right { animation: sempa-slide-right  280ms cubic-bezier(0,0,0.2,1) both }
 .animate-scale-in    { animation: sempa-scale-in     200ms cubic-bezier(0,0,0.2,1) both }
 .animate-slide-down  { animation: sempa-slide-down   250ms cubic-bezier(0,0,0.2,1) both }
+/* Right-panel tab crossfade — opacity-only on purpose (transform-free). */
+.animate-pane-in     { animation: sempa-pane-in      240ms ease both }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in,.animate-page-in,.animate-slide-right,
-  .animate-scale-in,.animate-slide-down { animation:none }
+  .animate-scale-in,.animate-slide-down,.animate-pane-in { animation:none }
 }
 
 /* ── PWA standalone: safe area padding ─────────────────────────────────── */

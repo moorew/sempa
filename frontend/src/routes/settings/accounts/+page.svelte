@@ -1668,6 +1668,26 @@
             </div>
           {/if}
         </div>
+
+        <!-- Celebration sound -->
+        <div style="border-top: 1px solid var(--sempa-border); padding-top: 20px;">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0">
+              <p class="text-xs font-medium" style="color: var(--sempa-text-soft);">Celebration sound</p>
+              <p class="mt-1 text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
+                A soft chime on the day &amp; week celebration moments. The visuals always play; this only adds sound.
+              </p>
+            </div>
+            <button onclick={prefs.toggleCelebrateSound}
+                    role="switch" aria-checked={prefs.celebrateSound} aria-label="Celebration sound"
+                    class="relative shrink-0 rounded-full transition-colors"
+                    style="width:44px; height:24px; padding:0; border:none; appearance:none; -webkit-appearance:none; cursor:pointer;
+                           background: {prefs.celebrateSound ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
+              <span class="absolute rounded-full bg-white"
+                    style="top:4px; left:{prefs.celebrateSound ? '24px' : '4px'}; width:16px; height:16px; transition: left 150ms ease;"></span>
+            </button>
+          </div>
+        </div>
       </div>
     </section>
   </div>

@@ -6,6 +6,33 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.142] - 2026-06-17
+
+### Added
+- **A calm celebration language.** Completing a task now blooms a small, warm
+  flourish from the card (bloom + rising embers + a ripple). When you finish the
+  last task of a day, that escalates to a quiet "day complete" moment with a
+  light sweep across the day's progress bar; finishing the last weekly objective
+  draws the cradle mark in a full-screen moment. Everything is on-brand, gated by
+  reduced-motion, and silent by default — an optional soft chime lives under
+  Settings → Appearance → Celebration sound.
+
+### Changed
+- **The daily encouragement is now a single quiet line** under the day/week
+  header — it fades in, then settles back so it's present but recedes. It no
+  longer flashes unreadably on the splash screen.
+- **The task detail is now a roomier centered modal on desktop** (and a bottom
+  sheet on mobile) instead of the cramped right-hand drawer. Long notes clamp to
+  four lines with a "Show more", and a forwarded email shows as a tidy reader
+  card with "Read full message" / "Open in mail" so a pasted thread can't run on.
+- **Navigation feels more natural** — pages rise in gently, the day view's right
+  panel crossfades between tabs, and the task modal scales/rises in and reverses
+  out. All motion respects reduced-motion.
+
+### Fixed
+- **Local-AI JSON parsing** tolerates braces inside string values (e.g. a task
+  title like `fix render() {}`) instead of truncating the model's response.
+
 ## [1.0.141] - 2026-06-17
 
 ### Changed

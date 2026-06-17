@@ -18,19 +18,19 @@
 {#if open}
   <!-- Overlay -->
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="fixed inset-0 z-[89] bg-black/40"
+  <div class="sheet-scrim fixed inset-0 z-[89] bg-black/40"
        style="animation: sempa-fade-in 200ms ease both;"
        onclick={onClose}></div>
 
   <!-- Sheet rests at the bottom and caps at the live layout viewport (no JS
        visualViewport tracking, which got stuck on Android keyboard dismiss).
        adjustResize shrinks/restores that viewport with the keyboard. -->
-  <div class="fixed left-0 right-0 bottom-0 z-[90] flex flex-col overflow-hidden"
+  <div class="sheet-panel fixed left-0 right-0 bottom-0 z-[90] flex flex-col overflow-hidden"
        style="max-height: calc(100% - max(32px, env(safe-area-inset-top, 0px)));
               border-radius: 20px 20px 0 0;
               background: var(--sempa-bg-panel);
               padding-bottom: env(safe-area-inset-bottom);
-              animation: sempa-sheet-up 320ms cubic-bezier(0.32, 0.72, 0, 1) both;"
+              animation: sempa-sheet-up 300ms cubic-bezier(0.16, 0.84, 0.44, 1) both;"
        role="dialog" aria-modal="true"
        use:dismissibleSheet={{ onClose, scrollSelector: '[data-sheet-scroll]', onDismissHaptic: hapticTick }}>
 
@@ -53,5 +53,10 @@
   @keyframes sempa-sheet-up {
     from { transform: translateY(100%); }
     to   { transform: translateY(0); }
+  }
+  /* The entrance is set via inline `animation:`; a stylesheet !important rule
+     still wins, so this disables it under reduced-motion. */
+  @media (prefers-reduced-motion: reduce) {
+    .sheet-scrim, .sheet-panel { animation: none !important; }
   }
 </style>

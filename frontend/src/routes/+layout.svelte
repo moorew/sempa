@@ -32,11 +32,11 @@
   import TitleBar from '$lib/components/TitleBar.svelte';
   import SyncIndicator from '$lib/components/SyncIndicator.svelte';
   import ContextMenu from '$lib/components/ContextMenu.svelte';
-  import QuoteMoment from '$lib/components/QuoteMoment.svelte';
   import UpdateToast from '$lib/components/UpdateToast.svelte';
   import { updates } from '$lib/stores/updates.svelte';
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
   import { realtime } from '$lib/stores/realtime.svelte';
+  import { celebrate } from '$lib/celebrate';
   import type { Snippet } from 'svelte';
 
   // Lucide icons
@@ -88,6 +88,9 @@
   let moreSheetOpen      = $state(false);
   let showIntroAnimation = $state(false);
   let introFadingOut     = $state(false);
+  // App shell root — on native mobile we confine celebrations to it so particles
+  // stay inside the phone screen rather than escaping to the whole window.
+  let appShell           = $state<HTMLElement | undefined>(undefined);
 
   // Mobile: is this a task-list page where we show the FAB?
   let isTaskListPage = $derived(
@@ -143,6 +146,12 @@
     quotes.init();
     mobile.init();
     viewport.init();
+
+    // Warm the celebration engine and apply the saved sound preference. On native
+    // mobile, confine it to the app shell so particles stay on the phone screen.
+    celebrate.preload();
+    celebrate.setSound(prefs.celebrateSound);
+    if (Capacitor.isNativePlatform() && appShell) celebrate.setRoot(appShell);
 
     // Background check for a newer release (throttled to ~6h; honours the user's
     // "Automatic checks" preference). Surfaces the rail indicator + update toast.
@@ -313,6 +322,11 @@
     void syncDesktopPopup(reminderAlerts.alerts);
   });
 
+  // Keep the celebration sound in step with the Settings preference.
+  $effect(() => {
+    celebrate.setSound(prefs.celebrateSound);
+  });
+
   // Re-load tags from server when a tag:change SSE event arrives
   $effect(() => {
     const ev = realtime.lastEvent;
@@ -408,7 +422,7 @@
 {#if isLoginPage || isSetupPage || isStandaloneWindow}
   {@render children()}
 {:else}
-<div class="flex flex-col h-screen overflow-hidden" style="background: var(--sempa-bg-main);">
+<div bind:this={appShell} class="flex flex-col h-screen overflow-hidden" style="background: var(--sempa-bg-main);">
   <!-- Custom titlebar (Tauri only — hidden on web/mobile) -->
   <TitleBar />
   <div class="flex flex-1 overflow-hidden" style="min-height: 0;">
@@ -738,7 +752,6 @@
   <UpdateToast />
   <SyncIndicator />
   <ContextMenu />
-  <QuoteMoment />
 {/if}
 
 <!-- ── Intro animation overlay ──────────────────────────────────────────── -->
@@ -752,9 +765,6 @@
       <circle class="dot" cx="50" cy="35" r="7.5" fill="var(--sempa-accent)"/>
     </svg>
     <span class="wordmark">sempa</span>
-    {#if quotes.todays}
-      <p class="intro-quote">“{quotes.todays.text}”<span style="opacity:.6;"> — {quotes.todays.author}</span></p>
-    {/if}
   </div>
 {/if}
 
@@ -824,18 +834,6 @@
     letter-spacing: -0.02em;
     color: var(--sempa-text);
   }
-  .intro-quote {
-    margin-top: 14px;
-    max-width: 320px;
-    text-align: center;
-    font-size: 12px;
-    font-style: italic;
-    line-height: 1.5;
-    color: var(--sempa-text-dim);
-    opacity: 0.85;
-    animation: sempa-fade-in 600ms ease both 300ms;
-  }
-
   @keyframes arc-draw {
     to { stroke-dashoffset: 0; }
   }

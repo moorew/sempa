@@ -7,6 +7,7 @@
   import { mobile } from '$lib/stores/mobile.svelte';
   import { realtime } from '$lib/stores/realtime.svelte';
   import { tagStore } from '$lib/stores/tags.svelte';
+  import DailyQuote from '$lib/components/DailyQuote.svelte';
 
   const todayDate = today();
   const thisWeek  = weekStart(todayDate);
@@ -123,6 +124,11 @@
         <path stroke-linecap="round" d="M19.07 4.93A10 10 0 1 0 4.93 19.07M12 2v2m0 18v-2m8-8h2M2 12h2m13.66-7.07 1.41-1.41M4.93 19.07l1.41-1.41M19.07 19.07l1.41 1.41M4.93 4.93 3.51 3.51"/>
       </svg>
     </a>
+  </div>
+
+  <!-- Daily encouragement — one quiet line under the greeting. -->
+  <div class="px-5 pb-3">
+    <DailyQuote />
   </div>
 
   {#if loading}

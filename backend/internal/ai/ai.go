@@ -138,9 +138,27 @@ func extractJSON(s string) string {
 	if open == '[' {
 		close = ']'
 	}
+	// Track string state so braces/brackets inside a string value (e.g. a task
+	// title like "fix render() {}") don't throw off the depth count.
 	depth := 0
+	inStr := false
+	esc := false
 	for i := start; i < len(s); i++ {
-		switch s[i] {
+		c := s[i]
+		if inStr {
+			switch {
+			case esc:
+				esc = false
+			case c == '\\':
+				esc = true
+			case c == '"':
+				inStr = false
+			}
+			continue
+		}
+		switch c {
+		case '"':
+			inStr = true
 		case open:
 			depth++
 		case close:
