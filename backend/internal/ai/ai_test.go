@@ -33,3 +33,18 @@ func TestExtractJSON(t *testing.T) {
 		})
 	}
 }
+
+// extractJSON runs over whatever the local model emits (chatty prose, partial
+// objects, braces inside strings). Fuzz it to be sure no output can panic the
+// string-state scanner.
+func FuzzExtractJSON(f *testing.F) {
+	for _, s := range []string{
+		`{"a":1}`, "prose {\"a\":1} more", "[1,2,3]", `{"t":"x {} y"}`,
+		`{"t":"a \" {brace}"}`, "{unbalanced", "no json", "", `[{"k":"]"}]`,
+	} {
+		f.Add(s)
+	}
+	f.Fuzz(func(t *testing.T, s string) {
+		_ = extractJSON(s)
+	})
+}

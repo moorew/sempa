@@ -64,6 +64,7 @@ var (
 	titleRe = regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
 	attrRe  = regexp.MustCompile(`(?is)([a-zA-Z_:][a-zA-Z0-9_:.-]*)\s*=\s*("([^"]*)"|'([^']*)')`)
 	tagRe   = regexp.MustCompile(`(?s)<[^>]*>`)
+	headRe  = regexp.MustCompile(`(?i)</head>`)
 )
 
 func tagAttrs(tag string) map[string]string {
@@ -137,8 +138,11 @@ func Fetch(ctx context.Context, rawURL string) (*Meta, int, error) {
 // image/favicon URLs against base. Split out from Fetch so it's unit-testable
 // without a network round-trip.
 func parseMeta(doc string, base *url.URL) *Meta {
-	if i := strings.Index(strings.ToLower(doc), "</head>"); i > 0 {
-		doc = doc[:i]
+	// Trim to the document head. Match case-insensitively on the ORIGINAL string
+	// (not strings.ToLower(doc), whose byte length can differ from doc — e.g.
+	// 'İ' lowercases to two bytes — making the index overrun and panic).
+	if loc := headRe.FindStringIndex(doc); loc != nil && loc[0] > 0 {
+		doc = doc[:loc[0]]
 	}
 
 	og := map[string]string{}

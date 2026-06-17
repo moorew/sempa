@@ -23,6 +23,14 @@ The full test suite (Go + frontend) runs in CI on every push/PR via
 [`.github/workflows/test.yml`](.github/workflows/test.yml); `main` is protected,
 so changes land only through reviewed PRs with these checks green.
 
+**Dynamic analysis.** The same workflow runs Go tests under the **race detector**
+(`go test -race`) and **fuzzes the parsers that consume untrusted external input**
+(iCal feeds, imported emails, recurrence rules, and local-model output) with Go's
+native fuzzing — a short smoke on every push/PR and a longer weekly sweep. Crashing
+inputs are committed under `testdata/fuzz/` as permanent regression seeds. (The
+languages in use — Go, TypeScript, Rust — are memory-safe, so memory-sanitizer/
+DAST tooling for unsafe languages is not applicable.)
+
 ## Dependency & vulnerability remediation
 
 - **Dependencies** are kept current by **Dependabot** (weekly PRs across Go, npm,

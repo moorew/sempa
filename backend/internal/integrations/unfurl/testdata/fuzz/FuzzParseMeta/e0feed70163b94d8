@@ -1,0 +1,2 @@
+go test fuzz v1
+string("\xb9\xbb\xb3\xf5</heAd>")

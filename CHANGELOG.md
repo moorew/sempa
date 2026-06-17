@@ -6,6 +6,21 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.144] - 2026-06-17
+
+### Security
+- **Dynamic analysis in CI.** Go tests now run under the race detector, and the
+  parsers that handle untrusted external input (iCal feeds, imported emails,
+  recurrence rules, and local-model output) are fuzzed with Go's native fuzzing —
+  a smoke run on every push/PR and a longer weekly sweep.
+
+### Fixed
+- **Link-preview parser could crash on certain malformed pages.** Fuzzing
+  surfaced a slice-bounds panic in the unfurl HTML parser when a page's `</head>`
+  detection ran over a lowercased copy whose byte length differed from the
+  original (e.g. due to characters like `İ`); it now matches case-insensitively on
+  the original markup. The crashing input is kept as a regression seed.
+
 ## [1.0.143] - 2026-06-17
 
 ### Security
