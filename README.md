@@ -17,6 +17,13 @@ A self-hosted personal task manager for everyone.
 
 Plan your day, track focused work, and end each day with intention — with your email and calendar pulled in automatically.
 
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13228/badge)](https://www.bestpractices.dev/projects/13228)
+[![Test](https://github.com/moorew/sempa/actions/workflows/test.yml/badge.svg)](https://github.com/moorew/sempa/actions/workflows/test.yml)
+[![Security](https://github.com/moorew/sempa/actions/workflows/security.yml/badge.svg)](https://github.com/moorew/sempa/actions/workflows/security.yml)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
+
+The OpenSSF badge above links to Sempa's full [Best Practices assessment](https://www.bestpractices.dev/projects/13228) (every criterion and its justification). Security tooling and findings are described in [SECURITY.md](SECURITY.md).
+
 ## Full details, docs and downloads available at [sempa.ca](https://sempa.ca)
 
 📚 **Documentation:** [sempa.ca/docs.html](https://sempa.ca/docs.html) (full user & self-hosting docs) · in-repo [User Guide](#user-guide) · [Development](#development) · [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md)

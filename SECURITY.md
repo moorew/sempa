@@ -1,5 +1,19 @@
 # Security
 
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13228/badge)](https://www.bestpractices.dev/projects/13228)
+
+## Best practices & findings
+
+Sempa follows the [OpenSSF Best Practices](https://www.bestpractices.dev/projects/13228)
+criteria — the linked project page documents every criterion and its
+justification. Live security findings are published to:
+
+- **OpenSSF Best Practices assessment** — https://www.bestpractices.dev/projects/13228
+- **OpenSSF Scorecard** — https://scorecard.dev/viewer/?uri=github.com/moorew/sempa
+- **Code scanning (CodeQL / Trivy / Scorecard SARIF)** — the repo's
+  [Security → Code scanning](https://github.com/moorew/sempa/security/code-scanning) tab
+- **Dependency alerts** — [Security → Dependabot](https://github.com/moorew/sempa/security/dependabot)
+
 ## Automated scanning
 
 Continuous checks run in CI via [`.github/workflows/security.yml`](.github/workflows/security.yml)
