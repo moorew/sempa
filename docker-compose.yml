@@ -46,7 +46,11 @@ services:
     #           capabilities: [gpu]
 
   sempa:
+    # Built from source by default (install.sh / `docker compose build`). The
+    # image tag doubles as the GHCR pull target: `docker compose pull sempa`
+    # fetches the prebuilt multi-arch image instead of building from source.
     build: .
+    image: ghcr.io/moorew/sempa:latest
     container_name: sempa
     network_mode: service:ts-sempa
     depends_on:

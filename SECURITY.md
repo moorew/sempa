@@ -131,13 +131,6 @@ are dismissed in the Security tab with a justification and documented here:
   interprets this string as JSON, so there is nothing to "break out of." Not
   applicable.
 
-- **Trivy `DS-0002` — container runs as root.** The server image still runs as
-  root. Switching to a non-root user is deferred, not ignored: the `/data` SQLite
-  volume on existing self-hosted installs is root-owned, so changing the runtime
-  user would break writes on upgrade without a coordinated one-time volume
-  `chown`. We'll do it with a startup privilege-drop (and a documented migration)
-  in a future release. The base image is pinned and a health check is defined.
-
 - **OpenSSF Scorecard.** Most checks pass. Release artifacts are **cosign-signed**
   (keyless/Sigstore — see *Verifying release downloads* in the README), base
   images are **digest-pinned**, and a server image is **published to GHCR** on each

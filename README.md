@@ -71,12 +71,19 @@ Each release also publishes a multi-arch (amd64/arm64) server image to the GitHu
 Container Registry, if you'd rather pull than build from source:
 
 ```bash
-docker pull ghcr.io/moorew/sempa:latest      # or a pinned tag, e.g. :1.0.146
+docker pull ghcr.io/moorew/sempa:latest      # or a pinned tag, e.g. :1.0.148
 ```
 
-`install.sh` still **builds from source by default** (the reliable, audit-from-source
-path); to use the image instead, set `image: ghcr.io/moorew/sempa:latest` and drop
-`build: .` on the `sempa` service in `docker-compose.yml`.
+`install.sh` **builds from source by default** but offers a "pull prebuilt image"
+option (it runs `docker compose pull sempa` and starts with `--no-build`). The
+container **runs as a non-root user** (uid 10001).
+
+> **Upgrading from an older (root) image?** The data volume used to be root-owned.
+> `install.sh` and `deploy/update.sh` now re-own it for the non-root user
+> automatically; if you manage the stack by hand, run this once before starting:
+> ```bash
+> docker compose run --rm --no-deps --user root --entrypoint sh sempa -c 'chown -R 10001:10001 /data'
+> ```
 
 ### Verifying release downloads
 

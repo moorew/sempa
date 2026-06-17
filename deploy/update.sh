@@ -11,6 +11,13 @@ git pull
 echo "→ Rebuilding image..."
 docker compose build
 
+# The app runs as non-root (uid 10001). Make sure the /data volume is owned by it
+# before restart — a no-op once migrated, and the one-time fix when upgrading from
+# an older root-owned image. Best-effort; never blocks the update.
+echo "→ Ensuring /data ownership (non-root app user)..."
+docker compose run --rm --no-deps --user root --entrypoint sh sempa \
+  -c 'chown -R 10001:10001 /data' >/dev/null 2>&1 || true
+
 echo "→ Restarting container..."
 docker compose up -d
 

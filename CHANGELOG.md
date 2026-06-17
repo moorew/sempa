@@ -6,6 +6,22 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.0.149] - 2026-06-17
+
+### Security
+- **The server container now runs as a non-root user** (uid 10001) — resolves
+  the last Trivy/Scorecard hardening item (DS-0002). Fresh installs work out of
+  the box (the data volume inherits the right ownership); existing installs are
+  re-owned automatically by `install.sh` / `deploy/update.sh`, with a documented
+  one-liner for manual stacks.
+
+### Changed
+- **`install.sh` can now pull the prebuilt GHCR image** instead of building from
+  source (option 2 → `docker compose pull sempa`), and `docker-compose.yml`
+  carries the `ghcr.io/moorew/sempa` image tag for that path.
+- README documents pulling the image, the non-root upgrade note, and verifying
+  signed downloads with cosign.
+
 ## [1.0.148] - 2026-06-17
 
 ### Fixed

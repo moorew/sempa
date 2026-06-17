@@ -225,13 +225,38 @@ ok "Written .env"
 } > .env.local
 ok "Written .env.local"
 
-# ── Build & start ─────────────────────────────────────────────────────────────
+# ── Build / pull & start ───────────────────────────────────────────────────────
 echo ""
-echo "  Building Docker image (this takes a minute on first run)..."
-docker compose build --quiet
+echo "  Install method:"
+dim "    [1] Build from source (default — audit-from-source, always works)"
+dim "    [2] Pull the prebuilt image from GHCR (ghcr.io/moorew/sempa — faster)"
+ask_default "Choose" INSTALL_METHOD "1"
+
+if [[ "$INSTALL_METHOD" == "2" ]]; then
+  echo "  Pulling prebuilt image from GHCR..."
+  if ! docker compose pull sempa; then
+    warn "Pull failed (is the image published & public?). Falling back to building from source."
+    docker compose build --quiet
+    INSTALL_METHOD="1"
+  fi
+else
+  echo "  Building Docker image (this takes a minute on first run)..."
+  docker compose build --quiet
+fi
+
+# The app runs as the non-root user uid 10001. Ensure the data volume is owned by
+# it before first start — a no-op on fresh installs (the volume inherits that
+# ownership from the image), and the one-time fix for installs upgraded from an
+# older root-owned image. Best-effort: never block the install.
+docker compose run --rm --no-deps --user root --entrypoint sh sempa \
+  -c 'chown -R 10001:10001 /data' >/dev/null 2>&1 || true
 
 echo "  Starting Sempa..."
-docker compose up -d
+if [[ "$INSTALL_METHOD" == "2" ]]; then
+  docker compose up -d --no-build
+else
+  docker compose up -d
+fi
 
 # ── Health check ─────────────────────────────────────────────────────────────
 echo "  Waiting for Sempa to be ready..."
