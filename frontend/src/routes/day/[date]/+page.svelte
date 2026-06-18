@@ -1080,9 +1080,9 @@
         style="background: color-mix(in srgb, var(--sempa-bg-main) 95%, transparent);
                border-bottom: 1px solid var(--sempa-border);
                padding-top: max(12px, calc(env(safe-area-inset-top, 0px) + 8px));">
-  <div class="flex items-center justify-between px-6 py-3">
-    <!-- Week nav -->
-    <div class="flex items-center gap-2">
+  <div class="flex items-center justify-between gap-3 px-6 py-3">
+    <!-- Week nav — highest priority; never shrinks -->
+    <div class="flex shrink-0 items-center gap-2">
       <button onclick={() => scrollWeeks(-1)} aria-label="Previous week"
               class="rounded-lg p-1.5 transition-colors"
               style="color: var(--sempa-text-dim);">
@@ -1103,13 +1103,13 @@
 
     <!-- Daily encouragement — set to the SIDE of the header (no extra row), so it
          adds no vertical height. Collapses out on narrower windows (<xl). -->
-    <div class="hidden xl:flex min-w-0 flex-1 justify-center px-6">
+    <div class="hidden lg:flex min-w-0 flex-auto justify-center overflow-hidden px-6">
       <DailyQuote variant="inline" />
     </div>
 
     <!-- Stats — uniform size/colour across the row (spec 4g) -->
     {#if !loading && totalTasks.length > 0}
-      <div class="hidden md:flex items-center gap-4" style="font-size: 12.5px; color: var(--sempa-text-soft);">
+      <div class="hidden md:flex shrink-0 items-center gap-4" style="font-size: 12.5px; color: var(--sempa-text-soft);">
         {#if isToday(date)}
           <span class="flex items-center gap-1.5" style="color: var(--sempa-text-soft);">
             <span class="inline-flex h-1.5 w-1.5 rounded-full" style="background: var(--sempa-accent);"></span>
@@ -1130,8 +1130,8 @@
       </div>
     {/if}
 
-    <!-- Actions -->
-    <div class="flex items-center gap-2">
+    <!-- Actions — never shrink; Today pill + New task keep full size -->
+    <div class="flex shrink-0 items-center gap-2">
       <!-- Always present: jump to (and centre) today. When already on this week
            it re-centres today's column; otherwise it navigates to today. -->
       <button onclick={goToday}

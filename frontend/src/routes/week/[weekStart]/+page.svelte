@@ -306,8 +306,8 @@
         style="background: color-mix(in srgb, var(--sempa-bg-main) 95%, transparent);
                border-bottom: 1px solid var(--sempa-border);
                padding-top: env(safe-area-inset-top, 0px);">
-  <div class="flex items-center justify-between px-6 py-3">
-    <div class="flex items-center gap-2">
+  <div class="flex items-center justify-between gap-3 px-6 py-3">
+    <div class="flex min-w-0 items-center gap-2">
       <button onclick={() => navigate(-1)} aria-label="Previous week"
               class="rounded-lg p-1.5 transition-colors"
               style="color: var(--sempa-text-dim);">
@@ -315,9 +315,9 @@
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
         </svg>
       </button>
-      <div>
-        <p class="text-sm font-semibold" style="color: var(--sempa-text);">{formatWeekRange(weekStartDate)}</p>
-        <p class="text-xs" style="color: var(--sempa-text-dim);">{completedObjectives}/{totalObjectives} objectives complete</p>
+      <div class="min-w-0">
+        <p class="truncate text-sm font-semibold" style="color: var(--sempa-text);">{formatWeekRange(weekStartDate)}</p>
+        <p class="truncate text-xs" style="color: var(--sempa-text-dim);">{completedObjectives}/{totalObjectives} objectives complete</p>
       </div>
       <button onclick={() => navigate(1)} aria-label="Next week"
               class="rounded-lg p-1.5 transition-colors"
@@ -328,7 +328,7 @@
       </button>
     </div>
 
-    <div class="flex items-center gap-2">
+    <div class="flex shrink-0 items-center gap-2">
       {#if mobile.value}
         <!-- Mobile: icon-only actions -->
         <button onclick={copyMarkdown}
