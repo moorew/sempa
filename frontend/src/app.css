@@ -220,29 +220,19 @@ button:active, [role="button"]:active {
   -webkit-app-region: no-drag;
 }
 
-/* ── Thin branded scrollbars (Chrome, Edge, Safari, Tauri/WebView2) ───── */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+/* ── Scrollbars: hidden everywhere, still scrollable ─────────────────────
+   Even thin branded bars read as visual clutter — especially on the nav
+   sidebar and on Windows/WebView2, where the native track is chunkier. Hide
+   them globally; wheel, trackpad, touch, and keyboard scrolling all still
+   work (the same trick `.no-scrollbar` already uses for the touch strips). */
+::-webkit-scrollbar {           /* Chrome, Safari, Edge, Tauri/WebView2 */
+  width: 0;
+  height: 0;
+  display: none;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--sempa-border);
-  border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--sempa-text-dim);
-}
-::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
-/* Firefox */
 * {
-  scrollbar-width: thin;
-  scrollbar-color: var(--sempa-border) transparent;
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* legacy Edge / IE */
 }
 
 /* ── Range sliders — branded thumb/track (FIX 09) ────────────────────── */
