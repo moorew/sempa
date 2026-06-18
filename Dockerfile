@@ -1,7 +1,12 @@
 # ── Stage 1: Build frontend ─────────────────────────────────────────────────
 # Base images pinned by digest (Scorecard Pinned-Dependencies); Dependabot's
 # docker updates bump both the tag and the digest.
-FROM node:26-alpine@sha256:9c0e1e52125d6b67d505cf75b4880fcf1290ccea5c480849910e1d57b2cf72b5 AS frontend-builder
+#
+# --platform=$BUILDPLATFORM pins the builder to the runner's NATIVE arch so the
+# frontend never builds under QEMU emulation. Its output (static JS/HTML) is
+# arch-independent, so the single build is copied into every target image. This
+# is the difference between a ~2-min and a >30-min (timed-out) multi-arch build.
+FROM --platform=$BUILDPLATFORM node:26-alpine@sha256:9c0e1e52125d6b67d505cf75b4880fcf1290ccea5c480849910e1d57b2cf72b5 AS frontend-builder
 WORKDIR /frontend
 COPY frontend/package*.json ./
 RUN npm ci
@@ -9,12 +14,17 @@ COPY frontend/ ./
 RUN npm run build
 
 # ── Stage 2: Build backend ───────────────────────────────────────────────────
-FROM golang:1.26-alpine@sha256:f1ddd9fe14fffc091dd98cb4bfa999f32c5fc77d2f2305ea9f0e2595c5437c14 AS backend-builder
+# Also native (--platform=$BUILDPLATFORM): the Go toolchain runs un-emulated and
+# CROSS-compiles to the requested arch via GOARCH=$TARGETARCH. CGO is off and the
+# SQLite driver is pure Go (modernc.org/sqlite), so cross-compilation is clean.
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine@sha256:f1ddd9fe14fffc091dd98cb4bfa999f32c5fc77d2f2305ea9f0e2595c5437c14 AS backend-builder
+ARG TARGETOS
+ARG TARGETARCH
 WORKDIR /app
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/ .
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /sempa ./cmd/server
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o /sempa ./cmd/server
 
 # ── Stage 3: Final image ─────────────────────────────────────────────────────
 # Pinned base (not :latest) so rebuilds are reproducible; Dependabot's docker

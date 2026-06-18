@@ -1102,8 +1102,10 @@
     </div>
 
     <!-- Daily encouragement — set to the SIDE of the header (no extra row), so it
-         adds no vertical height. Collapses out on narrower windows (<xl). -->
-    <div class="hidden lg:flex min-w-0 flex-auto justify-center overflow-hidden px-6">
+         adds no vertical height. DailyQuote owns its own overflow: it shows the
+         full line when it fits and collapses to a hover/focus quote button when
+         it doesn't, so no overflow-hidden clip here (it would cut the popover). -->
+    <div class="hidden sm:flex min-w-0 flex-auto justify-center px-6">
       <DailyQuote variant="inline" />
     </div>
 
