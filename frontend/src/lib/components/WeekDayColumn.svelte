@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Task } from '$lib/types';
+  import { flip } from 'svelte/animate';
   import TaskCard from './TaskCard.svelte';
   import { compareTasksForDay, today } from '$lib/utils';
   import { goto } from '$app/navigation';
@@ -96,7 +97,7 @@
   }
 </script>
 
-<div class="flex flex-col"
+<div class="flex h-full min-h-0 w-full flex-col"
      oncontextmenu={onColumnContext}
      ondragover={(e) => { e.preventDefault(); insertIdx = calcInsertIdx(e); onDragOver(date); }}
      ondragleave={(e) => {
@@ -119,7 +120,7 @@
      }}>
 
   <!-- Compact header: MON + day-number circle -->
-  <div class="mb-2 flex items-center gap-1.5 px-1">
+  <div class="mb-2 flex shrink-0 items-center gap-1.5 px-1">
     <span class="text-[10.5px] font-semibold uppercase tracking-wider
                  {isWeekend ? 'text-gray-400 dark:text-gray-600' : 'text-gray-400 dark:text-gray-500'}">
       {dayName}
@@ -141,7 +142,7 @@
 
   <!-- Day progress bar — single metric: time worked vs time planned -->
   {#if plannedMins > 0}
-    <div class="mb-2 px-1">
+    <div class="mb-2 shrink-0 px-1">
       <div class="day-bar-track">
         <div class="day-bar-fill"
              style="width: {barPct}%; background: {dayComplete ? 'var(--sempa-success)' : 'var(--sempa-accent)'};"></div>
@@ -159,47 +160,47 @@
     </div>
   {/if}
 
-  <!-- Column body -->
-  <div class="flex flex-1 flex-col rounded-xl transition-all duration-150
+  <!-- Column body. Fills the column height so its task list scrolls INTERNALLY
+       (the board itself only scrolls left/right). The drag-over cue is a soft
+       accent tint + gentle inset outline — no bright ring — that eases in. -->
+  <div class="drop-zone flex min-h-0 flex-1 flex-col rounded-xl
               {isDragOver
-                ? 'ring-2 ring-inset'
+                ? 'is-drag-over'
                 : isWeekend
                   ? 'bg-gray-50/40 dark:bg-gray-800/10'
-                  : 'bg-gray-100/60 dark:bg-gray-800/25'}"
-       style={isDragOver ? 'background:var(--a50);ring-color:var(--a400);' : ''}>
+                  : 'bg-gray-100/60 dark:bg-gray-800/25'}">
 
-    <div role="list" bind:this={taskListEl}
-         class="flex flex-col gap-2 overflow-y-auto p-2
-                [scrollbar-width:thin] [scrollbar-color:theme(colors.gray.200)_transparent]
-                dark:[scrollbar-color:theme(colors.gray.700)_transparent]">
+    <!-- Scrollable region: active list + (optional) completed. Add-task stays
+         pinned below. Scrollbar is hidden globally; only this area scrolls. -->
+    <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div role="list" bind:this={taskListEl} class="flex flex-col gap-2 p-2">
+        {#each active as task, i (task.id)}
+          <div data-task-idx={i} animate:flip={{ duration: 180 }}>
+            {#if isDragOver && insertIdx === i}
+              <div class="drop-line mx-1 mb-2" style="background:var(--sempa-accent);"></div>
+            {/if}
+            <TaskCard {task} accent="bg-gray-400"
+                     onDragStart={onTaskDragStart}
+                     onFocusClick={onTaskFocusClick}
+                     onFocusMode={onTaskFocusMode}
+                     onComplete={onTaskComplete}
+                     onTrash={onTaskTrash}
+                     onHover={onTaskHover}
+                     onClick={onTaskClick} />
+          </div>
+        {/each}
 
-      {#each active as task, i (task.id)}
-        {#if isDragOver && insertIdx === i}
-          <div class="h-px rounded-full mx-1" style="background:var(--a500)"></div>
+        {#if isDragOver && insertIdx === active.length}
+          <div class="drop-line mx-1" style="background:var(--sempa-accent);"></div>
         {/if}
-        <div data-task-idx={i}>
-          <TaskCard {task} accent="bg-gray-400"
-                   onDragStart={onTaskDragStart}
-                   onFocusClick={onTaskFocusClick}
-                   onFocusMode={onTaskFocusMode}
-                   onComplete={onTaskComplete}
-                   onTrash={onTaskTrash}
-                   onHover={onTaskHover}
-                   onClick={onTaskClick} />
-        </div>
-      {/each}
+        {#if active.length === 0 && !isDragOver}
+          <div class="min-h-[80px]"></div>
+        {/if}
+      </div>
 
-      {#if isDragOver && insertIdx === active.length}
-        <div class="h-px rounded-full mx-1" style="background:var(--a500)"></div>
-      {/if}
-      {#if active.length === 0 && !isDragOver}
-        <div class="min-h-[80px]"></div>
-      {/if}
-    </div>
-
-    <!-- Completed tasks (collapsed by default) -->
-    {#if done.length > 0}
-      <div class="border-t border-gray-100/80 px-2 pb-1 pt-0.5 dark:border-gray-700/30">
+      <!-- Completed tasks (collapsed by default) -->
+      {#if done.length > 0}
+        <div class="border-t border-gray-100/80 px-2 pb-1 pt-0.5 dark:border-gray-700/30">
         <button onclick={() => showDone = !showDone}
                 class="inline-flex items-center gap-1 rounded-full transition-opacity hover:opacity-80"
                 style="background: var(--sempa-success-soft); color: var(--sempa-success);
@@ -221,12 +222,13 @@
             {/each}
           </div>
         {/if}
-      </div>
-    {/if}
+        </div>
+      {/if}
+    </div>
 
-    <!-- Add task -->
+    <!-- Add task — pinned below the scroll region -->
     <button onclick={() => onAddClick(date)}
-            class="flex items-center gap-1.5 rounded-b-xl px-3 py-2 text-xs text-gray-400
+            class="flex shrink-0 items-center gap-1.5 rounded-b-xl px-3 py-2 text-xs text-gray-400
                    hover:bg-white/60 hover:text-gray-600 transition-colors
                    dark:text-gray-600 dark:hover:bg-gray-700/30 dark:hover:text-gray-400">
       <Plus size={11} />
@@ -234,3 +236,30 @@
     </button>
   </div>
 </div>
+
+<style>
+  /* Drag-over cue: a calm accent tint + a gentle inset outline that eases in —
+     not a bright ring, so the cards and the drop position stay easy to read. */
+  .drop-zone {
+    transition: background-color 200ms ease, box-shadow 200ms ease;
+  }
+  .drop-zone.is-drag-over {
+    background: color-mix(in srgb, var(--sempa-accent) 7%, var(--sempa-bg-panel));
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--sempa-accent) 45%, transparent);
+  }
+  /* Where the card will land — a soft, clearly visible pill. */
+  .drop-line {
+    height: 3px;
+    border-radius: 9999px;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--sempa-accent) 25%, transparent);
+    animation: drop-line-in 140ms ease;
+  }
+  @keyframes drop-line-in {
+    from { opacity: 0; transform: scaleX(0.6); }
+    to   { opacity: 1; transform: scaleX(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .drop-zone { transition: none; }
+    .drop-line { animation: none; }
+  }
+</style>

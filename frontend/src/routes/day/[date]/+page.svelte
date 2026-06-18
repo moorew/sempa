@@ -1235,9 +1235,9 @@
            the range grows on demand at either edge, so there's no week boundary
            to flash through. Weekend columns read a touch softer. -->
       <div bind:this={weekGrid} onscroll={onBoardScroll}
-           class="flex flex-1 min-h-0 items-start gap-3 overflow-auto" data-weekgrid>
+           class="flex flex-1 min-h-0 items-stretch gap-3 overflow-x-auto overflow-y-hidden" data-weekgrid>
         {#each columns as day (day.date)}
-          <div id="day-col-{day.date}" data-daycol class="w-56 shrink-0" style={day.isWeekend ? 'opacity: 0.92;' : ''}>
+          <div id="day-col-{day.date}" data-daycol class="flex h-full w-56 shrink-0" style={day.isWeekend ? 'opacity: 0.92;' : ''}>
             <WeekDayColumn
               date={day.date} dayName={day.dayName} dayNum={day.dayNum}
               isToday={day.isToday} isWeekend={day.isWeekend}

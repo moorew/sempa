@@ -24,6 +24,11 @@
 
   const todayStr = getToday();
 
+  // While this card is the one being dragged, the original is left behind as a
+  // faded "lifted" placeholder — the browser carries a snapshot under the cursor,
+  // so this reads like physically picking the card up and moving it.
+  let dragging = $state(false);
+
   const sourceLabel: Record<string, string> = {
     gmail: 'Gmail', fastmail: 'Mail', jira: 'Jira', google_calendar: 'Cal',
   };
@@ -100,15 +105,21 @@
   role="listitem"
   data-task-id={task.id}
   ondragstart={(e) => {
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer?.setData('application/x-sempa-task', task.id);
     onDragStart(task.id);
+    // Defer so the browser snapshots the card at full opacity for the drag image,
+    // then fade the original that stays behind.
+    requestAnimationFrame(() => { dragging = true; });
   }}
+  ondragend={() => { dragging = false; }}
   onmouseenter={() => onHover?.(task.id)}
   onmouseleave={() => onHover?.(null)}
   oncontextmenu={onContextMenu}
   class="group relative flex flex-col gap-2 rounded-[10px] shadow-sm cursor-grab
          active:cursor-grabbing active:scale-[0.98] active:shadow-none
-         transition-all duration-100 hover:shadow-md min-h-[44px]"
+         transition-all duration-150 hover:shadow-md min-h-[44px]
+         {dragging ? 'is-dragging' : ''}"
   style="padding: 9px 10px; background: var(--card-bg); border: 1px solid var(--card-border);"
 >
   <div class="flex items-start gap-2">
@@ -269,3 +280,12 @@
     </div>
   {/if}
 </div>
+
+<style>
+  /* The original card left behind while its snapshot is dragged — a quiet,
+     faded placeholder so it's obvious which card is in motion. */
+  .is-dragging {
+    opacity: 0.4;
+    box-shadow: none;
+  }
+</style>
