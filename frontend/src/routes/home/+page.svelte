@@ -126,8 +126,8 @@
     </a>
   </div>
 
-  <!-- Daily encouragement — greets under the greeting, then eases away.
-       Horizontal padding only; DailyQuote owns the vertical space it collapses. -->
+  <!-- Daily encouragement — a quiet companion line under the greeting that fades
+       in then settles to a low resting opacity. Wraps freely, never clips. -->
   <div class="px-5">
     <DailyQuote />
   </div>

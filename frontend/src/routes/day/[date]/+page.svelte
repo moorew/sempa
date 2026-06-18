@@ -16,7 +16,7 @@
   import MiniCalendar from '$lib/components/MiniCalendar.svelte';
   import TimeslotCalendar from '$lib/components/TimeslotCalendar.svelte';
   import WeeklyObjectivesWidget from '$lib/components/WeeklyObjectivesWidget.svelte';
-  import { ChevronLeft, ChevronRight, Plus, Clock, Mail, SlidersHorizontal, Target, ClipboardCheck } from 'lucide-svelte';
+  import { ChevronLeft, ChevronRight, Plus, Clock, Mail, SlidersHorizontal, Target } from 'lucide-svelte';
   import { tagStore } from '$lib/stores/tags.svelte';
   import TagFilterBar from '$lib/components/TagFilterBar.svelte';
   import JiraPanel from '$lib/components/JiraPanel.svelte';
@@ -27,6 +27,7 @@
   import { swipeNavigate } from '$lib/actions/swipeNavigate';
   import { prefs } from '$lib/stores/prefs.svelte';
   import ReflectionCard from '$lib/components/ReflectionCard.svelte';
+  import IntentionQuoteCard from '$lib/components/IntentionQuoteCard.svelte';
   import DailyQuote from '$lib/components/DailyQuote.svelte';
   import { celebrate } from '$lib/celebrate';
   import type { DailyPlan } from '$lib/types';
@@ -52,9 +53,6 @@
   let dragOverDate  = $state<string | null>(null);
   let emailPanel    = $state<EmailPanel | undefined>(undefined);
   let rightPanel    = $state<'schedule' | 'mail' | 'jira' | 'objectives'>('schedule');
-  // Desktop: intention/reflection now lives as a slim disclosure at the top of
-  // the board column (moved out of the right sidebar to give it more room).
-  let reflectionOpen = $state(false);
 
   let panelOpen   = $state(false);
   let panelTask   = $state<Task | null>(null);
@@ -930,8 +928,8 @@
     {/if}
   </header>
 
-  <!-- Daily encouragement — greets under the mobile header, then eases away.
-       Horizontal padding only; DailyQuote owns the vertical space it collapses. -->
+  <!-- Daily encouragement — a quiet companion line under the mobile header that
+       fades in then settles to a low resting opacity. Wraps freely, never clips. -->
   <div class="px-5">
     <DailyQuote />
   </div>
@@ -1101,13 +1099,10 @@
       </button>
     </div>
 
-    <!-- Daily encouragement — set to the SIDE of the header (no extra row), so it
-         adds no vertical height. DailyQuote owns its own overflow: it shows the
-         full line when it fits and collapses to a hover/focus quote button when
-         it doesn't, so no overflow-hidden clip here (it would cut the popover). -->
-    <div class="hidden sm:flex min-w-0 flex-auto justify-center px-6">
-      <DailyQuote variant="inline" />
-    </div>
+    <!-- The toolbar holds only nav, stats, and actions — the daily quote moved to
+         the intention card (a quiet companion to planning the day), so nothing
+         competes for this contested horizontal space. -->
+    <div class="min-w-0 flex-auto"></div>
 
     <!-- Stats — uniform size/colour across the row (spec 4g) -->
     {#if !loading && totalTasks.length > 0}
@@ -1172,27 +1167,14 @@
        than floating halfway up where the tallest column happens to end. -->
   <main bind:this={kanbanScroll} class="flex-1 flex flex-col overflow-hidden px-4 pt-5 pb-2 animate-fade-in">
 
-    <!-- Intention / reflection (moved out of the sidebar into a slim disclosure
-         so it never pushes the schedule/inbox/jira panels off-screen). -->
+    <!-- Intention card — and, until an intention is set, the quiet home for the
+         daily quote (reflection paired with planning the day). A set reflection
+         still shows beneath it; the end-of-day prompt lives in the shutdown ritual. -->
     {#if prefs.contextualReflections && (dayIntention?.trim() || dayReflection?.trim() || isToday(date))}
-      <div class="mb-4 shrink-0">
-        <button onclick={() => reflectionOpen = !reflectionOpen}
-                class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left transition-colors"
-                style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
-          <ClipboardCheck size={14} style="color: var(--sempa-accent);" />
-          <span class="flex-1 truncate text-[13px]" style="color: var(--sempa-text-soft);">
-            {dayIntention?.trim() ? dayIntention : "Set today's intention"}
-          </span>
-          <svg class="h-3.5 w-3.5 transition-transform {reflectionOpen ? '' : '-rotate-90'}"
-               style="color: var(--sempa-text-dim);"
-               fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" d="M19 9l-7 7-7-7"/>
-          </svg>
-        </button>
-        {#if reflectionOpen}
-          <div class="mt-2">
-            <ReflectionCard date={date} intention={dayIntention} reflection={dayReflection} show="both" promptWhenEmpty={isToday(date)} />
-          </div>
+      <div class="mb-4 flex shrink-0 flex-col gap-2">
+        <IntentionQuoteCard date={date} intention={dayIntention} promptWhenEmpty={isToday(date)} />
+        {#if dayReflection?.trim()}
+          <ReflectionCard date={date} reflection={dayReflection} show="reflection" />
         {/if}
       </div>
     {/if}

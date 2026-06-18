@@ -137,7 +137,7 @@
 
   // Desktop: show ONE section at a time (like mobile) instead of one long scroll.
   // Seeded from ?section= so each settings section is linkable; kept in the URL.
-  const SECTION_IDS = ['profile', 'integrations', 'tasks', 'appearance', 'about'];
+  const SECTION_IDS = ['profile', 'appearance', 'personal', 'tasks', 'integrations', 'system', 'about'];
   const initialSection = (() => {
     const s = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('section') : null;
     return s && SECTION_IDS.includes(s) ? s : 'profile';
@@ -155,11 +155,17 @@
   // Mobile section navigation
   let mobileSection = $state<string | null>(null);
 
+  // Grouped so each section has one clear purpose: visual theming (Appearance)
+  // is kept separate from the personality/behaviour toggles (Personalization),
+  // and app-level concerns — notifications & backup — live under System rather
+  // than being tucked inside Tasks.
   const NAV_SECTIONS = [
     { id: 'profile', label: 'Account' },
-    { id: 'integrations', label: 'Integrations' },
-    { id: 'tasks', label: 'Tasks' },
     { id: 'appearance', label: 'Appearance' },
+    { id: 'personal', label: 'Personalization' },
+    { id: 'tasks', label: 'Tasks' },
+    { id: 'integrations', label: 'Integrations' },
+    { id: 'system', label: 'System' },
     { id: 'about', label: 'About' },
   ] as const;
 
@@ -484,6 +490,14 @@
     <svg class="h-5 w-5" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
       <circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 8h.01M11 12h1v4h1"/>
     </svg>
+  {:else if id === 'personal'}
+    <svg class="h-5 w-5" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4L12 3zM18 14l.9 2.1L21 17l-2.1.9L18 20l-.9-2.1L15 17l2.1-.9L18 14z"/>
+    </svg>
+  {:else if id === 'system'}
+    <svg class="h-5 w-5" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2M8 11h.01M12 11h4"/>
+    </svg>
   {:else}
     <svg class="h-5 w-5" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
       <circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.07 4.93A10 10 0 1 0 4.93 19.07M12 2v2m0 18v-2m8-8h2M2 12h2m13.66-7.07 1.41-1.41M4.93 19.07l1.41-1.41M19.07 19.07l1.41 1.41M4.93 4.93 3.51 3.51"/>
@@ -495,6 +509,8 @@
   {#if id === 'profile'}{accountEmail ?? 'Signed in'} · sign out
   {:else if id === 'integrations'}Gmail, Fastmail, Jira, Calendars
   {:else if id === 'tasks'}Tags, recurring templates
+  {:else if id === 'personal'}Reflections, quotes, sounds
+  {:else if id === 'system'}Notifications &amp; backup
   {:else if id === 'about'}Version &amp; updates
   {:else}Theme, text size, mode
   {/if}
@@ -577,6 +593,10 @@
             {@render tasksContent()}
           {:else if mobileSection === 'appearance'}
             {@render appearanceContent()}
+          {:else if mobileSection === 'personal'}
+            {@render personalContent()}
+          {:else if mobileSection === 'system'}
+            {@render systemContent()}
           {:else if mobileSection === 'about'}
             {@render aboutContent()}
           {/if}
@@ -615,6 +635,10 @@
           {@render tasksContent()}
         {:else if desktopSection === 'appearance'}
           {@render appearanceContent()}
+        {:else if desktopSection === 'personal'}
+          {@render personalContent()}
+        {:else if desktopSection === 'system'}
+          {@render systemContent()}
         {:else if desktopSection === 'about'}
           {@render aboutContent()}
         {/if}
@@ -1397,7 +1421,19 @@
           <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
         </svg>
       </a>
+    </div>
+  </div>
+{/snippet}
 
+{#snippet systemContent()}
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SECTION: System — app-level concerns (notifications, backup)
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div id="settings-system">
+    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
+     text-transform:uppercase; color:var(--sempa-text-dim)">System</p>
+
+    <div class="mb-8 flex flex-col gap-2">
       <a href="/settings/notifications"
          class="flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
          style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
@@ -1593,8 +1629,25 @@
         </div>
         {/if}
 
+      </div>
+    </section>
+  </div>
+{/snippet}
+
+{#snippet personalContent()}
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SECTION: Personalization — the personality/behaviour toggles that used to
+       crowd Appearance (reflections, daily quote, celebration sound).
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div id="settings-personal">
+    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
+     text-transform:uppercase; color:var(--sempa-text-dim)">Personalization</p>
+
+    <section class="overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+      <div class="px-5 py-5 space-y-6">
+
         <!-- Contextual reflections toggle -->
-        <div style="border-top: 1px solid var(--sempa-border); padding-top: 20px;">
+        <div>
           <div class="flex items-center justify-between gap-4">
             <div class="min-w-0">
               <p class="text-xs font-medium" style="color: var(--sempa-text-soft);">Show reflections in context</p>
