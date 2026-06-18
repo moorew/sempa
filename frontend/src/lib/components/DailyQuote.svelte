@@ -20,7 +20,7 @@
   let { variant = 'collapse' }: { variant?: 'collapse' | 'inline' } = $props();
 
   const REST = 0.42;
-  const HOLD_MS = 4200; // visible before it eases away (collapse variant only)
+  const HOLD_MS = 8400; // visible before it eases away (collapse variant only)
 
   let shown = $state(false);   // fade-in has begun
   let gone = $state(false);    // collapse variant has eased its height away
@@ -44,8 +44,8 @@
 
 {#if q}
   {#if variant === 'inline'}
-    <p class="quote-inline" style="opacity: {REST};" title={`“${q.text}” — ${q.author}`}>
-      “{q.text}”<span class="author"> — {q.author}</span>
+    <p class="quote-inline" style="opacity: {REST};" title={q.author ? `“${q.text}” — ${q.author}` : q.text}>
+      “{q.text}”{#if q.author}<span class="author"> — {q.author}</span>{/if}
     </p>
   {:else}
     <!-- Self-managed vertical space: the wrapper owns its padding so that when it
@@ -53,7 +53,7 @@
          caller should give only horizontal padding. -->
     <div class="quote-collapse" class:gone style="opacity: {collapseOpacity};">
       <p class="daily-quote">
-        “{q.text}”<span class="author"> — {q.author}</span>
+        “{q.text}”{#if q.author}<span class="author"> — {q.author}</span>{/if}
       </p>
     </div>
   {/if}

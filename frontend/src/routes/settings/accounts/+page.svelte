@@ -11,7 +11,7 @@
   let newQuoteAuthor = $state('');
   function addQuote() {
     if (!newQuoteText.trim()) return;
-    quotes.add(newQuoteText, newQuoteAuthor || 'Unknown');
+    quotes.addCustom(newQuoteText, newQuoteAuthor);
     newQuoteText = ''; newQuoteAuthor = '';
   }
   import { aiStatus as aiAvail } from '$lib/stores/aiStatus.svelte';
@@ -1622,7 +1622,8 @@
             <div class="min-w-0">
               <p class="text-xs font-medium" style="color: var(--sempa-text-soft);">Daily encouragement</p>
               <p class="mt-1 text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
-                A quiet, rotating quote on the day view — subtle by design. Edit the list or turn it off.
+                A quiet, rotating quote on the day view — subtle by design. Choose which packs to draw from,
+                add your own, or turn it off.
               </p>
             </div>
             <button onclick={() => quotes.setEnabled(!quotes.enabled)}
@@ -1636,13 +1637,44 @@
           </div>
 
           {#if quotes.enabled}
+            <!-- Quote packs: toggle on/off and combine freely -->
             <div class="mt-3 space-y-1">
-              {#each quotes.list as q, i (q.text + i)}
+              <div class="flex items-center justify-between">
+                <p class="text-[11px] font-medium" style="color: var(--sempa-text-dim);">Packs</p>
+                <span class="text-[11px]" style="color: var(--sempa-text-dim);">{quotes.poolSize} quote{quotes.poolSize === 1 ? '' : 's'} in rotation</span>
+              </div>
+              {#each quotes.packs as p (p.id)}
+                <button onclick={() => quotes.togglePack(p.id)}
+                        aria-pressed={quotes.packEnabled(p.id)}
+                        class="flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left"
+                        style="background: var(--sempa-bg-main); border: 1px solid {quotes.packEnabled(p.id) ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
+                  <span class="min-w-0">
+                    <span class="block text-[11px] font-medium" style="color: var(--sempa-text-soft);">{p.name}
+                      <span class="font-normal" style="color: var(--sempa-text-dim);">· {p.quotes.length}</span>
+                    </span>
+                    <span class="mt-0.5 block text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">{p.description}</span>
+                  </span>
+                  <span class="relative shrink-0 rounded-full" role="switch" aria-checked={quotes.packEnabled(p.id)}
+                        style="width:38px; height:21px; background: {quotes.packEnabled(p.id) ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
+                    <span class="absolute rounded-full bg-white"
+                          style="top:3px; left:{quotes.packEnabled(p.id) ? '20px' : '3px'}; width:15px; height:15px; transition: left 150ms ease;"></span>
+                  </span>
+                </button>
+              {/each}
+              <button onclick={() => quotes.resetPacks()} class="mt-1 text-[11px] hover:underline" style="color: var(--sempa-text-dim);">
+                Reset packs to defaults
+              </button>
+            </div>
+
+            <!-- Your own quotes -->
+            <div class="mt-4 space-y-1">
+              <p class="text-[11px] font-medium" style="color: var(--sempa-text-dim);">Your own quotes</p>
+              {#each quotes.custom as q, i (q.text + i)}
                 <div class="flex items-start gap-2 rounded-lg px-2 py-1.5" style="background: var(--sempa-bg-main);">
                   <span class="min-w-0 flex-1 text-[11px] leading-relaxed" style="color: var(--sempa-text-soft);">
-                    “{q.text}” <span style="color: var(--sempa-text-dim);">— {q.author}</span>
+                    “{q.text}”{#if q.author} <span style="color: var(--sempa-text-dim);">— {q.author}</span>{/if}
                   </span>
-                  <button onclick={() => quotes.remove(i)} aria-label="Remove quote"
+                  <button onclick={() => quotes.removeCustom(i)} aria-label="Remove quote"
                           class="shrink-0" style="color: var(--sempa-text-dim);">
                     <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18 18 6M6 6l12 12"/></svg>
                   </button>
@@ -1654,17 +1686,14 @@
                        onkeydown={(e) => { if (e.key === 'Enter') addQuote(); }}
                        class="min-w-0 flex-1 rounded-lg border px-2.5 py-1.5 text-xs outline-none"
                        style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
-                <input bind:value={newQuoteAuthor} placeholder="Author"
+                <input bind:value={newQuoteAuthor} placeholder="Author (optional)"
                        onkeydown={(e) => { if (e.key === 'Enter') addQuote(); }}
-                       class="w-28 rounded-lg border px-2.5 py-1.5 text-xs outline-none"
+                       class="w-32 rounded-lg border px-2.5 py-1.5 text-xs outline-none"
                        style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
                 <button onclick={addQuote} disabled={!newQuoteText.trim()}
                         class="rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-40"
                         style="background: var(--sempa-accent); color: var(--sempa-btn-fg);">Add</button>
               </div>
-              <button onclick={() => quotes.reset()} class="mt-1 text-[11px] hover:underline" style="color: var(--sempa-text-dim);">
-                Reset to defaults
-              </button>
             </div>
           {/if}
         </div>
