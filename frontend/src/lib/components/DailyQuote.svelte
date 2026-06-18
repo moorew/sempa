@@ -7,15 +7,19 @@
    *    zero and gets out of the way so the top section isn't permanently taller.
    *
    *  - `inline` (desktop): a single quiet line that lives *beside* the header
-   *    content rather than on its own row, so it adds no vertical height. The
-   *    caller hides it (display) when the window is too narrow to spare the room.
+   *    content rather than on its own row, so it adds no vertical height. When
+   *    the host is too narrow to fit the full line, it collapses to a quiet
+   *    quote-mark button that reveals the whole quote in a hover/focus popover —
+   *    so a tight window never just chops the quote mid-word, and the reader
+   *    never has to widen the window to see it.
    *
    * Stable for the whole day (quotes.todays is seeded off the date). Honours the
    * Settings toggle (renders nothing when off) and respects prefers-reduced-motion
    * (renders straight at the resting opacity, and never auto-collapses).
    */
   import { quotes } from '$lib/stores/quotes.svelte';
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
+  import { Quote } from 'lucide-svelte';
 
   let { variant = 'collapse' }: { variant?: 'collapse' | 'inline' } = $props();
 
@@ -40,13 +44,63 @@
   });
 
   const collapseOpacity = $derived(reduced ? REST : gone ? 0 : shown ? 1 : 0);
+
+  /* ── Inline overflow handling ───────────────────────────────────────────────
+     Compare the full line's natural width (an always-present, off-screen measurer
+     — so the check is stable no matter which branch renders) against the host's
+     available width. Too narrow → collapse to the quote-mark button + popover. */
+  let hostEl = $state<HTMLElement>();
+  let measureEl = $state<HTMLElement>();
+  let collapsed = $state(false);
+  let popOpen = $state(false);
+
+  $effect(() => {
+    if (variant !== 'inline' || !hostEl || !measureEl) return;
+    const host = hostEl, meas = measureEl;
+    const recheck = () => {
+      const next = meas.scrollWidth > host.clientWidth + 1;
+      // Read+write `collapsed` untracked so this effect never re-triggers itself
+      // (a tracked read-modify-write loops → effect_update_depth_exceeded; see
+      // CLAUDE.md "$effect read-modify-write" gotcha).
+      untrack(() => { if (next !== collapsed) collapsed = next; });
+    };
+    recheck();
+    const ro = new ResizeObserver(recheck);
+    ro.observe(host);
+    return () => ro.disconnect();
+  });
 </script>
 
 {#if q}
   {#if variant === 'inline'}
-    <p class="quote-inline" style="opacity: {REST};" title={q.author ? `“${q.text}” — ${q.author}` : q.text}>
-      “{q.text}”{#if q.author}<span class="author"> — {q.author}</span>{/if}
-    </p>
+    <div class="quote-host" bind:this={hostEl}>
+      <!-- Always present, off-screen: full line at natural width, so the fit
+           check is independent of which branch is currently rendered. -->
+      <span class="quote-measure" bind:this={measureEl} aria-hidden="true"
+        >“{q.text}”{#if q.author} — {q.author}{/if}</span>
+
+      {#if collapsed}
+        <span class="quote-popwrap">
+          <button type="button" class="quote-chip"
+                  aria-label={q.author ? `Quote of the day: “${q.text}” — ${q.author}` : `Quote of the day: “${q.text}”`}
+                  onmouseenter={() => (popOpen = true)}
+                  onmouseleave={() => (popOpen = false)}
+                  onfocus={() => (popOpen = true)}
+                  onblur={() => (popOpen = false)}>
+            <Quote size={15} strokeWidth={2} />
+          </button>
+          {#if popOpen}
+            <span class="quote-pop" role="tooltip">
+              “{q.text}”{#if q.author}<span class="author"> — {q.author}</span>{/if}
+            </span>
+          {/if}
+        </span>
+      {:else}
+        <p class="quote-inline" style="opacity: {REST};">
+          “{q.text}”{#if q.author}<span class="author"> — {q.author}</span>{/if}
+        </p>
+      {/if}
+    </div>
   {:else}
     <!-- Self-managed vertical space: the wrapper owns its padding so that when it
          collapses, the entire band (text + spacing) reclaims to zero height. The
@@ -106,7 +160,90 @@
     opacity: 0.7;
   }
 
+  /* ── Inline → collapsed quote-mark button + popover ─────────────────────── */
+  .quote-host {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Off-screen measurer: mirrors .quote-inline metrics, never wraps, no layout. */
+  .quote-measure {
+    position: absolute;
+    top: 0;
+    left: 0;
+    visibility: hidden;
+    pointer-events: none;
+    white-space: nowrap;
+    font-size: 12.5px;
+    font-style: italic;
+    line-height: 1.4;
+  }
+  .quote-popwrap {
+    position: relative;
+    display: inline-flex;
+  }
+  .quote-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    width: 30px;
+    border-radius: 9px;
+    color: var(--sempa-text-dim);
+    background: transparent;
+    cursor: pointer;
+    transition: color 150ms ease, background 150ms ease;
+  }
+  .quote-chip:hover,
+  .quote-chip:focus-visible {
+    color: var(--sempa-accent);
+    background: var(--sempa-accent-bg);
+    outline: none;
+  }
+  .quote-pop {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 60;
+    display: block;
+    width: max-content;
+    max-width: min(320px, 70vw);
+    padding: 9px 12px;
+    border-radius: 10px;
+    background: var(--sempa-bg-panel);
+    border: 1px solid var(--sempa-border);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    font-size: 12.5px;
+    font-style: italic;
+    line-height: 1.45;
+    text-align: center;
+    color: var(--sempa-text);
+    animation: quote-pop-in 140ms ease;
+  }
+  /* Upward-pointing arrow (border, then panel-fill on top). */
+  .quote-pop::before,
+  .quote-pop::after {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+  }
+  .quote-pop::before { border-bottom-color: var(--sempa-border); }
+  .quote-pop::after { margin-bottom: -1px; border-bottom-color: var(--sempa-bg-panel); }
+
+  @keyframes quote-pop-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(-3px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .quote-collapse { transition: none; }
+    .quote-pop { animation: none; }
   }
 </style>
