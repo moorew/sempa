@@ -1,0 +1,22 @@
+pkgbase = sempa-bin
+	pkgdesc = Calm, self-hosted task manager — plan your day with intention
+	pkgver = 1.2.0
+	pkgrel = 1
+	url = https://sempa.ca
+	arch = x86_64
+	arch = aarch64
+	license = AGPL-3.0-or-later
+	depends = webkit2gtk-4.1
+	depends = gtk3
+	depends = libayatana-appindicator
+	optdepends = libsecret: Secret Service keyring for the account token
+	options = !strip
+	options = !debug
+	provides = sempa
+	conflicts = sempa
+	source_x86_64 = sempa-bin-1.2.0-x86_64.deb::https://github.com/moorew/sempa/releases/download/v1.2.0/Sempa_1.2.0_amd64.deb
+	sha256sums_x86_64 = 32762854e5d556024945a372b835df552ffda7c24ae770a52b8093f3f416cac4
+	source_aarch64 = sempa-bin-1.2.0-aarch64.deb::https://github.com/moorew/sempa/releases/download/v1.2.0/Sempa_1.2.0_arm64.deb
+	sha256sums_aarch64 = a56d09c39080ecc6c8586c3d725ef0ffad948a248858062687ed07261525d3e4
+
+pkgname = sempa-bin
