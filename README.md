@@ -45,9 +45,26 @@ The OpenSSF badge above links to Sempa's full [Best Practices assessment](https:
 | **Web** | Self-host with Docker (see below) |
 | **Android** | APK from [GitHub Releases](../../releases) or build from source |
 | **Windows** | Sempa-branded `.exe` setup (NSIS) or `.msi` from [GitHub Releases](../../releases) (x64 + ARM64) |
+| **Linux** | `.AppImage`, `.deb`, `.rpm` from [GitHub Releases](../../releases) (x86_64 + aarch64), or the AUR `sempa-bin` package. Flatpak/Flathub is on the way. |
+| **Sempa Dock** | A Raspberry Pi touch appliance that boots straight into today — see [`sempa-linux/dock`](sempa-linux/dock) |
 | **PWA** | Install from your browser when visiting your Sempa instance |
 
 All apps connect to your self-hosted server — your data stays on your machine.
+
+### Installing on Linux
+
+- **AppImage** — `chmod +x Sempa_*.AppImage && ./Sempa_*.AppImage`. Portable, no install; self-updates via the in-app updater.
+- **Debian/Ubuntu/Pop!/Mint** — `sudo apt install ./Sempa_*_amd64.deb` (or `_arm64`).
+- **Fedora/RHEL/openSUSE** — `sudo dnf install ./Sempa-*.x86_64.rpm` (or `aarch64`).
+- **Arch/Manjaro** — `paru -S sempa-bin` (once published to the AUR; the `PKGBUILD` lives in [`sempa-linux/aur`](sempa-linux/aur)).
+
+The app id is `ca.sempa.Sempa`; it registers the `sempa://` URL scheme and a desktop
+entry with **New task / Plan day / Shutdown ritual** launcher actions. On first launch,
+point it at your server URL. It follows your system light/dark theme and window-button
+layout, and stores its token in the **Secret Service keyring** (not plaintext).
+
+> WebKitGTK note: if the window is blank on an older GPU/driver, launch with
+> `WEBKIT_DISABLE_DMABUF_RENDERER=1 sempa` — a known WebKitGTK quirk, not a Sempa bug.
 
 ---
 
@@ -308,7 +325,7 @@ All integrations are optional and configured through the Settings UI after first
 
 ## Connecting mobile & desktop apps
 
-The Android app and Windows desktop app connect to your self-hosted server:
+The Android app and the Windows/Linux desktop apps connect to your self-hosted server:
 
 1. **Install the app** from [GitHub Releases](../../releases)
 2. **Open the app** — you'll see a "Server URL" field
@@ -323,7 +340,7 @@ Both your phone and server must be on the same Tailscale network (or the server 
 
 ## User Guide
 
-Everything below is how to *use* Sempa day to day. Features work the same on web, the Windows desktop app, and Android, except where noted.
+Everything below is how to *use* Sempa day to day. Features work the same on web, the Windows and Linux desktop apps, and Android, except where noted.
 
 ### First run
 
@@ -489,8 +506,8 @@ Configured in **Settings → Notifications**.
 | Server briefly down | The reminder fires when the server returns (late, not lost) |
 | Android device fully offline / app closed | An **on-device OS alarm** still fires (scheduled locally from your tasks) |
 | Settings changed offline | Saved locally and synced to the server on reconnect |
-| Windows desktop, app running | Fires in-app with your chosen sound |
-| Windows desktop, app closed | Reminders need the app running (no background push in the desktop shell) |
+| Windows/Linux desktop, app running | Fires in-app with your chosen sound, plus a native OS notification (via the XDG portal on Linux) |
+| Windows/Linux desktop, app closed | Reminders need the app running — enable **Launch at login** (Settings → System) and minimize to tray to keep it available |
 
 > Custom notification *sounds* play for the in-app/desktop reminder, the settings preview, and Android channels. A **background** web-push notification on a plain browser uses the OS default sound — a browser platform limit.
 
@@ -511,7 +528,7 @@ The **Today** view is a rolling board of day columns with today anchored at the 
 
 ### Desktop widget
 
-The Windows desktop app includes a floating **Widget** — a compact, always-on-top panel showing what's up next with quick checkboxes and a quick-add box. Open it from the sidebar icon rail (or a single click on the system-tray icon); the tray's double-click opens the main window.
+The Windows and Linux desktop apps include a floating **Widget** — a compact, always-on-top panel showing what's up next with quick checkboxes and a quick-add box. Open it from the sidebar icon rail (or a single click on the system-tray icon — `StatusNotifierItem` on Linux; GNOME needs the AppIndicator extension); the tray's double-click opens the main window. There's also a global **Quick-Add** window (`Ctrl/Cmd+Shift+Space`).
 
 ### Offline & sync
 
@@ -523,7 +540,7 @@ In **Settings → Appearance** you pick from **six full-interface themes** — *
 
 ### Updates
 
-Sempa checks GitHub for newer releases and surfaces them in-app: a subtle indicator in the nav rail, an update toast (Download · What's new · Later), and **Settings → About**, which shows the current version, update channel (Stable/Beta), an automatic-checks toggle, when it last checked, and a manual **Check for updates**. On web and desktop this points you to the installer download — no setup required. Optional silent background self-update for the desktop app (download + restart-to-apply via `tauri-plugin-updater`) is documented in [`docs/UPDATER.md`](docs/UPDATER.md) and activates once an updater signing key is added to CI.
+Sempa checks GitHub for newer releases and surfaces them in-app: a subtle indicator in the nav rail, an update toast (Download · What's new · Later), and **Settings → About**, which shows the current version, update channel (Stable/Beta), an automatic-checks toggle, when it last checked, and a manual **Check for updates**. On web and desktop this points you to the installer download — no setup required. On Linux, **Flatpak** updates through Flathub and the **AppImage** self-updates via the signed updater; `.deb`/`.rpm` update from the release (or a distro repo). Optional silent background self-update for the desktop app (download + restart-to-apply via `tauri-plugin-updater`) is documented in [`docs/UPDATER.md`](docs/UPDATER.md) and activates once an updater signing key is added to CI.
 
 ### Settings overview
 
@@ -593,7 +610,21 @@ npx cap open android   # opens in Android Studio
 # Windows (requires Rust toolchain)
 cd frontend
 npm run tauri build
+
+# Linux desktop (requires Rust + WebKitGTK dev libs)
+#   Debian/Ubuntu: sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev \
+#                    libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev \
+#                    patchelf xdg-utils
+#   Fedora:        sudo dnf install webkit2gtk4.1-devel gtk3-devel \
+#                    libappindicator-gtk3-devel librsvg2-devel libsoup3-devel
+cd frontend
+npm run tauri build              # → .deb, .rpm, .AppImage under src-tauri/target/release/bundle/
 ```
+
+> The Linux build reads a Linux-only config overlay (`src-tauri/tauri.linux.conf.json`)
+> that sets the Flathub app id `ca.sempa.Sempa` and the deb/rpm/appimage targets;
+> Windows/macOS keep `com.sempa.desktop`. The **Sempa Dock** appliance (Raspberry Pi)
+> reuses this same build in dock mode — see [`sempa-linux/dock`](sempa-linux/dock).
 
 ### Project structure
 

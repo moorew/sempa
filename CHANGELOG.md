@@ -6,6 +6,31 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [Unreleased]
+
+### Added
+- **Sempa for Linux** — a native desktop app (Tauri/WebKitGTK) shipping as
+  `.AppImage`, `.deb`, `.rpm` (x86_64 + aarch64) and an AUR `sempa-bin` package,
+  with Flatpak/Flathub on the way. App id `ca.sempa.Sempa`, the `sempa://` URL
+  scheme, and launcher actions (New task / Plan day / Shutdown ritual).
+- **Native Linux feel** — follows the system light/dark scheme (live) and accent,
+  mirrors your window-button layout in the in-brand titlebar (with a "Use system
+  title bar" option), self-hosted brand fonts (offline, no CDN), reduced-motion
+  and high-contrast support, and a responsive icon rail + ultrawide **cockpit mode**.
+- **Linux surfaces** — tray (`StatusNotifierItem`), a global **Quick-Add** window
+  (`Ctrl/Cmd+Shift+Space`), and a **Launch at login** toggle.
+- **The Sempa Dock** — a Raspberry Pi touch appliance (kiosk image scaffold) that
+  boots straight into today on the day thread, with an on-screen keyboard and an
+  ambient idle face.
+- **Device pairing** — pair a Dock (or any device) with a short code approved from
+  a signed-in app; it gets a scoped, revocable token and never holds your password.
+
+### Security
+- Desktop bearer token now lives in the OS **Secret Service keyring** instead of
+  plaintext; tightened the desktop CSP (`font-src 'self'`); least-privilege
+  Flatpak (no `--filesystem=home`, portal-brokered).
+- Patched a transitive `undici` advisory (dev/test tooling only).
+
 ## [1.0.150] - 2026-06-17
 
 ### Changed
