@@ -22,12 +22,18 @@ jobs:
     # x86_64 + aarch64. aarch64 builds natively on GitHub's free arm64 runners
     # (public repo). The aarch64 artifacts double as the base for the Sempa Dock.
     # fail-fast off so one arch failing still uploads the other.
+    #
+    # GLIBC FLOOR: build on ubuntu-22.04 (glibc 2.35), NOT 24.04 (glibc 2.39).
+    # AppImages bundle app libs but NOT glibc, so a binary built against 2.39
+    # fails to even start on any older distro (Ubuntu 22.04, Debian 12, Mint 21,
+    # Zorin 17, …) — the dynamic loader bails before main(). 22.04 is the oldest
+    # base with webkit2gtk-4.1, giving the widest reach.
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { arch: x86_64, runner: ubuntu-24.04, debarch: amd64 }
-          - { arch: aarch64, runner: ubuntu-24.04-arm, debarch: arm64 }
+          - { arch: x86_64, runner: ubuntu-22.04, debarch: amd64 }
+          - { arch: aarch64, runner: ubuntu-22.04-arm, debarch: arm64 }
     permissions:
       contents: write   # attach bundles to the GitHub Release on tags
 
@@ -39,10 +45,13 @@ jobs:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       # AppImage tooling (linuxdeploy + appimagetool) ships as AppImages that
-      # mount via FUSE 2. The runner has no FUSE 2, so they must self-extract.
+      # mount via FUSE 2; runners lack it, so they self-extract instead.
       # NO_STRIP avoids a linuxdeploy strip step that trips on the runner toolchain.
       APPIMAGE_EXTRACT_AND_RUN: 1
       NO_STRIP: true
+      # WebKitGTK software-render path for the headless smoke test (no GPU in CI).
+      WEBKIT_DISABLE_DMABUF_RENDERER: 1
+      LIBGL_ALWAYS_SOFTWARE: 1
 
     steps:
       - name: Checkout
@@ -66,8 +75,10 @@ jobs:
             file \
             desktop-file-utils \
             appstream \
-            libfuse2t64 \
-            xdg-utils
+            libfuse2 \
+            xdg-utils \
+            xvfb \
+            dbus-x11
 
       - name: Setup Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -107,7 +118,30 @@ jobs:
       - name: Validate desktop entry + AppStream
         run: |
           desktop-file-validate sempa-linux/desktop/ca.sempa.Sempa.desktop
-          appstreamcli validate --no-net sempa-linux/desktop/ca.sempa.Sempa.metainfo.xml
+          appstreamcli validate sempa-linux/desktop/ca.sempa.Sempa.metainfo.xml
+
+      # Smoke test: actually LAUNCH the built AppImage headlessly on this runner's
+      # glibc. Catches "doesn't start" regressions (missing libs, too-new glibc,
+      # plugin init panics) that a compile-only build can't — exactly the class of
+      # bug that shipped a 24.04-built binary that wouldn't run on 22.04.
+      - name: Smoke test (app launches)
+        run: |
+          APP=$(ls frontend/src-tauri/target/release/bundle/appimage/Sempa_*.AppImage | head -1)
+          chmod +x "$APP"
+          rm -f /tmp/sempa-startup.log
+          # Run for 30s under a virtual display + private session bus, then stop.
+          xvfb-run -a dbus-run-session -- timeout 30 "$APP" || true
+          echo '----- sempa-startup.log -----'; cat /tmp/sempa-startup.log 2>/dev/null || true
+          if [ ! -f /tmp/sempa-startup.log ]; then
+            echo '::error::no startup log — the app never started (loader/glibc failure?)'; exit 1
+          fi
+          if ! grep -q 'setup: complete' /tmp/sempa-startup.log; then
+            echo '::error::app started but never reached "setup: complete"'; exit 1
+          fi
+          if grep -qE 'PANIC|FATAL' /tmp/sempa-startup.log; then
+            echo '::error::startup panic/fatal in the log'; exit 1
+          fi
+          echo 'smoke test OK — app launched and completed setup'
 
       - name: Upload artifacts (non-tag runs)
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
