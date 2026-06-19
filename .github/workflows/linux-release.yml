@@ -88,7 +88,9 @@ jobs:
 
       - name: Build Tauri app (deb/rpm/AppImage)
         working-directory: frontend
-        run: npx tauri build
+        # --verbose surfaces linuxdeploy/appimagetool stderr (Tauri otherwise
+        # swallows it behind "failed to run linuxdeploy").
+        run: npx tauri build --verbose
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

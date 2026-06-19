@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* ── Self-hosted brand fonts ──────────────────────────────────────────────
+   Plus Jakarta Sans (UI), Hanken Grotesk (wordmark), JetBrains Mono (mono),
+   bundled as woff2 so the app never depends on a font CDN — offline-first and
+   sandbox-clean (the Flatpak grants no CDN access). See fonts.css. */
+@import "./fonts.css";
+
 /* ── Theme token system ──────────────────────────────────────────────────
    Six full-interface themes (terracotta default + forest/plum/slate/oled/ocean),
    each light + dark, selected via the `data-theme` attribute on <html>. Owns
@@ -16,9 +22,18 @@
 /* Class-based dark mode */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* ── Global font ────────────────────────────────────────────────────────── */
+/* ── Global font ──────────────────────────────────────────────────────────
+   The UI font is a token so "Use system UI font" (Settings → Appearance) can
+   swap the brand sans for the native stack by toggling `.system-font` on <html>
+   — a deliberate native-feel option on Linux. Mono is unaffected. */
+:root {
+  --sempa-font-ui: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+:root.system-font {
+  --sempa-font-ui: system-ui, -apple-system, 'Segoe UI', Cantarell, 'Noto Sans', sans-serif;
+}
 * {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-family: var(--sempa-font-ui);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -293,4 +308,38 @@ input[type="number"]::-webkit-outer-spin-button {
 input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────
+   Honor the system "reduce motion" preference (GNOME/KDE expose it through the
+   org.freedesktop.appearance portal; WebKitGTK maps it to this media query).
+   App-wide safety net — entrance/day-thread animations are already gated, this
+   neutralizes any remaining transitions/animations without breaking
+   animationend-driven logic (duration ~0 still fires the event). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── High contrast ────────────────────────────────────────────────────────
+   When the system requests more contrast (portal `contrast` flag → WebKitGTK
+   `prefers-contrast`), push the muted text tiers up to full strength and make
+   hairlines/borders solid so every control clears WCAG AAA. Colour identity is
+   kept; only the low-contrast greys are lifted. */
+@media (prefers-contrast: more) {
+  :root,
+  :root.dark {
+    --sempa-text-soft: var(--sempa-text);
+    --sempa-text-dim: var(--sempa-text-soft);
+    --sempa-border: var(--sempa-text-soft);
+    --sempa-hair: var(--sempa-text-soft);
+  }
+  *:focus-visible {
+    outline: 2px solid var(--sempa-accent) !important;
+    outline-offset: 2px;
+  }
 }

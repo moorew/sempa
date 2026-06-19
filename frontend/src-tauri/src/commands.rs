@@ -166,3 +166,40 @@ pub async fn save_sticky_positions(_positions: Vec<StickyPosition>) -> Result<()
 pub async fn get_sticky_positions() -> Result<Vec<StickyPosition>, String> {
     Ok(vec![])
 }
+
+// ── Native window-button layout (Linux) ──────────────────────────────────────
+
+/// Return the desktop's window-button layout so the custom titlebar can mirror
+/// the system order/side (e.g. GNOME `appmenu:close`, KDE `:minimize,maximize,close`).
+///
+/// Reads GTK's `gtk-decoration-layout`, which the GTK port populates from the
+/// active desktop (GNOME's `button-layout`, KDE's settings, etc.) — so it's
+/// correct without talking to D-Bus directly. GTK must be touched on the main
+/// thread, hence the hop. Returns `None` off Linux or if it can't be read; the
+/// frontend then falls back to its configured default.
+#[tauri::command]
+pub fn window_decoration_layout(app: AppHandle) -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        use std::sync::mpsc;
+        let (tx, rx) = mpsc::channel();
+        let dispatched = app.run_on_main_thread(move || {
+            use gtk::prelude::SettingsExt;
+            let layout = gtk::Settings::default()
+                .and_then(|s| s.gtk_decoration_layout())
+                .map(|g| g.to_string());
+            let _ = tx.send(layout);
+        });
+        if dispatched.is_err() {
+            return None;
+        }
+        rx.recv_timeout(std::time::Duration::from_millis(500))
+            .ok()
+            .flatten()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = app;
+        None
+    }
+}

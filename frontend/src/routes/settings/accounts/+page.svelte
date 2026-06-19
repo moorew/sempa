@@ -4,6 +4,7 @@
   import { api, getServerUrl, clearTauriToken, clearNativeToken, resetApiResolver } from '$lib/api';
   import type { AiTitleConfig } from '$lib/api';
   import { theme } from '$lib/stores/theme.svelte';
+  import { windowChrome } from '$lib/stores/windowChrome.svelte';
   import { prefs, AI_FEATURE_META } from '$lib/stores/prefs.svelte';
   import { quotes } from '$lib/stores/quotes.svelte';
 
@@ -1559,35 +1560,75 @@
           </button>
         </div>
 
-        <!-- Mode: segmented pill (disabled for the dark-only OLED theme) -->
+        <!-- Mode: System / Light / Dark. System follows the OS colour scheme live
+             (org.freedesktop.appearance on Linux). Disabled for dark-only OLED. -->
         <div>
           <p class="mb-3 text-xs font-medium" style="color: var(--sempa-text-soft);">Mode</p>
           <div style="display:flex; border-radius:9999px; border:1px solid var(--sempa-border);
                       padding:3px; gap:2px; width:fit-content;
                       {theme.darkOnly ? 'opacity:0.5; pointer-events:none;' : ''}">
-            <button onclick={() => { if (theme.dark) theme.toggle(); }}
-                    disabled={theme.darkOnly} aria-disabled={theme.darkOnly}
-                    class="transition-colors"
-                    style="border-radius:9999px; padding:6px 16px; font-size:13px; border:none; cursor:pointer;
-                           {!theme.dark
-                             ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent); font-weight:600;'
-                             : 'background: transparent; color: var(--sempa-text-soft);'}">
-              Light
-            </button>
-            <button onclick={() => { if (!theme.dark) theme.toggle(); }}
-                    disabled={theme.darkOnly} aria-disabled={theme.darkOnly}
-                    class="transition-colors"
-                    style="border-radius:9999px; padding:6px 16px; font-size:13px; border:none; cursor:pointer;
-                           {theme.dark
-                             ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent); font-weight:600;'
-                             : 'background: transparent; color: var(--sempa-text-soft);'}">
-              Dark
-            </button>
+            {#each [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']] as [val, label] (val)}
+              <button onclick={() => theme.setMode(val as 'system' | 'light' | 'dark')}
+                      disabled={theme.darkOnly} aria-disabled={theme.darkOnly}
+                      aria-pressed={theme.mode === val}
+                      class="transition-colors"
+                      style="border-radius:9999px; padding:6px 16px; font-size:13px; border:none; cursor:pointer;
+                             {theme.mode === val
+                               ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent); font-weight:600;'
+                               : 'background: transparent; color: var(--sempa-text-soft);'}">
+                {label}
+              </button>
+            {/each}
           </div>
           {#if theme.darkOnly}
             <p class="mt-2 text-[11px]" style="color: var(--sempa-text-dim);">OLED Black is a dark-only theme.</p>
           {/if}
         </div>
+
+        <!-- Match system accent — opt-in, only when the platform exposes an accent
+             colour to the webview (Linux GNOME 47+/KDE; also Windows). -->
+        {#if theme.canMatchAccent}
+        <label style="display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer;">
+          <span class="min-w-0">
+            <span class="text-xs font-medium" style="color: var(--sempa-text);">Match system accent</span>
+            <span class="mt-0.5 block text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
+              Use your desktop's accent colour instead of the theme's. Off keeps the Sempa accent.
+            </span>
+          </span>
+          <input type="checkbox" checked={theme.matchAccent}
+                 onchange={(e) => theme.setMatchAccent((e.target as HTMLInputElement).checked)}
+                 style="width:18px; height:18px; accent-color: var(--sempa-accent); cursor:pointer; flex-shrink:0;" />
+        </label>
+        {/if}
+
+        <!-- Use system UI font — swap the brand sans for the native UI font. -->
+        <label style="display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer;">
+          <span class="min-w-0">
+            <span class="text-xs font-medium" style="color: var(--sempa-text);">Use system UI font</span>
+            <span class="mt-0.5 block text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
+              Render the interface in your desktop's font instead of Plus Jakarta Sans.
+            </span>
+          </span>
+          <input type="checkbox" checked={theme.systemFont}
+                 onchange={(e) => theme.setUiFont((e.target as HTMLInputElement).checked ? 'system' : 'brand')}
+                 style="width:18px; height:18px; accent-color: var(--sempa-accent); cursor:pointer; flex-shrink:0;" />
+        </label>
+
+        <!-- Use system title bar — hand window decorations back to the WM (desktop). -->
+        {#if isTauri()}
+        <label style="display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer;">
+          <span class="min-w-0">
+            <span class="text-xs font-medium" style="color: var(--sempa-text);">Use system title bar</span>
+            <span class="mt-0.5 block text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
+              Let your desktop draw the window frame instead of Sempa's. Off keeps the in-app title bar,
+              which mirrors your system's window-button layout.
+            </span>
+          </span>
+          <input type="checkbox" checked={windowChrome.useSystemTitlebar}
+                 onchange={(e) => windowChrome.setUseSystemTitlebar((e.target as HTMLInputElement).checked)}
+                 style="width:18px; height:18px; accent-color: var(--sempa-accent); cursor:pointer; flex-shrink:0;" />
+        </label>
+        {/if}
 
         <!-- Sidebar navigation grouping (desktop rail only) -->
         {#if !mobile.value}

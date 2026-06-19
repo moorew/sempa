@@ -78,6 +78,16 @@ export async function updateTaskbarBadge(count: number): Promise<void> {
     if (t) await t.invoke('update_taskbar_badge', { count });
 }
 
+/**
+ * The desktop's window-button layout string (GTK `gtk-decoration-layout`, e.g.
+ * "appmenu:minimize,maximize,close"). Linux-only; null elsewhere or if unreadable.
+ */
+export async function getDecorationLayout(): Promise<string | null> {
+    const t = getTauri();
+    if (t) return (await t.invoke('window_decoration_layout')) as string | null;
+    return null;
+}
+
 export async function quickAddTask(title: string, plannedDate?: string): Promise<string | null> {
     const t = getTauri();
     if (t) {

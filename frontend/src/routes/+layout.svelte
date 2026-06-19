@@ -26,6 +26,7 @@
   import { api, getServerUrl, getTauriToken, clearTauriToken, clearNativeToken, resetApiResolver } from '$lib/api';
   import { isTauri, hasLocalDb, onSyncTrigger } from '$lib/tauri/bridge';
   import { initDeepLinks } from '$lib/tauri/deeplink';
+  import { windowChrome } from '$lib/stores/windowChrome.svelte';
   import { shortcutLabel } from '$lib/platform';
   import { startSync, sync as runSync, syncStore } from '$lib/sync.svelte';
   import PomodoroTimer from '$lib/components/PomodoroTimer.svelte';
@@ -176,6 +177,10 @@
       // sempa:// deep links (OAuth redirect, .desktop launcher actions, second
       // launches forwarded by single-instance) → route into the app.
       void initDeepLinks((url) => goto(url));
+
+      // Mirror the system window-button layout + restore the "use system title
+      // bar" preference (Linux native feel).
+      void windowChrome.init();
 
       // Desktop: suppress the webview's generic right-click menu (Reload /
       // Inspect…). Surfaces that want a real menu call contextMenu.show(), which

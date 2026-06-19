@@ -148,6 +148,7 @@ pub fn run() {
             commands::save_sticky_positions,
             commands::get_sticky_positions,
             commands::update_taskbar_badge,
+            commands::window_decoration_layout,
         ])
         .run(tauri::generate_context!());
 

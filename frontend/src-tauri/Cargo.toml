@@ -34,6 +34,12 @@ uuid = { version = "1", features = ["v4"] }
 [target.'cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))'.dependencies]
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 
+# Linux only: read the system window-button layout (gtk-decoration-layout) so the
+# custom titlebar mirrors GNOME/KDE order + side. Version matches the gtk already
+# in the wry/tao dependency tree (0.18) to avoid a duplicate gtk build.
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18"
+
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", features = [
     "Win32_UI_Shell",

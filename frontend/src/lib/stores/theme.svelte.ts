@@ -1,7 +1,12 @@
-const DARK_KEY       = 'sempa-theme';        // 'dark' | 'light' — light/dark preference
+const DARK_KEY       = 'sempa-theme';        // 'dark' | 'light' | absent (System)
 const THEME_NAME_KEY = 'sempa-theme-name';   // which of the six interface themes
 const SCALE_KEY      = 'sempa-text-scale';   // root font-size percent
 const ACCENT_KEY     = 'sempa-accent';       // legacy (15-swatch accent) — migrated away
+const UIFONT_KEY     = 'sempa-ui-font';      // 'brand' | 'system' (Use system UI font)
+const MATCH_ACCENT_KEY = 'sempa-match-accent'; // '1' → accent follows the system (Linux)
+
+export type ColorMode = 'system' | 'light' | 'dark';
+export type UiFont = 'brand' | 'system';
 
 export type ThemeName = 'terracotta' | 'forest' | 'plum' | 'slate' | 'oled' | 'ocean';
 
@@ -30,6 +35,14 @@ function createThemeStore() {
   let dark      = $state(false);
   let themeName = $state<ThemeName>('terracotta');
   let textScale = $state(100); // percent, e.g. 90 / 100 / 110
+  let uiFont      = $state<UiFont>('brand');
+  let matchAccent = $state(false);
+
+  /** Whether the system currently prefers a dark scheme. */
+  function systemPrefersDark(): boolean {
+    return typeof window !== 'undefined'
+      && !!window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+  }
 
   function init() {
     if (typeof localStorage === 'undefined') return;
@@ -60,7 +73,45 @@ function createThemeStore() {
       if (n >= 80 && n <= 130) textScale = n;
     }
     applyScale(textScale);
+
+    uiFont = localStorage.getItem(UIFONT_KEY) === 'system' ? 'system' : 'brand';
+    applyUiFont();
+    matchAccent = localStorage.getItem(MATCH_ACCENT_KEY) === '1';
+    applyAccent();
     applyThemeColor();
+
+    // Live-follow the system scheme: while in System mode (no explicit light/dark
+    // pref) and not OLED, flip when the OS theme changes — no restart needed.
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      mq.addEventListener?.('change', (e) => {
+        if (localStorage.getItem(DARK_KEY) === null && themeName !== 'oled') {
+          dark = e.matches;
+          applyDark();
+          applyThemeColor();
+        }
+      });
+    }
+  }
+
+  function applyUiFont() {
+    if (typeof document === 'undefined') return;
+    document.documentElement.classList.toggle('system-font', uiFont === 'system');
+  }
+
+  // "Match system accent" (Linux/GNOME 47+/KDE): when the webview exposes the
+  // platform accent via the CSS AccentColor system colour, drive --sempa-accent
+  // from it (inline style wins over the per-theme stylesheet value). Guarded by
+  // CSS.supports so an engine without AccentColor cleanly keeps brand terracotta.
+  function applyAccent() {
+    if (typeof document === 'undefined') return;
+    const el = document.documentElement;
+    const supported = typeof CSS !== 'undefined' && CSS.supports?.('color', 'AccentColor');
+    if (matchAccent && supported) {
+      el.style.setProperty('--sempa-accent', 'AccentColor');
+    } else {
+      el.style.removeProperty('--sempa-accent');
+    }
   }
 
   function applyTheme(name: ThemeName) {
@@ -129,17 +180,58 @@ function createThemeStore() {
     applyThemeColor();
   }
 
+  /** Explicit appearance mode: System (follow OS, live), Light, or Dark. */
+  function setMode(mode: ColorMode) {
+    if (themeName === 'oled') return; // dark-only theme ignores the mode switch
+    if (mode === 'system') {
+      localStorage.removeItem(DARK_KEY);
+      dark = systemPrefersDark();
+    } else {
+      localStorage.setItem(DARK_KEY, mode);
+      dark = mode === 'dark';
+    }
+    applyDark();
+    applyThemeColor();
+  }
+
+  function setUiFont(font: UiFont) {
+    uiFont = font;
+    localStorage.setItem(UIFONT_KEY, font);
+    applyUiFont();
+  }
+
+  function setMatchAccent(on: boolean) {
+    matchAccent = on;
+    localStorage.setItem(MATCH_ACCENT_KEY, on ? '1' : '0');
+    applyAccent();
+  }
+
   return {
     get dark()      { return dark; },
     get theme()     { return themeName; },
     get textScale() { return textScale; },
+    /** 'system' | 'light' | 'dark' — the explicit appearance mode. */
+    get mode(): ColorMode {
+      const saved = typeof localStorage !== 'undefined' ? localStorage.getItem(DARK_KEY) : null;
+      return saved === 'dark' ? 'dark' : saved === 'light' ? 'light' : 'system';
+    },
+    get systemFont() { return uiFont === 'system'; },
+    /** True when the accent is being driven from the system accent colour. */
+    get matchAccent() { return matchAccent; },
+    /** Whether this engine can follow the system accent (CSS AccentColor). */
+    get canMatchAccent() {
+      return typeof CSS !== 'undefined' && !!CSS.supports?.('color', 'AccentColor');
+    },
     /** True when the active theme can't switch modes (OLED). */
     get darkOnly()  { return themeName === 'oled'; },
     THEMES,
     init,
     toggle: toggleDark,
+    setMode,
     setTheme,
     setScale,
+    setUiFont,
+    setMatchAccent,
   };
 }
 
