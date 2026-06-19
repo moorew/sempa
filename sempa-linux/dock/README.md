@@ -65,10 +65,14 @@ No account password ever lives on the device (PI_DOCK_SPEC §2.7, §2.12):
 3. Revoke any device from the same Settings panel (`DELETE /api/v1/devices/{id}`),
    which deletes the underlying session immediately.
 
-Backend: migration `020_device_pairing.sql` + `db.PairingStore` +
-`api/pairing.go` (covered by `pairing_test.go`). **Follow-up:** the device session
-is currently TTL-bounded + revocable + token-only; fine-grained *path* scoping
-(restricting the device to today/week endpoints) is a documented next step.
+Backend: migration `020_device_pairing.sql` + `db.PairingStore` + `api/pairing.go`.
+The device session is **scoped** (`scope='device'` on the `sessions` row,
+migration `021`): `requireAuth` enforces a tight allowlist (`deviceAllowed`) —
+read today/this-week tasks + plan + objectives + the realtime stream, and add/
+complete tasks; everything sensitive (integrations, backups, settings, deletes,
+full sync) is 403. Plus TTL-bounded (~1 week) + revocable + token-only. Covered by
+`pairing_test.go` and `auth_scope_test.go` (`TestDeviceAllowed`,
+`TestSessionScopeRoundTrip`).
 
 ## Acceptance checklist (verify on hardware)
 
