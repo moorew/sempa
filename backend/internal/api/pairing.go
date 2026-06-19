@@ -105,9 +105,10 @@ func (h *pairingHandler) approve(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "code required")
 		return
 	}
-	// Mint the device session, then attach it. If the code is bad/expired the
-	// Approve fails and the freshly-minted session is dropped immediately.
-	token := h.sessions.create(deviceTokenTTL, "device")
+	// Mint a DEVICE-SCOPED session (restricted allowlist — see deviceAllowed),
+	// then attach it. If the code is bad/expired the Approve fails and the
+	// freshly-minted session is dropped immediately.
+	token := h.sessions.createScoped(deviceTokenTTL, "dock", "device")
 	d, err := h.store.Approve(req.Code, token)
 	if errors.Is(err, db.ErrNotFound) {
 		h.sessions.delete(token)

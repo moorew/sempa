@@ -26,6 +26,11 @@ const sessionCookieName = "sempa_session"
 type sessionEntry struct {
 	Email   string
 	Expires time.Time
+	// Scope gates what the session may do. "full" = a normal logged-in client
+	// (everything). "device" = a paired device (the Dock): a tight allowlist of
+	// today/week task + plan reads and task add/toggle, nothing sensitive — so a
+	// lost/stolen device token can't take over the account. See deviceAllowed.
+	Scope string
 }
 
 type sessionStore struct {
@@ -51,7 +56,7 @@ func (s *sessionStore) loadFromDB() {
 		return
 	}
 	rows, err := s.db.Query(
-		`SELECT id, email, expires_at FROM sessions WHERE expires_at > ?`,
+		`SELECT id, email, expires_at, scope FROM sessions WHERE expires_at > ?`,
 		time.Now().UTC().Format(sessionTimeFmt))
 	if err != nil {
 		return
@@ -60,30 +65,39 @@ func (s *sessionStore) loadFromDB() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for rows.Next() {
-		var id, email, exp string
-		if err := rows.Scan(&id, &email, &exp); err != nil {
+		var id, email, exp, scope string
+		if err := rows.Scan(&id, &email, &exp, &scope); err != nil {
 			continue
 		}
 		t, err := time.Parse(sessionTimeFmt, exp)
 		if err != nil {
 			continue
 		}
-		s.entries[id] = sessionEntry{Email: email, Expires: t}
+		if scope == "" {
+			scope = "full"
+		}
+		s.entries[id] = sessionEntry{Email: email, Expires: t, Scope: scope}
 	}
 }
 
+// create mints a normal full-access session (cookie/Bearer login).
 func (s *sessionStore) create(ttl time.Duration, email string) string {
+	return s.createScoped(ttl, email, "full")
+}
+
+// createScoped mints a session with an explicit scope ("full" or "device").
+func (s *sessionStore) createScoped(ttl time.Duration, email, scope string) string {
 	b := make([]byte, 32)
 	_, _ = rand.Read(b)
 	id := hex.EncodeToString(b)
 	expires := time.Now().Add(ttl)
 	s.mu.Lock()
-	s.entries[id] = sessionEntry{Email: email, Expires: expires}
+	s.entries[id] = sessionEntry{Email: email, Expires: expires, Scope: scope}
 	s.mu.Unlock()
 	if s.db != nil {
 		_, _ = s.db.Exec(
-			`INSERT OR REPLACE INTO sessions (id, email, expires_at) VALUES (?, ?, ?)`,
-			id, email, expires.UTC().Format(sessionTimeFmt))
+			`INSERT OR REPLACE INTO sessions (id, email, expires_at, scope) VALUES (?, ?, ?, ?)`,
+			id, email, expires.UTC().Format(sessionTimeFmt), scope)
 	}
 	return id
 }
@@ -396,12 +410,48 @@ func (h *authHandler) requireAuth(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		if _, ok := h.extractSession(r); !ok {
+		entry, ok := h.extractSession(r)
+		if !ok {
 			respondError(w, http.StatusUnauthorized, "not authenticated")
+			return
+		}
+		// A device-scoped (paired Dock) token may only touch the tight set the
+		// Dock needs; everything else is forbidden so a leaked device token can't
+		// reach integrations, backups, settings, or destructive actions.
+		if entry.Scope == "device" && !deviceAllowed(r.Method, r.URL.Path) {
+			respondError(w, http.StatusForbidden, "not permitted for this device")
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// deviceAllowed is the allowlist for "device"-scoped sessions (the Sempa Dock):
+// read today/this-week tasks + plan + objectives, the realtime stream, and
+// add/complete tasks. Anything not listed is denied. Keep in lockstep with what
+// the /dock UI actually calls.
+func deviceAllowed(method, path string) bool {
+	switch {
+	// Realtime stream.
+	case method == "GET" && path == "/api/v1/events":
+		return true
+	// Task reads + add (create) + complete/reorder (PATCH /tasks/{id}).
+	case method == "GET" && path == "/api/v1/tasks":
+		return true
+	case method == "POST" && path == "/api/v1/tasks":
+		return true
+	case method == "PATCH" && strings.HasPrefix(path, "/api/v1/tasks/"):
+		return true
+	// Daily plan (intention) + weekly objective + tags — read only.
+	case method == "GET" && strings.HasPrefix(path, "/api/v1/plans/"):
+		return true
+	case method == "GET" && path == "/api/v1/objectives":
+		return true
+	case method == "GET" && path == "/api/v1/tags":
+		return true
+	default:
+		return false
+	}
 }
 
 // ── Google OAuth ──────────────────────────────────────────────────────────────
