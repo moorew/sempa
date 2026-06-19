@@ -55,6 +55,7 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 	setup := &setupHandler{configs: configStore}
 	fmCalStore := db.NewFastmailCalStore(database)
 	auth := newAuthHandler(cfg, database)
+	pairing := &pairingHandler{store: db.NewPairingStore(database), sessions: auth.sessions}
 
 	hub := NewEventHub()
 
@@ -153,6 +154,13 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 		// Backup Drive OAuth callback (drive.file scope) — same redirect-flow rules
 		r.Get("/backup/drive/callback", backups.driveCallback)
 
+		// Device pairing — start/status are public (the unpaired device has no
+		// token yet); approval is authenticated below.
+		r.Route("/devices/pair", func(r chi.Router) {
+			r.Post("/start", pairing.start)
+			r.Get("/status", pairing.status)
+		})
+
 		// All remaining API routes require session auth (if auth is configured)
 		r.Group(func(r chi.Router) {
 			r.Use(auth.requireAuth)
@@ -248,6 +256,10 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 			r.Route("/devices", func(r chi.Router) {
 				r.Post("/", devices.register)
 				r.Delete("/", devices.unregister)
+				// Paired devices (Dock): approve a code, list, revoke.
+				r.Post("/pair/approve", pairing.approve)
+				r.Get("/", pairing.list)
+				r.Delete("/{id}", pairing.revoke)
 			})
 
 			r.Route("/notifications", func(r chi.Router) {

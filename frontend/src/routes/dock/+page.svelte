@@ -12,7 +12,7 @@
    * full app; the Dock does add + check (the core kiosk gestures).
    */
   import { onMount } from 'svelte';
-  import { api } from '$lib/api';
+  import { api, getTauriToken, setTauriToken, initTauriToken } from '$lib/api';
   import { today } from '$lib/utils';
   import { realtime } from '$lib/stores/realtime.svelte';
   import type { Task } from '$lib/types';
@@ -42,6 +42,36 @@
   let doneOpen = $state(false);
   let adding = $state(false);
   let draft = $state('');
+
+  // ── Pairing gate ──────────────────────────────────────────────────────────
+  // On the appliance the device has no token until paired: show a code, the user
+  // approves it from a signed-in app, then we receive + store the device token.
+  let needsPairing = $state(false);
+  let pairCode = $state('');
+  let pairPoll: ReturnType<typeof setInterval> | null = null;
+
+  async function startPairing() {
+    needsPairing = true;
+    try {
+      const { code } = await api.devices.pairStart('Sempa Dock', 'dock');
+      pairCode = code;
+    } catch { setTimeout(startPairing, 4000); return; }
+    if (pairPoll) clearInterval(pairPoll);
+    pairPoll = setInterval(async () => {
+      try {
+        const s = await api.devices.pairStatus(pairCode);
+        if (s.status === 'approved' && s.token) {
+          if (pairPoll) clearInterval(pairPoll);
+          setTauriToken(s.token);
+          needsPairing = false;
+          await load();
+        } else if (s.status === 'expired' || s.status === 'unknown') {
+          if (pairPoll) clearInterval(pairPoll);
+          void startPairing(); // fresh code
+        }
+      } catch { /* keep polling */ }
+    }, 2500);
+  }
 
   async function load() {
     try {
@@ -98,12 +128,19 @@
   function backspace() { draft = draft.slice(0, -1); poke(); }
 
   onMount(() => {
-    void load();
+    // Load the device token from the keyring; if there's none, pair first.
+    void initTauriToken().then(() => {
+      if (getTauriToken()) void load();
+      else void startPairing();
+    });
     const t = setInterval(() => { clock = timeLabel(); dateLabel = longDate(); }, 30_000);
     const onResize = () => (w = window.innerWidth);
     window.addEventListener('resize', onResize);
     poke();
-    return () => { clearInterval(t); window.removeEventListener('resize', onResize); if (idleTimer) clearTimeout(idleTimer); };
+    return () => {
+      clearInterval(t); window.removeEventListener('resize', onResize);
+      if (idleTimer) clearTimeout(idleTimer); if (pairPoll) clearInterval(pairPoll);
+    };
   });
   let lastSeen: unknown = null;
   $effect(() => { const ev = realtime.lastEvent; if (ev !== lastSeen) { lastSeen = ev; void load(); } });
@@ -119,7 +156,22 @@
          font-family:'Plus Jakarta Sans',sans-serif; padding:{c.pad}px; display:flex; flex-direction:column;
          cursor:none; user-select:none;">
 
-  {#if idle}
+  {#if needsPairing}
+    <!-- Pairing: show a code; approve it from a signed-in Sempa app. -->
+    <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; text-align:center; padding:40px;">
+      <span style="color:var(--sempa-accent);">
+        <svg width="48" height="48" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+          <path d="M22,40 a28,28 0 0 0 56,0" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="50" cy="35" r="7.5" fill="currentColor"/>
+        </svg>
+      </span>
+      <div style="font-size:22px; color:var(--sempa-text);">Pair this Dock</div>
+      <div style="font-family:'JetBrains Mono',monospace; font-size:56px; letter-spacing:.14em; font-weight:700; color:var(--sempa-accent);">{pairCode || '········'}</div>
+      <div style="font-size:16px; color:var(--sempa-text-soft); max-width:420px; line-height:1.5;">
+        In Sempa on your phone or computer, open <b>Settings → Paired devices</b> and enter this code.
+      </div>
+    </div>
+  {:else if idle}
     <!-- Ambient face: dimmed, serene; tap anywhere wakes it. -->
     <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
                 gap:18px; background:var(--sempa-bg-main); opacity:0.55; transition:opacity .6s;">

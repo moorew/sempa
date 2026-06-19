@@ -205,11 +205,36 @@
     }
   }
 
+  // ── Paired devices (Dock) ──
+  let pairedDevices = $state<Array<{ id: string; device_name: string; platform: string; approved_at: string | null }>>([]);
+  let pairCodeInput = $state('');
+  let pairBusy = $state(false);
+  let pairError = $state('');
+  async function loadPairedDevices() {
+    try { pairedDevices = await api.devices.list(); } catch { /* offline */ }
+  }
+  async function approveDevice() {
+    const code = pairCodeInput.trim().toUpperCase();
+    if (!code || pairBusy) return;
+    pairBusy = true; pairError = '';
+    try {
+      await api.devices.pairApprove(code);
+      pairCodeInput = '';
+      await loadPairedDevices();
+    } catch {
+      pairError = 'That code is invalid or expired.';
+    } finally { pairBusy = false; }
+  }
+  async function revokeDevice(id: string) {
+    try { await api.devices.revoke(id); await loadPairedDevices(); } catch { /* ignore */ }
+  }
+
   onMount(async () => {
     const connected = $page.url.searchParams.get('connected');
     if (connected === '1') window.history.replaceState({}, '', '/settings/accounts');
 
     void loadAutostart();
+    void loadPairedDevices();
 
     // allSettled so one failing endpoint never rejects the batch (which would
     // leave the whole Integrations section blank). Track how many failed so we
@@ -1514,6 +1539,39 @@
                style="width:18px; height:18px; accent-color: var(--sempa-accent); cursor:pointer; flex-shrink:0;" />
       </label>
       {/if}
+
+      <!-- Paired devices (the Sempa Dock): approve a code, see + revoke devices. -->
+      <div class="rounded-xl border px-5 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <p class="text-sm font-semibold" style="color: var(--sempa-text);">Paired devices</p>
+        <p class="mb-3 text-xs" style="color: var(--sempa-text-soft);">
+          Pair a Sempa Dock: enter the code it shows. The device gets a scoped, revocable token — no password ever leaves this app.
+        </p>
+        <div class="flex gap-2">
+          <input bind:value={pairCodeInput} placeholder="Pairing code" maxlength="8"
+                 onkeydown={(e) => e.key === 'Enter' && approveDevice()}
+                 style="flex:1; min-width:0; padding:8px 12px; border-radius:9px; border:1px solid var(--sempa-border);
+                        background: var(--sempa-bg-main); color: var(--sempa-text); font-family:monospace; letter-spacing:.12em; text-transform:uppercase;" />
+          <button onclick={approveDevice} disabled={pairBusy}
+                  style="padding:8px 16px; border-radius:9px; border:none; background: var(--sempa-accent); color: var(--sempa-btn-fg); font-weight:600; cursor:pointer;">
+            {pairBusy ? '…' : 'Pair'}
+          </button>
+        </div>
+        {#if pairError}<p class="mt-2 text-xs" style="color:#c0392b;">{pairError}</p>{/if}
+        {#if pairedDevices.length}
+          <div class="mt-4 flex flex-col gap-2">
+            {#each pairedDevices as dev (dev.id)}
+              <div class="flex items-center gap-3 rounded-lg border px-3 py-2" style="border-color: var(--sempa-border);">
+                <div class="flex-1 min-w-0">
+                  <p class="truncate text-[13px] font-medium" style="color: var(--sempa-text);">{dev.device_name || 'Device'}</p>
+                  <p class="text-[11px]" style="color: var(--sempa-text-dim);">{dev.platform}{dev.approved_at ? ' · paired ' + dev.approved_at.slice(0, 10) : ''}</p>
+                </div>
+                <button onclick={() => revokeDevice(dev.id)}
+                        style="font-size:12px; color:#c0392b; background:none; border:none; cursor:pointer;">Revoke</button>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
     </div>
   </div>
 {/snippet}

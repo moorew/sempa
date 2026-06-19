@@ -368,6 +368,22 @@ const httpApi = {
       req<any>('/api/v1/devices', { method: 'POST', body: body({ token, platform }) }),
     unregister: (token: string) =>
       req<void>('/api/v1/devices', { method: 'DELETE', body: body({ token }) }),
+    // ── Dock pairing (scoped, revocable device token) ──
+    // start/status are public (the unpaired device has no token); approve/list/
+    // revoke are authenticated (the already-signed-in app).
+    pairStart: (deviceName: string, platform = 'dock') =>
+      req<{ code: string; expires_in: number }>('/api/v1/devices/pair/start', {
+        method: 'POST', body: body({ device_name: deviceName, platform }),
+      }),
+    pairStatus: (code: string) =>
+      req<{ status: string; token?: string }>(`/api/v1/devices/pair/status?code=${encodeURIComponent(code)}`),
+    pairApprove: (code: string) =>
+      req<{ device_name: string; platform: string }>('/api/v1/devices/pair/approve', {
+        method: 'POST', body: body({ code }),
+      }),
+    list: () =>
+      req<Array<{ id: string; device_name: string; platform: string; approved_at: string | null; created_at: string }>>('/api/v1/devices'),
+    revoke: (id: string) => req<void>(`/api/v1/devices/${id}`, { method: 'DELETE' }),
   },
 
   notifications: {
