@@ -1152,7 +1152,10 @@
 </header>
 
 <!-- ── Body ───────────────────────────────────────────────────────────────── -->
-<div class="flex h-[calc(100vh-57px)] overflow-hidden">
+<!-- Height excludes the desktop header (57px) AND the custom titlebar (--app-titlebar-h,
+     38px on the Tauri desktop, 0 on web) so the planner fills the window exactly
+     instead of overflowing by the titlebar height (which caused stray v+h scrollbars). -->
+<div class="flex overflow-hidden" style="height: calc(100vh - 57px - var(--app-titlebar-h, 0px));">
 
   <!-- Kanban area. A flex COLUMN that fills the viewport height: the filter /
        banner sit at the top (fixed), and the board below grows to fill the rest
