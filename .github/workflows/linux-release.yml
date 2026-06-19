@@ -1,0 +1,109 @@
+name: Linux Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+# Read-only by default; the build job widens to publish the release.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Linux (x86_64 · deb/rpm/AppImage)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write   # attach bundles to the GitHub Release on tags
+
+    # Updater signing — SAFE no-op until the secret is added (Phase 5). Tauri only
+    # emits .sig / updater artifacts when the key is present AND
+    # bundle.createUpdaterArtifacts is enabled. Until then this builds plain
+    # deb/rpm/AppImage exactly as a local `tauri build` would.
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      # Tauri's Linux prerequisites. webkit2gtk-4.1 is the WebKitGTK the Linux
+      # webview links against; the appindicator + rsvg + soup packages cover the
+      # tray (StatusNotifierItem) and SVG icon rendering.
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsoup-3.0-dev \
+            patchelf \
+            file \
+            desktop-file-utils \
+            appstream
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            frontend/src-tauri/target
+          key: linux-cargo-${{ hashFiles('frontend/src-tauri/Cargo.lock') }}
+          restore-keys: linux-cargo-
+
+      - name: Install npm dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend web assets
+        working-directory: frontend
+        run: npm run build
+
+      - name: Build Tauri app (deb/rpm/AppImage)
+        working-directory: frontend
+        run: npx tauri build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Validate the desktop integration files the bundler emitted. These are the
+      # Phase 1 acceptance artifacts (identity), so a regression should fail CI.
+      - name: Validate desktop entry + AppStream
+        run: |
+          desktop-file-validate sempa-linux/desktop/ca.sempa.Sempa.desktop
+          appstreamcli validate --no-net sempa-linux/desktop/ca.sempa.Sempa.metainfo.xml
+
+      - name: Upload artifacts (manual runs)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sempa-linux-x86_64
+          path: |
+            frontend/src-tauri/target/release/bundle/deb/*.deb
+            frontend/src-tauri/target/release/bundle/rpm/*.rpm
+            frontend/src-tauri/target/release/bundle/appimage/*.AppImage
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Attach to GitHub Release (tags)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        with:
+          files: |
+            frontend/src-tauri/target/release/bundle/deb/*.deb
+            frontend/src-tauri/target/release/bundle/rpm/*.rpm
+            frontend/src-tauri/target/release/bundle/appimage/*.AppImage

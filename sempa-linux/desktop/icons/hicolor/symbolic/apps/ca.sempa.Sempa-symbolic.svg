@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Sempa symbolic icon — the cradle mark, derived from assets/mark.svg.
+     Monochrome 16×16 for GNOME/KDE tray + notifications; recolored by the theme. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <g transform="scale(0.16)" fill="none" stroke="#2e3436">
+    <path d="M22,40 a28,28 0 0 0 56,0" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="50" cy="35" r="7.5" fill="#2e3436" stroke="none"/>
+  </g>
+</svg>

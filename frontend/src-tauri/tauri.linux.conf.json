@@ -1,0 +1,43 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedream2007/tauri/v2/crates/tauri-cli/schema.json",
+  "//": "Linux-only config overlay. Tauri deep-merges this over tauri.conf.json on Linux builds ONLY, so Windows/macOS keep identifier com.sempa.desktop and the nsis/msi targets. The canonical reverse-DNS id for Flathub is ca.sempa.Sempa (we own sempa.ca) — permanent once submitted.",
+  "identifier": "ca.sempa.Sempa",
+  "bundle": {
+    "targets": ["deb", "rpm", "appimage"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/linux/256x256.png",
+      "icons/linux/512x512.png"
+    ],
+    "linux": {
+      "deb": {
+        "desktopTemplate": "linux/ca.sempa.Sempa.desktop",
+        "files": {
+          "/usr/share/metainfo/ca.sempa.Sempa.metainfo.xml": "../../sempa-linux/desktop/ca.sempa.Sempa.metainfo.xml",
+          "/usr/share/icons/hicolor/scalable/apps/ca.sempa.Sempa.svg": "../../sempa-linux/desktop/icons/hicolor/scalable/apps/ca.sempa.Sempa.svg",
+          "/usr/share/icons/hicolor/symbolic/apps/ca.sempa.Sempa-symbolic.svg": "../../sempa-linux/desktop/icons/hicolor/symbolic/apps/ca.sempa.Sempa-symbolic.svg"
+        }
+      },
+      "rpm": {
+        "desktopTemplate": "linux/ca.sempa.Sempa.desktop",
+        "files": {
+          "/usr/share/metainfo/ca.sempa.Sempa.metainfo.xml": "../../sempa-linux/desktop/ca.sempa.Sempa.metainfo.xml",
+          "/usr/share/icons/hicolor/scalable/apps/ca.sempa.Sempa.svg": "../../sempa-linux/desktop/icons/hicolor/scalable/apps/ca.sempa.Sempa.svg",
+          "/usr/share/icons/hicolor/symbolic/apps/ca.sempa.Sempa-symbolic.svg": "../../sempa-linux/desktop/icons/hicolor/symbolic/apps/ca.sempa.Sempa-symbolic.svg"
+        }
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["sempa"]
+      }
+    }
+  }
+}

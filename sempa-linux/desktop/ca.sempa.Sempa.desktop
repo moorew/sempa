@@ -1,0 +1,32 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Sempa
+GenericName=Task Planner
+Comment=Plan your day with intention
+# sempa is substituted by the Tauri bundler per package format (deb/rpm/AppImage).
+# %u passes a sempa:// deep link (OAuth redirect, launcher actions) to the app.
+Exec=sempa %u
+Icon=ca.sempa.Sempa
+Terminal=false
+Categories=Office;ProjectManagement;
+Keywords=tasks;todo;planning;productivity;kanban;
+StartupNotify=true
+# Matches the GTK app-id Tauri derives from the reverse-DNS identifier, so the
+# shell associates the window with this launcher (icon, pinning, alt-tab).
+StartupWMClass=ca.sempa.Sempa
+# Registers sempa:// so OAuth redirects and deep links route back to the app.
+MimeType=x-scheme-handler/sempa;
+Actions=new-task;plan-day;shutdown;
+
+[Desktop Action new-task]
+Name=New task
+Exec=sempa sempa://new
+
+[Desktop Action plan-day]
+Name=Plan day
+Exec=sempa sempa://plan
+
+[Desktop Action shutdown]
+Name=Shutdown ritual
+Exec=sempa sempa://shutdown

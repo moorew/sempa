@@ -34,7 +34,28 @@ pub fn run() {
 
     startup_log("starting up");
 
-    let result = tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+
+    // Single-instance MUST be the first plugin registered: it acquires the lock
+    // before anything else, so a second launch is intercepted and its argv (incl.
+    // any sempa:// deep link) is forwarded to the running instance. Desktop-only —
+    // there is no mobile target for this Tauri build (Android ships via Capacitor).
+    // The plugin's `deep-link` feature wires forwarded URLs into the deep-link
+    // plugin's on-open-url event automatically; this callback just surfaces the
+    // existing window so a re-launch (or a .desktop action) focuses Sempa.
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.show();
+                let _ = win.unminimize();
+                let _ = win.set_focus();
+            }
+        }));
+    }
+
+    let result = builder
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(
@@ -49,6 +70,19 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .setup(|app| {
             startup_log("setup: begin");
+
+            // Register the sempa:// scheme with the running binary at runtime. For
+            // installed packages the .desktop MimeType already declares it; this
+            // covers dev runs and the portable AppImage (where no .desktop is
+            // installed). Best-effort: a sandboxed/locked-down environment may
+            // refuse, which must not block startup.
+            #[cfg(desktop)]
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                if let Err(e) = app.deep_link().register_all() {
+                    startup_log(&format!("setup: deep-link register_all failed (non-fatal): {e}"));
+                }
+            }
 
             // Initialize the system tray. A tray failure must not take the
             // whole app down — log it and continue so the window still opens.

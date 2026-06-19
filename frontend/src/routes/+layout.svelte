@@ -25,6 +25,7 @@
   import { Capacitor } from '@capacitor/core';
   import { api, getServerUrl, getTauriToken, clearTauriToken, clearNativeToken, resetApiResolver } from '$lib/api';
   import { isTauri, hasLocalDb, onSyncTrigger } from '$lib/tauri/bridge';
+  import { initDeepLinks } from '$lib/tauri/deeplink';
   import { shortcutLabel } from '$lib/platform';
   import { startSync, sync as runSync, syncStore } from '$lib/sync.svelte';
   import PomodoroTimer from '$lib/components/PomodoroTimer.svelte';
@@ -171,6 +172,10 @@
     // Tray "Sync Now" → run a sync cycle. Listener lives for the app's lifetime.
     if (isTauri()) {
       void onSyncTrigger(() => { void runSync(); });
+
+      // sempa:// deep links (OAuth redirect, .desktop launcher actions, second
+      // launches forwarded by single-instance) → route into the app.
+      void initDeepLinks((url) => goto(url));
 
       // Desktop: suppress the webview's generic right-click menu (Reload /
       // Inspect…). Surfaces that want a real menu call contextMenu.show(), which

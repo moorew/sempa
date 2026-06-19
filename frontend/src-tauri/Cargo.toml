@@ -21,12 +21,18 @@ tauri-plugin-notification = "2"
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 tauri-plugin-autostart = { version = "2", features = [] }
 tauri-plugin-store = "2"
+tauri-plugin-deep-link = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
 tokio = { version = "1", features = ["rt-multi-thread", "time", "sync", "macros"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 uuid = { version = "1", features = ["v4"] }
+
+# Single-instance is desktop-only (no mobile target). The deep-link feature makes
+# a second launch forward its sempa:// URL / argv to the already-running instance.
+[target.'cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))'.dependencies]
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", features = [
