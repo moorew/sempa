@@ -17,22 +17,30 @@ permissions:
 
 jobs:
   build:
-    name: Build Linux (x86_64 · deb/rpm/AppImage)
-    runs-on: ubuntu-24.04
+    name: Build Linux (${{ matrix.arch }} · deb/rpm/AppImage)
+    runs-on: ${{ matrix.runner }}
+    # x86_64 + aarch64. aarch64 builds natively on GitHub's free arm64 runners
+    # (public repo). The aarch64 artifacts double as the base for the Sempa Dock.
+    # fail-fast off so one arch failing still uploads the other.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x86_64, runner: ubuntu-24.04, debarch: amd64 }
+          - { arch: aarch64, runner: ubuntu-24.04-arm, debarch: arm64 }
     permissions:
       contents: write   # attach bundles to the GitHub Release on tags
 
-    # Updater signing — SAFE no-op until the secret is added (Phase 5). Tauri only
-    # emits .sig / updater artifacts when the key is present AND
-    # bundle.createUpdaterArtifacts is enabled. Until then this builds plain
-    # deb/rpm/AppImage exactly as a local `tauri build` would.
+    # Updater signing — SAFE no-op until the maintainer adds the keypair secret
+    # AND sets bundle.createUpdaterArtifacts (see docs/UPDATER.md). Until then this
+    # builds plain deb/rpm/AppImage exactly as a local `tauri build` would; the
+    # .sig globs below simply match nothing.
     env:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       # AppImage tooling (linuxdeploy + appimagetool) ships as AppImages that
-      # mount via FUSE 2. The ubuntu-24.04 runner has no FUSE 2, so they must
-      # self-extract instead of mounting. NO_STRIP avoids a linuxdeploy strip
-      # step that trips on the runner toolchain.
+      # mount via FUSE 2. The runner has no FUSE 2, so they must self-extract.
+      # NO_STRIP avoids a linuxdeploy strip step that trips on the runner toolchain.
       APPIMAGE_EXTRACT_AND_RUN: 1
       NO_STRIP: true
 
@@ -75,8 +83,8 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             frontend/src-tauri/target
-          key: linux-cargo-${{ hashFiles('frontend/src-tauri/Cargo.lock') }}
-          restore-keys: linux-cargo-
+          key: linux-cargo-${{ matrix.arch }}-${{ hashFiles('frontend/src-tauri/Cargo.lock') }}
+          restore-keys: linux-cargo-${{ matrix.arch }}-
 
       - name: Install npm dependencies
         working-directory: frontend
@@ -94,18 +102,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Validate the desktop integration files the bundler emitted. These are the
-      # Phase 1 acceptance artifacts (identity), so a regression should fail CI.
+      # Validate the desktop integration files the bundler emitted (identity).
       - name: Validate desktop entry + AppStream
         run: |
           desktop-file-validate sempa-linux/desktop/ca.sempa.Sempa.desktop
           appstreamcli validate --no-net sempa-linux/desktop/ca.sempa.Sempa.metainfo.xml
 
-      - name: Upload artifacts (manual runs)
+      - name: Upload artifacts (non-tag runs)
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: sempa-linux-x86_64
+          name: sempa-linux-${{ matrix.arch }}
           path: |
             frontend/src-tauri/target/release/bundle/deb/*.deb
             frontend/src-tauri/target/release/bundle/rpm/*.rpm
@@ -117,7 +124,11 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
+          # .sig globs are future-ready: empty until createUpdaterArtifacts + the
+          # signing key are enabled (docs/UPDATER.md), then they carry the AppImage
+          # updater signatures. softprops ignores globs that match nothing.
           files: |
             frontend/src-tauri/target/release/bundle/deb/*.deb
             frontend/src-tauri/target/release/bundle/rpm/*.rpm
             frontend/src-tauri/target/release/bundle/appimage/*.AppImage
+            frontend/src-tauri/target/release/bundle/appimage/*.AppImage.sig

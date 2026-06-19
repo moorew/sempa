@@ -125,3 +125,28 @@ Bump `package.json` (+ `tauri.conf.json` + `Cargo.toml`) version, push to `main`
 → the tag-release workflow tags it → the Windows release workflow builds, signs,
 generates `latest.json`, and uploads it. Older desktop installs poll the
 endpoint and update silently.
+
+## Linux
+
+The same keypair signs the Linux artifacts. With `createUpdaterArtifacts` on, the
+Linux release workflow (`.github/workflows/linux-release.yml`) emits
+`*.AppImage.sig` and already attaches it to the release (the `.sig` glob is
+present and dormant until then). On Linux:
+
+- **AppImage** is the self-updating target — `linux-x86_64` / `linux-aarch64` keys
+  in `latest.json` point at the AppImage + its signature.
+- **Flatpak self-updates via Flathub** and does **not** use this updater.
+- **.deb / .rpm** update via a distro repo (or the Tauri updater swaps the file).
+
+**One combined `latest.json`.** Windows and Linux build in separate workflows, so
+each can only sign its own platforms. Don't let both upload a `latest.json` (they
+clobber). Generate per-platform signatures in each workflow, then assemble a
+single manifest carrying every key (`windows-*`, `linux-*`) in a final
+release-assembly step — or consolidate into one release workflow.
+
+## Channels
+
+`stable` (tags `vX.Y.Z`) and `beta` (tags `vX.Y.Z-beta.N`). The About panel
+already exposes the channel toggle; point the beta build's updater endpoint at a
+separate `latest-beta.json` so beta testers track pre-releases without affecting
+stable installs.
