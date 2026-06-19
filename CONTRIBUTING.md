@@ -55,7 +55,7 @@ the app locally.
 
 ### Desktop apps (Tauri)
 
-Building the Windows/macOS/**Linux** desktop apps needs the Rust toolchain; the
+Building the Windows and **Linux** desktop apps needs the Rust toolchain; the
 Linux build also needs WebKitGTK dev libraries (see [README → Building native
 apps](README.md#building-native-apps) for the exact `apt`/`dnf` packages and the
 `tauri build` commands). The Linux/Dock app id and bundle targets come from the

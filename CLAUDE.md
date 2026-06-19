@@ -30,7 +30,7 @@ and a daily shutdown ritual.
 | Backend | Go — Chi router, sqlc, golang-migrate |
 | Database | SQLite (WAL mode); a PostgreSQL upgrade path is intended |
 | Frontend | SvelteKit + TailwindCSS, **Svelte 5 runes** |
-| Desktop | Tauri v2 (Rust shell, `frontend/src-tauri`) — Windows/macOS + Linux (Flatpak/AppImage/deb/rpm) |
+| Desktop | Tauri v2 (Rust shell, `frontend/src-tauri`) — Windows + Linux (Flatpak/AppImage/deb/rpm). No macOS build is shipped. |
 | Dock | Tauri on Raspberry Pi (aarch64) — the Sempa Dock |
 | Android | Capacitor (`frontend/android`) |
 | Transport | REST + SSE for realtime |
@@ -198,7 +198,7 @@ the same area.
 - **App id is per-platform.** Linux/Flathub uses `ca.sempa.Sempa` (permanent
   once on Flathub; we own sempa.ca), set via a Linux-only overlay
   `frontend/src-tauri/tauri.linux.conf.json` that Tauri deep-merges over
-  `tauri.conf.json` on Linux builds only. Windows/macOS keep `com.sempa.desktop`
+  `tauri.conf.json` on Linux builds only. Windows keeps `com.sempa.desktop`
   + the nsis/msi targets. **Don't change the Flathub id once submitted.** Dock
   id: `ca.sempa.Dock`.
 - **Tauri config is strict JSON — no comments.** A `"//"` key fails the build
