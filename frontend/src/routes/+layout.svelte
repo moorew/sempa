@@ -474,7 +474,7 @@
     </div>
 
     <!-- Nav -->
-    <nav class="flex flex-1 flex-col gap-0.5 pb-3" class:px-3={!rail} class:px-2={rail}>
+    <nav aria-label="Primary" class="flex flex-1 flex-col gap-0.5 pb-3" class:px-3={!rail} class:px-2={rail}>
 
       {#snippet navItem(href: string, label: string, Icon: any)}
         {@const active = isActive(href)}
@@ -632,7 +632,7 @@
       </div>
     {/if}
     {#key $page.url.pathname}
-      <div class="animate-page-in">{@render children()}</div>
+      <main class="animate-page-in">{@render children()}</main>
     {/key}
   </div>
   </div><!-- end inner flex row -->
