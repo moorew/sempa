@@ -30,7 +30,8 @@ and a daily shutdown ritual.
 | Backend | Go — Chi router, sqlc, golang-migrate |
 | Database | SQLite (WAL mode); a PostgreSQL upgrade path is intended |
 | Frontend | SvelteKit + TailwindCSS, **Svelte 5 runes** |
-| Desktop | Tauri v2 (Rust shell, `frontend/src-tauri`) |
+| Desktop | Tauri v2 (Rust shell, `frontend/src-tauri`) — Windows/macOS + Linux (Flatpak/AppImage/deb/rpm) |
+| Dock | Tauri on Raspberry Pi (aarch64) — the Sempa Dock |
 | Android | Capacitor (`frontend/android`) |
 | Transport | REST + SSE for realtime |
 | Packaging | Docker Compose for self-hosting |
@@ -192,6 +193,33 @@ the same area.
 - **Reminders** use 3 independent surfaces (native OS toast, in-app banner,
   floating card) so at least one always fires; the native toast is the reliable
   background channel on Windows.
+
+### Linux (Tauri / packaging)
+- **App id is per-platform.** Linux/Flathub uses `ca.sempa.Sempa` (permanent
+  once on Flathub; we own sempa.ca), set via a Linux-only overlay
+  `frontend/src-tauri/tauri.linux.conf.json` that Tauri deep-merges over
+  `tauri.conf.json` on Linux builds only. Windows/macOS keep `com.sempa.desktop`
+  + the nsis/msi targets. **Don't change the Flathub id once submitted.** Dock
+  id: `ca.sempa.Dock`.
+- **Tauri config is strict JSON — no comments.** A `"//"` key fails the build
+  with `Additional properties are not allowed ('//' was unexpected)`. Keep notes
+  in `frontend/src-tauri/linux/README.md`, not inline in the config.
+- **AppImage in CI (ubuntu-24.04):** linuxdeploy/appimagetool ship as FUSE2
+  AppImages and the runner has no FUSE2 — set `APPIMAGE_EXTRACT_AND_RUN=1` +
+  `NO_STRIP=true` and install `libfuse2t64`. deb/rpm build without this. Tauri
+  swallows linuxdeploy stderr — build with `tauri build --verbose` to see the
+  real error.
+- **Reading the system window-button layout:** the custom titlebar mirrors
+  `gtk-decoration-layout` via a Linux-only Tauri command
+  (`window_decoration_layout` in `commands.rs`). It needs the trait
+  `gtk::prelude::GtkSettingsExt` (NOT `SettingsExt`), the `gtk = "0.18"` dep
+  pinned to match the wry/tao tree, and GTK calls must hop to the main thread
+  (`app.run_on_main_thread`).
+- **Self-hosted fonts:** the brand fonts (Plus Jakarta Sans, Hanken Grotesk,
+  JetBrains Mono) are now self-hosted woff2 in `frontend/static/fonts/` (see
+  `src/fonts.css`); the Google Fonts `<link>` is gone and the Tauri CSP is
+  `font-src 'self'`. Offline-first + Flatpak-sandbox-clean. Don't re-introduce a
+  font CDN.
 
 ### Backend
 - **Sessions must persist.** They're DB-backed (table `sessions`); an in-memory
