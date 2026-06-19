@@ -1,6 +1,5 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedream2007/tauri/v2/crates/tauri-cli/schema.json",
-  "//": "Linux-only config overlay. Tauri deep-merges this over tauri.conf.json on Linux builds ONLY, so Windows/macOS keep identifier com.sempa.desktop and the nsis/msi targets. The canonical reverse-DNS id for Flathub is ca.sempa.Sempa (we own sempa.ca) — permanent once submitted.",
   "identifier": "ca.sempa.Sempa",
   "bundle": {
     "targets": ["deb", "rpm", "appimage"],
