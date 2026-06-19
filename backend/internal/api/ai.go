@@ -290,8 +290,11 @@ Fixed calendar events: %s`, string(tj), string(ej))
 	}
 
 	// Lay out soft start times by packing tasks into the gaps around events.
-	busy := parseBusyIntervals(body.Date, mapEvents(body.Events))
-	const dayStart, dayEnd = 9 * 60, 18 * 60 // 09:00–18:00 working window (soft)
+	// Event start/end arrive as local "HH:MM" already resolved by the client —
+	// the browser knows the user's timezone, the server's container may not, so
+	// converting zones here would skew busy blocks for UTC-stored feeds.
+	busy := parseBusyIntervals(body.Events)
+	const dayStart = 9 * 60 // 09:00 working-window start (end is advisory; tasks may run past 18:00)
 	cursor := dayStart
 	type slot struct {
 		ID        string `json:"id"`
@@ -315,7 +318,6 @@ Fixed calendar events: %s`, string(tj), string(ej))
 		cursor = nextFreeSlot(cursor, dur, busy)
 		schedule = append(schedule, slot{ID: id, RoughlyAt: fmtHM(cursor), Minutes: dur})
 		cursor += dur
-		_ = dayEnd // window end is advisory; tasks may run past it
 	}
 
 	respond(w, http.StatusOK, map[string]any{
@@ -326,27 +328,19 @@ Fixed calendar events: %s`, string(tj), string(ej))
 	})
 }
 
-// mapEvents flattens the request's event structs into a simpler shape.
-func mapEvents(in []struct {
+// parseBusyIntervals turns the request's timed events into [startMin,endMin]
+// windows (minutes since local midnight). Each start/end is a local "HH:MM"
+// (the client drops all-day events and resolves zones before sending).
+// Unparseable or zero-length entries are skipped.
+func parseBusyIntervals(events []struct {
 	Title string `json:"title"`
 	Start string `json:"start"`
 	End   string `json:"end"`
-}) [][2]string {
-	out := make([][2]string, 0, len(in))
-	for _, e := range in {
-		out = append(out, [2]string{e.Start, e.End})
-	}
-	return out
-}
-
-// parseBusyIntervals turns timed events on `date` into [startMin,endMin] windows
-// (minutes since local midnight). All-day / date-only events are ignored — they
-// don't occupy a specific slot. Anything unparseable is skipped.
-func parseBusyIntervals(date string, events [][2]string) [][2]int {
+}) [][2]int {
 	out := [][2]int{}
 	for _, ev := range events {
-		s, okS := parseEventMinutes(ev[0])
-		e, okE := parseEventMinutes(ev[1])
+		s, okS := parseHM(ev.Start)
+		e, okE := parseHM(ev.End)
 		if !okS || !okE || e <= s {
 			continue
 		}
@@ -355,19 +349,13 @@ func parseBusyIntervals(date string, events [][2]string) [][2]int {
 	return out
 }
 
-// parseEventMinutes reads an ISO-8601 timestamp and returns its wall-clock time
-// as minutes since midnight. Date-only strings (all-day events) return ok=false.
-func parseEventMinutes(s string) (int, bool) {
-	s = strings.TrimSpace(s)
-	if s == "" || !strings.Contains(s, "T") {
-		return 0, false // empty or date-only → not a timed slot
+// parseHM reads a local "HH:MM" (24-hour) string into minutes since midnight.
+func parseHM(s string) (int, bool) {
+	t, err := time.Parse("15:04", strings.TrimSpace(s))
+	if err != nil {
+		return 0, false
 	}
-	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02T15:04"} {
-		if t, err := time.Parse(layout, s); err == nil {
-			return t.Hour()*60 + t.Minute(), true
-		}
-	}
-	return 0, false
+	return t.Hour()*60 + t.Minute(), true
 }
 
 // nextFreeSlot advances `start` forward until a [start, start+dur) window clears

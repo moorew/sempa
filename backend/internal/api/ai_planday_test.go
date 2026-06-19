@@ -2,23 +2,25 @@ package api
 
 import "testing"
 
-func TestParseEventMinutes(t *testing.T) {
+func TestParseHM(t *testing.T) {
 	cases := []struct {
 		in   string
 		want int
 		ok   bool
 	}{
-		{"2026-06-19T09:30:00Z", 9*60 + 30, true},
-		{"2026-06-19T14:00:00-04:00", 14 * 60, true}, // wall-clock of the stamp
-		{"2026-06-19T08:15:00", 8*60 + 15, true},
-		{"2026-06-19", 0, false}, // date-only / all-day → not a timed slot
+		{"09:30", 9*60 + 30, true},
+		{"14:00", 14 * 60, true},
+		{"08:15", 8*60 + 15, true},
+		{"00:00", 0, true},
+		{" 13:05 ", 13*60 + 5, true}, // trimmed
+		{"2026-06-19", 0, false},     // not HH:MM
 		{"", 0, false},
 		{"garbage", 0, false},
 	}
 	for _, c := range cases {
-		got, ok := parseEventMinutes(c.in)
+		got, ok := parseHM(c.in)
 		if ok != c.ok || (ok && got != c.want) {
-			t.Errorf("parseEventMinutes(%q) = (%d,%v), want (%d,%v)", c.in, got, ok, c.want, c.ok)
+			t.Errorf("parseHM(%q) = (%d,%v), want (%d,%v)", c.in, got, ok, c.want, c.ok)
 		}
 	}
 }

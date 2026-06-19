@@ -81,14 +81,28 @@
     try {
       // Calendar awareness: subscription feeds (iCal + Fastmail) via the events
       // endpoint, plus Google Calendar meetings (imported as scheduled tasks).
-      let events: { title: string; start: string; end: string }[] = [];
+      // Resolve event times to local HH:MM HERE — the browser knows the user's
+      // timezone; the server's container may not, so a UTC-stored ("…Z") feed
+      // would otherwise be packed against the wrong hour.
+      const localHM = (iso: string): string | null => {
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return null;
+        return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      };
+      const events: { title: string; start: string; end: string }[] = [];
+      const pushEvent = (title: string, start: string, end: string) => {
+        const s = localHM(start), e = localHM(end);
+        if (s && e) events.push({ title, start: s, end: e });
+      };
       try {
         const evs = await api.ical.listEvents(date);
-        events = (evs ?? []).map(e => ({ title: e.summary, start: e.start_time, end: e.end_time }));
+        for (const e of evs ?? []) {
+          if (!e.all_day && e.start_time && e.end_time) pushEvent(e.summary, e.start_time, e.end_time);
+        }
       } catch { /* events optional */ }
       for (const t of todayTasks) {
         if (t.source === 'google_calendar' && t.scheduled_start && t.scheduled_end) {
-          events.push({ title: t.title, start: t.scheduled_start, end: t.scheduled_end });
+          pushEvent(t.title, t.scheduled_start, t.scheduled_end);
         }
       }
 
