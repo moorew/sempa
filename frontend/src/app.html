@@ -15,9 +15,11 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- Brand fonts are self-hosted (src/fonts.css) — no CDN, so the app works
+         offline and the Flatpak needs no network for type. Preload the primary
+         latin subsets so first paint isn't bare. -->
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/plus-jakarta-sans-latin.woff2" crossorigin="" />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/jetbrains-mono-latin.woff2" crossorigin="" />
     <!-- Anti-FOUC: set the interface theme + light/dark + text size synchronously,
          before first paint, so the page never flashes the default terracotta light
          palette. Mirrors theme.svelte.ts; that store reconciles + persists on mount. -->
@@ -34,6 +36,8 @@
           document.documentElement.classList.toggle('dark', dark);
           var s = localStorage.getItem('sempa-text-scale');
           if (s) { var n = parseInt(s, 10); if (n >= 80 && n <= 130) document.documentElement.style.fontSize = n + '%'; }
+          // "Use system UI font" — swaps the brand sans for the system stack.
+          if (localStorage.getItem('sempa-ui-font') === 'system') document.documentElement.classList.add('system-font');
         } catch (e) {}
       })();
     </script>

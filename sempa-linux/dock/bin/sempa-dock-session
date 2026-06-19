@@ -1,0 +1,21 @@
+#!/bin/sh
+# Sempa Dock kiosk session — launched by greetd autologin, runs the Sempa binary
+# fullscreen under the Cage kiosk compositor. Installed to /opt/sempa-dock/.
+set -eu
+
+# Appliance data lives on the writable partition (root is read-only + overlayfs).
+export XDG_DATA_HOME=/data/sempa
+export XDG_CONFIG_HOME=/data/config
+export XDG_CACHE_HOME=/data/cache
+mkdir -p "$XDG_DATA_HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
+
+# Dock mode: the binary goes fullscreen, hides the cursor, and routes to /dock.
+export SEMPA_DOCK=1
+
+# WebKitGTK DMABUF renderer is flaky on some V3D/driver combos — the spec's
+# escape hatch. Comment out once verified good on your panel/driver.
+# export WEBKIT_DISABLE_DMABUF_RENDERER=1
+
+# Cage: -d daemonize-on-ready, -s disable VT-switch escape. The app itself owns
+# dimming/blanking (ambient face), so no compositor screen-blank.
+exec cage -d -s -- /usr/bin/sempa --dock

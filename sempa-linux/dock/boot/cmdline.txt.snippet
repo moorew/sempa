@@ -1,0 +1,13 @@
+# Kernel cmdline additions (single line in /boot/firmware/cmdline.txt). Quiet,
+# splash-free boot → power-on to a calm first frame with no console flashes
+# (PI_DOCK_SPEC §2.6). Append these tokens to the existing line:
+#
+#   quiet loglevel=0 vt.global_cursor_default=0 logo.nologo plymouth.ignore-serial-consoles consoleblank=0
+#
+# - quiet loglevel=0           : suppress kernel log spam
+# - vt.global_cursor_default=0 : no blinking console cursor
+# - logo.nologo                : hide the Pi logo
+# - consoleblank=0             : never blank the console (the app owns dimming)
+#
+# For a read-only root, also add (managed by the image's overlay tooling):
+#   boot=overlay

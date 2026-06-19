@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Sempa
+Description=Sempa boot splash — the cradle mark, breathing on terracotta
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/sempa
+ScriptFile=/usr/share/plymouth/themes/sempa/sempa.script

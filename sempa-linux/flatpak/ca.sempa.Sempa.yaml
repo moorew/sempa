@@ -1,0 +1,70 @@
+# Flatpak manifest — Sempa for Linux (canonical Flathub build).
+#
+# Phase 3 scope: the SANDBOX SHAPE — least-privilege finish-args and the portal
+# model. The build modules below are a correct scaffold; making it fully
+# Flathub-buildable needs vendored OFFLINE sources (cargo + npm), which is Phase 5
+# (flatpak-builder runs with --sandbox and no network during `build`). Until then,
+# build locally with `--build-args=--share=network` to verify, or use the
+# CI-built .deb. See sempa-linux/flatpak/PORTALS.md for the capability→portal map.
+app-id: ca.sempa.Sempa
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+  - org.freedesktop.Sdk.Extension.node20
+command: sempa
+
+# ── Least privilege ─────────────────────────────────────────────────────────
+# Everything not listed here goes through an XDG portal, so the user sees real
+# permission prompts. NOTE the absence of --filesystem=home: file access is
+# FileChooser-portal only. Portals (org.freedesktop.portal.*) need no talk-name —
+# they're always reachable in the sandbox. Only the host Secret Service is a
+# direct service we must be allowed to talk to.
+finish-args:
+  - --socket=wayland            # Wayland-native
+  - --socket=fallback-x11       # X11 fallback session
+  - --share=ipc                 # required with the X11 fallback
+  - --device=dri                # GPU compositing (WebKitGTK)
+  - --share=network             # sync + integrations
+  - --talk-name=org.freedesktop.secrets   # Secret Service (bearer token)
+  # Deliberately NOT granted: --filesystem=home, --filesystem=host,
+  # --socket=session-bus (broad), --talk-name=org.freedesktop.Flatpak.
+
+# GPU stacks with a broken DMABUF renderer (some NVIDIA / old Mesa) can be
+# recovered by the user with: flatpak override --env=WEBKIT_DISABLE_DMABUF_RENDERER=1 ca.sempa.Sempa
+
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - '*.a'
+
+modules:
+  - name: sempa
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/node20/bin
+      env:
+        CARGO_HOME: /run/build/sempa/cargo
+    build-commands:
+      # 1. Web assets (SvelteKit static build → frontend/build).
+      - npm --prefix frontend ci --offline || npm --prefix frontend ci
+      - npm --prefix frontend run build
+      # 2. Tauri release binary (reads tauri.linux.conf.json overlay).
+      - cargo build --release --manifest-path frontend/src-tauri/Cargo.toml --offline || cargo build --release --manifest-path frontend/src-tauri/Cargo.toml
+      - install -Dm755 frontend/src-tauri/target/release/sempa /app/bin/sempa
+      # 3. Desktop integration (app-id-named, validated in Phase 1).
+      - install -Dm644 sempa-linux/desktop/ca.sempa.Sempa.desktop /app/share/applications/ca.sempa.Sempa.desktop
+      - install -Dm644 sempa-linux/desktop/ca.sempa.Sempa.metainfo.xml /app/share/metainfo/ca.sempa.Sempa.metainfo.xml
+      - install -Dm644 sempa-linux/desktop/icons/hicolor/scalable/apps/ca.sempa.Sempa.svg /app/share/icons/hicolor/scalable/apps/ca.sempa.Sempa.svg
+      - install -Dm644 sempa-linux/desktop/icons/hicolor/symbolic/apps/ca.sempa.Sempa-symbolic.svg /app/share/icons/hicolor/symbolic/apps/ca.sempa.Sempa-symbolic.svg
+      - |
+        for s in 16 24 32 48 64 128 256 512; do
+          install -Dm644 sempa-linux/desktop/icons/hicolor/${s}x${s}/apps/ca.sempa.Sempa.png \
+            /app/share/icons/hicolor/${s}x${s}/apps/ca.sempa.Sempa.png
+        done
+    sources:
+      # Phase 5 replaces this with a pinned git source + generated offline
+      # cargo-sources.json and node sources for a reproducible Flathub build.
+      - type: dir
+        path: ../..

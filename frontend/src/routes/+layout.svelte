@@ -23,8 +23,12 @@
   import { ensureDesktopNotifyPermission } from '$lib/desktopNotify';
   import { SplashScreen } from '@capacitor/splash-screen';
   import { Capacitor } from '@capacitor/core';
-  import { api, getServerUrl, getTauriToken, clearTauriToken, clearNativeToken, resetApiResolver } from '$lib/api';
+  import { api, getServerUrl, getTauriToken, clearTauriToken, clearNativeToken, resetApiResolver, initTauriToken } from '$lib/api';
   import { isTauri, hasLocalDb, onSyncTrigger } from '$lib/tauri/bridge';
+  import { initDeepLinks } from '$lib/tauri/deeplink';
+  import { windowChrome } from '$lib/stores/windowChrome.svelte';
+  import { cockpit } from '$lib/stores/cockpit.svelte';
+  import CockpitView from '$lib/components/cockpit/CockpitView.svelte';
   import { shortcutLabel } from '$lib/platform';
   import { startSync, sync as runSync, syncStore } from '$lib/sync.svelte';
   import PomodoroTimer from '$lib/components/PomodoroTimer.svelte';
@@ -64,7 +68,9 @@
   let isStandaloneWindow = $derived(
     isReminderPopup ||
     ($page.url.pathname as string) === '/widget' ||
-    ($page.url.pathname as string) === '/sticky'
+    ($page.url.pathname as string) === '/sticky' ||
+    ($page.url.pathname as string) === '/quick-add' ||
+    ($page.url.pathname as string) === '/dock'
   );
   // Whether any in-app banner (reminder alert or routine prompt) is showing —
   // gates the shared spacing wrapper so there's no empty offset when none are.
@@ -145,6 +151,7 @@
     prefs.init();
     quotes.init();
     mobile.init();
+    cockpit.init();
     viewport.init();
 
     // Warm the celebration engine and apply the saved sound preference. On native
@@ -171,6 +178,14 @@
     // Tray "Sync Now" → run a sync cycle. Listener lives for the app's lifetime.
     if (isTauri()) {
       void onSyncTrigger(() => { void runSync(); });
+
+      // sempa:// deep links (OAuth redirect, .desktop launcher actions, second
+      // launches forwarded by single-instance) → route into the app.
+      void initDeepLinks((url) => goto(url));
+
+      // Mirror the system window-button layout + restore the "use system title
+      // bar" preference (Linux native feel).
+      void windowChrome.init();
 
       // Desktop: suppress the webview's generic right-click menu (Reload /
       // Inspect…). Surfaces that want a real menu call contextMenu.show(), which
@@ -203,6 +218,9 @@
 
       // In Tauri (desktop), require server URL and token before proceeding.
       if (isTauri()) {
+        // Load the bearer token from the OS keyring (and migrate any legacy
+        // plaintext token) into the in-memory cache before the auth gate reads it.
+        await initTauriToken();
         if (!getServerUrl()) {
           goto('/login?redirect=' + encodeURIComponent($page.url.pathname), { replaceState: true });
           return;
@@ -421,6 +439,14 @@
 
 {#if isLoginPage || isSetupPage || isStandaloneWindow}
   {@render children()}
+{:else if cockpit.active}
+  <!-- Cockpit mode: ultrawide-short geometry override (replaces the normal
+       sidebar+content chrome with the horizontal cockpit). Titlebar stays for
+       window management on desktop. -->
+  <div class="flex flex-col h-screen overflow-hidden" style="background: var(--sempa-bg-main);">
+    <TitleBar />
+    <div class="flex-1" style="min-height:0;"><CockpitView /></div>
+  </div>
 {:else}
 <div bind:this={appShell} class="flex flex-col h-screen overflow-hidden" style="background: var(--sempa-bg-main);">
   <!-- Custom titlebar (Tauri only — hidden on web/mobile) -->
@@ -429,28 +455,33 @@
 
   <!-- ── Sidebar (hidden on mobile) ───────────────────────────────────── -->
   {#if !mobile.value}
-  <aside class="flex w-48 shrink-0 flex-col"
+  {@const rail = mobile.rail}
+  <aside class="flex shrink-0 flex-col" class:w-48={!rail} class:w-14={rail}
          style="background: var(--sempa-bg-nav); border-right: 1px solid var(--sempa-border);">
 
-    <!-- Logo (Cradle mark) -->
-    <div class="flex items-center gap-2 px-4 py-5" style="color: var(--sempa-accent);">
+    <!-- Logo (Cradle mark) — wordmark hides in the collapsed icon rail. -->
+    <div class="flex items-center gap-2 py-5" class:px-4={!rail} class:justify-center={rail} class:px-0={rail}
+         style="color: var(--sempa-accent);">
       <svg width="26" height="26" viewBox="0 0 100 100" fill="none" aria-hidden="true">
         <path d="M22,40 a28,28 0 0 0 56,0"
           stroke="currentColor" stroke-width="9"
           stroke-linecap="round" stroke-linejoin="round"/>
         <circle cx="50" cy="35" r="7.5" fill="currentColor"/>
       </svg>
-      <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 500;
-                   font-size: 18px; letter-spacing: -0.02em; color: var(--sempa-text);">sempa</span>
+      {#if !rail}
+        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 500;
+                     font-size: 18px; letter-spacing: -0.02em; color: var(--sempa-text);">sempa</span>
+      {/if}
     </div>
 
     <!-- Nav -->
-    <nav class="flex flex-1 flex-col gap-0.5 px-3 pb-3">
+    <nav aria-label="Primary" class="flex flex-1 flex-col gap-0.5 pb-3" class:px-3={!rail} class:px-2={rail}>
 
       {#snippet navItem(href: string, label: string, Icon: any)}
         {@const active = isActive(href)}
-        <a {href}
-           class="group flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13.5px] tracking-[-0.01em] transition-colors"
+        <a {href} title={rail ? label : undefined}
+           class="group flex items-center gap-2.5 rounded-lg py-2 text-[13.5px] tracking-[-0.01em] transition-colors"
+           class:px-3={!rail} class:justify-center={rail} class:px-0={rail}
            style={active
              ? `background: var(--sempa-accent-bg); color: var(--sempa-accent); font-weight: 600;`
              : `color: var(--sempa-text-soft);`}
@@ -460,26 +491,31 @@
                 style={active ? `color: var(--sempa-accent)` : ''}>
             <Icon size={16} strokeWidth={active ? 2.25 : 1.75} />
           </span>
-          {label}
+          {#if !rail}{label}{/if}
         </a>
       {/snippet}
 
       {#snippet navLabel(text: string)}
-        <div class="px-3 pb-1.5 pt-3.5 font-mono text-[10px] font-semibold uppercase tracking-[0.13em]"
-             style="color: var(--sempa-text-dim);">{text}</div>
+        {#if !rail}
+          <div class="px-3 pb-1.5 pt-3.5 font-mono text-[10px] font-semibold uppercase tracking-[0.13em]"
+               style="color: var(--sempa-text-dim);">{text}</div>
+        {/if}
       {/snippet}
 
       <!-- Pinned Search pill (grouped schemes only — in Flat, Search is a row). -->
       {#if prefs.navGrouping !== 'flat'}
-        <button onclick={() => goto('/search')}
-                class="mb-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] transition-colors"
+        <button onclick={() => goto('/search')} title={rail ? 'Search' : undefined}
+                class="mb-3 flex w-full items-center gap-2 rounded-lg py-2 text-[13px] transition-colors"
+                class:px-3={!rail} class:justify-center={rail} class:px-0={rail}
                 style="background: var(--card-bg); border: 1px solid var(--sempa-border); color: var(--sempa-text-dim);"
                 onmouseenter={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-text-dim)'}
                 onmouseleave={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'}>
           <Search size={15} strokeWidth={1.75} />
-          <span>Search</span>
-          <kbd class="ml-auto rounded border px-1.5 font-mono text-[10.5px]"
-               style="border-color: var(--sempa-border);">{shortcutLabel('K')}</kbd>
+          {#if !rail}
+            <span>Search</span>
+            <kbd class="ml-auto rounded border px-1.5 font-mono text-[10.5px]"
+                 style="border-color: var(--sempa-border);">{shortcutLabel('K')}</kbd>
+          {/if}
         </button>
       {/if}
 
@@ -514,7 +550,7 @@
            bottom-right widget, so the footer stays short. -->
       <div class="mt-auto flex flex-col gap-2 pt-3" style="border-top: 1px solid var(--sempa-border);">
         <!-- Utility icon row -->
-        <div class="flex items-center justify-between">
+        <div class="flex items-center" class:justify-between={!rail} class:flex-col={rail} class:gap-1.5={rail}>
           {#if updates.available}
             <button onclick={() => goto('/settings/accounts')} title="Update available — open About"
                     aria-label="Update available"
@@ -555,6 +591,7 @@
         <button onclick={signOut} title={accountEmail ? `${accountEmail} — sign out` : 'Sign out'}
                 aria-label="Sign out"
                 class="flex w-full items-center gap-2.5 rounded-[10px] px-2 py-1.5 text-left transition-colors"
+                class:justify-center={rail}
                 onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--sempa-accent-bg)'}
                 onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = ''}>
           {#if accountPicture}
@@ -567,12 +604,14 @@
               {(accountEmail ?? '?').charAt(0).toUpperCase()}
             </span>
           {/if}
-          <span class="min-w-0 flex-1">
-            {#if accountEmail}
-              <span class="block truncate text-[12px]" style="color: var(--sempa-text-soft);">{accountEmail}</span>
-            {/if}
-            <span class="block text-[11px]" style="color: var(--sempa-text-dim);">Sign out</span>
-          </span>
+          {#if !rail}
+            <span class="min-w-0 flex-1">
+              {#if accountEmail}
+                <span class="block truncate text-[12px]" style="color: var(--sempa-text-soft);">{accountEmail}</span>
+              {/if}
+              <span class="block text-[11px]" style="color: var(--sempa-text-dim);">Sign out</span>
+            </span>
+          {/if}
         </button>
       </div>
     </nav>
@@ -594,7 +633,7 @@
       </div>
     {/if}
     {#key $page.url.pathname}
-      <div class="animate-page-in">{@render children()}</div>
+      <main class="animate-page-in">{@render children()}</main>
     {/key}
   </div>
   </div><!-- end inner flex row -->

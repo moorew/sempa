@@ -4,6 +4,7 @@
   import { api, getServerUrl, clearTauriToken, clearNativeToken, resetApiResolver } from '$lib/api';
   import type { AiTitleConfig } from '$lib/api';
   import { theme } from '$lib/stores/theme.svelte';
+  import { windowChrome } from '$lib/stores/windowChrome.svelte';
   import { prefs, AI_FEATURE_META } from '$lib/stores/prefs.svelte';
   import { quotes } from '$lib/stores/quotes.svelte';
 
@@ -179,9 +180,61 @@
   // reads as "nothing loaded".
   let serverUnreachable = $state(false);
 
+  // "Launch at login" (desktop). Backed by tauri-plugin-autostart; under Flatpak
+  // this requests the Background portal's autostart. Loaded on mount (Tauri only).
+  let autostartOn = $state(false);
+  let autostartBusy = $state(false);
+  async function loadAutostart() {
+    if (!isTauri()) return;
+    try {
+      const { isEnabled } = await import('@tauri-apps/plugin-autostart');
+      autostartOn = await isEnabled();
+    } catch { /* plugin unavailable */ }
+  }
+  async function toggleAutostart(on: boolean) {
+    if (!isTauri() || autostartBusy) return;
+    autostartBusy = true;
+    try {
+      const { enable, disable, isEnabled } = await import('@tauri-apps/plugin-autostart');
+      if (on) await enable(); else await disable();
+      autostartOn = await isEnabled();
+    } catch {
+      autostartOn = !on; // revert the optimistic flip on failure
+    } finally {
+      autostartBusy = false;
+    }
+  }
+
+  // ── Paired devices (Dock) ──
+  let pairedDevices = $state<Array<{ id: string; device_name: string; platform: string; approved_at: string | null }>>([]);
+  let pairCodeInput = $state('');
+  let pairBusy = $state(false);
+  let pairError = $state('');
+  async function loadPairedDevices() {
+    try { pairedDevices = await api.devices.list(); } catch { /* offline */ }
+  }
+  async function approveDevice() {
+    const code = pairCodeInput.trim().toUpperCase();
+    if (!code || pairBusy) return;
+    pairBusy = true; pairError = '';
+    try {
+      await api.devices.pairApprove(code);
+      pairCodeInput = '';
+      await loadPairedDevices();
+    } catch {
+      pairError = 'That code is invalid or expired.';
+    } finally { pairBusy = false; }
+  }
+  async function revokeDevice(id: string) {
+    try { await api.devices.revoke(id); await loadPairedDevices(); } catch { /* ignore */ }
+  }
+
   onMount(async () => {
     const connected = $page.url.searchParams.get('connected');
     if (connected === '1') window.history.replaceState({}, '', '/settings/accounts');
+
+    void loadAutostart();
+    void loadPairedDevices();
 
     // allSettled so one failing endpoint never rejects the batch (which would
     // leave the whole Integrations section blank). Track how many failed so we
@@ -1467,6 +1520,58 @@
           <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
         </svg>
       </a>
+
+      <!-- Launch at login (desktop only) -->
+      {#if isTauri()}
+      <label class="flex cursor-pointer items-center gap-3 rounded-xl border px-5 py-4"
+             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
+          <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 3 4 14h7l-1 7 9-11h-7l1-7Z"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <p class="text-sm font-semibold" style="color: var(--sempa-text);">Launch at login</p>
+          <p class="text-xs" style="color: var(--sempa-text-soft);">Start Sempa automatically and open minimized to the tray</p>
+        </div>
+        <input type="checkbox" checked={autostartOn} disabled={autostartBusy}
+               onchange={(e) => toggleAutostart((e.target as HTMLInputElement).checked)}
+               style="width:18px; height:18px; accent-color: var(--sempa-accent); cursor:pointer; flex-shrink:0;" />
+      </label>
+      {/if}
+
+      <!-- Paired devices (the Sempa Dock): approve a code, see + revoke devices. -->
+      <div class="rounded-xl border px-5 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <p class="text-sm font-semibold" style="color: var(--sempa-text);">Paired devices</p>
+        <p class="mb-3 text-xs" style="color: var(--sempa-text-soft);">
+          Pair a Sempa Dock: enter the code it shows. The device gets a scoped, revocable token — no password ever leaves this app.
+        </p>
+        <div class="flex gap-2">
+          <input bind:value={pairCodeInput} placeholder="Pairing code" maxlength="8"
+                 onkeydown={(e) => e.key === 'Enter' && approveDevice()}
+                 style="flex:1; min-width:0; padding:8px 12px; border-radius:9px; border:1px solid var(--sempa-border);
+                        background: var(--sempa-bg-main); color: var(--sempa-text); font-family:monospace; letter-spacing:.12em; text-transform:uppercase;" />
+          <button onclick={approveDevice} disabled={pairBusy}
+                  style="padding:8px 16px; border-radius:9px; border:none; background: var(--sempa-accent); color: var(--sempa-btn-fg); font-weight:600; cursor:pointer;">
+            {pairBusy ? '…' : 'Pair'}
+          </button>
+        </div>
+        {#if pairError}<p class="mt-2 text-xs" style="color:#c0392b;">{pairError}</p>{/if}
+        {#if pairedDevices.length}
+          <div class="mt-4 flex flex-col gap-2">
+            {#each pairedDevices as dev (dev.id)}
+              <div class="flex items-center gap-3 rounded-lg border px-3 py-2" style="border-color: var(--sempa-border);">
+                <div class="flex-1 min-w-0">
+                  <p class="truncate text-[13px] font-medium" style="color: var(--sempa-text);">{dev.device_name || 'Device'}</p>
+                  <p class="text-[11px]" style="color: var(--sempa-text-dim);">{dev.platform}{dev.approved_at ? ' · paired ' + dev.approved_at.slice(0, 10) : ''}</p>
+                </div>
+                <button onclick={() => revokeDevice(dev.id)}
+                        style="font-size:12px; color:#c0392b; background:none; border:none; cursor:pointer;">Revoke</button>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
     </div>
   </div>
 {/snippet}
@@ -1559,35 +1664,75 @@
           </button>
         </div>
 
-        <!-- Mode: segmented pill (disabled for the dark-only OLED theme) -->
+        <!-- Mode: System / Light / Dark. System follows the OS colour scheme live
+             (org.freedesktop.appearance on Linux). Disabled for dark-only OLED. -->
         <div>
           <p class="mb-3 text-xs font-medium" style="color: var(--sempa-text-soft);">Mode</p>
           <div style="display:flex; border-radius:9999px; border:1px solid var(--sempa-border);
                       padding:3px; gap:2px; width:fit-content;
                       {theme.darkOnly ? 'opacity:0.5; pointer-events:none;' : ''}">
-            <button onclick={() => { if (theme.dark) theme.toggle(); }}
-                    disabled={theme.darkOnly} aria-disabled={theme.darkOnly}
-                    class="transition-colors"
-                    style="border-radius:9999px; padding:6px 16px; font-size:13px; border:none; cursor:pointer;
-                           {!theme.dark
-                             ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent); font-weight:600;'
-                             : 'background: transparent; color: var(--sempa-text-soft);'}">
-              Light
-            </button>
-            <button onclick={() => { if (!theme.dark) theme.toggle(); }}
-                    disabled={theme.darkOnly} aria-disabled={theme.darkOnly}
-                    class="transition-colors"
-                    style="border-radius:9999px; padding:6px 16px; font-size:13px; border:none; cursor:pointer;
-                           {theme.dark
-                             ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent); font-weight:600;'
-                             : 'background: transparent; color: var(--sempa-text-soft);'}">
-              Dark
-            </button>
+            {#each [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']] as [val, label] (val)}
+              <button onclick={() => theme.setMode(val as 'system' | 'light' | 'dark')}
+                      disabled={theme.darkOnly} aria-disabled={theme.darkOnly}
+                      aria-pressed={theme.mode === val}
+                      class="transition-colors"
+                      style="border-radius:9999px; padding:6px 16px; font-size:13px; border:none; cursor:pointer;
+                             {theme.mode === val
+                               ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent); font-weight:600;'
+                               : 'background: transparent; color: var(--sempa-text-soft);'}">
+                {label}
+              </button>
+            {/each}
           </div>
           {#if theme.darkOnly}
             <p class="mt-2 text-[11px]" style="color: var(--sempa-text-dim);">OLED Black is a dark-only theme.</p>
           {/if}
         </div>
+
+        <!-- Match system accent — opt-in, only when the platform exposes an accent
+             colour to the webview (Linux GNOME 47+/KDE; also Windows). -->
+        {#if theme.canMatchAccent}
+        <label style="display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer;">
+          <span class="min-w-0">
+            <span class="text-xs font-medium" style="color: var(--sempa-text);">Match system accent</span>
+            <span class="mt-0.5 block text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
+              Use your desktop's accent colour instead of the theme's. Off keeps the Sempa accent.
+            </span>
+          </span>
+          <input type="checkbox" checked={theme.matchAccent}
+                 onchange={(e) => theme.setMatchAccent((e.target as HTMLInputElement).checked)}
+                 style="width:18px; height:18px; accent-color: var(--sempa-accent); cursor:pointer; flex-shrink:0;" />
+        </label>
+        {/if}
+
+        <!-- Use system UI font — swap the brand sans for the native UI font. -->
+        <label style="display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer;">
+          <span class="min-w-0">
+            <span class="text-xs font-medium" style="color: var(--sempa-text);">Use system UI font</span>
+            <span class="mt-0.5 block text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
+              Render the interface in your desktop's font instead of Plus Jakarta Sans.
+            </span>
+          </span>
+          <input type="checkbox" checked={theme.systemFont}
+                 onchange={(e) => theme.setUiFont((e.target as HTMLInputElement).checked ? 'system' : 'brand')}
+                 style="width:18px; height:18px; accent-color: var(--sempa-accent); cursor:pointer; flex-shrink:0;" />
+        </label>
+
+        <!-- Use system title bar — hand window decorations back to the WM (desktop). -->
+        {#if isTauri()}
+        <label style="display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer;">
+          <span class="min-w-0">
+            <span class="text-xs font-medium" style="color: var(--sempa-text);">Use system title bar</span>
+            <span class="mt-0.5 block text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
+              Let your desktop draw the window frame instead of Sempa's. Off keeps the in-app title bar,
+              which mirrors your system's window-button layout.
+            </span>
+          </span>
+          <input type="checkbox" checked={windowChrome.useSystemTitlebar}
+                 onchange={(e) => windowChrome.setUseSystemTitlebar((e.target as HTMLInputElement).checked)}
+                 style="width:18px; height:18px; accent-color: var(--sempa-accent); cursor:pointer; flex-shrink:0;" />
+        </label>
+        {/if}
 
         <!-- Sidebar navigation grouping (desktop rail only) -->
         {#if !mobile.value}

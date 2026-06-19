@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream metadata for Sempa on Linux / Flathub.
+     STUB (Phase 1): identity, licensing and structure are final; screenshots and
+     per-release notes are filled in during Phase 5 (packaging) before Flathub
+     submission. Validate with: appstreamcli validate ca.sempa.Sempa.metainfo.xml -->
+<component type="desktop-application">
+  <id>ca.sempa.Sempa</id>
+
+  <name>Sempa</name>
+  <summary>Plan your day with intention</summary>
+
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-or-later</project_license>
+
+  <developer_name>Sempa</developer_name>
+
+  <description>
+    <p>
+      Sempa is a calm, self-hosted task manager. It unifies your tasks, guides a
+      focused daily plan, and helps you close the day with intention — without the
+      noise of a typical productivity app.
+    </p>
+    <p>Sempa gives you:</p>
+    <ul>
+      <li>Guided daily planning and a focused daily board</li>
+      <li>Weekly objectives, timeboxing and a Pomodoro timer</li>
+      <li>An evening shutdown ritual to close the day</li>
+      <li>Offline-first sync across desktop, mobile and the Sempa Dock</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">ca.sempa.Sempa.desktop</launchable>
+
+  <url type="homepage">https://sempa.ca</url>
+  <url type="bugtracker">https://github.com/moorew/sempa/issues</url>
+
+  <categories>
+    <category>Office</category>
+    <category>ProjectManagement</category>
+  </categories>
+
+  <keywords>
+    <keyword>tasks</keyword>
+    <keyword>todo</keyword>
+    <keyword>planning</keyword>
+    <keyword>productivity</keyword>
+    <keyword>kanban</keyword>
+  </keywords>
+
+  <!-- Screenshots are required by Flathub and are added in Phase 5 (packaging),
+       once they are hosted. Shape:
+       <screenshots>
+         <screenshot type="default">
+           <caption>The daily board</caption>
+           <image>https://sempa.ca/screenshots/linux-day.png</image>
+         </screenshot>
+       </screenshots> -->
+
+  <branding>
+    <color type="primary" scheme_preference="light">#f7f3eb</color>
+    <color type="primary" scheme_preference="dark">#181310</color>
+  </branding>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="1.1.3" date="2026-06-18">
+      <description>
+        <p>First native Linux release.</p>
+      </description>
+    </release>
+  </releases>
+</component>

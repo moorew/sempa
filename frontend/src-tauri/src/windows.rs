@@ -152,6 +152,43 @@ fn apply_widget_window_flags(window: &tauri::WebviewWindow) {
     }
 }
 
+/// Create the global Quick-Add window — a small centered capture box summoned by
+/// the global shortcut or the tray. Chromeless and opaque (the webview paints
+/// edge-to-edge; see the reminder-popup note on why transparent windows show a
+/// grey backing). The /quick-add route closes it on submit/escape.
+pub fn create_quick_add(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(win) = app.get_webview_window("quick-add") {
+        let _ = win.show();
+        let _ = win.set_focus();
+        return Ok(());
+    }
+
+    let width = 520.0;
+    let height = 132.0;
+    let mut builder = WebviewWindowBuilder::new(app, "quick-add", WebviewUrl::App("/quick-add".into()))
+        .title("Quick Add — Sempa")
+        .inner_size(width, height)
+        .resizable(false)
+        .decorations(false)
+        .transparent(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .focused(true)
+        .visible(true);
+
+    // Center on the primary monitor.
+    if let Ok(Some(monitor)) = app.primary_monitor() {
+        let size = monitor.size();
+        let scale = monitor.scale_factor();
+        let x = ((size.width as f64 / scale) - width) / 2.0;
+        let y = ((size.height as f64 / scale) - height) / 2.0 - 60.0; // nudge above center
+        builder = builder.position(x.max(0.0), y.max(0.0));
+    }
+
+    builder.build()?;
+    Ok(())
+}
+
 /// Create a sticky note window — a borderless, draggable post-it.
 pub fn create_sticky(
     app: &AppHandle,

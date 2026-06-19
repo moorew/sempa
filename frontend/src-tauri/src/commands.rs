@@ -166,3 +166,108 @@ pub async fn save_sticky_positions(_positions: Vec<StickyPosition>) -> Result<()
 pub async fn get_sticky_positions() -> Result<Vec<StickyPosition>, String> {
     Ok(vec![])
 }
+
+/// Open the centered global Quick-Add window (also bound to the global shortcut
+/// and the tray). Callable from the frontend.
+#[tauri::command]
+pub fn open_quick_add(app: AppHandle) -> Result<(), String> {
+    crate::windows::create_quick_add(&app).map_err(|e| e.to_string())
+}
+
+// ── Secret Service keyring (desktop) ──────────────────────────────────────────
+//
+// Stores the app's bearer token (and any future device credential) in the OS
+// secret store — Secret Service / libsecret on Linux, Credential Manager on
+// Windows, Keychain on macOS — instead of plaintext localStorage. The frontend
+// keeps a localStorage fallback so a host with no Secret Service daemon still
+// works (never plaintext when the keyring is available). Under Flatpak this
+// needs `--talk-name=org.freedesktop.secrets` in finish-args.
+
+#[cfg(desktop)]
+const KEYRING_SERVICE: &str = "ca.sempa.Sempa";
+
+#[tauri::command]
+pub fn secret_get(key: String) -> Result<Option<String>, String> {
+    #[cfg(desktop)]
+    {
+        let entry = keyring::Entry::new(KEYRING_SERVICE, &key).map_err(|e| e.to_string())?;
+        match entry.get_password() {
+            Ok(p) => Ok(Some(p)),
+            Err(keyring::Error::NoEntry) => Ok(None),
+            Err(e) => Err(e.to_string()),
+        }
+    }
+    #[cfg(not(desktop))]
+    {
+        let _ = key;
+        Ok(None)
+    }
+}
+
+#[tauri::command]
+pub fn secret_set(key: String, value: String) -> Result<(), String> {
+    #[cfg(desktop)]
+    {
+        let entry = keyring::Entry::new(KEYRING_SERVICE, &key).map_err(|e| e.to_string())?;
+        entry.set_password(&value).map_err(|e| e.to_string())
+    }
+    #[cfg(not(desktop))]
+    {
+        let _ = (key, value);
+        Ok(())
+    }
+}
+
+#[tauri::command]
+pub fn secret_delete(key: String) -> Result<(), String> {
+    #[cfg(desktop)]
+    {
+        let entry = keyring::Entry::new(KEYRING_SERVICE, &key).map_err(|e| e.to_string())?;
+        match entry.delete_credential() {
+            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+            Err(e) => Err(e.to_string()),
+        }
+    }
+    #[cfg(not(desktop))]
+    {
+        let _ = key;
+        Ok(())
+    }
+}
+
+// ── Native window-button layout (Linux) ──────────────────────────────────────
+
+/// Return the desktop's window-button layout so the custom titlebar can mirror
+/// the system order/side (e.g. GNOME `appmenu:close`, KDE `:minimize,maximize,close`).
+///
+/// Reads GTK's `gtk-decoration-layout`, which the GTK port populates from the
+/// active desktop (GNOME's `button-layout`, KDE's settings, etc.) — so it's
+/// correct without talking to D-Bus directly. GTK must be touched on the main
+/// thread, hence the hop. Returns `None` off Linux or if it can't be read; the
+/// frontend then falls back to its configured default.
+#[tauri::command]
+pub fn window_decoration_layout(app: AppHandle) -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        use std::sync::mpsc;
+        let (tx, rx) = mpsc::channel();
+        let dispatched = app.run_on_main_thread(move || {
+            use gtk::prelude::GtkSettingsExt;
+            let layout = gtk::Settings::default()
+                .and_then(|s| s.gtk_decoration_layout())
+                .map(|g| g.to_string());
+            let _ = tx.send(layout);
+        });
+        if dispatched.is_err() {
+            return None;
+        }
+        rx.recv_timeout(std::time::Duration::from_millis(500))
+            .ok()
+            .flatten()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = app;
+        None
+    }
+}
