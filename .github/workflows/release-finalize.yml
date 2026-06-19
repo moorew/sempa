@@ -1,0 +1,101 @@
+name: Release finalize
+
+# Produces ONE signed checksums file for a release instead of per-artifact
+# signatures. Runs after each platform release workflow completes; the
+# concurrency guard (cancel-in-progress) means only the run after the
+# last-finishing platform survives — so it sees every uploaded asset, hashes
+# them into SHA256SUMS, and cosign-signs that single file.
+on:
+  workflow_run:
+    workflows: ["Windows Release", "Linux Release", "Android Release"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to (re)finalize, e.g. v1.2.0"
+        required: true
+
+permissions:
+  contents: read
+
+# Only one finalize at a time; a newer platform finishing supersedes an
+# in-flight finalize so the surviving run has the complete asset set.
+concurrency:
+  group: release-finalize
+  cancel-in-progress: true
+
+jobs:
+  checksums:
+    name: Sign SHA256SUMS
+    # Manual dispatch, or a successful tag (v*) release build.
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' ||
+          (github.event.workflow_run.conclusion == 'success' &&
+           startsWith(github.event.workflow_run.head_branch, 'v')) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # upload the checksums to the release
+      id-token: write   # cosign keyless (Sigstore OIDC)
+    steps:
+      - name: Resolve tag
+        id: tag
+        env:
+          DISPATCH_TAG: ${{ github.event.inputs.tag }}
+          RUN_TAG: ${{ github.event.workflow_run.head_branch }}
+        run: echo "tag=${DISPATCH_TAG:-$RUN_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          mkdir assets && cd assets
+          gh release download "$TAG" -R "$REPO" -p '*'
+          # Never hash a previous checksums file or any leftover per-file sigs.
+          rm -f SHA256SUMS SHA256SUMS.* ./*.cosign.* ./*.sig 2>/dev/null || true
+          ls -la
+
+      - name: Generate SHA256SUMS
+        working-directory: assets
+        run: |
+          find . -maxdepth 1 -type f -printf '%f\n' | sort | xargs -r sha256sum > ../SHA256SUMS
+          echo "----- SHA256SUMS -----"; cat ../SHA256SUMS
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          # cosign v2: classic detached .sig + .pem (Scorecard-recognized; what
+          # `cosign verify-blob --certificate/--signature` consumes).
+          cosign-release: 'v2.6.3'
+
+      - name: Sign SHA256SUMS (keyless cosign)
+        run: |
+          cosign sign-blob --yes \
+            --output-signature SHA256SUMS.cosign.sig \
+            --output-certificate SHA256SUMS.cosign.pem \
+            SHA256SUMS
+
+      # Remove any stale per-artifact signatures / prior checksums so the release
+      # ends up with exactly one signed manifest.
+      - name: Prune stale signatures from the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          stale=$(gh release view "$TAG" -R "$REPO" --json assets \
+            --jq '.assets[].name | select(test("\\.cosign\\.(sig|pem)$"))' || true)
+          for a in $stale; do
+            echo "deleting stale signature: $a"
+            gh release delete-asset "$TAG" "$a" -R "$REPO" --yes || true
+          done
+
+      - name: Upload checksums to the release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          files: |
+            SHA256SUMS
+            SHA256SUMS.cosign.sig
+            SHA256SUMS.cosign.pem

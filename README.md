@@ -104,17 +104,22 @@ container **runs as a non-root user** (uid 10001).
 
 ### Verifying release downloads
 
-Desktop/mobile release artifacts are **signed with [cosign](https://docs.sigstore.dev/)**
-(keyless / Sigstore). Each download has a matching `.cosign.sig` + `.cosign.pem` on the
-release. To verify, e.g. the Android APK:
+Each release ships a single **`SHA256SUMS`** listing every artifact's hash,
+**signed with [cosign](https://docs.sigstore.dev/)** (keyless / Sigstore) as
+`SHA256SUMS.cosign.sig` + `SHA256SUMS.cosign.pem`. Verify the manifest's
+signature, then check your download against it:
 
 ```bash
+# 1. Verify the signed checksums manifest came from this repo's CI
 cosign verify-blob \
-  --certificate app-release.apk.cosign.pem \
-  --signature  app-release.apk.cosign.sig \
+  --certificate SHA256SUMS.cosign.pem \
+  --signature  SHA256SUMS.cosign.sig \
   --certificate-identity-regexp 'https://github.com/moorew/sempa/.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  app-release.apk
+  SHA256SUMS
+
+# 2. Check your download's hash is listed (run in the folder with both files)
+sha256sum --ignore-missing -c SHA256SUMS
 ```
 
 ---
