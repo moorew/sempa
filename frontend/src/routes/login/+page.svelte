@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { api, setServerUrl, getServerUrl, setTauriToken, clearTauriToken, setNativeToken, clearNativeToken, resetApiResolver } from '$lib/api';
-  import { isTauri } from '$lib/tauri/bridge';
+  import { isTauri, openExternal } from '$lib/tauri/bridge';
 
   let isNative = $state(false);
   let needsServerUrl = $derived(isNative || isTauri());
@@ -47,6 +47,33 @@
     }
   }
 
+  // Exchange the one-time OAuth link token for a Bearer session, once. Shared by
+  // the cold-start path (onMount) and the warm-start deep-link path ($effect).
+  let tauriLoginDone = false;
+  async function finalizeTauriLogin(linkToken: string) {
+    if (tauriLoginDone) return;
+    tauriLoginDone = true;
+    loading = true;
+    try {
+      const result = await api.auth.nativeFinalize(linkToken);
+      if (result.token) { setTauriToken(result.token); resetApiResolver(); }
+      goto(redirectTarget, { replaceState: true });
+    } catch {
+      error = 'Google sign-in failed. Please try again.';
+      loading = false;
+      tauriLoginDone = false; // allow a retry
+    }
+  }
+
+  // Warm start: the system browser returns via sempa://login?link_token=… while
+  // /login is already mounted, so the deep-link router goto()s here with the token
+  // in the query — onMount won't re-run, so react to it.
+  $effect(() => {
+    if (!isTauri()) return;
+    const linkToken = $page.url.searchParams.get('link_token');
+    if (linkToken && !tauriLoginDone) void finalizeTauriLogin(linkToken);
+  });
+
   onMount(async () => {
     // Load Capacitor modules dynamically (only on mobile)
     try {
@@ -63,25 +90,13 @@
       }
     } catch { /* Capacitor not available */ }
 
-    // Tauri Google OAuth callback: backend redirects back to tauri.localhost/login?link_token=X
-    // Exchange the one-time token for a Bearer token and proceed into the app.
+    // Tauri Google OAuth callback. Cold start: the app launched via the sempa://
+    // deep link, so the page mounts with ?link_token=X already in the URL. (Warm
+    // start — the deep link arrives while /login is already open — is handled by
+    // the $effect below.)
     if (isTauri()) {
       const linkToken = $page.url.searchParams.get('link_token');
-      if (linkToken) {
-        loading = true;
-        try {
-          const result = await api.auth.nativeFinalize(linkToken);
-          if (result.token) {
-            setTauriToken(result.token);
-            resetApiResolver();
-          }
-          goto(redirectTarget, { replaceState: true });
-          return;
-        } catch {
-          error = 'Google sign-in failed. Please try again.';
-          loading = false;
-        }
-      }
+      if (linkToken) { await finalizeTauriLogin(linkToken); return; }
     }
 
     // Android Capacitor WebView-navigation OAuth callback (fallback when Browser plugin unavailable).
@@ -163,9 +178,17 @@
       const origin = window.location.origin;
       window.location.href = `${base}/api/v1/auth/google?${params}&capacitor_origin=${encodeURIComponent(origin)}`;
     } else if (isTauri()) {
-      // Tauri desktop: navigate the WebView; backend redirects back to the Tauri origin.
       const tauriOrigin = window.location.origin;
-      window.location.href = `${base}/api/v1/auth/google?${params}&tauri=true&tauri_origin=${encodeURIComponent(tauriOrigin)}`;
+      if (tauriOrigin.startsWith('https:')) {
+        // Windows (https://tauri.localhost): WebView2 follows the https redirect
+        // back into the app origin, so navigate the WebView as before.
+        window.location.href = `${base}/api/v1/auth/google?${params}&tauri=true&tauri_origin=${encodeURIComponent(tauriOrigin)}`;
+      } else {
+        // Linux/macOS (tauri://localhost): WebKitGTK refuses to redirect a webview
+        // to a non-HTTPS scheme, so run OAuth in the SYSTEM browser and return via
+        // the sempa:// deep link (handled by the deep-link router → /login?link_token).
+        void openExternal(`${base}/api/v1/auth/google?${params}&desktop_deeplink=true`);
+      }
     } else {
       window.location.href = `${base}/api/v1/auth/google?${params}`;
     }

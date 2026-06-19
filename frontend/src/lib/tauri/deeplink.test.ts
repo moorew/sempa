@@ -26,8 +26,9 @@ describe('routeForDeepLink', () => {
         expect(routeForDeepLink('sempa://PLAN')).toBe(`/plan/${d}`);
     });
 
-    it('swallows the OAuth redirect (handled in Phase 3, not bounced home)', () => {
-        expect(routeForDeepLink('sempa://oauth/callback?code=abc')).toBeNull();
+    it('routes the OAuth deep-link return to /login with the token preserved', () => {
+        expect(routeForDeepLink('sempa://login?link_token=abc&redirect=/')).toBe('/login?link_token=abc&redirect=/');
+        expect(routeForDeepLink('sempa://oauth?link_token=xyz')).toBe('/login?link_token=xyz');
     });
 
     it('falls back to home for unknown actions', () => {
