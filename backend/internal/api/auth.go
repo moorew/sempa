@@ -475,6 +475,11 @@ func (h *authHandler) googleAuth(w http.ResponseWriter, r *http.Request) {
 	case qs.Get("native") == "true":
 		// Android Chrome Custom Tab: return via custom URL scheme deep link
 		appReturnPrefix = "com.clevercode.sempa://login"
+	case qs.Get("desktop_deeplink") == "true":
+		// Linux/macOS desktop: OAuth runs in the SYSTEM browser (WebKitGTK refuses
+		// to redirect a webview to a non-HTTPS scheme like tauri://), so return via
+		// the sempa:// deep link, which the already-running app picks up.
+		appReturnPrefix = "sempa://login"
 	case qs.Get("tauri") == "true":
 		// Tauri desktop WebView: return to the Tauri localhost origin
 		raw := qs.Get("tauri_origin")

@@ -41,10 +41,11 @@ export function routeForDeepLink(raw: string): string | null {
             return `/plan/${d}`;
         case 'shutdown':
             return `/shutdown/${d}`;
+        case 'login':
         case 'oauth':
-            // OAuth redirect (sempa://oauth/callback?...) is wired in Phase 3.
-            // Until then, swallow it rather than bouncing to home.
-            return null;
+            // OAuth return from the system browser: sempa://login?link_token=…&redirect=…
+            // Forward to the login page WITH the query so it can finalize the token.
+            return `/login${url.search}`;
         default:
             return '/home';
     }
