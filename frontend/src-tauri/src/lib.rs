@@ -149,6 +149,9 @@ pub fn run() {
             commands::get_sticky_positions,
             commands::update_taskbar_badge,
             commands::window_decoration_layout,
+            commands::secret_get,
+            commands::secret_set,
+            commands::secret_delete,
         ])
         .run(tauri::generate_context!());
 

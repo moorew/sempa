@@ -62,6 +62,26 @@ export async function getSyncStatus(): Promise<SyncStatus> {
     return { syncing: false, last_synced_at: null, pending_mutations: 0, online: false };
 }
 
+// ── Secret Service keyring (desktop) ──────────────────────────────────────────
+// Bearer token storage in the OS secret store. Throws if the keyring is
+// unavailable (no Secret Service daemon) — callers fall back to localStorage.
+
+export async function secretGet(key: string): Promise<string> {
+    const t = getTauri();
+    if (!t) return '';
+    return ((await t.invoke('secret_get', { key })) as string | null) ?? '';
+}
+
+export async function secretSet(key: string, value: string): Promise<void> {
+    const t = getTauri();
+    if (t) await t.invoke('secret_set', { key, value });
+}
+
+export async function secretDelete(key: string): Promise<void> {
+    const t = getTauri();
+    if (t) await t.invoke('secret_delete', { key });
+}
+
 export async function getServerUrl(): Promise<string> {
     const t = getTauri();
     if (t) return (await t.invoke('get_server_url')) as string;

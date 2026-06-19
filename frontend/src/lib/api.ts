@@ -77,15 +77,48 @@ export function getServerUrl(): string {
     : '';
 }
 
+// Desktop bearer token. Stored in the OS keyring (Secret Service on Linux) via
+// secret.ts; this in-memory cache is what the synchronous request hot-path reads.
+// localStorage is a fallback only (keyring unavailable / pre-load window).
 const TAURI_TOKEN_KEY = 'sempa_tauri_token';
+let tauriTokenCache: string | null = null; // null = not yet loaded
+
+/**
+ * Load the desktop token from the keyring into the cache (migrating any legacy
+ * plaintext token). Call once at startup, before the auth gate. No-op off Tauri.
+ */
+export async function initTauriToken(): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    const { loadKeyringToken } = await import('$lib/tauri/secret');
+    tauriTokenCache = await loadKeyringToken(TAURI_TOKEN_KEY);
+  } catch {
+    // Keyring unreachable → use the legacy plaintext value if present.
+    tauriTokenCache =
+      typeof localStorage !== 'undefined' ? localStorage.getItem(TAURI_TOKEN_KEY) ?? '' : '';
+  }
+}
+
 export function getTauriToken(): string {
+  if (tauriTokenCache !== null) return tauriTokenCache;
+  // Pre-load window / off-Tauri: read the plaintext fallback synchronously.
   return typeof localStorage !== 'undefined' ? localStorage.getItem(TAURI_TOKEN_KEY) ?? '' : '';
 }
 export function setTauriToken(token: string) {
-  localStorage.setItem(TAURI_TOKEN_KEY, token);
+  tauriTokenCache = token;
+  if (isTauri()) {
+    void import('$lib/tauri/secret').then((m) => m.saveKeyringToken(TAURI_TOKEN_KEY, token));
+  } else if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(TAURI_TOKEN_KEY, token);
+  }
 }
 export function clearTauriToken() {
-  localStorage.removeItem(TAURI_TOKEN_KEY);
+  tauriTokenCache = '';
+  if (isTauri()) {
+    void import('$lib/tauri/secret').then((m) => m.deleteKeyringToken(TAURI_TOKEN_KEY));
+  } else if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem(TAURI_TOKEN_KEY);
+  }
 }
 
 // Native mobile token (Android Capacitor) — same Bearer auth pattern as Tauri

@@ -167,6 +167,67 @@ pub async fn get_sticky_positions() -> Result<Vec<StickyPosition>, String> {
     Ok(vec![])
 }
 
+// ── Secret Service keyring (desktop) ──────────────────────────────────────────
+//
+// Stores the app's bearer token (and any future device credential) in the OS
+// secret store — Secret Service / libsecret on Linux, Credential Manager on
+// Windows, Keychain on macOS — instead of plaintext localStorage. The frontend
+// keeps a localStorage fallback so a host with no Secret Service daemon still
+// works (never plaintext when the keyring is available). Under Flatpak this
+// needs `--talk-name=org.freedesktop.secrets` in finish-args.
+
+#[cfg(desktop)]
+const KEYRING_SERVICE: &str = "ca.sempa.Sempa";
+
+#[tauri::command]
+pub fn secret_get(key: String) -> Result<Option<String>, String> {
+    #[cfg(desktop)]
+    {
+        let entry = keyring::Entry::new(KEYRING_SERVICE, &key).map_err(|e| e.to_string())?;
+        match entry.get_password() {
+            Ok(p) => Ok(Some(p)),
+            Err(keyring::Error::NoEntry) => Ok(None),
+            Err(e) => Err(e.to_string()),
+        }
+    }
+    #[cfg(not(desktop))]
+    {
+        let _ = key;
+        Ok(None)
+    }
+}
+
+#[tauri::command]
+pub fn secret_set(key: String, value: String) -> Result<(), String> {
+    #[cfg(desktop)]
+    {
+        let entry = keyring::Entry::new(KEYRING_SERVICE, &key).map_err(|e| e.to_string())?;
+        entry.set_password(&value).map_err(|e| e.to_string())
+    }
+    #[cfg(not(desktop))]
+    {
+        let _ = (key, value);
+        Ok(())
+    }
+}
+
+#[tauri::command]
+pub fn secret_delete(key: String) -> Result<(), String> {
+    #[cfg(desktop)]
+    {
+        let entry = keyring::Entry::new(KEYRING_SERVICE, &key).map_err(|e| e.to_string())?;
+        match entry.delete_credential() {
+            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+            Err(e) => Err(e.to_string()),
+        }
+    }
+    #[cfg(not(desktop))]
+    {
+        let _ = key;
+        Ok(())
+    }
+}
+
 // ── Native window-button layout (Linux) ──────────────────────────────────────
 
 /// Return the desktop's window-button layout so the custom titlebar can mirror

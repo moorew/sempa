@@ -23,7 +23,7 @@
   import { ensureDesktopNotifyPermission } from '$lib/desktopNotify';
   import { SplashScreen } from '@capacitor/splash-screen';
   import { Capacitor } from '@capacitor/core';
-  import { api, getServerUrl, getTauriToken, clearTauriToken, clearNativeToken, resetApiResolver } from '$lib/api';
+  import { api, getServerUrl, getTauriToken, clearTauriToken, clearNativeToken, resetApiResolver, initTauriToken } from '$lib/api';
   import { isTauri, hasLocalDb, onSyncTrigger } from '$lib/tauri/bridge';
   import { initDeepLinks } from '$lib/tauri/deeplink';
   import { windowChrome } from '$lib/stores/windowChrome.svelte';
@@ -213,6 +213,9 @@
 
       // In Tauri (desktop), require server URL and token before proceeding.
       if (isTauri()) {
+        // Load the bearer token from the OS keyring (and migrate any legacy
+        // plaintext token) into the in-memory cache before the auth gate reads it.
+        await initTauriToken();
         if (!getServerUrl()) {
           goto('/login?redirect=' + encodeURIComponent($page.url.pathname), { replaceState: true });
           return;

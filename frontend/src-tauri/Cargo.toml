@@ -33,6 +33,10 @@ uuid = { version = "1", features = ["v4"] }
 # a second launch forward its sempa:// URL / argv to the already-running instance.
 [target.'cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))'.dependencies]
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+# OS secret store for the bearer token: Secret Service (libsecret) on Linux,
+# Credential Manager on Windows, Keychain on macOS. The per-OS backend crates are
+# target-gated inside `keyring`, so enabling all three native features is safe.
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
 
 # Linux only: read the system window-button layout (gtk-decoration-layout) so the
 # custom titlebar mirrors GNOME/KDE order + side. Version matches the gtk already
