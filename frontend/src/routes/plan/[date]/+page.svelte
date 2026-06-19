@@ -4,7 +4,7 @@
   import { page } from '$app/stores';
   import { api } from '$lib/api';
   import type { Task } from '$lib/types';
-  import { formatDate, formatMinutes, isToday, offsetDate, today, weekStart } from '$lib/utils';
+  import { compareTasksForDay, formatDate, formatMinutes, isToday, offsetDate, today, weekStart } from '$lib/utils';
   import { Sparkles } from 'lucide-svelte';
   import { prefs } from '$lib/stores/prefs.svelte';
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
@@ -70,16 +70,28 @@
   let planActive = $derived(todayTasks.filter(t => t.status !== 'done' && t.status !== 'cancelled'));
   async function aiPlanMyDay() {
     if (aiPlanning) return;
-    const active = todayTasks.filter(t => t.status !== 'done' && t.status !== 'cancelled');
+    // Imported calendar meetings (Google Calendar) ride along as tasks; they're
+    // fixed commitments, not work to reorder — feed them to the planner as events.
+    const active = todayTasks.filter(
+      t => t.status !== 'done' && t.status !== 'cancelled' && t.source !== 'google_calendar',
+    );
     if (active.length < 2) return;
     aiPlanning = true;
     aiPlanError = '';
     try {
+      // Calendar awareness: subscription feeds (iCal + Fastmail) via the events
+      // endpoint, plus Google Calendar meetings (imported as scheduled tasks).
       let events: { title: string; start: string; end: string }[] = [];
       try {
         const evs = await api.ical.listEvents(date);
         events = (evs ?? []).map(e => ({ title: e.summary, start: e.start_time, end: e.end_time }));
       } catch { /* events optional */ }
+      for (const t of todayTasks) {
+        if (t.source === 'google_calendar' && t.scheduled_start && t.scheduled_end) {
+          events.push({ title: t.title, start: t.scheduled_start, end: t.scheduled_end });
+        }
+      }
+
       const res = await api.ai.planDay(
         date,
         active.map(t => ({ id: t.id, title: t.title, minutes: t.time_estimate_minutes ?? 0 })),
@@ -90,15 +102,30 @@
         return;
       }
       if (res.order?.length) {
-        const byId = new Map(todayTasks.map(t => [t.id, t]));
-        const ordered = res.order.map(id => byId.get(id)).filter(Boolean) as Task[];
-        const rest = todayTasks.filter(t => !res.order!.includes(t.id));
-        todayTasks = [...ordered, ...rest];
+        // The schedule carries a soft start time (roughly_at) + effort estimate
+        // per task. roughly_at is the daily board's primary sort key, so applying
+        // it makes the plan actually land on the board — not just show here once.
+        const sched = new Map((res.schedule ?? []).map(s => [s.id, s]));
+        const patched = new Map<string, Partial<Task>>();
+        for (const t of active) {
+          const s = sched.get(t.id);
+          if (!s) continue;
+          const patch: { roughly_at: string; time_estimate_minutes?: number } = { roughly_at: s.roughly_at };
+          // Don't clobber an estimate the user set; only fill blanks.
+          if (!t.time_estimate_minutes && s.minutes) patch.time_estimate_minutes = s.minutes;
+          patched.set(t.id, patch);
+        }
+
+        // Apply locally (roughly_at drives compareTasksForDay), then persist.
+        todayTasks = todayTasks
+          .map(t => ({ ...t, ...(patched.get(t.id) ?? {}) }))
+          .sort(compareTasksForDay);
         aiPlanNote = res.note ?? '';
         aiPlanned = true;
-        // Persist the new order so it sticks on the board. position is a float
-        // sort key; the day view orders unscheduled tasks by it.
-        await Promise.all(ordered.map((t, i) => api.tasks.update(t.id, { position: i }).catch(() => {})));
+
+        await Promise.all(
+          [...patched.entries()].map(([id, patch]) => api.tasks.update(id, patch).catch(() => {})),
+        );
       }
     } catch (e) {
       aiPlanError = e instanceof Error ? e.message.replace(/^\d+\s/, '') : 'Planning failed';

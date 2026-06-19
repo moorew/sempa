@@ -301,7 +301,7 @@ const httpApi = {
       req<{ available: boolean; notes?: string }>(
         '/api/v1/ai/tidy-notes', { method: 'POST', body: body({ notes }) }, 90_000),
     planDay: (date: string, tasks: { id: string; title: string; minutes: number }[], events: { title: string; start: string; end: string }[]) =>
-      req<{ available: boolean; order?: string[]; note?: string }>(
+      req<{ available: boolean; order?: string[]; schedule?: { id: string; roughly_at: string; minutes: number }[]; note?: string }>(
         '/api/v1/ai/plan-day', { method: 'POST', body: body({ date, tasks, events }) }, 90_000),
     weeklyReview: (completed: string[], objectives: { title: string; status: string }[]) =>
       req<{ available: boolean; wins?: string[]; challenges?: string[]; next_focus?: string }>(
