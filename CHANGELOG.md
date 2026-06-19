@@ -6,7 +6,7 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
-## [Unreleased]
+## [1.2.0] - 2026-06-19
 
 ### Added
 - **Sempa for Linux** — a native desktop app (Tauri/WebKitGTK) shipping as

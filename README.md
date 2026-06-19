@@ -623,7 +623,7 @@ npm run tauri build              # → .deb, .rpm, .AppImage under src-tauri/tar
 
 > The Linux build reads a Linux-only config overlay (`src-tauri/tauri.linux.conf.json`)
 > that sets the Flathub app id `ca.sempa.Sempa` and the deb/rpm/appimage targets;
-> Windows/macOS keep `com.sempa.desktop`. The **Sempa Dock** appliance (Raspberry Pi)
+> Windows keeps `com.sempa.desktop`. The **Sempa Dock** appliance (Raspberry Pi)
 > reuses this same build in dock mode — see [`sempa-linux/dock`](sempa-linux/dock).
 
 ### Project structure
@@ -643,7 +643,7 @@ frontend/
       components/    Reusable UI components
       stores/        Svelte runes-based state
       api.ts         Typed API client
-  src-tauri/         Tauri (Windows/macOS/Linux) desktop app
+  src-tauri/         Tauri (Windows + Linux) desktop app
   android/           Capacitor Android wrapper
 install.sh           Guided first-time setup (prereqs → config → build → start)
 deploy/
