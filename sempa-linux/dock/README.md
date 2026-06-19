@@ -51,22 +51,24 @@ SQLite, the Secret Service keyring, the signed updater and low input latency.
 > these configs are **un-runtime-tested** — they encode the spec and the standard
 > Cage/greetd/Plymouth/pi-gen patterns. Verify on a real Pi 5 + Touch Display 2.
 
-## Pairing (scoped, revocable device token) — design
+## Pairing (scoped, revocable device token) — implemented
 
 No account password ever lives on the device (PI_DOCK_SPEC §2.7, §2.12):
 
-1. First run with no token → the Dock shows a short **pairing code**.
-2. You approve it from the web/desktop app, which mints a **device token scoped to
-   today + the current week only**, and revocable from the account at any time.
-3. The token is stored in the keyring (`secret_set`) / the encrypted `/data`
-   partition; all sync uses it as the Bearer credential.
+1. First run with no token → the Dock shows a short **pairing code** (`/dock`
+   pairing gate; it calls `POST /api/v1/devices/pair/start` and polls
+   `GET /api/v1/devices/pair/status`).
+2. You approve it from a signed-in app — **Settings → System → Paired devices**,
+   enter the code (`POST /api/v1/devices/pair/approve`). Approval mints a normal
+   **session token with an 8-day (current-week) TTL**, handed to the device
+   **exactly once** via the status poll; the Dock stores it in the keyring.
+3. Revoke any device from the same Settings panel (`DELETE /api/v1/devices/{id}`),
+   which deletes the underlying session immediately.
 
-**Backend work required** (not yet implemented — Go, testable locally): a
-`POST /api/v1/devices/pair` (device posts code) + an approve endpoint that issues
-a scoped session row (a `scope`/`device` flavour of the existing `sessions`
-table, week-bounded TTL) and a revoke endpoint surfaced in Settings. The Dock
-polls pairing status until approved. Until this lands, pair by hand by writing a
-normal token to the keyring.
+Backend: migration `020_device_pairing.sql` + `db.PairingStore` +
+`api/pairing.go` (covered by `pairing_test.go`). **Follow-up:** the device session
+is currently TTL-bounded + revocable + token-only; fine-grained *path* scoping
+(restricting the device to today/week endpoints) is a documented next step.
 
 ## Acceptance checklist (verify on hardware)
 
