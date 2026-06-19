@@ -151,6 +151,20 @@ pub fn run() {
                 }
             }
 
+            // Sempa Dock appliance mode (`--dock` arg or SEMPA_DOCK=1): the Pi
+            // kiosk launches the same binary fullscreen and lands on /dock. The
+            // cursor is hidden by the /dock CSS; on the appliance the device is
+            // already paired (token present) so the auth gate doesn't redirect.
+            let dock_mode = std::env::args().any(|a| a == "--dock")
+                || std::env::var("SEMPA_DOCK").is_ok();
+            if dock_mode {
+                if let Some(win) = app.get_webview_window("main") {
+                    let _ = win.set_fullscreen(true);
+                    let _ = win.set_decorations(false);
+                    let _ = win.eval("window.location.replace('/dock')");
+                }
+            }
+
             startup_log("setup: complete");
             Ok(())
         })

@@ -69,7 +69,8 @@
     isReminderPopup ||
     ($page.url.pathname as string) === '/widget' ||
     ($page.url.pathname as string) === '/sticky' ||
-    ($page.url.pathname as string) === '/quick-add'
+    ($page.url.pathname as string) === '/quick-add' ||
+    ($page.url.pathname as string) === '/dock'
   );
   // Whether any in-app banner (reminder alert or routine prompt) is showing —
   // gates the shared spacing wrapper so there's no empty offset when none are.

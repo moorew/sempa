@@ -1,0 +1,26 @@
+// Sempa Plymouth splash — the cream cradle mark gently breathing on terracotta.
+// Calm, brand-true, no progress bar (the boot budget is < 15s; PI_DOCK_SPEC §2.6).
+
+// Terracotta background (#b3592e).
+Window.SetBackgroundTopColor(0.702, 0.349, 0.180);
+Window.SetBackgroundBottomColor(0.702, 0.349, 0.180);
+
+mark.image = Image("sempa-mark.png");
+mark.sprite = Sprite(mark.image);
+mark.w = mark.image.GetWidth();
+mark.h = mark.image.GetHeight();
+mark.sprite.SetX(Window.GetWidth()  / 2 - mark.w / 2);
+mark.sprite.SetY(Window.GetHeight() / 2 - mark.h / 2);
+
+// Breathing: opacity eases between ~0.55 and 1.0 on a slow sine.
+progress = 0;
+fun refresh() {
+  progress++;
+  o = 0.78 + 0.22 * Math.Sin(progress / 22);
+  mark.sprite.SetOpacity(o);
+}
+Plymouth.SetRefreshFunction(refresh);
+
+// No password/question UI on the appliance.
+fun quit() { mark.sprite.SetOpacity(0); }
+Plymouth.SetQuitFunction(quit);

@@ -1,0 +1,7 @@
+# Let the unprivileged `sempa` user control panel brightness without root, so the
+# app can run the day/night schedule, idle-dim and tap-to-wake (PI_DOCK_SPEC §2.8)
+# by writing /sys/class/backlight/*/brightness. Installed to
+# /etc/udev/rules.d/99-sempa-backlight.rules.
+SUBSYSTEM=="backlight", ACTION=="add", \
+  RUN+="/bin/chgrp video /sys/class/backlight/%k/brightness", \
+  RUN+="/bin/chmod g+w /sys/class/backlight/%k/brightness"

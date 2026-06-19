@@ -1,0 +1,16 @@
+# Appended to /boot/firmware/config.txt on the appliance (Raspberry Pi OS
+# Bookworm). Touch Display 2 (DSI, 1280×720) + quiet, cursor-free boot.
+
+# KMS driver (required for Wayland/Cage GPU compositing).
+dtoverlay=vc4-kms-v3d
+max_framebuffers=2
+
+# Official Touch Display 2 is DSI — autodetected on Pi 5/CM. For the 5" DSI panel
+# add its overlay instead. HDMI touch panels need no DSI overlay.
+# dtoverlay=vc4-kms-dsi-7inch
+
+# Quiet boot: hide the rainbow splash and keep the console cursor off.
+disable_splash=1
+
+# RTC (optional module) keeps time across power loss without a network.
+# dtoverlay=i2c-rtc,ds3231

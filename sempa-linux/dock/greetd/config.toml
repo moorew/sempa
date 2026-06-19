@@ -1,0 +1,12 @@
+# greetd — autologin straight into the Sempa Dock kiosk (no login screen).
+# Installed to /etc/greetd/config.toml on the appliance. greetd respawns the
+# session if it exits, giving us crash auto-recovery (PI_DOCK_SPEC §2.10).
+[terminal]
+vt = 1
+
+[default_session]
+# Cage is a single-app Wayland kiosk compositor: it launches one app fullscreen
+# with no chrome and no escape to a desktop. -d daemonizes; -s disables the
+# "VT switching" escape. The wrapper sets the appliance env + runs sempa --dock.
+command = "/opt/sempa-dock/sempa-dock-session"
+user = "sempa"
