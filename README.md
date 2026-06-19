@@ -45,7 +45,7 @@ The OpenSSF badge above links to Sempa's full [Best Practices assessment](https:
 | **Web** | Self-host with Docker (see below) |
 | **Android** | APK from [GitHub Releases](../../releases) or build from source |
 | **Windows** | Sempa-branded `.exe` setup (NSIS) or `.msi` from [GitHub Releases](../../releases) (x64 + ARM64) |
-| **Linux** | `.AppImage`, `.deb`, `.rpm` from [GitHub Releases](../../releases) (x86_64 + aarch64), or the AUR `sempa-bin` package. Flatpak/Flathub is on the way. |
+| **Linux** | `.AppImage`, `.deb`, `.rpm` from [GitHub Releases](../../releases) (x86_64 + aarch64). AUR (`sempa-bin`) and Flatpak/Flathub are on the way. |
 | **Sempa Dock** | A Raspberry Pi touch appliance that boots straight into today — see [`sempa-linux/dock`](sempa-linux/dock) |
 | **PWA** | Install from your browser when visiting your Sempa instance |
 
@@ -56,7 +56,7 @@ All apps connect to your self-hosted server — your data stays on your machine.
 - **AppImage** — `chmod +x Sempa_*.AppImage && ./Sempa_*.AppImage`. Portable, no install; self-updates via the in-app updater.
 - **Debian/Ubuntu/Pop!/Mint** — `sudo apt install ./Sempa_*_amd64.deb` (or `_arm64`).
 - **Fedora/RHEL/openSUSE** — `sudo dnf install ./Sempa-*.x86_64.rpm` (or `aarch64`).
-- **Arch/Manjaro** — `paru -S sempa-bin` (once published to the AUR; the `PKGBUILD` lives in [`sempa-linux/aur`](sempa-linux/aur)).
+- **Arch/Manjaro** — coming to the AUR as `sempa-bin`; until then grab the `.AppImage` above. (The packaging is ready in [`sempa-linux/aur`](sempa-linux/aur).)
 
 The app id is `ca.sempa.Sempa`; it registers the `sempa://` URL scheme and a desktop
 entry with **New task / Plan day / Shutdown ritual** launcher actions. On first launch,
