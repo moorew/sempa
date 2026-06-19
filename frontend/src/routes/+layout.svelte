@@ -27,6 +27,8 @@
   import { isTauri, hasLocalDb, onSyncTrigger } from '$lib/tauri/bridge';
   import { initDeepLinks } from '$lib/tauri/deeplink';
   import { windowChrome } from '$lib/stores/windowChrome.svelte';
+  import { cockpit } from '$lib/stores/cockpit.svelte';
+  import CockpitView from '$lib/components/cockpit/CockpitView.svelte';
   import { shortcutLabel } from '$lib/platform';
   import { startSync, sync as runSync, syncStore } from '$lib/sync.svelte';
   import PomodoroTimer from '$lib/components/PomodoroTimer.svelte';
@@ -66,7 +68,8 @@
   let isStandaloneWindow = $derived(
     isReminderPopup ||
     ($page.url.pathname as string) === '/widget' ||
-    ($page.url.pathname as string) === '/sticky'
+    ($page.url.pathname as string) === '/sticky' ||
+    ($page.url.pathname as string) === '/quick-add'
   );
   // Whether any in-app banner (reminder alert or routine prompt) is showing —
   // gates the shared spacing wrapper so there's no empty offset when none are.
@@ -147,6 +150,7 @@
     prefs.init();
     quotes.init();
     mobile.init();
+    cockpit.init();
     viewport.init();
 
     // Warm the celebration engine and apply the saved sound preference. On native
@@ -434,6 +438,14 @@
 
 {#if isLoginPage || isSetupPage || isStandaloneWindow}
   {@render children()}
+{:else if cockpit.active}
+  <!-- Cockpit mode: ultrawide-short geometry override (replaces the normal
+       sidebar+content chrome with the horizontal cockpit). Titlebar stays for
+       window management on desktop. -->
+  <div class="flex flex-col h-screen overflow-hidden" style="background: var(--sempa-bg-main);">
+    <TitleBar />
+    <div class="flex-1" style="min-height:0;"><CockpitView /></div>
+  </div>
 {:else}
 <div bind:this={appShell} class="flex flex-col h-screen overflow-hidden" style="background: var(--sempa-bg-main);">
   <!-- Custom titlebar (Tauri only — hidden on web/mobile) -->
