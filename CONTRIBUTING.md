@@ -53,6 +53,16 @@ npm run check     # svelte-check + type checking
 See the [Development](README.md#development) section of the README for running
 the app locally.
 
+### Desktop apps (Tauri)
+
+Building the Windows/macOS/**Linux** desktop apps needs the Rust toolchain; the
+Linux build also needs WebKitGTK dev libraries (see [README → Building native
+apps](README.md#building-native-apps) for the exact `apt`/`dnf` packages and the
+`tauri build` commands). The Linux/Dock app id and bundle targets come from the
+Linux-only overlay `frontend/src-tauri/tauri.linux.conf.json`. Rust changes are
+validated in CI (the Windows + Linux release workflows) — write carefully if you
+can't compile Tauri locally.
+
 ## Licensing of contributions
 
 Sempa is licensed under the **GNU AGPL-3.0-or-later** (see [LICENSE](LICENSE)).
