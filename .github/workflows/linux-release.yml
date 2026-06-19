@@ -106,6 +106,14 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      - name: Clean stale bundle artifacts
+        # The Rust cache uses a restore-keys prefix fallback, so a build can
+        # restore a PREVIOUS build's target/ — including its bundle/ output. Tauri
+        # writes new version-named artifacts but never deletes old ones, so the
+        # upload globs below would grab stale wrong-version deb/rpm/AppImage (this
+        # shipped 1.2.0 bundles into the 1.2.1 release once). Wipe bundle/ first.
+        run: rm -rf frontend/src-tauri/target/release/bundle
+
       - name: Build Tauri app (deb/rpm/AppImage)
         working-directory: frontend
         # --verbose surfaces linuxdeploy/appimagetool stderr (Tauri otherwise
