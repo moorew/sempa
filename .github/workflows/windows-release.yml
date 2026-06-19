@@ -16,7 +16,7 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write   # create the GitHub Release + upload assets
-      id-token: write   # keyless cosign signing of the release artifacts (OIDC)
+      # (signing moved to the Release finalize workflow — no id-token needed here)
 
     # Updater signing. These are SAFE no-ops until you add the secrets: Tauri only
     # signs (and only emits the .sig / updater artifacts) when the private key is
@@ -85,40 +85,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Sign the installers with cosign keyless (Sigstore OIDC — no secrets).
-      # Produces .cosign.sig + .cosign.pem per installer, uploaded with them so
-      # they verify with `cosign verify-blob` (see README). Satisfies OpenSSF
-      # Scorecard Signed-Releases.
-      - name: Install cosign
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-        with:
-          # Pin cosign v2: classic detached .sig + .pem (Scorecard-recognized, and
-          # what `cosign verify-blob --certificate/--signature` consumes). cosign v4
-          # deprecated those flags in favour of --bundle.
-          cosign-release: 'v2.6.3'
-      - name: Sign release artifacts (keyless cosign)
-        if: startsWith(github.ref, 'refs/tags/')
-        shell: pwsh
-        run: |
-          $globs = @(
-            "frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/Sempa_*_x64-setup.exe",
-            "frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/Sempa_*_x64_en-US.msi",
-            "frontend/src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/Sempa_*_arm64-setup.exe"
-          )
-          foreach ($g in $globs) {
-            Get-ChildItem $g -ErrorAction SilentlyContinue | ForEach-Object {
-              $f = $_.FullName
-              $ok = $false
-              for ($i = 1; $i -le 3; $i++) {
-                cosign sign-blob --yes --output-signature "$f.cosign.sig" --output-certificate "$f.cosign.pem" "$f"
-                if ($LASTEXITCODE -eq 0) { $ok = $true; break }
-                Write-Host "cosign attempt $i for $f failed; retrying in 15s…"
-                Start-Sleep -Seconds 15
-              }
-              if (-not $ok) { throw "cosign failed for $f after retries" }
-            }
-          }
+      # Release signing is centralized: the `Release finalize` workflow hashes
+      # every uploaded asset into one SHA256SUMS and cosign-signs that single
+      # file (Scorecard Signed-Releases), instead of per-installer .sig/.pem.
 
       # Build the Tauri updater manifest (latest.json) from the signed bundles so
       # the desktop app can silently self-update. GUARDED: only runs once the
@@ -183,16 +152,9 @@ jobs:
           generate_release_notes: true
           files: |
             frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/Sempa_*_x64-setup.exe
-            frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/Sempa_*_x64_en-US.msi
             frontend/src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/Sempa_*_arm64-setup.exe
             frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/Sempa_*_x64-setup.exe.sig
             frontend/src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/Sempa_*_arm64-setup.exe.sig
-            frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.cosign.sig
-            frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.cosign.pem
-            frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.cosign.sig
-            frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.cosign.pem
-            frontend/src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/*.cosign.sig
-            frontend/src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/*.cosign.pem
             latest.json
 
       - name: Upload artifacts (manual runs)
@@ -202,6 +164,5 @@ jobs:
           name: sempa-windows-installers
           path: |
             frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
-            frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
             frontend/src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/*.exe
           retention-days: 14
