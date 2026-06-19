@@ -442,28 +442,33 @@
 
   <!-- ── Sidebar (hidden on mobile) ───────────────────────────────────── -->
   {#if !mobile.value}
-  <aside class="flex w-48 shrink-0 flex-col"
+  {@const rail = mobile.rail}
+  <aside class="flex shrink-0 flex-col" class:w-48={!rail} class:w-14={rail}
          style="background: var(--sempa-bg-nav); border-right: 1px solid var(--sempa-border);">
 
-    <!-- Logo (Cradle mark) -->
-    <div class="flex items-center gap-2 px-4 py-5" style="color: var(--sempa-accent);">
+    <!-- Logo (Cradle mark) — wordmark hides in the collapsed icon rail. -->
+    <div class="flex items-center gap-2 py-5" class:px-4={!rail} class:justify-center={rail} class:px-0={rail}
+         style="color: var(--sempa-accent);">
       <svg width="26" height="26" viewBox="0 0 100 100" fill="none" aria-hidden="true">
         <path d="M22,40 a28,28 0 0 0 56,0"
           stroke="currentColor" stroke-width="9"
           stroke-linecap="round" stroke-linejoin="round"/>
         <circle cx="50" cy="35" r="7.5" fill="currentColor"/>
       </svg>
-      <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 500;
-                   font-size: 18px; letter-spacing: -0.02em; color: var(--sempa-text);">sempa</span>
+      {#if !rail}
+        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 500;
+                     font-size: 18px; letter-spacing: -0.02em; color: var(--sempa-text);">sempa</span>
+      {/if}
     </div>
 
     <!-- Nav -->
-    <nav class="flex flex-1 flex-col gap-0.5 px-3 pb-3">
+    <nav class="flex flex-1 flex-col gap-0.5 pb-3" class:px-3={!rail} class:px-2={rail}>
 
       {#snippet navItem(href: string, label: string, Icon: any)}
         {@const active = isActive(href)}
-        <a {href}
-           class="group flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13.5px] tracking-[-0.01em] transition-colors"
+        <a {href} title={rail ? label : undefined}
+           class="group flex items-center gap-2.5 rounded-lg py-2 text-[13.5px] tracking-[-0.01em] transition-colors"
+           class:px-3={!rail} class:justify-center={rail} class:px-0={rail}
            style={active
              ? `background: var(--sempa-accent-bg); color: var(--sempa-accent); font-weight: 600;`
              : `color: var(--sempa-text-soft);`}
@@ -473,26 +478,31 @@
                 style={active ? `color: var(--sempa-accent)` : ''}>
             <Icon size={16} strokeWidth={active ? 2.25 : 1.75} />
           </span>
-          {label}
+          {#if !rail}{label}{/if}
         </a>
       {/snippet}
 
       {#snippet navLabel(text: string)}
-        <div class="px-3 pb-1.5 pt-3.5 font-mono text-[10px] font-semibold uppercase tracking-[0.13em]"
-             style="color: var(--sempa-text-dim);">{text}</div>
+        {#if !rail}
+          <div class="px-3 pb-1.5 pt-3.5 font-mono text-[10px] font-semibold uppercase tracking-[0.13em]"
+               style="color: var(--sempa-text-dim);">{text}</div>
+        {/if}
       {/snippet}
 
       <!-- Pinned Search pill (grouped schemes only — in Flat, Search is a row). -->
       {#if prefs.navGrouping !== 'flat'}
-        <button onclick={() => goto('/search')}
-                class="mb-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] transition-colors"
+        <button onclick={() => goto('/search')} title={rail ? 'Search' : undefined}
+                class="mb-3 flex w-full items-center gap-2 rounded-lg py-2 text-[13px] transition-colors"
+                class:px-3={!rail} class:justify-center={rail} class:px-0={rail}
                 style="background: var(--card-bg); border: 1px solid var(--sempa-border); color: var(--sempa-text-dim);"
                 onmouseenter={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-text-dim)'}
                 onmouseleave={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'}>
           <Search size={15} strokeWidth={1.75} />
-          <span>Search</span>
-          <kbd class="ml-auto rounded border px-1.5 font-mono text-[10.5px]"
-               style="border-color: var(--sempa-border);">{shortcutLabel('K')}</kbd>
+          {#if !rail}
+            <span>Search</span>
+            <kbd class="ml-auto rounded border px-1.5 font-mono text-[10.5px]"
+                 style="border-color: var(--sempa-border);">{shortcutLabel('K')}</kbd>
+          {/if}
         </button>
       {/if}
 
@@ -527,7 +537,7 @@
            bottom-right widget, so the footer stays short. -->
       <div class="mt-auto flex flex-col gap-2 pt-3" style="border-top: 1px solid var(--sempa-border);">
         <!-- Utility icon row -->
-        <div class="flex items-center justify-between">
+        <div class="flex items-center" class:justify-between={!rail} class:flex-col={rail} class:gap-1.5={rail}>
           {#if updates.available}
             <button onclick={() => goto('/settings/accounts')} title="Update available — open About"
                     aria-label="Update available"
@@ -568,6 +578,7 @@
         <button onclick={signOut} title={accountEmail ? `${accountEmail} — sign out` : 'Sign out'}
                 aria-label="Sign out"
                 class="flex w-full items-center gap-2.5 rounded-[10px] px-2 py-1.5 text-left transition-colors"
+                class:justify-center={rail}
                 onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--sempa-accent-bg)'}
                 onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = ''}>
           {#if accountPicture}
@@ -580,12 +591,14 @@
               {(accountEmail ?? '?').charAt(0).toUpperCase()}
             </span>
           {/if}
-          <span class="min-w-0 flex-1">
-            {#if accountEmail}
-              <span class="block truncate text-[12px]" style="color: var(--sempa-text-soft);">{accountEmail}</span>
-            {/if}
-            <span class="block text-[11px]" style="color: var(--sempa-text-dim);">Sign out</span>
-          </span>
+          {#if !rail}
+            <span class="min-w-0 flex-1">
+              {#if accountEmail}
+                <span class="block truncate text-[12px]" style="color: var(--sempa-text-soft);">{accountEmail}</span>
+              {/if}
+              <span class="block text-[11px]" style="color: var(--sempa-text-dim);">Sign out</span>
+            </span>
+          {/if}
         </button>
       </div>
     </nav>

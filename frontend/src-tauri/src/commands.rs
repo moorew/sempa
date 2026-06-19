@@ -167,6 +167,13 @@ pub async fn get_sticky_positions() -> Result<Vec<StickyPosition>, String> {
     Ok(vec![])
 }
 
+/// Open the centered global Quick-Add window (also bound to the global shortcut
+/// and the tray). Callable from the frontend.
+#[tauri::command]
+pub fn open_quick_add(app: AppHandle) -> Result<(), String> {
+    crate::windows::create_quick_add(&app).map_err(|e| e.to_string())
+}
+
 // ── Secret Service keyring (desktop) ──────────────────────────────────────────
 //
 // Stores the app's bearer token (and any future device credential) in the OS

@@ -37,6 +37,9 @@ tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 # Credential Manager on Windows, Keychain on macOS. The per-OS backend crates are
 # target-gated inside `keyring`, so enabling all three native features is safe.
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+# Global quick-add shortcut (desktop). On Wayland this needs the GlobalShortcuts
+# portal, which the plugin may not broker yet — registration is best-effort.
+tauri-plugin-global-shortcut = "2"
 
 # Linux only: read the system window-button layout (gtk-decoration-layout) so the
 # custom titlebar mirrors GNOME/KDE order + side. Version matches the gtk already

@@ -2,7 +2,7 @@ use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    AppHandle, Emitter, Manager,
+    AppHandle, Manager,
 };
 
 pub fn create_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
@@ -43,10 +43,8 @@ pub fn create_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             "quick_add" => {
-                if let Some(win) = app.get_webview_window("main") {
-                    let _ = win.show();
-                    let _ = win.set_focus();
-                    let _ = win.emit("tray-quick-add", ());
+                if let Err(e) = crate::windows::create_quick_add(app) {
+                    eprintln!("quick-add window creation failed: {e}");
                 }
             }
             "sync_now" => {

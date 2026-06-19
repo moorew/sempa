@@ -54,6 +54,24 @@ pub fn run() {
         }));
     }
 
+    // Global quick-add shortcut (desktop). The handler opens the centered
+    // Quick-Add window on key-down; the shortcut itself is registered in setup.
+    #[cfg(desktop)]
+    {
+        use tauri_plugin_global_shortcut::ShortcutState;
+        builder = builder.plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _shortcut, event| {
+                    if matches!(event.state(), ShortcutState::Pressed) {
+                        if let Err(e) = crate::windows::create_quick_add(app) {
+                            startup_log(&format!("global quick-add failed: {e}"));
+                        }
+                    }
+                })
+                .build(),
+        );
+    }
+
     let result = builder
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_shell::init())
@@ -81,6 +99,19 @@ pub fn run() {
                 use tauri_plugin_deep_link::DeepLinkExt;
                 if let Err(e) = app.deep_link().register_all() {
                     startup_log(&format!("setup: deep-link register_all failed (non-fatal): {e}"));
+                }
+            }
+
+            // Register the global quick-add shortcut. Best-effort: under Wayland
+            // this needs the GlobalShortcuts portal (compositor-dependent), so a
+            // failure here must not block startup — the tray + window still work.
+            #[cfg(desktop)]
+            {
+                use tauri_plugin_global_shortcut::GlobalShortcutExt;
+                if let Err(e) = app.global_shortcut().register("CommandOrControl+Shift+Space") {
+                    startup_log(&format!(
+                        "setup: global quick-add shortcut not registered (non-fatal): {e}"
+                    ));
                 }
             }
 
@@ -149,6 +180,7 @@ pub fn run() {
             commands::get_sticky_positions,
             commands::update_taskbar_badge,
             commands::window_decoration_layout,
+            commands::open_quick_add,
             commands::secret_get,
             commands::secret_set,
             commands::secret_delete,

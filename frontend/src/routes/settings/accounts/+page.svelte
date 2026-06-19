@@ -180,9 +180,36 @@
   // reads as "nothing loaded".
   let serverUnreachable = $state(false);
 
+  // "Launch at login" (desktop). Backed by tauri-plugin-autostart; under Flatpak
+  // this requests the Background portal's autostart. Loaded on mount (Tauri only).
+  let autostartOn = $state(false);
+  let autostartBusy = $state(false);
+  async function loadAutostart() {
+    if (!isTauri()) return;
+    try {
+      const { isEnabled } = await import('@tauri-apps/plugin-autostart');
+      autostartOn = await isEnabled();
+    } catch { /* plugin unavailable */ }
+  }
+  async function toggleAutostart(on: boolean) {
+    if (!isTauri() || autostartBusy) return;
+    autostartBusy = true;
+    try {
+      const { enable, disable, isEnabled } = await import('@tauri-apps/plugin-autostart');
+      if (on) await enable(); else await disable();
+      autostartOn = await isEnabled();
+    } catch {
+      autostartOn = !on; // revert the optimistic flip on failure
+    } finally {
+      autostartBusy = false;
+    }
+  }
+
   onMount(async () => {
     const connected = $page.url.searchParams.get('connected');
     if (connected === '1') window.history.replaceState({}, '', '/settings/accounts');
+
+    void loadAutostart();
 
     // allSettled so one failing endpoint never rejects the batch (which would
     // leave the whole Integrations section blank). Track how many failed so we
@@ -1468,6 +1495,25 @@
           <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
         </svg>
       </a>
+
+      <!-- Launch at login (desktop only) -->
+      {#if isTauri()}
+      <label class="flex cursor-pointer items-center gap-3 rounded-xl border px-5 py-4"
+             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
+          <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 3 4 14h7l-1 7 9-11h-7l1-7Z"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <p class="text-sm font-semibold" style="color: var(--sempa-text);">Launch at login</p>
+          <p class="text-xs" style="color: var(--sempa-text-soft);">Start Sempa automatically and open minimized to the tray</p>
+        </div>
+        <input type="checkbox" checked={autostartOn} disabled={autostartBusy}
+               onchange={(e) => toggleAutostart((e.target as HTMLInputElement).checked)}
+               style="width:18px; height:18px; accent-color: var(--sempa-accent); cursor:pointer; flex-shrink:0;" />
+      </label>
+      {/if}
     </div>
   </div>
 {/snippet}
