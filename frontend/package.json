@@ -52,7 +52,7 @@
     "lucide-svelte": "^1.0.1"
   },
   "comments": {
-    "overrides": "Force patched versions of vulnerable transitive deps (all in dev/build-time tooling — Capacitor asset/icon generation, xcode project tooling — none ship in the server or web bundle). Scoped to the offending parent so tools needing newer majors (e.g. glob's minimatch 8/10) are untouched."
+    "overrides": "Force patched versions of vulnerable transitive deps (all in dev/build-time tooling — Capacitor asset/icon generation, xcode project tooling, jsdom's undici under vitest — none ship in the server or web bundle). Scoped to the offending parent so tools needing newer majors (e.g. glob's minimatch 8/10) are untouched."
   },
   "overrides": {
     "@capacitor/cli": {
@@ -66,6 +66,9 @@
     },
     "@sveltejs/kit": {
       "cookie": "^0.7.0"
+    },
+    "jsdom": {
+      "undici": "^7.28.0"
     }
   }
 }
