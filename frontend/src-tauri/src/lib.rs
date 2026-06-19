@@ -169,11 +169,22 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            // Minimize to tray instead of closing
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "main" {
-                    api.prevent_close();
-                    let _ = window.hide();
+                    // Windows/macOS: minimize to tray instead of closing — the tray
+                    // (and native toast) keep background reminders alive. Linux:
+                    // actually quit. GNOME/KDE often don't surface a
+                    // StatusNotifierItem tray, so hiding would strand the app with
+                    // no way to resurface it (and single-instance would just
+                    // re-focus the hidden window on the next launch). Letting the
+                    // close proceed exits the app.
+                    #[cfg(not(target_os = "linux"))]
+                    {
+                        api.prevent_close();
+                        let _ = window.hide();
+                    }
+                    #[cfg(target_os = "linux")]
+                    let _ = api; // close proceeds → app exits
                 }
             }
         })
