@@ -113,6 +113,10 @@ func main() {
 	poller.StartRecurrence(ctx, database)
 	slog.Info("recurrence scheduler started")
 
+	// Prune expired, never-approved device pairings (bounds the public
+	// /devices/pair/start endpoint).
+	poller.StartPairingCleanup(ctx, database)
+
 	srv := &http.Server{
 		Addr:    ":" + cfg.Port,
 		Handler: handler,

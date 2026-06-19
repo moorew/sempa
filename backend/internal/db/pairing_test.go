@@ -65,6 +65,33 @@ func TestPairingFlow(t *testing.T) {
 	}
 }
 
+func TestPairingPurgeExpired(t *testing.T) {
+	s := newTestPairingStore(t)
+
+	// One expired-pending, one live-pending, one approved.
+	expired, _ := s.CreatePending("Old", "dock", -time.Minute)
+	live, _ := s.CreatePending("Live", "dock", 10*time.Minute)
+	approved, _ := s.CreatePending("Keep", "dock", 10*time.Minute)
+	if _, err := s.Approve(approved.Code, "tok"); err != nil {
+		t.Fatalf("approve: %v", err)
+	}
+
+	n, err := s.PurgeExpired()
+	if err != nil || n != 1 {
+		t.Fatalf("purge: n=%d err=%v (want 1)", n, err)
+	}
+	// Expired pending is gone; live pending and approved survive.
+	if _, err := s.GetByCode(expired.Code); err != ErrNotFound {
+		t.Fatalf("expired should be purged, got %v", err)
+	}
+	if _, err := s.GetByCode(live.Code); err != nil {
+		t.Fatalf("live pending should survive: %v", err)
+	}
+	if _, err := s.GetByCode(approved.Code); err != nil {
+		t.Fatalf("approved should survive: %v", err)
+	}
+}
+
 func TestPairingExpiredCodeCannotApprove(t *testing.T) {
 	s := newTestPairingStore(t)
 	d, err := s.CreatePending("Late Dock", "dock", -time.Minute) // already expired

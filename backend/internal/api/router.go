@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -155,9 +156,11 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 		r.Get("/backup/drive/callback", backups.driveCallback)
 
 		// Device pairing — start/status are public (the unpaired device has no
-		// token yet); approval is authenticated below.
+		// token yet); approval is authenticated below. /start creates a row, so
+		// it's rate-limited per IP to bound the public surface.
+		pairStartLimit := newRateLimiter(10, time.Minute)
 		r.Route("/devices/pair", func(r chi.Router) {
-			r.Post("/start", pairing.start)
+			r.With(pairStartLimit.middleware).Post("/start", pairing.start)
 			r.Get("/status", pairing.status)
 		})
 

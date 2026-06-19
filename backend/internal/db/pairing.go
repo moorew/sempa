@@ -32,6 +32,21 @@ func NewPairingStore(database *sql.DB) *PairingStore {
 	return &PairingStore{db: database}
 }
 
+// PurgeExpired deletes still-pending pairings whose code has expired (never
+// approved). Keeps the table from growing under repeated unapproved /pair/start
+// calls. Approved/revoked rows are kept (they're the device-management record).
+// Returns the number removed.
+func (s *PairingStore) PurgeExpired() (int64, error) {
+	res, err := s.db.Exec(
+		`DELETE FROM paired_devices WHERE status = 'pending' AND expires_at < ?`,
+		time.Now().UTC().Format(time.RFC3339))
+	if err != nil {
+		return 0, err
+	}
+	n, _ := res.RowsAffected()
+	return n, nil
+}
+
 // pairingCodeAlphabet excludes ambiguous characters (0/O, 1/I/L) so the code is
 // easy to read off a screen and type into the approving app.
 const pairingCodeAlphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
