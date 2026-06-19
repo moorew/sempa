@@ -28,7 +28,6 @@
   import { prefs } from '$lib/stores/prefs.svelte';
   import ReflectionCard from '$lib/components/ReflectionCard.svelte';
   import IntentionQuoteCard from '$lib/components/IntentionQuoteCard.svelte';
-  import DailyQuote from '$lib/components/DailyQuote.svelte';
   import { celebrate } from '$lib/celebrate';
   import type { DailyPlan } from '$lib/types';
 
@@ -927,12 +926,6 @@
       </div>
     {/if}
   </header>
-
-  <!-- Daily encouragement — a quiet companion line under the mobile header that
-       fades in then settles to a low resting opacity. Wraps freely, never clips. -->
-  <div class="px-5">
-    <DailyQuote />
-  </div>
 
   <!-- Tag filter (in-place) -->
   {#if tagStore.definitions.length}
