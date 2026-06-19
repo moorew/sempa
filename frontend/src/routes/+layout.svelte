@@ -448,7 +448,8 @@
     <div class="flex-1" style="min-height:0;"><CockpitView /></div>
   </div>
 {:else}
-<div bind:this={appShell} class="flex flex-col h-screen overflow-hidden" style="background: var(--sempa-bg-main);">
+<div bind:this={appShell} class="flex flex-col h-screen overflow-hidden"
+     style="background: var(--sempa-bg-main); --app-titlebar-h: {isTauri() && !windowChrome.useSystemTitlebar ? '38px' : '0px'};">
   <!-- Custom titlebar (Tauri only — hidden on web/mobile) -->
   <TitleBar />
   <div class="flex flex-1 overflow-hidden" style="min-height: 0;">

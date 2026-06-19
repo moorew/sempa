@@ -31,6 +31,20 @@
   }
   function closeMenu() { menu = null; }
   function runMenu(action: () => void) { action(); closeMenu(); }
+
+  // Window dragging. `data-tauri-drag-region` is unreliable on WebKitGTK (Linux),
+  // so drive it explicitly: primary-button press on the empty strip → startDragging;
+  // double-click → maximize/restore. Skip when the press is on a control button.
+  function onTitlebarPointerDown(e: MouseEvent) {
+    if (e.button !== 0) return;
+    if ((e.target as HTMLElement).closest('button')) return;
+    if (e.detail >= 2) return; // let the dblclick handler maximize instead
+    void win?.startDragging();
+  }
+  function onTitlebarDblClick(e: MouseEvent) {
+    if ((e.target as HTMLElement).closest('button')) return;
+    void toggleMax();
+  }
 </script>
 
 <svelte:window onclick={() => menu && closeMenu()} />
@@ -65,8 +79,9 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-  data-tauri-drag-region
   class="titlebar"
+  onmousedown={onTitlebarPointerDown}
+  ondblclick={onTitlebarDblClick}
   oncontextmenu={openMenu}
   style="
     height: 38px;
