@@ -2,7 +2,7 @@
 rules:
   cache-poisoning:
     ignore:
-      # The release workflows run only on `push: tags` and `workflow_dispatch`
+      # android/windows release run only on `push: tags` + `workflow_dispatch`
       # — never on untrusted pull requests — so a poisoned cache can't reach
       # them in practice. zizmor flags the cache-capable setup-* actions (and
       # the Windows Rust build cache, which we keep for speed) regardless of the
@@ -10,10 +10,28 @@ rules:
       # from these builds as defense-in-depth.
       - android-release.yml
       - windows-release.yml
+      # linux-release ALSO runs on pull_request, but GitHub scopes a PR's cache
+      # to its own `refs/pull/N/merge` — a tag or `main` build cannot restore a
+      # cache a PR wrote — so the publishing path can't be poisoned either. The
+      # flagged steps are setup-node (no `cache:` input, so no cache) and the
+      # Rust build cache (keyed on Cargo.lock, kept for build speed).
+      - linux-release.yml
   superfluous-actions:
     ignore:
       # softprops/action-gh-release is intentional: it cleanly handles release-
-      # note generation and multi-file uploads. zizmor suggests `gh release` in a
-      # script step, but the action is preferred and already proven in releases.
+      # note generation and multi-file/glob uploads. zizmor suggests `gh release`
+      # in a script step, but the action is preferred and proven across all our
+      # release workflows.
       - android-release.yml
       - windows-release.yml
+      - linux-release.yml
+      - release-finalize.yml
+  dangerous-triggers:
+    ignore:
+      # release-finalize runs on `workflow_run` after the platform release builds
+      # finish — required so it sees every uploaded asset. It checks out NO
+      # untrusted code: it only downloads the release's OWN assets, hashes them
+      # into one SHA256SUMS, and cosign-signs that file. Default permissions are
+      # contents:read (the job elevates only to upload). No untrusted-input path,
+      # so the trigger is safe here. Accepted, documented.
+      - release-finalize.yml
