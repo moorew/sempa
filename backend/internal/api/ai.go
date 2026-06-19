@@ -205,7 +205,14 @@ Notes: %q`, body.Title, clip(body.Notes, 800))
 	respond(w, http.StatusOK, map[string]any{"available": true, "subtasks": cleanList(out.Subtasks, 8)})
 }
 
-// aiPlanDay suggests an order for the day's tasks (around any calendar events).
+// aiPlanDay builds a soft schedule for the day's tasks around fixed calendar
+// events. Division of labour: the model does what a small LLM is reliable at —
+// pick a focused ORDER and estimate each task's effort — and Go does the clock
+// arithmetic (packing tasks into the free gaps between events). Asking a 3B model
+// to compute non-overlapping times around meetings is unreliable; deterministic
+// slot-packing here is not. The result carries a per-task "roughly_at" (HH:MM),
+// which is the daily board's primary sort key, so the plan actually lands on the
+// board instead of just being shown once.
 func (h *integrationHandler) aiPlanDay(w http.ResponseWriter, r *http.Request) {
 	cfg, ok := h.aiCfg(r.Context())
 	if !ok {
@@ -227,39 +234,51 @@ func (h *integrationHandler) aiPlanDay(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	if len(body.Tasks) == 0 {
-		respond(w, http.StatusOK, map[string]any{"available": true, "order": []string{}, "note": ""})
+		respond(w, http.StatusOK, map[string]any{"available": true, "order": []string{}, "schedule": []any{}, "note": ""})
 		return
 	}
 	tj, _ := json.Marshal(body.Tasks)
 	ej, _ := json.Marshal(body.Events)
-	prompt := fmt.Sprintf(`Plan a focused order for today's tasks, accounting for fixed calendar events.
-Front-load important/quick wins, group similar work, and keep it realistic.
+	prompt := fmt.Sprintf(`Plan a focused order for today's tasks and estimate how long each one takes.
+Front-load important work and quick wins, group similar work together, and keep it realistic.
+Each task lists its current "minutes" estimate; 0 means unknown — estimate it yourself.
+Do NOT reorder the calendar events; they are fixed commitments to plan around.
 You MUST use the exact ID strings from the Tasks list.
-Return JSON: "order" (array of task ids in the suggested order, every id exactly once), "note" (one short sentence of guidance).
+Return JSON:
+"order": array of task ids in the suggested order, every id exactly once.
+"estimates": object mapping each task id to an integer minutes estimate between 15 and 120.
+"note": one short sentence of guidance.
 
 Example JSON output:
-{"order":["a3","a1"],"note":"Tackle the writing tasks first before your afternoon meetings."}
+{"order":["a3","a1"],"estimates":{"a3":45,"a1":30},"note":"Tackle the writing first, before your afternoon meetings."}
 
 Tasks: %s
-Events: %s`, string(tj), string(ej))
+Fixed calendar events: %s`, string(tj), string(ej))
 
 	var out struct {
-		Order []string `json:"order"`
-		Note  string   `json:"note"`
+		Order     []string       `json:"order"`
+		Estimates map[string]int `json:"estimates"`
+		Note      string         `json:"note"`
 	}
 	if err := ai.JSON(r.Context(), cfg, prompt, &out); err != nil {
 		respondError(w, http.StatusBadGateway, err.Error())
 		return
 	}
+
 	// Keep only valid ids, then append any the model dropped (so nothing is lost).
-	valid := map[string]bool{}
+	type taskIn = struct {
+		ID      string `json:"id"`
+		Title   string `json:"title"`
+		Minutes int    `json:"minutes"`
+	}
+	byID := map[string]taskIn{}
 	for _, t := range body.Tasks {
-		valid[t.ID] = true
+		byID[t.ID] = t
 	}
 	seen := map[string]bool{}
 	order := make([]string, 0, len(body.Tasks))
 	for _, id := range out.Order {
-		if valid[id] && !seen[id] {
+		if _, ok := byID[id]; ok && !seen[id] {
 			order = append(order, id)
 			seen[id] = true
 		}
@@ -269,7 +288,117 @@ Events: %s`, string(tj), string(ej))
 			order = append(order, t.ID)
 		}
 	}
-	respond(w, http.StatusOK, map[string]any{"available": true, "order": order, "note": strings.TrimSpace(out.Note)})
+
+	// Lay out soft start times by packing tasks into the gaps around events.
+	busy := parseBusyIntervals(body.Date, mapEvents(body.Events))
+	const dayStart, dayEnd = 9 * 60, 18 * 60 // 09:00–18:00 working window (soft)
+	cursor := dayStart
+	type slot struct {
+		ID        string `json:"id"`
+		RoughlyAt string `json:"roughly_at"`
+		Minutes   int    `json:"minutes"`
+	}
+	schedule := make([]slot, 0, len(order))
+	for _, id := range order {
+		t := byID[id]
+		dur := t.Minutes
+		if dur <= 0 {
+			dur = out.Estimates[id]
+		}
+		if dur < 15 {
+			dur = 30 // default a sane block when neither side gave one
+		}
+		if dur > 240 {
+			dur = 240
+		}
+		cursor = roundUp5(cursor)
+		cursor = nextFreeSlot(cursor, dur, busy)
+		schedule = append(schedule, slot{ID: id, RoughlyAt: fmtHM(cursor), Minutes: dur})
+		cursor += dur
+		_ = dayEnd // window end is advisory; tasks may run past it
+	}
+
+	respond(w, http.StatusOK, map[string]any{
+		"available": true,
+		"order":     order,
+		"schedule":  schedule,
+		"note":      strings.TrimSpace(out.Note),
+	})
+}
+
+// mapEvents flattens the request's event structs into a simpler shape.
+func mapEvents(in []struct {
+	Title string `json:"title"`
+	Start string `json:"start"`
+	End   string `json:"end"`
+}) [][2]string {
+	out := make([][2]string, 0, len(in))
+	for _, e := range in {
+		out = append(out, [2]string{e.Start, e.End})
+	}
+	return out
+}
+
+// parseBusyIntervals turns timed events on `date` into [startMin,endMin] windows
+// (minutes since local midnight). All-day / date-only events are ignored — they
+// don't occupy a specific slot. Anything unparseable is skipped.
+func parseBusyIntervals(date string, events [][2]string) [][2]int {
+	out := [][2]int{}
+	for _, ev := range events {
+		s, okS := parseEventMinutes(ev[0])
+		e, okE := parseEventMinutes(ev[1])
+		if !okS || !okE || e <= s {
+			continue
+		}
+		out = append(out, [2]int{s, e})
+	}
+	return out
+}
+
+// parseEventMinutes reads an ISO-8601 timestamp and returns its wall-clock time
+// as minutes since midnight. Date-only strings (all-day events) return ok=false.
+func parseEventMinutes(s string) (int, bool) {
+	s = strings.TrimSpace(s)
+	if s == "" || !strings.Contains(s, "T") {
+		return 0, false // empty or date-only → not a timed slot
+	}
+	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02T15:04"} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t.Hour()*60 + t.Minute(), true
+		}
+	}
+	return 0, false
+}
+
+// nextFreeSlot advances `start` forward until a [start, start+dur) window clears
+// every busy interval, then returns that start (minutes since midnight).
+func nextFreeSlot(start, dur int, busy [][2]int) int {
+	for {
+		moved := false
+		for _, b := range busy {
+			if start < b[1] && start+dur > b[0] { // overlaps a busy block
+				start = roundUp5(b[1])
+				moved = true
+			}
+		}
+		if !moved {
+			return start
+		}
+	}
+}
+
+func roundUp5(min int) int {
+	if r := min % 5; r != 0 {
+		min += 5 - r
+	}
+	return min
+}
+
+func fmtHM(min int) string {
+	if min > 23*60+59 {
+		min = 23*60 + 59 // clamp inside the day
+	}
+	return fmt.Sprintf("%02d:%02d", min/60, min%60)
 }
 
 // aiWeeklyReview drafts wins / challenges / next-focus from the week's work.
