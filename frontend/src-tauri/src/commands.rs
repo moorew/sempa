@@ -184,7 +184,7 @@ pub fn window_decoration_layout(app: AppHandle) -> Option<String> {
         use std::sync::mpsc;
         let (tx, rx) = mpsc::channel();
         let dispatched = app.run_on_main_thread(move || {
-            use gtk::prelude::SettingsExt;
+            use gtk::prelude::GtkSettingsExt;
             let layout = gtk::Settings::default()
                 .and_then(|s| s.gtk_decoration_layout())
                 .map(|g| g.to_string());
