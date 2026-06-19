@@ -28,7 +28,12 @@
         }
       },
       "appimage": {
-        "bundleMediaFramework": false
+        "bundleMediaFramework": false,
+        "files": {
+          "usr/share/icons/hicolor/256x256/apps/ca.sempa.Sempa.png": "../../sempa-linux/desktop/icons/hicolor/256x256/apps/ca.sempa.Sempa.png",
+          "usr/share/icons/hicolor/128x128/apps/ca.sempa.Sempa.png": "../../sempa-linux/desktop/icons/hicolor/128x128/apps/ca.sempa.Sempa.png",
+          "usr/share/icons/hicolor/scalable/apps/ca.sempa.Sempa.svg": "../../sempa-linux/desktop/icons/hicolor/scalable/apps/ca.sempa.Sempa.svg"
+        }
       }
     }
   },
