@@ -4,6 +4,11 @@ Installs the released Sempa desktop app on Arch/Manjaro from the GitHub `.deb`
 (x86_64 + aarch64). The package source of truth is `sempa-bin/PKGBUILD` here;
 the AUR git repo mirrors it.
 
+> **Status:** the `PKGBUILD` + `.SRCINFO` are ready for 1.2.0 (checksums verified
+> against the release). Not yet published — AUR **new-account registration was
+> disabled** when we went to publish. Once it reopens, register, add your SSH key,
+> and run the publish steps below; the README markets AUR as "coming" until then.
+
 ## Publish / update (per release)
 
 ```bash
