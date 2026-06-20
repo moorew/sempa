@@ -53,11 +53,21 @@ jobs:
         working-directory: frontend
         run: npm run build
 
-      - name: Generate iOS project + sync
+      - name: Generate iOS project (CocoaPods) + sync
         working-directory: frontend
         run: |
-          if [ ! -d ios ]; then npx cap add ios; fi
+          # Force CocoaPods over SPM: the official plugins' SPM packages don't
+          # resolve cleanly against core 8.4 (sqlcipher tools-version + core API
+          # skew). CocoaPods is the mature, plugin-compatible path.
+          if [ ! -d ios ]; then npx cap add ios --packagemanager Cocoapods; fi
           npx cap sync ios
+
+      - name: CocoaPods install (generates App.xcworkspace)
+        working-directory: frontend
+        run: |
+          POD="$(find ios -name Podfile | head -1)"
+          if [ -z "$POD" ]; then echo "No Podfile — cap didn't use CocoaPods"; find ios -maxdepth 3 | sort; exit 1; fi
+          ( cd "$(dirname "$POD")" && pod install --repo-update && ls -la )
 
       - name: Configure Info.plist (name, ATS for self-hosted http, URL scheme)
         working-directory: frontend/ios/App/App
@@ -86,13 +96,12 @@ jobs:
           # Capacitor 8 uses Swift Package Manager (no CocoaPods/workspace);
           # xcodebuild resolves the local CapApp-SPM package against the project.
           xcodebuild \
-            -project App.xcodeproj \
+            -workspace App.xcworkspace \
             -scheme App \
             -configuration Debug \
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build \
-            -skipPackagePluginValidation \
             CODE_SIGNING_ALLOWED=NO \
             build
 
@@ -131,7 +140,7 @@ jobs:
           </dict></plist>
           PLIST
 
-          xcodebuild -project App.xcodeproj -scheme App -configuration Release \
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
             -archivePath build/App.xcarchive -destination 'generic/platform=iOS' \
             -allowProvisioningUpdates \
             -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
