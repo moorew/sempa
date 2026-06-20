@@ -33,9 +33,8 @@ func (s *TaskStore) GenerateForDate(ctx context.Context, date string) error {
 
 	// 1a. Delete pristine, open instances left in the past — nothing the user
 	//     cared about, so today's fresh instance replaces them.
-	if _, err := s.db.ExecContext(ctx, `
-		DELETE FROM tasks
-		WHERE recurrence_origin_id IS NOT NULL
+	if err := s.tombstoneAndDeleteTasks(ctx, `
+		recurrence_origin_id IS NOT NULL
 		  AND is_customized = 0
 		  AND status IN ('backlog','planned')
 		  AND (time_actual_minutes IS NULL OR time_actual_minutes = 0)
@@ -90,9 +89,8 @@ func (s *TaskStore) GenerateForDate(ctx context.Context, date string) error {
 // time-logged, done, or earliest-created). Only bare pristine open instances
 // with no logged time are ever deleted, so nothing the user touched is lost.
 func (s *TaskStore) dedupeInstancesForDate(ctx context.Context, date string) error {
-	_, err := s.db.ExecContext(ctx, `
-		DELETE FROM tasks
-		WHERE recurrence_origin_id IS NOT NULL
+	return s.tombstoneAndDeleteTasks(ctx, `
+		recurrence_origin_id IS NOT NULL
 		  AND planned_date = ?
 		  AND is_customized = 0
 		  AND status IN ('backlog','planned')
@@ -111,6 +109,20 @@ func (s *TaskStore) dedupeInstancesForDate(ctx context.Context, date string) err
 				OR (o.created_at = tasks.created_at AND o.id < tasks.id)
 			  )
 		  )`, date)
+}
+
+// tombstoneAndDeleteTasks deletes the tasks matching `where` AND records a sync
+// tombstone for each, so offline/local-first clients learn to drop them. Without
+// this, recurrence deletes (which bypass the normal delete handler) silently
+// stranded stale instances on devices — the cause of phantom duplicate
+// recurring tasks. `where` references the `tasks` table (no alias needed).
+func (s *TaskStore) tombstoneAndDeleteTasks(ctx context.Context, where string, args ...any) error {
+	if _, err := s.db.ExecContext(ctx,
+		`INSERT OR REPLACE INTO sync_tombstones (entity_type, entity_id)
+		 SELECT 'task', id FROM tasks WHERE `+where, args...); err != nil {
+		return err
+	}
+	_, err := s.db.ExecContext(ctx, `DELETE FROM tasks WHERE `+where, args...)
 	return err
 }
 
@@ -244,9 +256,8 @@ func (s *TaskStore) SyncTemplateInstances(ctx context.Context, originID, today s
 	if today == "" {
 		today = time.Now().Format("2006-01-02")
 	}
-	if _, err := s.db.ExecContext(ctx, `
-		DELETE FROM tasks
-		WHERE recurrence_origin_id = ?
+	if err := s.tombstoneAndDeleteTasks(ctx, `
+		recurrence_origin_id = ?
 		  AND planned_date >= ?
 		  AND is_customized = 0
 		  AND status IN ('backlog','planned')

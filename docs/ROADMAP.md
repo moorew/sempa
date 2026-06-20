@@ -60,6 +60,12 @@ are actually finishable.
 ---
 
 ## Known issues / recently fixed
+- **Recurrence deletes now tombstone** (fixed v1.8.1) — raw-SQL recurrence
+  deletes bypassed the sync layer, stranding stale instances on local-first
+  devices (phantom duplicates). All recurrence deletes now record sync
+  tombstones. Idea: a client-side **sync reconcile** that drops local recurring
+  instances the server no longer has for a day, to heal devices stranded *before*
+  the fix without a manual delete. Also: prune old tombstones over time.
 - **Duplicate recurring instances** (fixed v1.6.0) — once an instance was
   customised (or carried forward), the dedup ignored it and a fresh pristine
   duplicate was created. Now: one instance per template per day, with a self-heal

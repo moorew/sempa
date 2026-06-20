@@ -6,6 +6,16 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.8.1] - 2026-06-20
+
+### Fixed
+- **Phantom duplicate recurring tasks on phones/offline.** Recurrence cleanup
+  deleted instances with raw SQL that bypassed the sync layer, so local-first
+  devices were never told to drop them — leaving a stale copy alongside the
+  freshly-generated one. All recurrence deletes now record sync tombstones so
+  every device converges to one instance per day. (A duplicate that was stranded
+  on a device *before* this fix needs deleting once in the app — it'll stay gone.)
+
 ## [1.8.0] - 2026-06-20
 
 ### Added

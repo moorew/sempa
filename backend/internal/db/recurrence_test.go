@@ -199,6 +199,54 @@ func TestTemplateEditPropagates(t *testing.T) {
 	}
 }
 
+// When recurrence deletes a duplicate instance it must record a sync tombstone,
+// or offline/local-first clients never drop it (the phantom-duplicate bug).
+func TestRecurrenceDeleteRecordsTombstone(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	origin := makeDailyTemplate(t, s, nil)
+	const date = "2026-06-01"
+
+	ids := []string{}
+	for i := 0; i < 2; i++ {
+		id := uuid.New().String()
+		if _, err := s.Create(ctx, CreateTaskParams{
+			ID:                 id,
+			Title:              "Meditate",
+			Status:             "planned",
+			PlannedDate:        strptr(date),
+			WeekStart:          strptr(date),
+			RecurrenceOriginID: strptr(origin),
+		}); err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, id)
+	}
+	// Customise the first so the dedup deletes the second (pristine) one.
+	for _, inst := range instancesOn(t, s, origin, date) {
+		if inst.ID == ids[0] {
+			inst.IsCustomized = true
+			if _, err := s.Update(ctx, inst); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	if err := s.GenerateForDate(ctx, date); err != nil {
+		t.Fatal(err)
+	}
+
+	var cnt int
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT count(*) FROM sync_tombstones WHERE entity_type='task' AND entity_id=?`,
+		ids[1]).Scan(&cnt); err != nil {
+		t.Fatal(err)
+	}
+	if cnt != 1 {
+		t.Fatalf("expected a tombstone for the deleted duplicate %s, found %d", ids[1], cnt)
+	}
+}
+
 func TestWeekGenerationFindsInstanceByWeekStart(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
