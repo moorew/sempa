@@ -25,11 +25,15 @@ are actually finishable.
   and a quiet per-day total that warms when over; configurable hours/day.
 - **Realistic (calibrated) capacity** (v1.6.0) — capacity judged against
   estimate × your history multiplier, not raw estimates ("realistically ~7h").
+- **Insights screen** (v1.7.0) — calibration headline, planned-vs-actual totals,
+  multipliers by activity & by tag, recent-tasks over/under; "still learning" state.
+- **Edit recurring templates** (v1.8.0) — full editor (title/notes/tags/estimate/
+  schedule) from Settings → Recurring Tasks; edits propagate to upcoming
+  occurrences; instances now inherit the template's estimate.
 
 ### Next up / ideas
-- **Visible insights screen** — a dedicated view of the profile: per-activity &
-  per-tag multipliers, trend over time, "you're getting better at estimating X".
-  Closes the loop and is motivating; the data already exists server-side.
+- **Insights: trend over time** — "you're getting better at estimating X";
+  per-activity sparklines. (Headline view shipped in v1.7.0.)
 - **Phase 5: Android notification-shade timer** — OS-level foreground-service
   timer so the countdown lives in the shade/lock screen even when the app's
   closed. Biggest mobile win; real Capacitor/native lift, CI-validated only.
