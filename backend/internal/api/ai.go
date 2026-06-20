@@ -133,6 +133,89 @@ Body: %q`, body.Title, clip(body.Body, 1500))
 	})
 }
 
+// aiPredictTime estimates how long a task will realistically take by learning
+// from the user's own completed tasks (the hybrid layer on top of the plain
+// stats profile). Returns {available:false} when AI is off and
+// {enough_data:false} when there isn't enough logged history to be useful.
+func (h *integrationHandler) aiPredictTime(w http.ResponseWriter, r *http.Request) {
+	cfg, ok := h.aiCfg(r.Context())
+	if !ok {
+		aiUnavailable(w)
+		return
+	}
+	var body struct {
+		Title string   `json:"title"`
+		Tags  []string `json:"tags"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if strings.TrimSpace(body.Title) == "" {
+		respondError(w, http.StatusUnprocessableEntity, "title is required")
+		return
+	}
+
+	samples, _ := h.tasks.CompletedTimeSamples(r.Context(), 1000)
+	tagsStr := ""
+	if len(body.Tags) > 0 {
+		tagsStr = " (tags: " + strings.Join(body.Tags, ", ") + ")"
+	}
+
+	// Cold start: with too little personal history, still give a useful number
+	// from the model's general knowledge — flagged as not yet personalized so the
+	// UI can set expectations rather than leaving the user with nothing.
+	personalized := len(samples) >= minTimeSamples
+
+	var prompt string
+	if !personalized {
+		prompt = fmt.Sprintf(`Estimate how many minutes a typical person needs to complete this task.
+Be realistic, not optimistic — most people underestimate.
+New task: %q%s
+Return JSON: "minutes" (integer) and "note" (one short, encouraging sentence).`,
+			body.Title, tagsStr)
+	} else {
+		ins := computeTimeInsights(samples)
+		similar := pickSimilarSamples(samples, body.Tags, 8)
+		var sb strings.Builder
+		for _, s := range similar {
+			fmt.Fprintf(&sb, "- %q: planned %d min, actually took %d min\n", clip(s.Title, 80), s.Estimate, s.Actual)
+		}
+		multHint := ""
+		if ins.Available && ins.GlobalMultiplier >= 1.2 {
+			multHint = fmt.Sprintf("On average this person takes about %.1fx longer than they plan.\n", ins.GlobalMultiplier)
+		}
+		// No example output here on purpose — the small local model tends to copy
+		// example numbers verbatim (same lesson as suggest-tags).
+		prompt = fmt.Sprintf(`Predict how many minutes this task will realistically take, learning from this person's own completed tasks.
+%sTheir recent similar tasks (planned vs actual):
+%s
+New task: %q%s
+Base your number on the ACTUAL times above, not the optimistic plans.
+Return JSON: "minutes" (integer, the realistic actual time) and "note" (one short sentence citing the evidence).`,
+			multHint, sb.String(), body.Title, tagsStr)
+	}
+
+	var out struct {
+		Minutes int    `json:"minutes"`
+		Note    string `json:"note"`
+	}
+	if err := ai.JSON(r.Context(), cfg, prompt, &out); err != nil {
+		respondError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	if out.Minutes < 5 {
+		out.Minutes = 5
+	}
+	if out.Minutes > 480 {
+		out.Minutes = 480
+	}
+	respond(w, http.StatusOK, map[string]any{
+		"available":    true,
+		"personalized": personalized,
+		"samples":      len(samples),
+		"minutes":      out.Minutes,
+		"note":         strings.TrimSpace(out.Note),
+	})
+}
+
 // aiSuggestTags proposes tags for a task from the user's existing tag set.
 func (h *integrationHandler) aiSuggestTags(w http.ResponseWriter, r *http.Request) {
 	cfg, ok := h.aiCfg(r.Context())
@@ -239,11 +322,22 @@ func (h *integrationHandler) aiPlanDay(w http.ResponseWriter, r *http.Request) {
 	}
 	tj, _ := json.Marshal(body.Tasks)
 	ej, _ := json.Marshal(body.Events)
+
+	// Calibrate against the user's real history: if they consistently run over
+	// their estimates, tell the model to pad accordingly. This is the stats
+	// profile feeding back into planning so the day stays realistic.
+	calibration := ""
+	if m := globalTimeMultiplier(r.Context(), h.tasks); m >= 1.2 {
+		calibration = fmt.Sprintf(
+			"\nThis user historically takes about %.1fx longer than they estimate — pad your minute estimates so the plan is realistic, not optimistic.",
+			m)
+	}
+
 	prompt := fmt.Sprintf(`Plan a focused order for today's tasks and estimate how long each one takes.
 Front-load important work and quick wins, group similar work together, and keep it realistic.
 Each task lists its current "minutes" estimate; 0 means unknown — estimate it yourself.
 Do NOT reorder the calendar events; they are fixed commitments to plan around.
-You MUST use the exact ID strings from the Tasks list.
+You MUST use the exact ID strings from the Tasks list.%s
 Return JSON:
 "order": array of task ids in the suggested order, every id exactly once.
 "estimates": object mapping each task id to an integer minutes estimate between 15 and 120.
@@ -253,7 +347,7 @@ Example JSON output:
 {"order":["a3","a1"],"estimates":{"a3":45,"a1":30},"note":"Tackle the writing first, before your afternoon meetings."}
 
 Tasks: %s
-Fixed calendar events: %s`, string(tj), string(ej))
+Fixed calendar events: %s`, calibration, string(tj), string(ej))
 
 	var out struct {
 		Order     []string       `json:"order"`

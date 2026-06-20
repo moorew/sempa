@@ -16,6 +16,7 @@ import type {
   SearchResults,
   WebhookConfig,
   PomodoroSession,
+  TimeInsights,
   SyncResult,
   TagDefinition,
   Task,
@@ -303,6 +304,9 @@ const httpApi = {
     planDay: (date: string, tasks: { id: string; title: string; minutes: number }[], events: { title: string; start: string; end: string }[]) =>
       req<{ available: boolean; order?: string[]; schedule?: { id: string; roughly_at: string; minutes: number }[]; note?: string }>(
         '/api/v1/ai/plan-day', { method: 'POST', body: body({ date, tasks, events }) }, 90_000),
+    predictTime: (title: string, tags: string[]) =>
+      req<{ available: boolean; personalized?: boolean; samples?: number; minutes?: number; note?: string }>(
+        '/api/v1/ai/predict-time', { method: 'POST', body: body({ title, tags }) }, 90_000),
     weeklyReview: (completed: string[], objectives: { title: string; status: string }[]) =>
       req<{ available: boolean; wins?: string[]; challenges?: string[]; next_focus?: string }>(
         '/api/v1/ai/weekly-review', { method: 'POST', body: body({ completed, objectives }) }, 90_000),
@@ -427,6 +431,12 @@ const httpApi = {
       was_completed: boolean;
     }) => req<PomodoroSession>('/api/v1/pomodoros', { method: 'POST', body: body(input) }),
     listByTask: (taskId: string) => req<PomodoroSession[]>(`/api/v1/pomodoros?task_id=${taskId}`),
+  },
+
+  insights: {
+    // Planned-vs-actual time profile. Server-only (not in LOCAL_CORE), so callers
+    // must tolerate failure on pure-offline clients with no server configured.
+    time: () => req<TimeInsights>('/api/v1/insights/time'),
   },
 
   tags: {

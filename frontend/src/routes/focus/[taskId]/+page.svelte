@@ -21,6 +21,12 @@
 
   async function toggleDone() {
     if (!task) return;
+    // If a focus session is running on this task, finish through the timer so
+    // the time spent gets logged via the confirm sheet (it also marks it done).
+    if (task.status !== 'done' && pomodoro.isFor(task.id)) {
+      pomodoro.finishTask();
+      return;
+    }
     const newStatus = task.status === 'done' ? 'planned' : 'done';
     try {
       task = await api.tasks.update(task.id, {
@@ -32,7 +38,7 @@
 
   function startPomodoro() {
     if (!task) return;
-    pomodoro.start(task.id, task.title, task.time_actual_minutes ?? 0);
+    pomodoro.start(task.id, task.title, task.time_actual_minutes ?? 0, task.time_estimate_minutes ?? null);
   }
 
   const isDone       = $derived(task?.status === 'done' || false);
@@ -136,7 +142,7 @@
                 Resume
               {/if}
             </button>
-            <button onclick={() => pomodoro.stop()}
+            <button onclick={() => pomodoro.requestStop()}
                     class="rounded-xl px-4 py-2.5 text-sm transition-colors"
                     style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
               Stop

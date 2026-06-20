@@ -25,13 +25,13 @@ The OpenSSF badge above links to Sempa's full [Best Practices assessment](https:
 - **Daily Kanban** — drag tasks across a week view, plan each day
 - **Email → Tasks** — import starred Gmail or Fastmail emails as tasks
 - **Schedule panel** — see calendar events alongside your tasks
-- **Pomodoro + timeboxing** — schedule focused blocks, track sessions per task
+- **Focus timer & time tracking** — a persistent Pomodoro widget shows the task, the countdown, and how far you're running past your estimate. It measures real time spent and asks you to confirm at the end, then builds a planned-vs-actual profile that helps you estimate better over time — built for time-blindness. [See ↓](#focus-timer--time-tracking)
 - **Weekly review** — set objectives, review what shipped, plan ahead
 - **Shutdown ritual** — guided end-of-day reflection
 - **Jira sync** — bi-directional: import assigned issues, mark done in Sempa to close the ticket
 - **Reminders & notifications** — per-task reminders delivered by Web Push, Android, or a webhook, with selectable alert sounds
 - **Recurring tasks** — daily, weekly, and monthly templates
-- **Local AI assist** — an optional on-server model (Ollama) powers quick-add parsing, task summaries, tag suggestions, subtask breakdown, day planning, weekly-review drafts and reflection prompts. **100% local & private — nothing ever leaves your server**, every feature is individually toggleable, and it's off until you turn it on. [See the AI section ↓](#ai-assist--local--private)
+- **Local AI assist** — an optional on-server model (Ollama) powers quick-add parsing, task summaries, tag suggestions, subtask breakdown, day planning, time prediction (from your own logged history), weekly-review drafts and reflection prompts. **100% local & private — nothing ever leaves your server**, every feature is individually toggleable, and it's off until you turn it on. [See the AI section ↓](#ai-assist--local--private)
 - **In-app updates** — notices new releases, shows what's new, and points you to the installer (silent desktop self-update is opt-in)
 - **Six themes** — Terracotta, Forest, Plum, Slate, OLED Black, and Ocean, each in light + dark
 - **Keyboard shortcuts** — `n` new task, `t` today, `j/k` prev/next week, `?` help
@@ -314,7 +314,7 @@ All integrations are optional and configured through the Settings UI after first
 | **Jira** | Imports assigned issues as tasks. Marking a Jira-sourced task done closes the ticket. |
 | **Calendar feeds (ICS)** | Subscribe to any `.ics` / webcal URL for read-only events. |
 | **Email inbox** | Forward any email to a Fastmail address to auto-create a task. |
-| **AI assist (local)** | A local language model (Ollama, default `qwen2.5:1.5b`) powers title cleanup plus quick-add parsing, tag suggestions, subtask breakdown, day planning, weekly-review drafts and reflection prompts. **Runs entirely on your server — no data leaves it, no API key.** Opt-in (during `install.sh` or by setting `OLLAMA_BASE_URL`); manage models and toggle each feature in Settings → Integrations → AI. [Details ↓](#ai-assist--local--private) |
+| **AI assist (local)** | A local language model (Ollama, default `qwen2.5:1.5b`) powers title cleanup plus quick-add parsing, tag suggestions, subtask breakdown, day planning, task-time prediction, weekly-review drafts and reflection prompts. **Runs entirely on your server — no data leaves it, no API key.** Opt-in (during `install.sh` or by setting `OLLAMA_BASE_URL`); manage models and toggle each feature in Settings → Integrations → AI. [Details ↓](#ai-assist--local--private) |
 
 > **Note on the model-server URL (AI task-title cleanup).** The Ollama endpoint
 > is configurable in Settings → Integrations and may point at an internal /
@@ -404,9 +404,17 @@ The **Journal** collects your daily **intentions** and **reflections** and your 
 
 A quiet, rotating quote appears with the logo animation when you open Sempa, and flashes briefly when you complete a task — a small bit of encouragement, never fixed on screen. Turn it off or edit the list (add/remove/reset) in **Settings → Accounts**.
 
-### Focus & Pomodoro
+### Focus timer & time tracking
 
-Open a task in **Focus** mode to work distraction-free with a built-in **Pomodoro** timer. Completed sessions are logged per task, so you can see time actually spent vs. your estimate.
+Sempa is built with **time-blindness** in mind: we routinely think something will take 20 minutes when it really takes an hour. The focus timer is designed to make that gap visible and, over time, help you plan around it.
+
+**Starting a session.** Hit **Focus** on any task (from the card, the day view, or a reminder) to start a Pomodoro. A **persistent timer widget** then follows you across the whole app — it shows the task, the countdown, and, crucially, **how long you've actually spent vs. your planned estimate** so an overrun is obvious in the moment, not a surprise at the end. Add a planned time and a scheduled start to a task and its reminder becomes a one-tap **“Focus”** button that starts the session pre-loaded.
+
+**Honest time, not guesswork.** The countdown is just a focus aid — what Sempa *logs* is the real time the timer was running. Because it's easy to start a timer and wander off, when you finish (**Done**) or stop, Sempa shows the measured time and asks you to **confirm or adjust** it (including “didn't really work on it”). Only the number you confirm is recorded, so your history stays accurate. The timer survives navigation and reloads, so you won't lose a session by switching pages.
+
+**Your planned-vs-actual profile.** As you log confirmed times, Sempa learns how your estimates compare to reality — overall and per tag (e.g. *“email tasks usually run 1.8×”*). When you set an estimate, it gently **nudges** you toward a more realistic number, and **Plan my day** uses the same calibration so your schedule isn't over-optimistic.
+
+**Predicting from the start.** With AI assist on, **Estimate with AI** suggests how long a task will take. Early on it gives a sensible general estimate (clearly labelled), and a small *“Learning your timing — N of 3 logged”* note sets expectations. Once you've logged a handful of tasks, predictions become **personalized**, grounded in your own similar past work. Predictions get better the more you use it — the first week is about gathering your data.
 
 ### Search & tag filters
 
@@ -475,7 +483,8 @@ Nothing is automatic or destructive — the model **suggests**, you approve.
 | **Suggest tags** | ✦ on the tag editor | Recommends tags for a task **only from your existing tag set**, so your taxonomy stays consistent. |
 | **Break into subtasks** | ✦ on a task | Splits a task into a few concrete, ordered subtasks you can keep or edit. |
 | **Title cleanup & summary** | Email / Jira import | Tidies imported email subjects (and issues) into concise, action-oriented task titles with a rough time estimate. |
-| **Plan my day** | Plan Day | Suggests a focused order for today's tasks around your calendar events, with a one-line rationale — applied to your board only when you click. |
+| **Plan my day** | Plan Day | Suggests a focused order for today's tasks around your calendar events, with a one-line rationale — applied to your board only when you click. Calibrated by your planned-vs-actual history so the plan stays realistic. |
+| **Predict task time** | ✦ on a task's estimate | Suggests how long a task will take. With little history it gives a clearly-labelled general estimate; once you've logged enough sessions it becomes personalized, grounded in your own similar past tasks. |
 | **Draft weekly review** | Week Review | Drafts your **wins / challenges / next focus** from the week's completed tasks and objectives. You edit before saving. |
 | **Reflection prompts** | Shutdown | Offers a couple of context-aware end-of-day questions based on what you did and didn't finish. |
 

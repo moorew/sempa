@@ -13,7 +13,7 @@ const CELEBRATE_SOUND_KEY = 'sempa.celebrateSound';
 // by AI being enabled + reachable on the server, so these only matter once AI is set up.
 export type AiFeature =
   | 'quickAdd' | 'summarize' | 'suggestTags' | 'breakdown' | 'tidyNotes'
-  | 'planDay' | 'weeklyReview' | 'reflection';
+  | 'planDay' | 'predictTime' | 'weeklyReview' | 'reflection';
 
 export const AI_FEATURE_META: { key: AiFeature; label: string; hint: string }[] = [
   { key: 'quickAdd',     label: 'Natural-language quick add', hint: 'Type "lunch with Sam thu 1pm 30m #personal" → a structured task.' },
@@ -22,6 +22,7 @@ export const AI_FEATURE_META: { key: AiFeature; label: string; hint: string }[] 
   { key: 'breakdown',    label: 'Break into subtasks',        hint: 'Split a task into a few concrete subtasks.' },
   { key: 'tidyNotes',    label: 'Tidy up notes',              hint: 'Reformat messy notes into clean paragraphs and lists.' },
   { key: 'planDay',      label: 'Plan my day',                hint: 'Suggest an order for today’s tasks around your events.' },
+  { key: 'predictTime',  label: 'Predict task time',          hint: 'Estimate how long a task will take from your own logged history.' },
   { key: 'weeklyReview', label: 'Draft weekly review',        hint: 'Draft wins / challenges / next focus from the week.' },
   { key: 'reflection',   label: 'Reflection prompts',         hint: 'Context-aware end-of-day questions in Shutdown.' },
 ];
@@ -29,7 +30,7 @@ export const AI_FEATURE_META: { key: AiFeature; label: string; hint: string }[] 
 type AiFeatures = Record<AiFeature, boolean>;
 const AI_FEATURES_DEFAULT: AiFeatures = {
   quickAdd: true, summarize: true, suggestTags: true, breakdown: true, tidyNotes: true,
-  planDay: true, weeklyReview: true, reflection: true,
+  planDay: true, predictTime: true, weeklyReview: true, reflection: true,
 };
 
 // How the desktop navigation rail is organised. 'spaces' (default) groups by

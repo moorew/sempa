@@ -32,6 +32,7 @@
   import { shortcutLabel } from '$lib/platform';
   import { startSync, sync as runSync, syncStore } from '$lib/sync.svelte';
   import PomodoroTimer from '$lib/components/PomodoroTimer.svelte';
+  import SessionConfirm from '$lib/components/SessionConfirm.svelte';
   import BottomSheet from '$lib/components/BottomSheet.svelte';
   import TitleBar from '$lib/components/TitleBar.svelte';
   import SyncIndicator from '$lib/components/SyncIndicator.svelte';
@@ -786,6 +787,8 @@
 {#if pomodoro.taskId}
   <PomodoroTimer />
 {/if}
+
+<SessionConfirm />
 
 <!-- ── In-app update toast + floating sync status (main window only) ─────── -->
 {#if !isStandaloneWindow}

@@ -86,6 +86,16 @@ export interface PomodoroSession {
   created_at: string;
 }
 
+// Planned-vs-actual time profile (GET /api/v1/insights/time). `global_multiplier`
+// is the median actual/estimate ratio; `tags` carries per-tag multipliers. When
+// `available` is false there isn't enough logged history yet to be useful.
+export interface TimeInsights {
+  available: boolean;
+  samples: number;
+  global_multiplier: number;
+  tags: { tag: string; samples: number; multiplier: number }[];
+}
+
 export interface CreateTaskInput {
   title: string;
   description?: string | null;

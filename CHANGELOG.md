@@ -6,6 +6,29 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.3.0] - 2026-06-19
+
+### Added
+- **Focus timer & time tracking, rebuilt for time-blindness.** A persistent
+  Pomodoro widget now follows you across the whole app, showing the task, the
+  countdown, and how far you're running **past your estimate** so overruns are
+  visible in the moment. It measures real elapsed time (and survives reloads and
+  navigation) rather than assuming a fixed block.
+- **Confirm-and-adjust logging.** When you finish or stop a session, Sempa shows
+  the measured time and asks you to confirm or adjust it (including “didn't really
+  work on it”) — so the time logged against a task is honest, even if you walked
+  away mid-timer.
+- **Planned-vs-actual profile.** As you log confirmed times, Sempa learns how your
+  estimates compare to reality — overall and per tag — and **nudges** your future
+  estimates toward realistic numbers. **Plan my day** is calibrated by the same
+  history so the schedule isn't over-optimistic.
+- **AI time prediction (local).** An **Estimate with AI** action predicts how long
+  a task will take. It works from day one with a clearly-labelled general estimate
+  and a “learning your timing” indicator, then becomes **personalized** — grounded
+  in your own similar past tasks — once you've logged a few sessions.
+- **Reminder → one-tap Focus.** A task reminder's primary action now starts a focus
+  session pre-loaded with the task and its planned duration.
+
 ## [1.2.0] - 2026-06-19
 
 ### Added

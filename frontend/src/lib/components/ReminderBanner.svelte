@@ -9,6 +9,7 @@
    */
   import { goto } from '$app/navigation';
   import { reminderAlerts } from '$lib/stores/reminderAlerts.svelte';
+  import { pomodoro } from '$lib/stores/pomodoro.svelte';
   import { Bell, X } from 'lucide-svelte';
 
   // The in-app banner is the bulletproof, always-DOM visual: it CANNOT silently
@@ -19,8 +20,19 @@
   // app isn't foregrounded — so there's no double display while you're in-app).
   const show = $derived(reminderAlerts.alerts.length > 0);
 
-  function open(taskId: string) {
+  // Turn the reminder into the on-ramp: fetch the task for its planned estimate,
+  // start a focus session pre-loaded with it, then open the focus page so the
+  // running timer shows alongside the task's context.
+  async function startFocus(taskId: string, title: string) {
     reminderAlerts.dismiss(taskId);
+    const { api } = await import('$lib/api');
+    try {
+      const t = await api.tasks.get(taskId);
+      pomodoro.start(t.id, t.title, t.time_actual_minutes ?? 0, t.time_estimate_minutes ?? null);
+    } catch {
+      // Offline or fetch failed — still start with what the alert carried.
+      pomodoro.start(taskId, title, 0, null);
+    }
     goto(`/focus/${taskId}`);
   }
 </script>
@@ -48,10 +60,10 @@
         <!-- Quick actions: compact, right-aligned, never grow to fill the row. -->
         <div class="flex shrink-0 items-center gap-1.5">
           <button
-            onclick={() => open(a.taskId)}
+            onclick={() => startFocus(a.taskId, a.title)}
             class="rounded-md px-2.5 py-1 font-semibold transition-opacity hover:opacity-90"
-            style="font-size: 12px; background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);">
-            Open
+            style="font-size: 12px; background: var(--sempa-accent); color: #fff;">
+            Focus
           </button>
           <button
             onclick={() => reminderAlerts.markDone(a.taskId)}

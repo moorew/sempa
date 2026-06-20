@@ -181,6 +181,9 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 			// Offline sync: pull all changes since a cursor (created/updated/deleted)
 			r.Get("/sync/changes", syncH.changes)
 
+			// Planned-vs-actual time profile (per-tag + global multipliers).
+			r.Get("/insights/time", tasks.timeInsights)
+
 			r.Route("/tasks", func(r chi.Router) {
 				r.Get("/", tasks.list)
 				r.Post("/", tasks.create)
@@ -349,6 +352,7 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 				r.Post("/breakdown", integrations.aiBreakdown)
 				r.Post("/tidy-notes", integrations.aiTidyNotes)
 				r.Post("/plan-day", integrations.aiPlanDay)
+				r.Post("/predict-time", integrations.aiPredictTime)
 				r.Post("/weekly-review", integrations.aiWeeklyReview)
 				r.Post("/reflection-prompts", integrations.aiReflectionPrompts)
 			})

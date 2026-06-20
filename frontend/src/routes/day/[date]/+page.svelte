@@ -676,7 +676,7 @@
   // ── Focus (Pomodoro) ──────────────────────────────────────────────────────
   function handleFocus(id: string, title: string) {
     const t = tasks.find(t => t.id === id);
-    pomodoro.start(id, title, t?.time_actual_minutes ?? 0);
+    pomodoro.start(id, title, t?.time_actual_minutes ?? 0, t?.time_estimate_minutes ?? null);
   }
 
   // ── Focus mode (full-screen) ───────────────────────────────────────────────

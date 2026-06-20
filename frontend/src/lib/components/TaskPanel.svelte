@@ -17,6 +17,7 @@
   import { overlay } from '$lib/stores/overlay.svelte';
   import { prefs } from '$lib/stores/prefs.svelte';
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
+  import { timeInsights } from '$lib/stores/timeInsights.svelte';
   import { Sparkles } from 'lucide-svelte';
   import { dismissibleSheet } from '$lib/actions/sheet';
   import { portal } from '$lib/actions/portal';
@@ -205,6 +206,54 @@
   let recurrenceRule = $state('');
   let selectedTags = $state<string[]>([]);
   let tagSearch = $state('');
+
+  // Estimate calibration nudge: once we know how the user's estimates compare to
+  // reality, gently suggest a more honest number. Loads the profile lazily.
+  $effect(() => { timeInsights.ensure(); });
+  const ESTIMATE_STEPS = [15, 30, 45, 60, 90, 120, 150, 180, 240, 360, 480];
+  const estimateNudge = $derived.by(() => {
+    if (!estimateMinutes) return null;
+    const m = timeInsights.multiplierFor(selectedTags);
+    if (!m || m.mult < 1.2) return null;
+    const raw = estimateMinutes * m.mult;
+    const snapped = ESTIMATE_STEPS.reduce((a, b) => (Math.abs(b - raw) < Math.abs(a - raw) ? b : a));
+    if (snapped <= estimateMinutes) return null; // only nudge upward
+    return { mult: m.mult, tag: m.tag, suggested: snapped };
+  });
+
+  // During cold start, reassure rather than show nothing: the profile needs a
+  // few logged actuals before per-tag/global multipliers unlock. Disappears once
+  // personalized predictions are available.
+  const MIN_TIME_SAMPLES = 3;
+  const learningHint = $derived.by(() => {
+    const d = timeInsights.data;
+    if (!d || d.available || d.samples <= 0) return null;
+    return `Learning your timing — ${d.samples} of ${MIN_TIME_SAMPLES} tasks logged`;
+  });
+
+  // On-demand AI prediction (the hybrid layer): grounds an estimate in the
+  // user's own logged history. Stays hidden unless the local model is reachable
+  // and the feature is enabled.
+  const aiPredictOn = $derived(prefs.aiOn('predictTime') && aiStatus.reachable);
+  let predicting = $state(false);
+  let predictNote = $state<string | null>(null);
+  async function predictTime() {
+    if (!title.trim() || predicting) return;
+    predicting = true; predictNote = null;
+    try {
+      const res = await api.ai.predictTime(title.trim(), selectedTags);
+      if (res.available && res.minutes) {
+        const mins = res.minutes;
+        estimateMinutes = ESTIMATE_STEPS.reduce((a, b) => (Math.abs(b - mins) < Math.abs(a - mins) ? b : a));
+        const prefix = res.personalized ? '' : 'General estimate — personalizes as you log time. ';
+        predictNote = prefix + (res.note ?? '');
+      }
+    } catch {
+      predictNote = null;
+    } finally {
+      predicting = false;
+    }
+  }
   let tagDropdownOpen = $state(false);
   let saving = $state(false);
   let error = $state('');
@@ -914,6 +963,38 @@
                        options={TIME_OPTIONS} placeholder="No estimate" />
         </div>
       </div>
+
+      {#if estimateNudge}
+        <button type="button" onclick={() => (estimateMinutes = estimateNudge.suggested)}
+          class="-mt-1 flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors"
+          style="background: var(--sempa-accent-bg); color: var(--sempa-accent);"
+          title="Based on your logged time on similar tasks">
+          <Sparkles size={13} strokeWidth={2} class="shrink-0" />
+          <span>
+            You usually take <strong>{estimateNudge.mult}×</strong> as long{estimateNudge.tag ? ` on #${estimateNudge.tag}` : ''} —
+            set <strong>~{formatMinutes(estimateNudge.suggested)}</strong>?
+          </span>
+        </button>
+      {/if}
+
+      {#if aiPredictOn}
+        <button type="button" onclick={predictTime} disabled={predicting || !title.trim()}
+          class="-mt-1 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs transition-opacity hover:opacity-80 disabled:opacity-40"
+          style="color: var(--sempa-text-soft);"
+          title="Estimate from your own logged history">
+          <Sparkles size={13} strokeWidth={2} class="shrink-0" style="color: var(--sempa-accent);" />
+          {predicting ? 'Estimating…' : 'Estimate with AI'}
+        </button>
+      {/if}
+      {#if predictNote}
+        <p class="-mt-1 text-xs" style="color: var(--sempa-text-dim);">{predictNote}</p>
+      {/if}
+      {#if learningHint && !estimateNudge}
+        <p class="-mt-1 flex items-center gap-1 text-xs" style="color: var(--sempa-text-dim);">
+          <Sparkles size={12} strokeWidth={2} class="shrink-0" style="opacity: 0.6;" />
+          {learningHint}
+        </p>
+      {/if}
 
       <!-- Reminder (remind_at) — styled pickers, no native Android selectors -->
       <div>
