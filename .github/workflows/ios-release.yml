@@ -37,6 +37,14 @@ jobs:
         with:
           node-version: 22
 
+      - name: Select Xcode 16 (sqlcipher.swift / SPM needs Swift 6 tools)
+        run: |
+          echo "Installed Xcodes:"; ls -d /Applications/Xcode_*.app 2>/dev/null || true
+          XC="$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$XC" ]; then echo "No Xcode 16 on this image"; exit 1; fi
+          sudo xcode-select -s "$XC/Contents/Developer"
+          xcodebuild -version
+
       - name: Install npm dependencies
         working-directory: frontend
         run: npm ci
