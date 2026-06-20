@@ -17,6 +17,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(WidgetBridgePlugin.class);
+        registerPlugin(FocusTimerPlugin.class);
         super.onCreate(savedInstanceState);
         createNotificationChannels();
         WidgetRefreshWorker.Companion.enqueuePeriodicRefresh(this);
@@ -46,6 +47,18 @@ public class MainActivity extends BridgeActivity {
             );
             sync.setDescription("Integration sync notifications");
             manager.createNotificationChannel(sync);
+
+            // Ongoing focus-timer notification: silent, low-importance, no vibration
+            // — it's a persistent status surface, not an alert.
+            NotificationChannel focus = new NotificationChannel(
+                "focus_timer",
+                "Focus Timer",
+                NotificationManager.IMPORTANCE_LOW
+            );
+            focus.setDescription("The running focus timer, shown while a session is active");
+            focus.enableVibration(false);
+            focus.setShowBadge(false);
+            manager.createNotificationChannel(focus);
         }
     }
 

@@ -34,9 +34,12 @@ are actually finishable.
 ### Next up / ideas
 - **Insights: trend over time** — "you're getting better at estimating X";
   per-activity sparklines. (Headline view shipped in v1.7.0.)
-- **Phase 5: Android notification-shade timer** — OS-level foreground-service
-  timer so the countdown lives in the shade/lock screen even when the app's
-  closed. Biggest mobile win; real Capacitor/native lift, CI-validated only.
+- **Phase 5: Android notification-shade timer — shipped v1.10.0.** Foreground
+  service (`FocusTimerService`) posts an ongoing notification whose countdown
+  ticks natively via the notification chronometer (survives app close), with
+  Pause/Done buttons. `FocusTimerPlugin` bridges to the web timer (source of
+  truth); taps relay live or drain from prefs on next launch. iOS equivalent
+  (Live Activity) would be a separate native build.
 - **Native "Start focus" on reminders** — add the Focus action to the desktop
   floating card and the Android push notification (today only the in-app banner
   has it).

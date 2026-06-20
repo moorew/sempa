@@ -1,4 +1,5 @@
 import { api } from '$lib/api';
+import { syncFocusNotification } from '$lib/focusTimerNotification';
 
 type Phase = 'work' | 'short_break' | 'long_break';
 
@@ -173,6 +174,7 @@ class PomodoroTimer {
     this.#workSegmentStartMs = null;
     this.elapsedSeconds = 0;
     this.#persist();
+    this.#syncNotification();
   }
 
   #endSession(markDone: boolean) {
@@ -193,6 +195,7 @@ class PomodoroTimer {
     this.isRunning = false;
     this.#phaseEndMs = null;
     this.#persist();
+    this.#syncNotification();
   }
 
   /** Persist the confirmed minutes: accumulate into the task and log a session. */
@@ -226,6 +229,7 @@ class PomodoroTimer {
     this.#workAccumulatedMs = 0;
     this.#workSegmentStartMs = null;
     this.#persist();
+    this.#syncNotification();
   }
 
   /** Close the confirm sheet without logging anything. */
@@ -235,6 +239,7 @@ class PomodoroTimer {
     this.#workAccumulatedMs = 0;
     this.#workSegmentStartMs = null;
     this.#persist();
+    this.#syncNotification();
   }
 
   // ── Timer internals ──────────────────────────────────────────────────────────
@@ -245,6 +250,7 @@ class PomodoroTimer {
     this.#syncElapsed();
     this.#intervalId = setInterval(() => this.#tick(), 250);
     this.#persist();
+    this.#syncNotification();
   }
 
   #pause() {
@@ -259,6 +265,7 @@ class PomodoroTimer {
     this.#phaseEndMs = null;
     this.#syncElapsed();
     this.#persist();
+    this.#syncNotification();
   }
 
   #clearInterval() {
@@ -269,6 +276,21 @@ class PomodoroTimer {
   // readout counts up second-by-second alongside the countdown.
   #syncElapsed() {
     this.elapsedSeconds = Math.floor(this.#elapsedWorkMs() / 1000);
+  }
+
+  // Push state to the native Android ongoing-notification (no-op elsewhere).
+  #syncNotification() {
+    if (this.taskId) {
+      syncFocusNotification({
+        title: this.taskTitle ?? 'Focus',
+        phase: this.phaseLabel,
+        running: this.isRunning,
+        endMs: this.#phaseEndMs ?? 0,
+        remainingMs: this.remaining * 1000,
+      });
+    } else {
+      syncFocusNotification(null);
+    }
   }
 
   #tick() {
@@ -443,6 +465,7 @@ class PomodoroTimer {
       this.#phaseEndMs = null;
     }
     this.#syncElapsed();
+    this.#syncNotification();
   }
 }
 

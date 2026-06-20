@@ -8,6 +8,7 @@
   import { theme } from '$lib/stores/theme.svelte';
   import { prefs } from '$lib/stores/prefs.svelte';
   import { timeTracking } from '$lib/stores/timeTracking.svelte';
+  import { initFocusNotification } from '$lib/focusTimerNotification';
   import { quotes } from '$lib/stores/quotes.svelte';
   import { tagStore } from '$lib/stores/tags.svelte';
   import { mobile } from '$lib/stores/mobile.svelte';
@@ -154,6 +155,7 @@
 
     prefs.init();
     timeTracking.init();
+    initFocusNotification();
     quotes.init();
     mobile.init();
     cockpit.init();

@@ -80,6 +80,16 @@
             </intent-filter>
         </service>
 
+        <!-- Ongoing focus-timer notification; its countdown survives app close. -->
+        <service
+            android:name=".FocusTimerService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="focus_timer" />
+        </service>
+
     </application>
 
     <!-- Permissions -->
@@ -94,4 +104,8 @@
          SCHEDULE_EXACT_ALARM covers 12. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- Ongoing focus-timer notification (foreground service). SPECIAL_USE is the
+         honest fit: a persistent, user-initiated stopwatch, not media/location/etc. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 </manifest>

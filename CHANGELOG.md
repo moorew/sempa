@@ -6,6 +6,16 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.10.0] - 2026-06-20
+
+### Added
+- **Android focus-timer notification.** While a focus session runs, an ongoing
+  notification shows the task and a **live countdown** — and it keeps ticking on
+  the lock screen and in the shade even when the app is fully closed (a foreground
+  service using Android's native notification chronometer, so the timer never
+  freezes). **Pause** and **Done** buttons control it from the shade; the in-app
+  timer stays the source of truth and reconciles taps made while the app was shut.
+
 ## [1.9.2] - 2026-06-20
 
 ### Fixed
