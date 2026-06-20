@@ -75,6 +75,9 @@ jobs:
           # Display name
           $PB -c "Set :CFBundleDisplayName Sempa" "$plist" || \
             $PB -c "Add :CFBundleDisplayName string Sempa" "$plist"
+          # No proprietary encryption → skip the App Store export-compliance prompt.
+          $PB -c "Set :ITSAppUsesNonExemptEncryption false" "$plist" 2>/dev/null || \
+            $PB -c "Add :ITSAppUsesNonExemptEncryption bool false" "$plist"
           # App Transport Security — Sempa connects to a user's self-hosted server,
           # often plain http over a private tailnet, which iOS blocks by default.
           $PB -c "Delete :NSAppTransportSecurity" "$plist" 2>/dev/null || true
