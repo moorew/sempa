@@ -435,7 +435,7 @@ Sempa is built with **time-blindness** in mind: we routinely think something wil
 
 ### Recurring tasks
 
-Create **daily, weekly, or monthly** templates (managed in **Settings → Recurring Tasks**). Instances are generated automatically; editing one instance customises just that occurrence while the series rolls forward.
+Create **daily, weekly, or monthly** templates (managed in **Settings → Recurring Tasks**). Instances are generated automatically; editing one instance customises just that occurrence while the series rolls forward. To change the template itself — its **title, notes, tags, time estimate, or schedule** — hit the **edit** button on it in Settings → Recurring Tasks; changes flow to upcoming occurrences while anything you've already customised or worked on stays put. Each day carries exactly one instance per template.
 
 ### Calendars & schedule
 

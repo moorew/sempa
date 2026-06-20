@@ -3,7 +3,10 @@
   import { api } from '$lib/api';
   import type { Task } from '$lib/types';
   import SempaSelect from '$lib/components/ui/SempaSelect.svelte';
+  import TaskPanel from '$lib/components/TaskPanel.svelte';
   import { tagStore } from '$lib/stores/tags.svelte';
+  import { today } from '$lib/utils';
+  import { Pencil } from 'lucide-svelte';
 
   const RULE_LABELS: Record<string, string> = {
     daily: 'Every day',
@@ -39,9 +42,14 @@
 
   let templates = $state<Task[]>([]);
   let loading = $state(true);
+  let editing = $state<Task | null>(null);
+
+  async function refresh() {
+    templates = await api.recurring.list();
+  }
 
   onMount(async () => {
-    try { templates = await api.recurring.list(); }
+    try { await refresh(); }
     finally { loading = false; }
   });
 
@@ -106,6 +114,10 @@
                 {/each}
               </div>
             {/if}
+            <button onclick={() => (editing = tmpl)} aria-label="Edit recurring task"
+                    class="transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);">
+              <Pencil size={15} strokeWidth={2} />
+            </button>
             <button onclick={() => remove(tmpl.id)} aria-label="Delete recurring task"
                     class="transition-colors" style="color: var(--sempa-text-dim);">
               <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -130,3 +142,12 @@
     </div>
   {/if}
 </div>
+
+{#if editing}
+  <TaskPanel
+    open={true}
+    task={editing}
+    defaultDate={today()}
+    onSave={() => { editing = null; void refresh(); }}
+    onClose={() => (editing = null)} />
+{/if}

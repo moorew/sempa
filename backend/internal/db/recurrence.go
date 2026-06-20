@@ -220,19 +220,44 @@ func (s *TaskStore) createInstance(ctx context.Context, tmpl Task, t time.Time) 
 	date := t.Format("2006-01-02")
 	ws := weekStartOf(t)
 	_, err := s.Create(ctx, CreateTaskParams{
-		ID:                 uuid.New().String(),
-		Title:              tmpl.Title,
-		Description:        tmpl.Description,
-		PlannedDate:        &date,
-		WeekStart:          &ws,
-		Status:             "planned",
-		Position:           float64(t.UnixMilli()),
-		Tags:               tmpl.Tags,
-		RecurrenceOriginID: &tmpl.ID,
-		RoughlyAt:          tmpl.RoughlyAt,
+		ID:                  uuid.New().String(),
+		Title:               tmpl.Title,
+		Description:         tmpl.Description,
+		PlannedDate:         &date,
+		WeekStart:           &ws,
+		Status:              "planned",
+		Position:            float64(t.UnixMilli()),
+		TimeEstimateMinutes: tmpl.TimeEstimateMinutes,
+		Tags:                tmpl.Tags,
+		RecurrenceOriginID:  &tmpl.ID,
+		RoughlyAt:           tmpl.RoughlyAt,
 	})
 	return err
 }
+
+// SyncTemplateInstances propagates a template's current content to its future,
+// untouched instances. Pristine (non-customised, open, no logged time) instances
+// from `today` onward are deleted and regenerated under the template's current
+// title / description / tags / estimate / rule. Customised or already-worked
+// instances are left exactly as they are.
+func (s *TaskStore) SyncTemplateInstances(ctx context.Context, originID, today string) error {
+	if today == "" {
+		today = time.Now().Format("2006-01-02")
+	}
+	if _, err := s.db.ExecContext(ctx, `
+		DELETE FROM tasks
+		WHERE recurrence_origin_id = ?
+		  AND planned_date >= ?
+		  AND is_customized = 0
+		  AND status IN ('backlog','planned')
+		  AND (time_actual_minutes IS NULL OR time_actual_minutes = 0)`, originID, today); err != nil {
+		return err
+	}
+	return s.GenerateHorizon(ctx, today, recurrenceHorizonWeeks)
+}
+
+// recurrenceHorizonWeeks mirrors the poller's horizon (+2 weeks).
+const recurrenceHorizonWeeks = 2
 
 // instanceExistsForDate reports whether ANY non-cancelled instance of the
 // template already exists on the given date — customised or pristine. A

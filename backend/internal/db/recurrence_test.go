@@ -161,6 +161,44 @@ func TestSameDayDuplicatesHealed(t *testing.T) {
 	}
 }
 
+// Editing a template (e.g. renaming it) propagates to future untouched
+// instances via SyncTemplateInstances.
+func TestTemplateEditPropagates(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	origin := makeDailyTemplate(t, s, nil)
+	const date = "2026-06-01"
+
+	if err := s.GenerateForDate(ctx, date); err != nil {
+		t.Fatal(err)
+	}
+	if got := instancesOn(t, s, origin, date); len(got) != 1 || got[0].Title != "Meditate" {
+		t.Fatalf("setup: expected one 'Meditate' instance, got %+v", got)
+	}
+
+	// Rename the template.
+	tmpls, err := s.ListRecurringTemplates(ctx)
+	if err != nil || len(tmpls) != 1 {
+		t.Fatalf("templates: %v (%d)", err, len(tmpls))
+	}
+	tmpl := tmpls[0]
+	tmpl.Title = "Meditate 10 min"
+	if _, err := s.Update(ctx, tmpl); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SyncTemplateInstances(ctx, origin, date); err != nil {
+		t.Fatal(err)
+	}
+
+	got := instancesOn(t, s, origin, date)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 instance after propagate, got %d", len(got))
+	}
+	if got[0].Title != "Meditate 10 min" {
+		t.Fatalf("instance title should reflect the edited template, got %q", got[0].Title)
+	}
+}
+
 func TestWeekGenerationFindsInstanceByWeekStart(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()

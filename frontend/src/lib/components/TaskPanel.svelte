@@ -91,6 +91,9 @@
   } = $props();
 
   const isEdit = $derived(task !== null);
+  // A recurring TEMPLATE (has a rule, isn't a generated instance). Editing one
+  // should expose the schedule picker and persist rule/title/tag/estimate changes.
+  const isTemplate = $derived(isEdit && !!task?.recurrence_rule && !task?.recurrence_origin_id);
 
   // View-first on desktop/web: opening an existing task shows a clean, readable
   // SUMMARY (not a wall of input boxes), with an Edit pencil to switch into the
@@ -518,6 +521,9 @@
           // Empty string clears the reminder; a date produces an ISO timestamp.
           remind_at: remindDate ? (combineToISO(remindDate, remindTime) ?? '') : '',
           weekly_objective_id: selectedObjectiveId ?? null,
+          // Editing a template's schedule — only sent for templates (the server
+          // propagates the change to upcoming instances).
+          ...(isTemplate && recurrenceRule ? { recurrence_rule: recurrenceRule } : {}),
         });
       } else {
         saved = await api.tasks.create({
@@ -1256,8 +1262,8 @@
         </div>
       {/if}
 
-      <!-- Recurrence (only in create mode) -->
-      {#if !isEdit}
+      <!-- Recurrence — in create mode, and when editing a recurring template. -->
+      {#if !isEdit || isTemplate}
         <div>
           <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400" for="task-recurrence">
             Repeat
@@ -1265,7 +1271,9 @@
           <SempaSelect id="task-recurrence" bind:value={recurrenceRule}
                        options={recurrenceOptions.map(o => ({ value: o.value, label: o.label }))} />
           {#if recurrenceRule}
-            <p class="mt-1.5 text-xs text-violet-600 dark:text-violet-400">↺ Creates a recurring template</p>
+            <p class="mt-1.5 text-xs text-violet-600 dark:text-violet-400">
+              {isTemplate ? '↺ Changes apply to upcoming occurrences' : '↺ Creates a recurring template'}
+            </p>
           {/if}
         </div>
       {/if}

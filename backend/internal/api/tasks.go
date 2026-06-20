@@ -62,6 +62,7 @@ type updateTaskRequest struct {
 	ScheduledEnd        *string  `json:"scheduled_end"`
 	RoughlyAt           *string  `json:"roughly_at"`
 	RemindAt            *string  `json:"remind_at"`
+	RecurrenceRule      *string  `json:"recurrence_rule"` // editing a recurring template's schedule
 }
 
 func (h *taskHandler) list(w http.ResponseWriter, r *http.Request) {
@@ -311,10 +312,23 @@ func (h *taskHandler) update(w http.ResponseWriter, r *http.Request) {
 		task.IsCustomized = true
 	}
 
+	// A recurring TEMPLATE (has a rule, is not itself an instance) may have its
+	// schedule edited here; remember so we can propagate to future instances.
+	isTemplate := task.RecurrenceOriginID == nil && task.RecurrenceRule != nil
+	if isTemplate && req.RecurrenceRule != nil && *req.RecurrenceRule != "" {
+		task.RecurrenceRule = req.RecurrenceRule
+	}
+
 	updated, err := h.store.Update(r.Context(), task)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to update task")
 		return
+	}
+
+	// Propagate template edits (title, tags, estimate, schedule) to future
+	// untouched instances; customised/worked instances are preserved.
+	if isTemplate {
+		_ = h.store.SyncTemplateInstances(r.Context(), updated.ID, r.URL.Query().Get("today"))
 	}
 
 	// Re-arm the reminder loop whenever the reminder time was touched.

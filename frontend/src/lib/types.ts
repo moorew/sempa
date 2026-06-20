@@ -168,6 +168,8 @@ export interface UpdateTaskInput {
   roughly_at?: string | null;
   // Empty string clears the reminder; an ISO 8601 timestamp sets it.
   remind_at?: string | null;
+  // Editing a recurring template's schedule (templates only). Empty/null ignored.
+  recurrence_rule?: string | null;
 }
 
 // ── Notifications ────────────────────────────────────────────────────────────

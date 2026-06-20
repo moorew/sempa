@@ -6,6 +6,16 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.8.0] - 2026-06-20
+
+### Added
+- **Edit recurring tasks.** Settings → Recurring Tasks now has an edit button on
+  each template that opens the full task editor — change the title, notes, tags,
+  time estimate, *and the schedule* (e.g. daily → weekdays). Edits propagate to
+  upcoming occurrences while anything you've already customised or worked on is
+  left untouched. Recurring instances also now inherit the template's time
+  estimate, so they feed capacity and the time profile.
+
 ## [1.7.0] - 2026-06-20
 
 ### Added
