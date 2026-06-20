@@ -6,6 +6,7 @@
   import { goto } from '$app/navigation';
   import { contextMenu } from '$lib/stores/contextMenu.svelte';
   import { timeTracking } from '$lib/stores/timeTracking.svelte';
+  import { plannedMinutes } from '$lib/dayCapacity';
   import { Plus } from 'lucide-svelte';
 
   let {
@@ -64,9 +65,11 @@
   const barPct      = $derived(
     dayComplete ? 100 : plannedMins === 0 ? 0 : Math.min((workedMins / plannedMins) * 100, 100)
   );
-  // Subtle over-capacity signal: planned time for the day exceeds the user's limit.
+  // Subtle over-capacity signal: planned time (calibrated by history when
+  // realistic mode is on) exceeds the user's daily limit.
+  const effectivePlanned = $derived(plannedMinutes(tasks, undefined, timeTracking.capacityRealistic));
   const overCapacity = $derived(
-    timeTracking.capacityEnabled && !dayComplete && plannedMins > timeTracking.capacityMinutes
+    timeTracking.capacityEnabled && !dayComplete && effectivePlanned > timeTracking.capacityMinutes
   );
 
   function fmtCapacity(mins: number): string {
@@ -159,7 +162,8 @@
           <span style="color: var(--sempa-accent);">{fmtCapacity(workedMins)} done</span>
           <span style="color: {overCapacity ? '#b07d18' : 'var(--sempa-text-dim)'};">{fmtCapacity(Math.max(plannedMins - workedMins, 0))} left</span>
         {:else}
-          <span style="color: {overCapacity ? '#b07d18' : 'var(--sempa-text-dim)'};" title={overCapacity ? `Over your ${fmtCapacity(timeTracking.capacityMinutes)} day` : undefined}>
+          <span style="color: {overCapacity ? '#b07d18' : 'var(--sempa-text-dim)'};"
+            title={overCapacity ? `${timeTracking.capacityRealistic ? `Realistically ~${fmtCapacity(effectivePlanned)} — ` : ''}over your ${fmtCapacity(timeTracking.capacityMinutes)} day` : undefined}>
             {fmtCapacity(plannedMins)} planned{#if overCapacity} · over{/if}
           </span>
         {/if}

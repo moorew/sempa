@@ -418,11 +418,11 @@ Sempa is built with **time-blindness** in mind: we routinely think something wil
 
 **Catching the tasks you don't time.** Most tasks never get a timer started on them — so whenever you complete a task without tracked time, Sempa pops a quick *“How long did that take?”* prompt (one-tap chips or a custom number). It auto-detects the kind of work (Email, Meeting, Deep work, Admin…) and pre-fills a sensible default. It's deliberately un-naggy: it skips very quick tasks, backs off when you're completing a burst at once, and pauses after a few skips. Turn it off, tune the per-activity default times, and replay the intro from **Settings → Time tracking**.
 
-**Day capacity — a gentle “that's too much for one day”.** Set how many focused hours fit in a realistic day and Sempa quietly flags overload: when you set a task's time that tips a day past its limit, a subtle line appears under the estimate (*“That puts this day at 7h — over your 6h.”*), and each day shows its planned total, which warms when it's over. No pop-ups, no blocking — just a nudge to help you plan a day you can actually finish. Turn it off or change the limit in **Settings → Time tracking**.
+**Day capacity — a gentle “that's too much for one day”.** Set how many focused hours fit in a realistic day and Sempa quietly flags overload: when you set a task's time that tips a day past its limit, a subtle line appears under the estimate (*“Realistically ~7h — over your 6h.”*), and each day shows its planned total, which warms when it's over. No pop-ups, no blocking — just a nudge to help you plan a day you can actually finish. By default it judges days by **realistic** time (your estimates × how long that kind of work actually takes you), so optimistic guesses don't sneak a day over its limit — switch to raw estimates, change the limit, or turn it off in **Settings → Time tracking**.
 
 **Time-tracking settings** (Settings → Time tracking) gather it all in one place:
 - **Ask how long a task took** — the completion prompt (and a *skip very quick tasks* sub-toggle).
-- **Day capacity** — on/off and your hours-per-day limit.
+- **Day capacity** — on/off, your hours-per-day limit, and whether to judge days by realistic (calibrated) time or raw estimates.
 - **Default times by activity** — the pre-filled duration for each detected activity (Email, Meeting, Deep work, …), all editable.
 - **Focus timer** — your focus / short-break / long-break lengths.
 - **Replay the intro** — watch the walkthrough again anytime.
@@ -491,7 +491,7 @@ Nothing is automatic or destructive — the model **suggests**, you approve.
 | Feature | Where | What it does |
 |---------|-------|--------------|
 | **Natural-language quick add** | ✦ on a task's title | Type something like *“lunch with Sam thu 1pm 30m #personal”* and it fills in the title, date, time, time-estimate, and tags. |
-| **Suggest tags** | ✦ on the tag editor | Recommends tags for a task **only from your existing tag set**, so your taxonomy stays consistent. |
+| **Suggest tags** | ✦ on the tag editor | Recommends tags for a task — reusing your existing tags when they fit, and proposing a few concise **new** tags when they don't. |
 | **Break into subtasks** | ✦ on a task | Splits a task into a few concrete, ordered subtasks you can keep or edit. |
 | **Title cleanup & summary** | Email / Jira import | Tidies imported email subjects (and issues) into concise, action-oriented task titles with a rough time estimate. |
 | **Plan my day** | Plan Day | Suggests a focused order for today's tasks around your calendar events, with a one-line rationale — applied to your board only when you click. Calibrated by your planned-vs-actual history so the plan stays realistic. |

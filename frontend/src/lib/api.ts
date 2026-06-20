@@ -293,7 +293,7 @@ const httpApi = {
       req<{ available: boolean; summary?: string; time_estimate_minutes?: number }>(
         '/api/v1/ai/summarize', { method: 'POST', body: body({ title, body: bodyText }) }, 90_000),
     suggestTags: (title: string, notes: string, available_tags: string[]) =>
-      req<{ available: boolean; tags?: string[] }>(
+      req<{ available: boolean; tags?: string[]; new_tags?: string[] }>(
         '/api/v1/ai/suggest-tags', { method: 'POST', body: body({ title, notes, available_tags }) }, 90_000),
     breakdown: (title: string, notes: string) =>
       req<{ available: boolean; subtasks?: string[] }>(

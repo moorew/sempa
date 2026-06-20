@@ -276,7 +276,7 @@
   });
   const capacityHint = $derived.by(() => {
     if (!timeTracking.capacityEnabled || !plannedDate || !estimateMinutes) return null;
-    const st = capacityState(dayTasks, estimateMinutes, task?.id);
+    const st = capacityState(dayTasks, estimateMinutes, task?.id, selectedTags);
     return st.over ? st : null;
   });
 
@@ -334,13 +334,14 @@
     aiTagging = true;
     try {
       const res = await api.ai.suggestTags(title.trim(), description, tagStore.definitions.map(t => t.name));
-      if (res.available && res.tags?.length) {
+      const proposed = [...(res.tags ?? []), ...(res.new_tags ?? [])];
+      if (res.available && proposed.length) {
         const before = selectedTags.length;
-        selectedTags = Array.from(new Set([...selectedTags, ...res.tags]));
+        selectedTags = Array.from(new Set([...selectedTags, ...proposed]));
         if (selectedTags.length === before) aiNotice('Those tags are already added');
       } else {
         // No match isn't an error, but say so — otherwise the click looks dead.
-        aiNotice('No matching tags found');
+        aiNotice('No tags suggested');
       }
     } catch (e) { aiFail(e); }
     finally { aiTagging = false; }
@@ -1027,7 +1028,9 @@
           <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008M10.34 3.94l-7.06 12.2A1.5 1.5 0 004.58 18.5h14.84a1.5 1.5 0 001.3-2.36l-7.06-12.2a1.5 1.5 0 00-2.6 0z"/>
           </svg>
-          That puts this day at {formatMinutes(capacityHint.total)} — over your {formatMinutes(capacityHint.capacity)}.
+          {capacityHint.realistic
+            ? `Realistically ~${formatMinutes(capacityHint.total)}`
+            : `That puts this day at ${formatMinutes(capacityHint.total)}`} — over your {formatMinutes(capacityHint.capacity)}.
         </p>
       {/if}
 

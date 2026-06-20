@@ -101,7 +101,8 @@ func TestModifiedRolloverCarriesForwardPlusNew(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Day 2: modified instance carries forward AND a fresh one is created.
+	// Day 2: the modified instance carries forward and BECOMES that day's
+	// occurrence — one instance per day, no duplicate fresh copy.
 	if err := s.GenerateForDate(ctx, "2026-06-02"); err != nil {
 		t.Fatal(err)
 	}
@@ -109,8 +110,54 @@ func TestModifiedRolloverCarriesForwardPlusNew(t *testing.T) {
 		t.Fatalf("modified instance should have moved off 06-01, got %d", got)
 	}
 	today := instancesOn(t, s, origin, "2026-06-02")
-	if len(today) != 2 {
-		t.Fatalf("expected 2 instances on 06-02 (carried + new), got %d", len(today))
+	if len(today) != 1 {
+		t.Fatalf("expected 1 instance on 06-02 (carried-forward, no duplicate), got %d", len(today))
+	}
+	if !today[0].IsCustomized {
+		t.Fatalf("the surviving 06-02 instance should be the carried-forward customised one")
+	}
+}
+
+// Reproduces the duplicate-recurring bug: a day ends up with both a customised
+// instance and a bare pristine one. Generation should heal it down to one,
+// keeping the customised instance.
+func TestSameDayDuplicatesHealed(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	origin := makeDailyTemplate(t, s, nil)
+	const date = "2026-06-01"
+
+	for i := 0; i < 2; i++ {
+		if _, err := s.Create(ctx, CreateTaskParams{
+			ID:                 uuid.New().String(),
+			Title:              "Meditate",
+			Status:             "planned",
+			PlannedDate:        strptr(date),
+			WeekStart:          strptr(date),
+			RecurrenceOriginID: strptr(origin),
+		}); err != nil {
+			t.Fatalf("seed instance: %v", err)
+		}
+	}
+	insts := instancesOn(t, s, origin, date)
+	if len(insts) != 2 {
+		t.Fatalf("setup expected 2 instances, got %d", len(insts))
+	}
+	insts[0].IsCustomized = true
+	insts[0].Description = strptr("breathing focus")
+	if _, err := s.Update(ctx, insts[0]); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := s.GenerateForDate(ctx, date); err != nil {
+		t.Fatal(err)
+	}
+	got := instancesOn(t, s, origin, date)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 instance after heal, got %d", len(got))
+	}
+	if !got[0].IsCustomized {
+		t.Fatalf("heal should keep the customised instance, not the pristine one")
 	}
 }
 

@@ -102,6 +102,12 @@
             class="w-16 rounded px-2 py-1 text-right text-sm"
             style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
         </div>
+        {@render toggleRow(
+          'Judge by realistic time',
+          'Compare against how long tasks actually take you (your history multiplier), not just your estimates. With no data yet this matches your estimates.',
+          timeTracking.capacityRealistic,
+          timeTracking.toggleCapacityRealistic,
+        )}
       {/if}
     </div>
 

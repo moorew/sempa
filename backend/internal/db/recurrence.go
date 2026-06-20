@@ -56,9 +56,17 @@ func (s *TaskStore) GenerateForDate(ctx context.Context, date string) error {
 		return err
 	}
 
-	// 2. Ensure a fresh instance exists for every template due on `date`. A
-	//    carried-forward modified instance (is_customized = 1) does not count, so
-	//    the user sees both it and the new pristine one.
+	// 1c. Heal any same-day duplicates: keep one instance per template per day,
+	//     preferring the customised / time-logged / done one over a bare pristine
+	//     copy. (Earlier logic could leave both a carried-forward modified instance
+	//     and a fresh pristine one on the same day.)
+	if err := s.dedupeInstancesForDate(ctx, date); err != nil {
+		return err
+	}
+
+	// 2. Ensure ONE instance exists for every template due on `date`. Any
+	//    non-cancelled instance already on the day counts — a carried-forward or
+	//    customised instance IS that day's occurrence, so we don't add a duplicate.
 	templates, err := s.ListRecurringTemplates(ctx)
 	if err != nil {
 		return err
@@ -67,7 +75,7 @@ func (s *TaskStore) GenerateForDate(ctx context.Context, date string) error {
 		if tmpl.RecurrenceRule == nil || !isDueOn(*tmpl.RecurrenceRule, t) {
 			continue
 		}
-		if s.pristineInstanceExistsForDate(ctx, tmpl.ID, date) {
+		if s.instanceExistsForDate(ctx, tmpl.ID, date) {
 			continue
 		}
 		if err := s.createInstance(ctx, tmpl, t); err != nil {
@@ -75,6 +83,35 @@ func (s *TaskStore) GenerateForDate(ctx context.Context, date string) error {
 		}
 	}
 	return nil
+}
+
+// dedupeInstancesForDate removes redundant pristine duplicates of a recurring
+// template on a single day, keeping the most meaningful instance (customised,
+// time-logged, done, or earliest-created). Only bare pristine open instances
+// with no logged time are ever deleted, so nothing the user touched is lost.
+func (s *TaskStore) dedupeInstancesForDate(ctx context.Context, date string) error {
+	_, err := s.db.ExecContext(ctx, `
+		DELETE FROM tasks
+		WHERE recurrence_origin_id IS NOT NULL
+		  AND planned_date = ?
+		  AND is_customized = 0
+		  AND status IN ('backlog','planned')
+		  AND (time_actual_minutes IS NULL OR time_actual_minutes = 0)
+		  AND EXISTS (
+			SELECT 1 FROM tasks o
+			WHERE o.recurrence_origin_id = tasks.recurrence_origin_id
+			  AND o.planned_date = tasks.planned_date
+			  AND o.id <> tasks.id
+			  AND o.status <> 'cancelled'
+			  AND (
+				o.is_customized = 1
+				OR (o.time_actual_minutes IS NOT NULL AND o.time_actual_minutes > 0)
+				OR o.status NOT IN ('backlog','planned')
+				OR o.created_at < tasks.created_at
+				OR (o.created_at = tasks.created_at AND o.id < tasks.id)
+			  )
+		  )`, date)
+	return err
 }
 
 // GenerateForWeek ensures the requested week has the right recurring instances.
@@ -166,7 +203,7 @@ func (s *TaskStore) seedWeekInstances(ctx context.Context, ws time.Time, afterDa
 			if tmpl.RecurrenceRule == nil || !isDueOn(*tmpl.RecurrenceRule, d) {
 				continue
 			}
-			if s.pristineInstanceExistsForDate(ctx, tmpl.ID, date) {
+			if s.instanceExistsForDate(ctx, tmpl.ID, date) {
 				continue
 			}
 			if err := s.createInstance(ctx, tmpl, d); err != nil {
@@ -197,14 +234,16 @@ func (s *TaskStore) createInstance(ctx context.Context, tmpl Task, t time.Time) 
 	return err
 }
 
-// pristineInstanceExistsForDate reports whether a non-customised, non-cancelled
-// instance of the template already exists on the given date.
-func (s *TaskStore) pristineInstanceExistsForDate(ctx context.Context, originID, date string) bool {
+// instanceExistsForDate reports whether ANY non-cancelled instance of the
+// template already exists on the given date — customised or pristine. A
+// customised (or carried-forward) instance IS that day's occurrence, so it
+// suppresses creating a duplicate: one instance per template per day.
+func (s *TaskStore) instanceExistsForDate(ctx context.Context, originID, date string) bool {
 	var count int
 	s.db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM tasks
 		 WHERE recurrence_origin_id = ? AND planned_date = ?
-		   AND is_customized = 0 AND status != 'cancelled'`,
+		   AND status != 'cancelled'`,
 		originID, date).Scan(&count)
 	return count > 0
 }

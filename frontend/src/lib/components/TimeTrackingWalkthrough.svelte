@@ -30,8 +30,11 @@
   let step = $state(0);
   let triggered = false;
 
-  // First-run trigger: open once on a real app page (not login/setup).
+  // First-run trigger: open once on a real app page (not login/setup). Wait for
+  // the store to finish loading from localStorage, or a mount-order race makes
+  // `walkthroughSeen` read its default (false) and the intro reappears every launch.
   $effect(() => {
+    if (!timeTracking.initialized) return;
     const path = $page.url.pathname;
     const appPage = !path.startsWith('/login') && !path.startsWith('/setup');
     if (appPage && !timeTracking.walkthroughSeen && !triggered) {

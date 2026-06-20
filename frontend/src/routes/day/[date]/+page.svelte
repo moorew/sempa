@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
   import { timeTracking } from '$lib/stores/timeTracking.svelte';
+  import { timeInsights } from '$lib/stores/timeInsights.svelte';
+  import { plannedMinutes } from '$lib/dayCapacity';
   import { flip } from 'svelte/animate';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
@@ -251,7 +253,7 @@
     } catch { /* ignore */ }
   }
 
-  onMount(() => { loadRollover(); });
+  onMount(() => { loadRollover(); timeInsights.ensure(); });
 
   // (Re)initialise the rolling board around the anchored date: reset the column
   // range, request its weeks, and flag that the scroll needs re-anchoring. Tasks
@@ -375,7 +377,8 @@
   const mobileActive    = $derived(mobileDayTasks.filter(t => t.status !== 'done'));
   const mobileDone      = $derived(mobileDayTasks.filter(t => t.status === 'done'));
   const mobileDayEstimate = $derived(mobileDayTasks.reduce((s, t) => s + (t.time_estimate_minutes ?? 0), 0));
-  const mobileOverCapacity = $derived(timeTracking.capacityEnabled && mobileDayEstimate > timeTracking.capacityMinutes);
+  const mobileEffectivePlanned = $derived(plannedMinutes(mobileDayTasks, undefined, timeTracking.capacityRealistic));
+  const mobileOverCapacity = $derived(timeTracking.capacityEnabled && mobileEffectivePlanned > timeTracking.capacityMinutes);
 
   // ── Mobile long-press drag-to-reorder ──────────────────────────────────────
   // While a card is picked up we drive a live order of ids (reorderOrder) so the

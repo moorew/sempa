@@ -216,7 +216,9 @@ Return JSON: "minutes" (integer, the realistic actual time) and "note" (one shor
 	})
 }
 
-// aiSuggestTags proposes tags for a task from the user's existing tag set.
+// aiSuggestTags proposes tags for a task: reuse the user's existing tags when
+// they fit, AND propose a few concise new tags when they don't. Returns
+// "tags" (existing, verbatim) and "new_tags" (fresh suggestions).
 func (h *integrationHandler) aiSuggestTags(w http.ResponseWriter, r *http.Request) {
 	cfg, ok := h.aiCfg(r.Context())
 	if !ok {
@@ -229,31 +231,69 @@ func (h *integrationHandler) aiSuggestTags(w http.ResponseWriter, r *http.Reques
 		Available []string `json:"available_tags"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
-	if len(body.Available) == 0 {
-		respond(w, http.StatusOK, map[string]any{"available": true, "tags": []string{}})
+	if strings.TrimSpace(body.Title) == "" {
+		respond(w, http.StatusOK, map[string]any{"available": true, "tags": []string{}, "new_tags": []string{}})
 		return
 	}
-	availJSON, _ := json.Marshal(body.Available)
-	// IMPORTANT: do NOT put example tag values in this prompt. Small models
-	// (e.g. llama3.2:3b, qwen2.5:1.5b) copy example tags like "work" verbatim
-	// into their answer; those aren't in the user's set, so filterAllowed strips
-	// everything and the UI shows nothing. Instead, restate the allowed list and
-	// forbid inventing tags.
-	prompt := fmt.Sprintf(`You assign tags to a task. You may ONLY use tags from this exact list, copied verbatim (keep their exact spelling and capitalisation): %s
-Do NOT invent tags or output any word that is not in that list.
-Include a tag only if it clearly applies. It is perfectly fine to return none.
-Return JSON: {"tags": [...]} where every element is copied EXACTLY from the allowed list above. Use an empty array if none apply.
+
+	// NOTE: no example tag values in the prompt — small models copy examples
+	// verbatim. For existing tags we restate the allowed list; for new tags we
+	// describe the shape and clean the output rather than illustrate it.
+	availClause := "The user has no tags yet."
+	if len(body.Available) > 0 {
+		availJSON, _ := json.Marshal(body.Available)
+		availClause = "The user's existing tags (reuse these verbatim — exact spelling/capitalisation — whenever one fits): " + string(availJSON)
+	}
+	prompt := fmt.Sprintf(`Tag this task by what it is about.
+%s
+Prefer reusing an existing tag. If none capture the task well, propose up to 3 NEW tags: each a single lowercase word (or two words), broad enough to reuse across many tasks, never duplicating an existing tag.
+Return JSON: {"tags": [...], "new_tags": [...]} — "tags" copied verbatim from the existing list (empty if none fit), "new_tags" your concise lowercase suggestions (empty if existing tags suffice).
 Task title: %q
-Task notes: %q`, string(availJSON), body.Title, clip(body.Notes, 800))
+Task notes: %q`, availClause, body.Title, clip(body.Notes, 800))
 
 	var out struct {
-		Tags []string `json:"tags"`
+		Tags    []string `json:"tags"`
+		NewTags []string `json:"new_tags"`
 	}
 	if err := ai.JSON(r.Context(), cfg, prompt, &out); err != nil {
 		respondError(w, http.StatusBadGateway, err.Error())
 		return
 	}
-	respond(w, http.StatusOK, map[string]any{"available": true, "tags": filterAllowed(out.Tags, body.Available)})
+	existing := filterAllowed(out.Tags, body.Available)
+	respond(w, http.StatusOK, map[string]any{
+		"available": true,
+		"tags":      existing,
+		"new_tags":  cleanNewTags(out.NewTags, body.Available, existing),
+	})
+}
+
+// cleanNewTags normalises model-proposed new tags: lowercased, trimmed, no
+// leading '#', deduped, capped, and excluding anything that's already an
+// existing or already-selected tag (case-insensitive).
+func cleanNewTags(raw, existing, selected []string) []string {
+	seen := map[string]bool{}
+	for _, t := range existing {
+		seen[strings.ToLower(strings.TrimSpace(t))] = true
+	}
+	for _, t := range selected {
+		seen[strings.ToLower(strings.TrimSpace(t))] = true
+	}
+	out := []string{}
+	for _, t := range raw {
+		n := strings.ToLower(strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(t), "#")))
+		if n == "" || utf8.RuneCountInString(n) > 24 || strings.Count(n, " ") > 1 {
+			continue
+		}
+		if seen[n] {
+			continue
+		}
+		seen[n] = true
+		out = append(out, n)
+		if len(out) >= 3 {
+			break
+		}
+	}
+	return out
 }
 
 // aiBreakdown splits a task into a few concrete subtasks.

@@ -6,6 +6,26 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.6.0] - 2026-06-20
+
+### Added
+- **Realistic day capacity.** The capacity check now judges a day by *realistic*
+  time — your estimates × how long that kind of work actually takes you — so a
+  day of optimistic guesses still trips the limit ("Realistically ~7h — over your
+  6h"). With no history yet it matches your estimates. Toggle in Settings → Time
+  tracking.
+- **Smarter tag suggestions.** "Suggest tags" now proposes a few concise **new**
+  tags when your existing ones don't fit, instead of only ever reusing the
+  current set.
+
+### Fixed
+- **Duplicate recurring tasks.** Once a recurring instance was customised (or
+  carried forward from a missed day), the generator created a second, pristine
+  copy for the same day. Recurring tasks are now strictly one-per-day, with a
+  self-healing pass that removes existing duplicates (keeping the one you edited).
+- **First-run walkthrough re-opening on every launch.** A start-up race let it
+  read its "already seen" flag before settings finished loading; it now waits.
+
 ## [1.5.0] - 2026-06-20
 
 ### Added
