@@ -36,12 +36,35 @@ func NewSyncStore(db *sql.DB) *SyncStore { return &SyncStore{db: db} }
 // RecordTombstone notes that an entity was deleted so the deletion propagates to
 // offline clients on their next pull. Called from delete handlers. A re-created
 // entity (same id) overwrites its tombstone via the primary-key upsert.
-func (s *SyncStore) RecordTombstone(ctx context.Context, entityType, entityID string) error {
+//
+// ownerID + wasShared decide who the deletion is delivered to (see Changes):
+// the owner always, plus everyone if it was shared or global (ownerID == "").
+func (s *SyncStore) RecordTombstone(ctx context.Context, entityType, entityID, ownerID string, wasShared bool) error {
+	shared := 0
+	if wasShared {
+		shared = 1
+	}
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO sync_tombstones (entity_type, entity_id, deleted_at)
-		VALUES (?, ?, datetime('now'))
-		ON CONFLICT(entity_type, entity_id) DO UPDATE SET deleted_at = datetime('now')`,
-		entityType, entityID)
+		INSERT INTO sync_tombstones (entity_type, entity_id, deleted_at, owner_id, was_shared, kind)
+		VALUES (?, ?, datetime('now'), ?, ?, 'delete')
+		ON CONFLICT(entity_type, entity_id) DO UPDATE SET
+			deleted_at = datetime('now'), owner_id = excluded.owner_id,
+			was_shared = excluded.was_shared, kind = 'delete'`,
+		entityType, entityID, ownerID, shared)
+	return err
+}
+
+// RecordRevocation marks that a previously-shared entity is now private to
+// ownerID. It propagates to every OTHER user (so they drop their stale local
+// copy) but not the owner, who still has it. The entity itself is not deleted.
+func (s *SyncStore) RecordRevocation(ctx context.Context, entityType, entityID, ownerID string) error {
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO sync_tombstones (entity_type, entity_id, deleted_at, owner_id, was_shared, kind)
+		VALUES (?, ?, datetime('now'), ?, 0, 'revoke')
+		ON CONFLICT(entity_type, entity_id) DO UPDATE SET
+			deleted_at = datetime('now'), owner_id = excluded.owner_id,
+			was_shared = 0, kind = 'revoke'`,
+		entityType, entityID, ownerID)
 	return err
 }
 
@@ -63,7 +86,7 @@ func (s *SyncStore) ClearTombstone(ctx context.Context, entityType, entityID str
 // string ordering equals chronological ordering. Resolution is one second;
 // same-second concurrent writes are reconciled by the client's idempotent,
 // id-keyed last-write-wins upsert and by the live SSE channel.
-func (s *SyncStore) Changes(ctx context.Context, since string) (SyncChanges, error) {
+func (s *SyncStore) Changes(ctx context.Context, since, ownerID string) (SyncChanges, error) {
 	out := SyncChanges{
 		Tasks:       []Task{},
 		Objectives:  []Objective{},
@@ -80,18 +103,28 @@ func (s *SyncStore) Changes(ctx context.Context, since string) (SyncChanges, err
 		return out, err
 	}
 
-	// where builds "WHERE updated_at > ?" with the cursor arg, or no filter on
-	// an empty cursor (full sync).
-	filter := ""
-	args := []any{}
-	if since != "" {
-		filter = " WHERE updated_at > ?"
-		args = append(args, since)
+	// build assembles "WHERE 1=1 [AND updated_at > ?] [AND <scope>]" so the cursor
+	// filter and the per-table visibility scope compose cleanly. visScope is for
+	// shareable tables (own + shared), ownScope for personal ones, and an empty
+	// scope ("") leaves a table global (tags).
+	build := func(scopeFrag string, scopeArgs []any) (string, []any) {
+		q := " WHERE 1=1"
+		a := []any{}
+		if since != "" {
+			q += " AND updated_at > ?"
+			a = append(a, since)
+		}
+		q += scopeFrag
+		a = append(a, scopeArgs...)
+		return q, a
 	}
+	vsFrag, vsArgs := visScope(ownerID)
+	owFrag, owArgs := ownScope(ownerID)
 
-	// Tasks
+	// Tasks (shareable)
+	tf, ta := build(vsFrag, vsArgs)
 	if rows, err := s.db.QueryContext(ctx,
-		`SELECT `+taskCols+` FROM tasks`+filter+` ORDER BY updated_at`, args...); err != nil {
+		`SELECT `+taskCols+` FROM tasks`+tf+` ORDER BY updated_at`, ta...); err != nil {
 		return out, err
 	} else {
 		out.Tasks, err = collectTasks(rows)
@@ -101,9 +134,10 @@ func (s *SyncStore) Changes(ctx context.Context, since string) (SyncChanges, err
 		}
 	}
 
-	// Objectives
+	// Objectives (shareable)
+	of, oa := build(vsFrag, vsArgs)
 	if rows, err := s.db.QueryContext(ctx,
-		`SELECT `+objCols+` FROM weekly_objectives`+filter+` ORDER BY updated_at`, args...); err != nil {
+		`SELECT `+objCols+` FROM weekly_objectives`+of+` ORDER BY updated_at`, oa...); err != nil {
 		return out, err
 	} else {
 		for rows.Next() {
@@ -117,9 +151,10 @@ func (s *SyncStore) Changes(ctx context.Context, since string) (SyncChanges, err
 		rows.Close()
 	}
 
-	// Daily plans
+	// Daily plans (personal)
+	pf, pa := build(owFrag, owArgs)
 	if rows, err := s.db.QueryContext(ctx,
-		`SELECT `+planCols+` FROM daily_plans`+filter+` ORDER BY updated_at`, args...); err != nil {
+		`SELECT `+planCols+` FROM daily_plans`+pf+` ORDER BY updated_at`, pa...); err != nil {
 		return out, err
 	} else {
 		for rows.Next() {
@@ -133,9 +168,10 @@ func (s *SyncStore) Changes(ctx context.Context, since string) (SyncChanges, err
 		rows.Close()
 	}
 
-	// Tags
+	// Tags (global — no scope)
+	gf, ga := build("", nil)
 	if rows, err := s.db.QueryContext(ctx,
-		`SELECT `+tagCols+` FROM tag_definitions`+filter+` ORDER BY updated_at`, args...); err != nil {
+		`SELECT `+tagCols+` FROM tag_definitions`+gf+` ORDER BY updated_at`, ga...); err != nil {
 		return out, err
 	} else {
 		for rows.Next() {
@@ -149,10 +185,11 @@ func (s *SyncStore) Changes(ctx context.Context, since string) (SyncChanges, err
 		rows.Close()
 	}
 
-	// Week reviews
+	// Week reviews (personal)
+	wf, wa := build(owFrag, owArgs)
 	if rows, err := s.db.QueryContext(ctx,
-		`SELECT id, week_start, wins, challenges, next_focus, created_at, updated_at
-		 FROM week_reviews`+filter+` ORDER BY updated_at`, args...); err != nil {
+		`SELECT `+weekReviewCols+`
+		 FROM week_reviews`+wf+` ORDER BY updated_at`, wa...); err != nil {
 		return out, err
 	} else {
 		for rows.Next() {
@@ -166,9 +203,10 @@ func (s *SyncStore) Changes(ctx context.Context, since string) (SyncChanges, err
 		rows.Close()
 	}
 
-	// Lists
+	// Lists (shareable)
+	lf, la := build(vsFrag, vsArgs)
 	if rows, err := s.db.QueryContext(ctx,
-		`SELECT `+listCols+` FROM lists`+filter+` ORDER BY updated_at`, args...); err != nil {
+		`SELECT `+listCols+` FROM lists`+lf+` ORDER BY updated_at`, la...); err != nil {
 		return out, err
 	} else {
 		for rows.Next() {
@@ -182,9 +220,10 @@ func (s *SyncStore) Changes(ctx context.Context, since string) (SyncChanges, err
 		rows.Close()
 	}
 
-	// List items
+	// List items (shareable; owner_id/shared denormalised from parent list)
+	lif, lia := build(vsFrag, vsArgs)
 	if rows, err := s.db.QueryContext(ctx,
-		`SELECT `+listItemCols+` FROM list_items`+filter+` ORDER BY updated_at`, args...); err != nil {
+		`SELECT `+listItemCols+` FROM list_items`+lif+` ORDER BY updated_at`, lia...); err != nil {
 		return out, err
 	} else {
 		for rows.Next() {
@@ -198,15 +237,23 @@ func (s *SyncStore) Changes(ctx context.Context, since string) (SyncChanges, err
 		rows.Close()
 	}
 
-	// Deletions
-	delFilter := ""
+	// Deletions — delivered per user. A 'delete' reaches the owner, plus everyone
+	// when the row was shared or global (owner_id=''). A 'revoke' (un-share)
+	// reaches everyone EXCEPT the owner, so peers drop their stale copy while the
+	// owner keeps the now-private row. SystemScope sees all tombstones.
+	delQ := `SELECT entity_type, entity_id, deleted_at FROM sync_tombstones WHERE 1=1`
 	delArgs := []any{}
 	if since != "" {
-		delFilter = " WHERE deleted_at > ?"
+		delQ += ` AND deleted_at > ?`
 		delArgs = append(delArgs, since)
 	}
-	if rows, err := s.db.QueryContext(ctx,
-		`SELECT entity_type, entity_id, deleted_at FROM sync_tombstones`+delFilter+` ORDER BY deleted_at`, delArgs...); err != nil {
+	if ownerID != SystemScope {
+		delQ += ` AND ((kind = 'delete' AND (owner_id = '' OR owner_id = ? OR was_shared = 1))
+		             OR (kind = 'revoke' AND owner_id != ?))`
+		delArgs = append(delArgs, ownerID, ownerID)
+	}
+	delQ += ` ORDER BY deleted_at`
+	if rows, err := s.db.QueryContext(ctx, delQ, delArgs...); err != nil {
 		return out, err
 	} else {
 		for rows.Next() {

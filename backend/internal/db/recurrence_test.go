@@ -41,7 +41,7 @@ func makeDailyTemplate(t *testing.T, s *TaskStore, roughlyAt *string) string {
 
 func instancesOn(t *testing.T, s *TaskStore, originID, date string) []Task {
 	t.Helper()
-	all, err := s.ListByRecurrenceOrigin(context.Background(), originID)
+	all, err := s.ListByRecurrenceOrigin(context.Background(), originID, SystemScope)
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -177,7 +177,7 @@ func TestTemplateEditPropagates(t *testing.T) {
 	}
 
 	// Rename the template.
-	tmpls, err := s.ListRecurringTemplates(ctx)
+	tmpls, err := s.ListRecurringTemplates(ctx, SystemScope)
 	if err != nil || len(tmpls) != 1 {
 		t.Fatalf("templates: %v (%d)", err, len(tmpls))
 	}
@@ -262,7 +262,7 @@ func TestWeekGenerationFindsInstanceByWeekStart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := s.ListByWeek(ctx, weekStart)
+	got, err := s.ListByWeek(ctx, weekStart, SystemScope)
 	if err != nil {
 		t.Fatal(err)
 	}

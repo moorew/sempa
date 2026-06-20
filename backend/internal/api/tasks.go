@@ -44,6 +44,7 @@ type createTaskRequest struct {
 	Tags                []string `json:"tags"`
 	RecurrenceRule      *string  `json:"recurrence_rule"`
 	RoughlyAt           *string  `json:"roughly_at"`
+	Shared              bool     `json:"shared"`
 }
 
 type updateTaskRequest struct {
@@ -64,6 +65,7 @@ type updateTaskRequest struct {
 	RoughlyAt           *string  `json:"roughly_at"`
 	RemindAt            *string  `json:"remind_at"`
 	RecurrenceRule      *string  `json:"recurrence_rule"` // editing a recurring template's schedule
+	Shared              *bool    `json:"shared"`          // Private/Shared toggle
 }
 
 func (h *taskHandler) list(w http.ResponseWriter, r *http.Request) {
@@ -84,25 +86,26 @@ func (h *taskHandler) list(w http.ResponseWriter, r *http.Request) {
 	recurrenceOrigin := q.Get("recurrence_origin")
 	withReminders := q.Get("with_reminders")
 
+	owner := ownerID(r)
 	var (
 		tasks []db.Task
 		err   error
 	)
 	switch {
 	case withReminders != "":
-		tasks, err = h.store.ListWithReminders(r.Context())
+		tasks, err = h.store.ListWithReminders(r.Context(), owner)
 	case parentID != "":
-		tasks, err = h.store.ListByParent(r.Context(), parentID)
+		tasks, err = h.store.ListByParent(r.Context(), parentID, owner)
 	case recurrenceOrigin != "":
-		tasks, err = h.store.ListByRecurrenceOrigin(r.Context(), recurrenceOrigin)
+		tasks, err = h.store.ListByRecurrenceOrigin(r.Context(), recurrenceOrigin, owner)
 	case source != "":
-		tasks, err = h.store.ListBySource(r.Context(), source)
+		tasks, err = h.store.ListBySource(r.Context(), source, owner)
 	case date != "":
-		tasks, err = h.store.ListByDate(r.Context(), date)
+		tasks, err = h.store.ListByDate(r.Context(), date, owner)
 	case weekStart != "":
-		tasks, err = h.store.ListByWeek(r.Context(), weekStart)
+		tasks, err = h.store.ListByWeek(r.Context(), weekStart, owner)
 	default:
-		tasks, err = h.store.ListBacklog(r.Context())
+		tasks, err = h.store.ListBacklog(r.Context(), owner)
 	}
 
 	if err != nil {
@@ -113,7 +116,7 @@ func (h *taskHandler) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *taskHandler) get(w http.ResponseWriter, r *http.Request) {
-	task, err := h.store.Get(r.Context(), chi.URLParam(r, "id"))
+	task, err := h.store.Get(r.Context(), chi.URLParam(r, "id"), ownerID(r))
 	if errors.Is(err, db.ErrNotFound) {
 		respondError(w, http.StatusNotFound, "task not found")
 		return
@@ -154,6 +157,16 @@ func (h *taskHandler) create(w http.ResponseWriter, r *http.Request) {
 		_ = h.tags.BulkEnsure(r.Context(), req.Tags, defaultPalette)
 	}
 
+	owner := ownerID(r)
+	// A sub-task is exactly as visible as its parent: inherit the parent's shared
+	// state (and ignore any client-supplied value to keep them in lockstep).
+	shared := req.Shared
+	if req.ParentTaskID != nil && *req.ParentTaskID != "" {
+		if parent, perr := h.store.Get(r.Context(), *req.ParentTaskID, owner); perr == nil {
+			shared = parent.Shared
+		}
+	}
+
 	task, err := h.store.Create(r.Context(), db.CreateTaskParams{
 		ID:                  clientOrNewID(req.ID),
 		Title:               req.Title,
@@ -172,6 +185,8 @@ func (h *taskHandler) create(w http.ResponseWriter, r *http.Request) {
 		Tags:                req.Tags,
 		RecurrenceRule:      req.RecurrenceRule,
 		RoughlyAt:           req.RoughlyAt,
+		OwnerID:             owner,
+		Shared:              shared,
 	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create task")
@@ -187,7 +202,7 @@ func (h *taskHandler) create(w http.ResponseWriter, r *http.Request) {
 	// Adding a sub-task to a recurring instance counts as a modification, so the
 	// instance is no longer "pristine" and must survive rollover (carry forward).
 	if req.ParentTaskID != nil && *req.ParentTaskID != "" {
-		h.markRecurringInstanceModified(r.Context(), *req.ParentTaskID)
+		h.markRecurringInstanceModified(r.Context(), *req.ParentTaskID, owner)
 	}
 
 	// If this is a recurring template, immediately generate today's instance
@@ -214,8 +229,9 @@ func (h *taskHandler) create(w http.ResponseWriter, r *http.Request) {
 
 func (h *taskHandler) update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	owner := ownerID(r)
 
-	task, err := h.store.Get(r.Context(), id)
+	task, err := h.store.Get(r.Context(), id, owner)
 	if errors.Is(err, db.ErrNotFound) {
 		respondError(w, http.StatusNotFound, "task not found")
 		return
@@ -224,11 +240,15 @@ func (h *taskHandler) update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "failed to get task")
 		return
 	}
+	wasShared := task.Shared
 
 	var req updateTaskRequest
 	if err := decode(r, &req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
+	}
+	if req.Shared != nil {
+		task.Shared = *req.Shared
 	}
 
 	// Track whether meaningful content changed on a recurring instance
@@ -326,6 +346,18 @@ func (h *taskHandler) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Share toggle: keep sub-tasks in lockstep, and on un-share record a
+	// revocation so peers drop their now-private copies (the owner keeps them).
+	if req.Shared != nil && updated.Shared != wasShared {
+		subIDs, _ := h.store.SetSubtasksShared(r.Context(), updated.ID, updated.Shared)
+		if !updated.Shared && h.sync != nil {
+			_ = h.sync.RecordRevocation(r.Context(), "task", updated.ID, owner)
+			for _, sid := range subIDs {
+				_ = h.sync.RecordRevocation(r.Context(), "task", sid, owner)
+			}
+		}
+	}
+
 	// Propagate template edits (title, tags, estimate, schedule) to future
 	// untouched instances; customised/worked instances are preserved.
 	if isTemplate {
@@ -334,7 +366,7 @@ func (h *taskHandler) update(w http.ResponseWriter, r *http.Request) {
 
 	// Optional cleanup: archive linked lists that opted in, on completion.
 	if req.Status != nil && *req.Status == "done" && h.lists != nil {
-		_, _ = h.lists.ArchiveForCompletedTask(r.Context(), updated.ID)
+		_, _ = h.lists.ArchiveForCompletedTask(r.Context(), updated.ID, owner)
 	}
 
 	// Re-arm the reminder loop whenever the reminder time was touched.
@@ -345,7 +377,7 @@ func (h *taskHandler) update(w http.ResponseWriter, r *http.Request) {
 	// Checking off / editing a sub-task of a recurring instance modifies that
 	// instance, so it should carry forward rather than be replaced on rollover.
 	if updated.ParentTaskID != nil && *updated.ParentTaskID != "" {
-		h.markRecurringInstanceModified(r.Context(), *updated.ParentTaskID)
+		h.markRecurringInstanceModified(r.Context(), *updated.ParentTaskID, owner)
 	}
 
 	// Write focus block to Google Calendar when a task gets a scheduled time
@@ -392,6 +424,11 @@ func (h *taskHandler) snooze(w http.ResponseWriter, r *http.Request) {
 		req.Minutes = 60
 	}
 
+	// Scoped existence check gates the (id-only) snooze to tasks you can see.
+	if _, gerr := h.store.Get(r.Context(), id, ownerID(r)); errors.Is(gerr, db.ErrNotFound) {
+		respondError(w, http.StatusNotFound, "task not found")
+		return
+	}
 	updated, err := h.store.SnoozeReminder(r.Context(), id, req.Minutes)
 	if errors.Is(err, db.ErrNotFound) {
 		respondError(w, http.StatusNotFound, "task not found")
@@ -413,8 +450,8 @@ func (h *taskHandler) snooze(w http.ResponseWriter, r *http.Request) {
 // markRecurringInstanceModified flags a parent task as customised when it is a
 // recurring instance, so the smart rollover carries it forward instead of
 // deleting it. No-op for normal (non-recurring) parents.
-func (h *taskHandler) markRecurringInstanceModified(ctx context.Context, parentID string) {
-	parent, err := h.store.Get(ctx, parentID)
+func (h *taskHandler) markRecurringInstanceModified(ctx context.Context, parentID, owner string) {
+	parent, err := h.store.Get(ctx, parentID, owner)
 	if err != nil || parent.RecurrenceOriginID == nil || parent.IsCustomized {
 		return
 	}
@@ -423,7 +460,7 @@ func (h *taskHandler) markRecurringInstanceModified(ctx context.Context, parentI
 }
 
 func (h *taskHandler) listTemplates(w http.ResponseWriter, r *http.Request) {
-	templates, err := h.store.ListRecurringTemplates(r.Context())
+	templates, err := h.store.ListRecurringTemplates(r.Context(), ownerID(r))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -435,7 +472,7 @@ func (h *taskHandler) listTemplates(w http.ResponseWriter, r *http.Request) {
 // recurring instances, so local-first clients can self-heal — drop instances the
 // server no longer has (orphans stranded by pre-tombstone recurrence deletes).
 func (h *taskHandler) recurringInstances(w http.ResponseWriter, r *http.Request) {
-	refs, err := h.store.RecurringInstanceIndex(r.Context())
+	refs, err := h.store.RecurringInstanceIndex(r.Context(), ownerID(r))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -445,9 +482,15 @@ func (h *taskHandler) recurringInstances(w http.ResponseWriter, r *http.Request)
 
 func (h *taskHandler) delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	owner := ownerID(r)
 	// Capture the task first so we know whether it came from Jira: deleting a
 	// Jira-linked task should return it to the Jira pool (re-import), not lose it.
-	existing, _ := h.store.Get(r.Context(), id)
+	// The scoped Get also gates the delete — you can't delete what you can't see.
+	existing, getErr := h.store.Get(r.Context(), id, owner)
+	if errors.Is(getErr, db.ErrNotFound) {
+		respondError(w, http.StatusNotFound, "task not found")
+		return
+	}
 	err := h.store.Delete(r.Context(), id)
 	if errors.Is(err, db.ErrNotFound) {
 		respondError(w, http.StatusNotFound, "task not found")
@@ -466,7 +509,7 @@ func (h *taskHandler) delete(w http.ResponseWriter, r *http.Request) {
 		h.attach.removeForOwner(r, "task", id)
 	}
 	if h.sync != nil {
-		_ = h.sync.RecordTombstone(r.Context(), "task", id)
+		_ = h.sync.RecordTombstone(r.Context(), "task", id, existing.OwnerID, existing.Shared)
 	}
 	if h.configs != nil {
 		go h.deleteCalDAVBlock(id)

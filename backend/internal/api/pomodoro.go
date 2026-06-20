@@ -26,7 +26,7 @@ func (h *sessionHandler) listByTask(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "task_id is required")
 		return
 	}
-	sessions, err := h.store.ListByTask(r.Context(), taskID)
+	sessions, err := h.store.ListByTask(r.Context(), taskID, ownerID(r))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to list sessions")
 		return
@@ -56,6 +56,7 @@ func (h *sessionHandler) create(w http.ResponseWriter, r *http.Request) {
 		StartedAt:       req.StartedAt,
 		CompletedAt:     req.CompletedAt,
 		WasCompleted:    req.WasCompleted,
+		OwnerID:         ownerID(r),
 	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to record session")

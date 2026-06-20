@@ -103,9 +103,20 @@ container-per-user — federation is the wrong tool for 2 people.)
     still-unowned (`owner_id=''`) row for the primary (oldest) user — idempotent,
     no-op with no users. **Behaviour-neutral**: nothing is scoped yet, so data is
     still shared; this just attributes existing rows so the flip can't hide them.
-  - **1B-2 scoping (next).** Set `owner_id` on create from the session user; scope
-    every read + `/sync/changes` + SSE by owner; map device/Dock sessions to the
-    primary user. Isolation tests (user A never sees user B's rows). The privacy flip.
+  - **1B-2 scoping + Phase 2 sharing — SHIPPED v1.12.0.** Per-user scoping across
+    every read, search, realtime + `/sync/changes` (owner resolved once in
+    `requireAuth`, `db.SystemScope` sentinel for background callers, empty owner
+    fails closed). `shared` flag (migration 025) on tasks/lists/list_items/
+    objectives with a visibility rule `owner_id = me OR shared = 1`; personal
+    tables (plans/reviews/pomodoro) are owner-only (migration 026 gives them a
+    composite `(owner, date)` unique). Private/Shared toggle on tasks + lists
+    (cascades to sub-tasks / items). Un-share records a `revoke` tombstone that
+    drops the item from peers but not the owner. SSE stays a global ping →
+    scoped refetch. Isolation tests in `db/scoping_test.go`.
+  - **Follow-ups:** Shared toggle for weekly objectives (backend ready, objectives
+    are edited inline so no detail UI yet); offline (local-first) display of the
+    shared flag (not mirrored into the device SQLite schema — the toggle is
+    online-only for now, which is why it's hidden when offline).
 - **Phase 2 — sharing.** `shared` flag + Private/Shared toggle on tasks/lists/
   objectives; sync + realtime include shared items for both; cascade to subtasks/
   list-items. Tags global; reminders to owner (v1).

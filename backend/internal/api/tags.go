@@ -97,7 +97,8 @@ func (h *tagHandler) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.sync != nil {
-		_ = h.sync.RecordTombstone(r.Context(), "tag", id)
+		// Tags are global: empty owner + shared makes the deletion reach everyone.
+		_ = h.sync.RecordTombstone(r.Context(), "tag", id, "", true)
 	}
 	h.hub.Broadcast("tag:change", map[string]string{})
 	w.WriteHeader(http.StatusNoContent)

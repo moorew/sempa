@@ -27,7 +27,8 @@ func (h *listHandler) broadcast() {
 func (h *listHandler) list(w http.ResponseWriter, r *http.Request) {
 	lists, err := h.store.List(r.Context(),
 		r.URL.Query().Get("archived") == "1",
-		r.URL.Query().Get("task_id"))
+		r.URL.Query().Get("task_id"),
+		ownerID(r))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to load lists")
 		return
@@ -36,7 +37,7 @@ func (h *listHandler) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *listHandler) get(w http.ResponseWriter, r *http.Request) {
-	l, err := h.store.Get(r.Context(), chi.URLParam(r, "id"))
+	l, err := h.store.Get(r.Context(), chi.URLParam(r, "id"), ownerID(r))
 	if err != nil {
 		respondError(w, http.StatusNotFound, "list not found")
 		return
@@ -49,6 +50,7 @@ func (h *listHandler) create(w http.ResponseWriter, r *http.Request) {
 		ID     string  `json:"id"`
 		Name   string  `json:"name"`
 		TaskID *string `json:"task_id"`
+		Shared bool    `json:"shared"`
 	}
 	if err := decode(r, &req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
@@ -56,6 +58,7 @@ func (h *listHandler) create(w http.ResponseWriter, r *http.Request) {
 	}
 	l, err := h.store.Create(r.Context(), db.CreateListParams{
 		ID: clientOrNewID(req.ID), Name: req.Name, TaskID: req.TaskID,
+		OwnerID: ownerID(r), Shared: req.Shared,
 	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create list")
@@ -67,21 +70,27 @@ func (h *listHandler) create(w http.ResponseWriter, r *http.Request) {
 
 func (h *listHandler) update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	l, err := h.store.Get(r.Context(), id)
+	owner := ownerID(r)
+	l, err := h.store.Get(r.Context(), id, owner)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "list not found")
 		return
 	}
+	wasShared := l.Shared
 	var req struct {
-		Name              *string `json:"name"`
-		TaskID            *string `json:"task_id"` // "" unlinks; an id links; omitted = unchanged
+		Name              *string  `json:"name"`
+		TaskID            *string  `json:"task_id"` // "" unlinks; an id links; omitted = unchanged
 		Position          *float64 `json:"position"`
 		Archived          *bool    `json:"archived"`
 		ArchiveOnComplete *bool    `json:"archive_on_complete"`
+		Shared            *bool    `json:"shared"`
 	}
 	if err := decode(r, &req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
+	}
+	if req.Shared != nil {
+		l.Shared = *req.Shared
 	}
 	if req.Name != nil {
 		l.Name = *req.Name
@@ -112,21 +121,40 @@ func (h *listHandler) update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "failed to update list")
 		return
 	}
+	// Keep items in lockstep with the list's share state; on un-share, revoke the
+	// list + each item from peers (they drop their stale copies; owner keeps them).
+	if req.Shared != nil && updated.Shared != wasShared {
+		_ = h.store.SetItemsShared(r.Context(), updated.ID, updated.Shared)
+		if !updated.Shared {
+			items, _ := h.store.Items(r.Context(), updated.ID, owner)
+			_ = h.sync.RecordRevocation(r.Context(), "list", updated.ID, owner)
+			for _, it := range items {
+				_ = h.sync.RecordRevocation(r.Context(), "list_item", it.ID, owner)
+			}
+		}
+	}
 	h.broadcast()
 	respond(w, http.StatusOK, updated)
 }
 
 func (h *listHandler) delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	owner := ownerID(r)
+	// Scoped Get gates the delete and tells us how to route the tombstones.
+	l, err := h.store.Get(r.Context(), id, owner)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "list not found")
+		return
+	}
 	// Cascade removes items in the DB, but clients need tombstones for each.
-	items, _ := h.store.Items(r.Context(), id)
+	items, _ := h.store.Items(r.Context(), id, owner)
 	if err := h.store.Delete(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete list")
 		return
 	}
-	_ = h.sync.RecordTombstone(r.Context(), "list", id)
+	_ = h.sync.RecordTombstone(r.Context(), "list", id, l.OwnerID, l.Shared)
 	for _, it := range items {
-		_ = h.sync.RecordTombstone(r.Context(), "list_item", it.ID)
+		_ = h.sync.RecordTombstone(r.Context(), "list_item", it.ID, it.OwnerID, it.Shared)
 	}
 	h.broadcast()
 	respond(w, http.StatusOK, map[string]string{"status": "deleted"})
@@ -135,7 +163,7 @@ func (h *listHandler) delete(w http.ResponseWriter, r *http.Request) {
 // ── Items ────────────────────────────────────────────────────────────────────
 
 func (h *listHandler) items(w http.ResponseWriter, r *http.Request) {
-	items, err := h.store.Items(r.Context(), chi.URLParam(r, "id"))
+	items, err := h.store.Items(r.Context(), chi.URLParam(r, "id"), ownerID(r))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to load items")
 		return
@@ -145,6 +173,12 @@ func (h *listHandler) items(w http.ResponseWriter, r *http.Request) {
 
 func (h *listHandler) createItem(w http.ResponseWriter, r *http.Request) {
 	listID := chi.URLParam(r, "id")
+	// Only add items to a list you can see; the store inherits the item's
+	// owner/shared from that list.
+	if _, err := h.store.Get(r.Context(), listID, ownerID(r)); err != nil {
+		respondError(w, http.StatusNotFound, "list not found")
+		return
+	}
 	var req struct {
 		ID   string `json:"id"`
 		Text string `json:"text"`
@@ -165,7 +199,7 @@ func (h *listHandler) createItem(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *listHandler) updateItem(w http.ResponseWriter, r *http.Request) {
-	it, err := h.store.GetItem(r.Context(), chi.URLParam(r, "id"))
+	it, err := h.store.GetItem(r.Context(), chi.URLParam(r, "id"), ownerID(r))
 	if err != nil {
 		respondError(w, http.StatusNotFound, "item not found")
 		return
@@ -207,11 +241,17 @@ func (h *listHandler) updateItem(w http.ResponseWriter, r *http.Request) {
 
 func (h *listHandler) deleteItem(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	// Scoped Get gates the delete and routes the tombstone.
+	it, err := h.store.GetItem(r.Context(), id, ownerID(r))
+	if err != nil {
+		respondError(w, http.StatusNotFound, "item not found")
+		return
+	}
 	if err := h.store.DeleteItem(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete item")
 		return
 	}
-	_ = h.sync.RecordTombstone(r.Context(), "list_item", id)
+	_ = h.sync.RecordTombstone(r.Context(), "list_item", id, it.OwnerID, it.Shared)
 	h.broadcast()
 	respond(w, http.StatusOK, map[string]string{"status": "deleted"})
 }

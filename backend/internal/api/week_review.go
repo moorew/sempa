@@ -30,7 +30,7 @@ func (h *weekReviewHandler) list(w http.ResponseWriter, r *http.Request) {
 			limit = n
 		}
 	}
-	reviews, err := h.store.List(r.Context(), limit)
+	reviews, err := h.store.List(r.Context(), limit, ownerID(r))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to list reviews")
 		return
@@ -40,7 +40,7 @@ func (h *weekReviewHandler) list(w http.ResponseWriter, r *http.Request) {
 
 func (h *weekReviewHandler) get(w http.ResponseWriter, r *http.Request) {
 	weekStart := chi.URLParam(r, "weekStart")
-	review, err := h.store.Get(r.Context(), weekStart)
+	review, err := h.store.Get(r.Context(), weekStart, ownerID(r))
 	if errors.Is(err, db.ErrNotFound) {
 		// Return empty review stub so frontend doesn't need special-case handling
 		respond(w, http.StatusOK, db.WeekReview{WeekStart: weekStart})
@@ -60,7 +60,7 @@ func (h *weekReviewHandler) upsert(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	review, err := h.store.Upsert(r.Context(), uuid.New().String(), weekStart, req.Wins, req.Challenges, req.NextFocus)
+	review, err := h.store.Upsert(r.Context(), uuid.New().String(), weekStart, req.Wins, req.Challenges, req.NextFocus, ownerID(r))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to save review")
 		return

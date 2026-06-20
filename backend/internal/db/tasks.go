@@ -40,6 +40,10 @@ type Task struct {
 	RoughlyAt *string `json:"roughly_at"`
 	// Exact timestamp for a hard reminder (added in migration 018). NULL = none.
 	RemindAt *string `json:"remind_at"`
+	// Multi-user (migrations 024/025): owning user and the shared flag. A task is
+	// visible to a user when owner_id == them OR shared == true.
+	OwnerID string `json:"owner_id"`
+	Shared  bool   `json:"shared"`
 }
 
 const taskCols = `id, title, description, planned_date, week_start, status, position,
@@ -47,7 +51,7 @@ const taskCols = `id, title, description, planned_date, week_start, status, posi
        source, source_id, source_url, source_metadata,
        completed_at, archived_at, created_at, updated_at,
        tags, recurrence_rule, recurrence_origin_id, is_customized,
-       scheduled_start, scheduled_end, roughly_at, remind_at`
+       scheduled_start, scheduled_end, roughly_at, remind_at, owner_id, shared`
 
 func scanTask(s scanner) (Task, error) {
 	var t Task
@@ -60,6 +64,7 @@ func scanTask(s scanner) (Task, error) {
 	var recurrenceRule, recurrenceOriginID sql.NullString
 	var isCustomized int64
 	var scheduledStart, scheduledEnd, roughlyAt, remindAt sql.NullString
+	var shared int64
 
 	err := s.Scan(
 		&t.ID, &t.Title, &description, &plannedDate, &weekStart,
@@ -70,11 +75,12 @@ func scanTask(s scanner) (Task, error) {
 		&completedAt, &archivedAt,
 		&t.CreatedAt, &t.UpdatedAt,
 		&tagsJSON, &recurrenceRule, &recurrenceOriginID, &isCustomized,
-		&scheduledStart, &scheduledEnd, &roughlyAt, &remindAt,
+		&scheduledStart, &scheduledEnd, &roughlyAt, &remindAt, &t.OwnerID, &shared,
 	)
 	if err != nil {
 		return Task{}, err
 	}
+	t.Shared = shared == 1
 
 	t.Description = nullStr(description)
 	t.PlannedDate = nullStr(plannedDate)
@@ -111,9 +117,10 @@ type TaskStore struct{ db *sql.DB }
 
 func NewTaskStore(db *sql.DB) *TaskStore { return &TaskStore{db: db} }
 
-func (s *TaskStore) Get(ctx context.Context, id string) (Task, error) {
+func (s *TaskStore) Get(ctx context.Context, id, ownerID string) (Task, error) {
+	scope, sargs := visScope(ownerID)
 	row := s.db.QueryRowContext(ctx,
-		`SELECT `+taskCols+` FROM tasks WHERE id = ?`, id)
+		`SELECT `+taskCols+` FROM tasks WHERE id = ?`+scope, append([]any{id}, sargs...)...)
 	t, err := scanTask(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Task{}, ErrNotFound
@@ -121,10 +128,12 @@ func (s *TaskStore) Get(ctx context.Context, id string) (Task, error) {
 	return t, err
 }
 
-func (s *TaskStore) ListByDate(ctx context.Context, date string) ([]Task, error) {
+func (s *TaskStore) ListByDate(ctx context.Context, date, ownerID string) ([]Task, error) {
 	// Exclude recurring templates (they have no planned_date by design)
+	scope, sargs := visScope(ownerID)
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT `+taskCols+` FROM tasks WHERE planned_date = ? ORDER BY status, position`, date)
+		`SELECT `+taskCols+` FROM tasks WHERE planned_date = ?`+scope+` ORDER BY status, position`,
+		append([]any{date}, sargs...)...)
 	if err != nil {
 		return nil, err
 	}
@@ -132,9 +141,11 @@ func (s *TaskStore) ListByDate(ctx context.Context, date string) ([]Task, error)
 	return collectTasks(rows)
 }
 
-func (s *TaskStore) ListByWeek(ctx context.Context, weekStart string) ([]Task, error) {
+func (s *TaskStore) ListByWeek(ctx context.Context, weekStart, ownerID string) ([]Task, error) {
+	scope, sargs := visScope(ownerID)
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT `+taskCols+` FROM tasks WHERE week_start = ? ORDER BY planned_date, status, position`, weekStart)
+		`SELECT `+taskCols+` FROM tasks WHERE week_start = ?`+scope+` ORDER BY planned_date, status, position`,
+		append([]any{weekStart}, sargs...)...)
 	if err != nil {
 		return nil, err
 	}
@@ -142,13 +153,14 @@ func (s *TaskStore) ListByWeek(ctx context.Context, weekStart string) ([]Task, e
 	return collectTasks(rows)
 }
 
-func (s *TaskStore) ListBacklog(ctx context.Context) ([]Task, error) {
+func (s *TaskStore) ListBacklog(ctx context.Context, ownerID string) ([]Task, error) {
 	// Exclude recurring templates from backlog
+	scope, sargs := visScope(ownerID)
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT `+taskCols+` FROM tasks
 		 WHERE planned_date IS NULL AND recurrence_rule IS NULL
-		   AND status NOT IN ('done','cancelled')
-		 ORDER BY position`)
+		   AND status NOT IN ('done','cancelled')`+scope+`
+		 ORDER BY position`, sargs...)
 	if err != nil {
 		return nil, err
 	}
@@ -159,13 +171,14 @@ func (s *TaskStore) ListBacklog(ctx context.Context) ([]Task, error) {
 // ListScheduled returns all non-archived tasks with a concrete time block
 // (scheduled_start and scheduled_end set). Used to push focus blocks to an
 // external calendar.
-func (s *TaskStore) ListScheduled(ctx context.Context) ([]Task, error) {
+func (s *TaskStore) ListScheduled(ctx context.Context, ownerID string) ([]Task, error) {
+	scope, sargs := visScope(ownerID)
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT `+taskCols+` FROM tasks
 		 WHERE scheduled_start IS NOT NULL AND scheduled_start != ''
 		   AND scheduled_end   IS NOT NULL AND scheduled_end   != ''
-		   AND archived_at IS NULL
-		 ORDER BY scheduled_start`)
+		   AND archived_at IS NULL`+scope+`
+		 ORDER BY scheduled_start`, sargs...)
 	if err != nil {
 		return nil, err
 	}
@@ -174,11 +187,12 @@ func (s *TaskStore) ListScheduled(ctx context.Context) ([]Task, error) {
 }
 
 // ListRecurringTemplates returns all tasks that are recurring templates.
-func (s *TaskStore) ListRecurringTemplates(ctx context.Context) ([]Task, error) {
+func (s *TaskStore) ListRecurringTemplates(ctx context.Context, ownerID string) ([]Task, error) {
+	scope, sargs := visScope(ownerID)
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT `+taskCols+` FROM tasks
-		 WHERE recurrence_rule IS NOT NULL AND recurrence_origin_id IS NULL
-		 ORDER BY title`)
+		 WHERE recurrence_rule IS NOT NULL AND recurrence_origin_id IS NULL`+scope+`
+		 ORDER BY title`, sargs...)
 	if err != nil {
 		return nil, err
 	}
@@ -206,9 +220,11 @@ func (s *TaskStore) FindPendingRecurringInstance(ctx context.Context, originID s
 	return &t, nil
 }
 
-func (s *TaskStore) ListByRecurrenceOrigin(ctx context.Context, originID string) ([]Task, error) {
+func (s *TaskStore) ListByRecurrenceOrigin(ctx context.Context, originID, ownerID string) ([]Task, error) {
+	scope, sargs := visScope(ownerID)
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT `+taskCols+` FROM tasks WHERE recurrence_origin_id = ? ORDER BY planned_date DESC LIMIT 90`, originID)
+		`SELECT `+taskCols+` FROM tasks WHERE recurrence_origin_id = ?`+scope+` ORDER BY planned_date DESC LIMIT 90`,
+		append([]any{originID}, sargs...)...)
 	if err != nil {
 		return nil, err
 	}
@@ -237,6 +253,10 @@ type CreateTaskParams struct {
 	ScheduledStart      *string
 	ScheduledEnd        *string
 	RoughlyAt           *string
+	// Multi-user. OwnerID may be empty for background/integration creates — it
+	// then defaults to the primary user. Shared defaults to private.
+	OwnerID string
+	Shared  bool
 }
 
 func (s *TaskStore) Create(ctx context.Context, p CreateTaskParams) (Task, error) {
@@ -244,20 +264,28 @@ func (s *TaskStore) Create(ctx context.Context, p CreateTaskParams) (Task, error
 	if tagsJSON == nil {
 		tagsJSON = []byte("[]")
 	}
+	owner, err := resolveOwner(ctx, s.db, p.OwnerID)
+	if err != nil {
+		return Task{}, err
+	}
+	shared := 0
+	if p.Shared {
+		shared = 1
+	}
 	row := s.db.QueryRowContext(ctx, `
 		INSERT INTO tasks (
 			id, title, description, planned_date, week_start, status, position,
 			time_estimate_minutes, parent_task_id, weekly_objective_id,
 			source, source_id, source_url, source_metadata,
 			tags, recurrence_rule, recurrence_origin_id,
-			scheduled_start, scheduled_end, roughly_at
-		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+			scheduled_start, scheduled_end, roughly_at, owner_id, shared
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		RETURNING `+taskCols,
 		p.ID, p.Title, p.Description, p.PlannedDate, p.WeekStart, p.Status, p.Position,
 		p.TimeEstimateMinutes, p.ParentTaskID, p.WeeklyObjectiveID,
 		p.Source, p.SourceID, p.SourceURL, p.SourceMetadata,
 		string(tagsJSON), p.RecurrenceRule, p.RecurrenceOriginID,
-		p.ScheduledStart, p.ScheduledEnd, p.RoughlyAt,
+		p.ScheduledStart, p.ScheduledEnd, p.RoughlyAt, owner, shared,
 	)
 	return scanTask(row)
 }
@@ -270,6 +298,10 @@ func (s *TaskStore) Update(ctx context.Context, t Task) (Task, error) {
 	isCustomized := 0
 	if t.IsCustomized {
 		isCustomized = 1
+	}
+	shared := 0
+	if t.Shared {
+		shared = 1
 	}
 	row := s.db.QueryRowContext(ctx, `
 		UPDATE tasks SET
@@ -289,6 +321,7 @@ func (s *TaskStore) Update(ctx context.Context, t Task) (Task, error) {
 			scheduled_end         = ?,
 			roughly_at            = ?,
 			remind_at             = ?,
+			shared                = ?,
 			updated_at            = datetime('now')
 		WHERE id = ?
 		RETURNING `+taskCols,
@@ -297,7 +330,7 @@ func (s *TaskStore) Update(ctx context.Context, t Task) (Task, error) {
 		t.TimeEstimateMinutes, t.TimeActualMinutes,
 		t.WeeklyObjectiveID, t.CompletedAt,
 		string(tagsJSON), isCustomized,
-		t.ScheduledStart, t.ScheduledEnd, t.RoughlyAt, t.RemindAt,
+		t.ScheduledStart, t.ScheduledEnd, t.RoughlyAt, t.RemindAt, shared,
 		t.ID,
 	)
 	updated, err := scanTask(row)
@@ -329,12 +362,13 @@ func (s *TaskStore) ListDueReminders(ctx context.Context) ([]Task, error) {
 
 // ListWithReminders returns all active tasks that carry a reminder timestamp,
 // soonest first. Powers the Reminders page (upcoming + recently fired).
-func (s *TaskStore) ListWithReminders(ctx context.Context) ([]Task, error) {
+func (s *TaskStore) ListWithReminders(ctx context.Context, ownerID string) ([]Task, error) {
+	scope, sargs := visScope(ownerID)
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT `+taskCols+` FROM tasks
 		 WHERE remind_at IS NOT NULL AND remind_at != ''
-		   AND status NOT IN ('done', 'cancelled')
-		 ORDER BY remind_at`)
+		   AND status NOT IN ('done', 'cancelled')`+scope+`
+		 ORDER BY remind_at`, sargs...)
 	if err != nil {
 		return nil, err
 	}
@@ -375,9 +409,11 @@ func (s *TaskStore) SnoozeReminder(ctx context.Context, id string, minutes int) 
 	return t, err
 }
 
-func (s *TaskStore) ListByParent(ctx context.Context, parentID string) ([]Task, error) {
+func (s *TaskStore) ListByParent(ctx context.Context, parentID, ownerID string) ([]Task, error) {
+	scope, sargs := visScope(ownerID)
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT `+taskCols+` FROM tasks WHERE parent_task_id = ? ORDER BY position`, parentID)
+		`SELECT `+taskCols+` FROM tasks WHERE parent_task_id = ?`+scope+` ORDER BY position`,
+		append([]any{parentID}, sargs...)...)
 	if err != nil {
 		return nil, err
 	}
@@ -393,10 +429,11 @@ func (s *TaskStore) ListByParent(ctx context.Context, parentID string) ([]Task, 
 	return tasks, nil
 }
 
-func (s *TaskStore) ListBySource(ctx context.Context, source string) ([]Task, error) {
+func (s *TaskStore) ListBySource(ctx context.Context, source, ownerID string) ([]Task, error) {
+	scope, sargs := visScope(ownerID)
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT `+taskCols+` FROM tasks WHERE source = ? AND status != 'cancelled' ORDER BY created_at DESC`,
-		source)
+		`SELECT `+taskCols+` FROM tasks WHERE source = ? AND status != 'cancelled'`+scope+` ORDER BY created_at DESC`,
+		append([]any{source}, sargs...)...)
 	if err != nil {
 		return nil, err
 	}
@@ -412,6 +449,38 @@ func (s *TaskStore) FindBySource(ctx context.Context, source, sourceID string) (
 		return Task{}, ErrNotFound
 	}
 	return t, err
+}
+
+// SetSubtasksShared cascades a parent task's share state to its sub-tasks so a
+// sub-task is always as visible as its parent. Returns the affected sub-task ids
+// (for un-share revocation tombstones).
+func (s *TaskStore) SetSubtasksShared(ctx context.Context, parentID string, shared bool) ([]string, error) {
+	v := 0
+	if shared {
+		v = 1
+	}
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id FROM tasks WHERE parent_task_id = ? AND shared != ?`, parentID, v)
+	if err != nil {
+		return nil, err
+	}
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	rows.Close()
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	_, err = s.db.ExecContext(ctx,
+		`UPDATE tasks SET shared = ?, updated_at = datetime('now') WHERE parent_task_id = ? AND shared != ?`,
+		v, parentID, v)
+	return ids, err
 }
 
 func (s *TaskStore) Delete(ctx context.Context, id string) error {

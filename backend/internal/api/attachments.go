@@ -28,14 +28,15 @@ type attachmentHandler struct {
 	hub        *EventHub
 }
 
-// ownerExists checks the referenced task/objective is real before accepting an upload.
-func (h *attachmentHandler) ownerExists(r *http.Request, ownerType, ownerID string) bool {
+// ownerExists checks the referenced task/objective is real AND visible to the
+// requester (the scoped Get gates access) before accepting an upload.
+func (h *attachmentHandler) ownerExists(r *http.Request, ownerType, entityID string) bool {
 	switch ownerType {
 	case "task":
-		_, err := h.tasks.Get(r.Context(), ownerID)
+		_, err := h.tasks.Get(r.Context(), entityID, ownerID(r))
 		return err == nil
 	case "objective":
-		_, err := h.objectives.Get(r.Context(), ownerID)
+		_, err := h.objectives.Get(r.Context(), entityID, ownerID(r))
 		return err == nil
 	}
 	return false
@@ -43,7 +44,13 @@ func (h *attachmentHandler) ownerExists(r *http.Request, ownerType, ownerID stri
 
 func (h *attachmentHandler) list(ownerType string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		items, err := h.store.ListByOwner(r.Context(), ownerType, chi.URLParam(r, "id"))
+		entityID := chi.URLParam(r, "id")
+		// Only list attachments of a parent you can see.
+		if !h.ownerExists(r, ownerType, entityID) {
+			respond(w, http.StatusOK, []db.Attachment{})
+			return
+		}
+		items, err := h.store.ListByOwner(r.Context(), ownerType, entityID)
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, "failed to list attachments")
 			return
@@ -54,8 +61,8 @@ func (h *attachmentHandler) list(ownerType string) http.HandlerFunc {
 
 func (h *attachmentHandler) upload(ownerType string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ownerID := chi.URLParam(r, "id")
-		if !h.ownerExists(r, ownerType, ownerID) {
+		entityID := chi.URLParam(r, "id")
+		if !h.ownerExists(r, ownerType, entityID) {
 			respondError(w, http.StatusNotFound, ownerType+" not found")
 			return
 		}
@@ -97,7 +104,7 @@ func (h *attachmentHandler) upload(ownerType string) http.HandlerFunc {
 		att, err := h.store.Create(r.Context(), db.CreateAttachmentParams{
 			ID:        id,
 			OwnerType: ownerType,
-			OwnerID:   ownerID,
+			OwnerID:   entityID,
 			Filename:  filename,
 			MimeType:  mimeType,
 			SizeBytes: written,
@@ -109,7 +116,7 @@ func (h *attachmentHandler) upload(ownerType string) http.HandlerFunc {
 		}
 
 		h.hub.Broadcast("attachment:change", map[string]string{
-			"entity": "attachment", "owner_type": ownerType, "owner_id": ownerID,
+			"entity": "attachment", "owner_type": ownerType, "owner_id": entityID,
 		})
 		respond(w, http.StatusCreated, att)
 	}
@@ -123,6 +130,11 @@ func (h *attachmentHandler) download(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to get attachment")
+		return
+	}
+	// An attachment is only visible if its parent task/objective is.
+	if !h.ownerExists(r, att.OwnerType, att.OwnerID) {
+		respondError(w, http.StatusNotFound, "attachment not found")
 		return
 	}
 
@@ -153,6 +165,10 @@ func (h *attachmentHandler) delete(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to get attachment")
+		return
+	}
+	if !h.ownerExists(r, att.OwnerType, att.OwnerID) {
+		respondError(w, http.StatusNotFound, "attachment not found")
 		return
 	}
 	if err := h.store.Delete(r.Context(), att.ID); err != nil {

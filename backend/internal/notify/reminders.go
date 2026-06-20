@@ -77,7 +77,8 @@ func checkDueReminders(ctx context.Context, tasks *db.TaskStore, dispatcher *Dis
 }
 
 func sendMorningDigest(ctx context.Context, tasks *db.TaskStore, dispatcher *Dispatcher, today string) {
-	dayTasks, err := tasks.ListByDate(ctx, today)
+	// Morning digest runs across all users' tasks (each fires for its owner).
+	dayTasks, err := tasks.ListByDate(ctx, today, db.SystemScope)
 	if err != nil {
 		slog.Error("notify: list today tasks", "err", err)
 		return

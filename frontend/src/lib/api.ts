@@ -258,7 +258,7 @@ const httpApi = {
 
   auth: {
     config: () => req<{ google_enabled: boolean; password_enabled: boolean }>('/api/v1/auth/config'),
-    me: () => req<{ authenticated: boolean; auth_enabled: boolean; google_enabled: boolean; email?: string; username?: string; user_id?: string; name?: string; is_admin?: boolean }>('/api/v1/auth/me'),
+    me: () => req<{ authenticated: boolean; auth_enabled: boolean; google_enabled: boolean; email?: string; username?: string; user_id?: string; name?: string; is_admin?: boolean; multi_user?: boolean }>('/api/v1/auth/me'),
     login: (username: string, password: string) =>
       req<{ status: string; token?: string }>('/api/v1/auth/login', { method: 'POST', body: body({ username, password }) }),
     logout: () => req<void>('/api/v1/auth/logout', { method: 'POST' }),
@@ -467,9 +467,9 @@ const httpApi = {
       return req<List[]>(`/api/v1/lists${q ? `?${q}` : ''}`);
     },
     get: (id: string) => req<List>(`/api/v1/lists/${id}`),
-    create: (input: { name: string; task_id?: string | null }) =>
+    create: (input: { name: string; task_id?: string | null; shared?: boolean }) =>
       req<List>('/api/v1/lists', { method: 'POST', body: body(input) }),
-    update: (id: string, patch: { name?: string; task_id?: string | null; position?: number; archived?: boolean; archive_on_complete?: boolean }) =>
+    update: (id: string, patch: { name?: string; task_id?: string | null; position?: number; archived?: boolean; archive_on_complete?: boolean; shared?: boolean }) =>
       req<List>(`/api/v1/lists/${id}`, { method: 'PATCH', body: body(patch) }),
     delete: (id: string) => req<{ status: string }>(`/api/v1/lists/${id}`, { method: 'DELETE' }),
     items: (id: string) => req<ListItem[]>(`/api/v1/lists/${id}/items`),

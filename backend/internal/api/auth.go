@@ -536,6 +536,11 @@ func (h *authHandler) me(w http.ResponseWriter, r *http.Request) {
 		resp["name"] = u.Name
 		resp["is_admin"] = u.IsAdmin
 	}
+	// multi_user drives whether clients surface the Private/Shared controls — no
+	// point cluttering a solo install with sharing UI.
+	if n, err := h.users.Count(r.Context()); err == nil {
+		resp["multi_user"] = n > 1
+	}
 	respond(w, http.StatusOK, resp)
 }
 
@@ -560,7 +565,10 @@ func (h *authHandler) resolveUser(ctx context.Context, e sessionEntry) (db.User,
 
 type ctxKey int
 
-const userCtxKey ctxKey = 0
+const (
+	userCtxKey  ctxKey = 0
+	ownerCtxKey ctxKey = 1
+)
 
 // currentSession returns the session entry attached by requireAuth, if any.
 func currentSession(r *http.Request) (sessionEntry, bool) {
@@ -568,10 +576,43 @@ func currentSession(r *http.Request) (sessionEntry, bool) {
 	return e, ok
 }
 
+// ownerID returns the data-ownership scope for a request, resolved once by
+// requireAuth and the single source every data store uses to filter rows:
+//   - a real user id   → that user sees their own rows + anything shared
+//   - db.SystemScope   → unscoped (auth disabled = single-user, sees everything)
+//   - "" (unset)       → fails CLOSED (matches nothing), so a missing scope can
+//     never leak the whole household's data
+func ownerID(r *http.Request) string {
+	if v, ok := r.Context().Value(ownerCtxKey).(string); ok {
+		return v
+	}
+	return ""
+}
+
+// resolveOwnerScope decides a request's ownership scope. Auth disabled → the
+// instance is single-user, so everything is visible (SystemScope). Otherwise the
+// session's user; a device/Dock session without a user id maps to the primary
+// (household head) account so the Dock shows their data.
+func (h *authHandler) resolveOwnerScope(r *http.Request, entry sessionEntry) string {
+	if !h.authEnabled() {
+		return db.SystemScope
+	}
+	if u, ok := h.resolveUser(r.Context(), entry); ok {
+		return u.ID
+	}
+	if entry.Scope == "device" {
+		if id, err := h.users.PrimaryID(r.Context()); err == nil && id != "" {
+			return id
+		}
+	}
+	return "" // fail closed
+}
+
 func (h *authHandler) requireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !h.authEnabled() {
-			next.ServeHTTP(w, r)
+			// Single-user, no auth: everything is visible (unscoped).
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ownerCtxKey, db.SystemScope)))
 			return
 		}
 		entry, ok := h.extractSession(r)
@@ -586,9 +627,11 @@ func (h *authHandler) requireAuth(next http.Handler) http.Handler {
 			respondError(w, http.StatusForbidden, "not permitted for this device")
 			return
 		}
-		// Expose the session (incl. UserID) to handlers — the basis for Phase 1B
-		// per-user data scoping.
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userCtxKey, entry)))
+		// Expose the session (incl. UserID) and the resolved data-ownership scope
+		// to handlers — the basis for per-user data scoping.
+		ctx := context.WithValue(r.Context(), userCtxKey, entry)
+		ctx = context.WithValue(ctx, ownerCtxKey, h.resolveOwnerScope(r, entry))
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 

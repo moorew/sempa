@@ -17,17 +17,22 @@ type TimeSample struct {
 // CompletedTimeSamples returns recent completed tasks that carry both an
 // estimate and a logged actual — the raw material for the time-blindness
 // profile. Ordered newest-first and capped so the stats reflect recent habits.
-func (s *TaskStore) CompletedTimeSamples(ctx context.Context, limit int) ([]TimeSample, error) {
+func (s *TaskStore) CompletedTimeSamples(ctx context.Context, limit int, ownerID string) ([]TimeSample, error) {
 	if limit <= 0 {
 		limit = 1000
 	}
+	// Insights are a personal calibration of *your own* completed work, so this is
+	// owner-only (not owner-or-shared).
+	scope, sargs := ownScope(ownerID)
+	args := append([]any{}, sargs...)
+	args = append(args, limit)
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT title, time_estimate_minutes, time_actual_minutes, tags
 		FROM tasks
 		WHERE status = 'done' AND archived_at IS NULL
-		  AND time_estimate_minutes > 0 AND time_actual_minutes > 0
+		  AND time_estimate_minutes > 0 AND time_actual_minutes > 0`+scope+`
 		ORDER BY completed_at DESC
-		LIMIT ?`, limit)
+		LIMIT ?`, args...)
 	if err != nil {
 		return nil, err
 	}

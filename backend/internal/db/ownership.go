@@ -6,6 +6,45 @@ import (
 	"fmt"
 )
 
+// SystemScope is the explicit owner value background callers (recurrence poller,
+// reminder loop, integration sync, CalDAV export) pass to owner-scoped read
+// methods to mean "all users — no scoping". It is a value no real user id can
+// equal. An EMPTY owner id, by contrast, fails closed (matches only the
+// long-gone unowned rows), so a handler bug can never leak everyone's data.
+const SystemScope = "\x00system\x00"
+
+// visScope returns the SQL fragment + arg that restricts a *shareable* table to
+// rows the given user may see: their own, plus anything explicitly shared.
+// SystemScope disables the filter. The fragment is always prefixed " AND " so it
+// appends after an existing WHERE clause.
+func visScope(ownerID string) (string, []any) {
+	if ownerID == SystemScope {
+		return "", nil
+	}
+	return ` AND (owner_id = ? OR shared = 1)`, []any{ownerID}
+}
+
+// ownScope is visScope for *personal* tables (daily_plans, week_reviews,
+// pomodoro_sessions) that are never shared — owner-only.
+func ownScope(ownerID string) (string, []any) {
+	if ownerID == SystemScope {
+		return "", nil
+	}
+	return ` AND owner_id = ?`, []any{ownerID}
+}
+
+// resolveOwner picks the owner id to stamp on a newly-created row. A non-empty
+// explicit owner (from the request's user) wins; an empty owner — the case for
+// background/integration creates that don't carry a user — falls back to the
+// primary (server-owner) user so imported rows are never left invisibly
+// unowned. SystemScope is treated as empty here.
+func resolveOwner(ctx context.Context, database *sql.DB, ownerID string) (string, error) {
+	if ownerID != "" && ownerID != SystemScope {
+		return ownerID, nil
+	}
+	return PrimaryUserID(ctx, database)
+}
+
 // ownedTables are the per-user entities that carry an owner_id (migration 024).
 // Tags stay global; attachments inherit ownership through their parent.
 var ownedTables = []string{

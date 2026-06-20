@@ -6,6 +6,29 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.12.0] - 2026-06-20
+
+### Added
+- **Multi-user: private by default, share what you choose.** Every task, list,
+  weekly objective, plan, journal entry and pomodoro session is now scoped to its
+  owner — others on the same Sempa never see your data unless you share it. A
+  **Private / Shared** toggle on tasks and lists lets the household see and edit
+  the things you opt in (sharing a task cascades to its sub-tasks; sharing a list
+  to its items). Daily plans, journals, insights and pomodoro stats stay strictly
+  personal. The sharing controls only appear once a second account exists.
+- Un-sharing immediately removes an item from everyone else (the owner keeps it).
+
+### Changed
+- All reads, search, realtime sync and the offline `/sync/changes` pull are
+  scoped per user, so each account only ever receives its own + shared data.
+
+### Notes
+- Your existing data was assigned to your account in v1.11.2, so nothing changes
+  for you — you still see everything you had. A new household member starts with a
+  clean, private space and sees only what you share.
+- Offline display of shared-state and a Shared toggle for weekly objectives are
+  planned follow-ups (the backend already supports objective sharing).
+
 ## [1.11.2] - 2026-06-20
 
 ### Changed

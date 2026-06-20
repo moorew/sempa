@@ -29,7 +29,7 @@ func buildTagFilter(tags []string, matchAll bool) (string, []any) {
 
 // Search returns tasks matching a free-text query (title/description) and/or a
 // set of tags. Empty q + empty tags returns nothing. Excludes sub-tasks.
-func (s *TaskStore) Search(ctx context.Context, q string, tags []string, matchAll bool, limit int) ([]Task, error) {
+func (s *TaskStore) Search(ctx context.Context, q string, tags []string, matchAll bool, limit int, ownerID string) ([]Task, error) {
 	where := []string{"parent_task_id IS NULL"}
 	var args []any
 
@@ -44,6 +44,10 @@ func (s *TaskStore) Search(ctx context.Context, q string, tags []string, matchAl
 	}
 	if q == "" && len(tags) == 0 {
 		return []Task{}, nil
+	}
+	if scope, sargs := visScope(ownerID); scope != "" {
+		where = append(where, "(owner_id = ? OR shared = 1)")
+		args = append(args, sargs...)
 	}
 
 	query := `SELECT ` + taskCols + ` FROM tasks WHERE ` + strings.Join(where, " AND ") +
@@ -67,15 +71,18 @@ func (s *TaskStore) Search(ctx context.Context, q string, tags []string, matchAl
 }
 
 // Search returns objectives whose title/description match the query.
-func (s *ObjectiveStore) Search(ctx context.Context, q string, limit int) ([]Objective, error) {
+func (s *ObjectiveStore) Search(ctx context.Context, q string, limit int, ownerID string) ([]Objective, error) {
 	if q == "" {
 		return []Objective{}, nil
 	}
 	like := "%" + strings.ToLower(q) + "%"
+	scope, sargs := visScope(ownerID)
+	args := append([]any{like, like}, sargs...)
+	args = append(args, limit)
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT `+objCols+` FROM objectives
-		 WHERE LOWER(title) LIKE ? OR LOWER(COALESCE(description,'')) LIKE ?
-		 ORDER BY week_start DESC LIMIT ?`, like, like, limit)
+		`SELECT `+objCols+` FROM weekly_objectives
+		 WHERE (LOWER(title) LIKE ? OR LOWER(COALESCE(description,'')) LIKE ?)`+scope+`
+		 ORDER BY week_start DESC LIMIT ?`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -92,16 +99,19 @@ func (s *ObjectiveStore) Search(ctx context.Context, q string, limit int) ([]Obj
 }
 
 // Search returns daily plans whose intention/reflection/wins match the query.
-func (s *DailyPlanStore) Search(ctx context.Context, q string, limit int) ([]DailyPlan, error) {
+func (s *DailyPlanStore) Search(ctx context.Context, q string, limit int, ownerID string) ([]DailyPlan, error) {
 	if q == "" {
 		return []DailyPlan{}, nil
 	}
 	like := "%" + strings.ToLower(q) + "%"
+	scope, sargs := ownScope(ownerID)
+	args := append([]any{like, like, like}, sargs...)
+	args = append(args, limit)
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT `+planCols+` FROM daily_plans
-		 WHERE LOWER(COALESCE(intention,'')) LIKE ? OR LOWER(COALESCE(reflection,'')) LIKE ?
-		    OR LOWER(COALESCE(wins,'')) LIKE ?
-		 ORDER BY plan_date DESC LIMIT ?`, like, like, like, limit)
+		 WHERE (LOWER(COALESCE(intention,'')) LIKE ? OR LOWER(COALESCE(reflection,'')) LIKE ?
+		    OR LOWER(COALESCE(wins,'')) LIKE ?)`+scope+`
+		 ORDER BY plan_date DESC LIMIT ?`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -118,26 +128,28 @@ func (s *DailyPlanStore) Search(ctx context.Context, q string, limit int) ([]Dai
 }
 
 // Search returns week reviews whose wins/challenges/next_focus match the query.
-func (s *WeekReviewStore) Search(ctx context.Context, q string, limit int) ([]WeekReview, error) {
+func (s *WeekReviewStore) Search(ctx context.Context, q string, limit int, ownerID string) ([]WeekReview, error) {
 	if q == "" {
 		return []WeekReview{}, nil
 	}
 	like := "%" + strings.ToLower(q) + "%"
+	scope, sargs := ownScope(ownerID)
+	args := append([]any{like, like, like}, sargs...)
+	args = append(args, limit)
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, week_start, wins, challenges, next_focus, created_at, updated_at
+		`SELECT `+weekReviewCols+`
 		 FROM week_reviews
-		 WHERE LOWER(COALESCE(wins,'')) LIKE ? OR LOWER(COALESCE(challenges,'')) LIKE ?
-		    OR LOWER(COALESCE(next_focus,'')) LIKE ?
-		 ORDER BY week_start DESC LIMIT ?`, like, like, like, limit)
+		 WHERE (LOWER(COALESCE(wins,'')) LIKE ? OR LOWER(COALESCE(challenges,'')) LIKE ?
+		    OR LOWER(COALESCE(next_focus,'')) LIKE ?)`+scope+`
+		 ORDER BY week_start DESC LIMIT ?`, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	out := []WeekReview{}
 	for rows.Next() {
-		var wr WeekReview
-		if err := rows.Scan(&wr.ID, &wr.WeekStart, &wr.Wins, &wr.Challenges, &wr.NextFocus,
-			&wr.CreatedAt, &wr.UpdatedAt); err != nil {
+		wr, err := scanWeekReview(rows)
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, wr)

@@ -6,6 +6,7 @@
   import { realtime } from '$lib/stores/realtime.svelte';
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
   import { prefs } from '$lib/stores/prefs.svelte';
+  import { household } from '$lib/stores/household.svelte';
   import { Sparkles, Download, Trash2, GripVertical, X } from 'lucide-svelte';
 
   const listId = $derived($page.params.id ?? '');
@@ -27,7 +28,7 @@
     } catch { /* ignore */ }
     finally { loading = false; }
   }
-  onMount(load);
+  onMount(() => { void household.ensure(); load(); });
   $effect(() => { void realtime.lastEvent; void listId; load(); });
 
   const aiOrganizeOn = $derived(prefs.aiOn('organizeList') && aiStatus.reachable);
@@ -68,6 +69,10 @@
   async function toggleArchiveOnComplete() {
     if (!list) return;
     try { list = await api.lists.update(list.id, { archive_on_complete: !list.archive_on_complete }); } catch { /* ignore */ }
+  }
+  async function toggleShared() {
+    if (!list) return;
+    try { list = await api.lists.update(list.id, { shared: !list.shared }); } catch { /* ignore */ }
   }
   async function unlinkTask() {
     if (!list) return;
@@ -174,6 +179,12 @@
           </label>
         {:else}
           <span>Not linked to a task — attach it from a task's “Lists” section.</span>
+        {/if}
+        {#if household.multiUser}
+          <label class="inline-flex cursor-pointer items-center gap-1.5">
+            <input type="checkbox" checked={list.shared} onchange={toggleShared} />
+            {list.shared ? 'Shared with household' : 'Share with household'}
+          </label>
         {/if}
       </div>
 

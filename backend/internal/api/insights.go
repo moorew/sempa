@@ -40,7 +40,7 @@ type timeInsights struct {
 const recentSampleCap = 60
 
 func (h *taskHandler) timeInsights(w http.ResponseWriter, r *http.Request) {
-	samples, err := h.store.CompletedTimeSamples(r.Context(), 1000)
+	samples, err := h.store.CompletedTimeSamples(r.Context(), 1000, ownerID(r))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to load time samples")
 		return
@@ -111,8 +111,8 @@ func computeTimeInsights(samples []db.TimeSample) timeInsights {
 
 // globalTimeMultiplier returns the overall actual/estimate median, or 0 when
 // there isn't enough data. Used to calibrate AI plan-day estimates.
-func globalTimeMultiplier(ctx context.Context, store *db.TaskStore) float64 {
-	samples, err := store.CompletedTimeSamples(ctx, 1000)
+func globalTimeMultiplier(ctx context.Context, store *db.TaskStore, owner string) float64 {
+	samples, err := store.CompletedTimeSamples(ctx, 1000, owner)
 	if err != nil {
 		return 0
 	}

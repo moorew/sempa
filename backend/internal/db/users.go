@@ -99,6 +99,12 @@ func (s *UserStore) List(ctx context.Context) ([]User, error) {
 	return out, rows.Err()
 }
 
+// PrimaryID returns the oldest user's id — the household's primary account that
+// owns all pre-multi-user data. Empty string if there are no users.
+func (s *UserStore) PrimaryID(ctx context.Context) (string, error) {
+	return PrimaryUserID(ctx, s.db)
+}
+
 func (s *UserStore) Count(ctx context.Context) (int, error) {
 	var n int
 	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&n)

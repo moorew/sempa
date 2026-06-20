@@ -18,7 +18,7 @@ func TestGenerateHorizonDailyCoversFutureWeeks(t *testing.T) {
 		t.Fatalf("GenerateHorizon: %v", err)
 	}
 
-	all, err := s.ListByRecurrenceOrigin(ctx, origin)
+	all, err := s.ListByRecurrenceOrigin(ctx, origin, SystemScope)
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -45,7 +45,7 @@ func TestGenerateHorizonDailyCoversFutureWeeks(t *testing.T) {
 	if err := s.GenerateHorizon(ctx, today, 2); err != nil {
 		t.Fatalf("GenerateHorizon (2nd): %v", err)
 	}
-	all2, _ := s.ListByRecurrenceOrigin(ctx, origin)
+	all2, _ := s.ListByRecurrenceOrigin(ctx, origin, SystemScope)
 	perDay := map[string]int{}
 	for _, task := range all2 {
 		if task.PlannedDate != nil && task.Status != "cancelled" {

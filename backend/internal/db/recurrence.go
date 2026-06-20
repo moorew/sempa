@@ -66,7 +66,7 @@ func (s *TaskStore) GenerateForDate(ctx context.Context, date string) error {
 	// 2. Ensure ONE instance exists for every template due on `date`. Any
 	//    non-cancelled instance already on the day counts — a carried-forward or
 	//    customised instance IS that day's occurrence, so we don't add a duplicate.
-	templates, err := s.ListRecurringTemplates(ctx)
+	templates, err := s.ListRecurringTemplates(ctx, SystemScope)
 	if err != nil {
 		return err
 	}
@@ -118,8 +118,8 @@ func (s *TaskStore) dedupeInstancesForDate(ctx context.Context, date string) err
 // recurring tasks. `where` references the `tasks` table (no alias needed).
 func (s *TaskStore) tombstoneAndDeleteTasks(ctx context.Context, where string, args ...any) error {
 	if _, err := s.db.ExecContext(ctx,
-		`INSERT OR REPLACE INTO sync_tombstones (entity_type, entity_id)
-		 SELECT 'task', id FROM tasks WHERE `+where, args...); err != nil {
+		`INSERT OR REPLACE INTO sync_tombstones (entity_type, entity_id, deleted_at, owner_id, was_shared, kind)
+		 SELECT 'task', id, datetime('now'), owner_id, shared, 'delete' FROM tasks WHERE `+where, args...); err != nil {
 		return err
 	}
 	_, err := s.db.ExecContext(ctx, `DELETE FROM tasks WHERE `+where, args...)
@@ -201,7 +201,7 @@ func (s *TaskStore) GenerateHorizon(ctx context.Context, today string, weeksAhea
 // (Mon–Sun) strictly after `afterDate` (use "" to include all days). Days that
 // already have a pristine instance for the template are skipped.
 func (s *TaskStore) seedWeekInstances(ctx context.Context, ws time.Time, afterDate string) error {
-	templates, err := s.ListRecurringTemplates(ctx)
+	templates, err := s.ListRecurringTemplates(ctx, SystemScope)
 	if err != nil {
 		return err
 	}
@@ -243,6 +243,9 @@ func (s *TaskStore) createInstance(ctx context.Context, tmpl Task, t time.Time) 
 		Tags:                tmpl.Tags,
 		RecurrenceOriginID:  &tmpl.ID,
 		RoughlyAt:           tmpl.RoughlyAt,
+		// Instances inherit the template's ownership + share state.
+		OwnerID: tmpl.OwnerID,
+		Shared:  tmpl.Shared,
 	})
 	return err
 }
@@ -281,12 +284,13 @@ type RecurringInstanceRef struct {
 // RecurringInstanceIndex returns every current (non-cancelled, dated) recurring
 // instance. Clients use this as the source of truth to drop locally-stranded
 // instances the server no longer has (orphans from pre-tombstone deletes).
-func (s *TaskStore) RecurringInstanceIndex(ctx context.Context) ([]RecurringInstanceRef, error) {
+func (s *TaskStore) RecurringInstanceIndex(ctx context.Context, ownerID string) ([]RecurringInstanceRef, error) {
+	scope, sargs := visScope(ownerID)
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, recurrence_origin_id, planned_date FROM tasks
 		WHERE recurrence_origin_id IS NOT NULL
 		  AND status != 'cancelled'
-		  AND planned_date IS NOT NULL`)
+		  AND planned_date IS NOT NULL`+scope, sargs...)
 	if err != nil {
 		return nil, err
 	}

@@ -54,17 +54,18 @@ func (h *searchHandler) search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	if tasks, err := h.tasks.Search(ctx, q, tags, matchAll, searchLimit); err == nil {
+	owner := ownerID(r)
+	if tasks, err := h.tasks.Search(ctx, q, tags, matchAll, searchLimit, owner); err == nil {
 		out.Tasks = tasks
 	}
 
 	// Objectives & journal have no tags, so only include them for a text query
 	// with no tag filter.
 	if q != "" && len(tags) == 0 {
-		if objs, err := h.objectives.Search(ctx, q, searchLimit); err == nil {
+		if objs, err := h.objectives.Search(ctx, q, searchLimit, owner); err == nil {
 			out.Objectives = objs
 		}
-		if plans, err := h.plans.Search(ctx, q, searchLimit); err == nil {
+		if plans, err := h.plans.Search(ctx, q, searchLimit, owner); err == nil {
 			for _, p := range plans {
 				out.Journal = append(out.Journal, journalHit{
 					Kind:    "daily",
@@ -73,7 +74,7 @@ func (h *searchHandler) search(w http.ResponseWriter, r *http.Request) {
 				})
 			}
 		}
-		if reviews, err := h.reviews.Search(ctx, q, searchLimit); err == nil {
+		if reviews, err := h.reviews.Search(ctx, q, searchLimit, owner); err == nil {
 			for _, wr := range reviews {
 				out.Journal = append(out.Journal, journalHit{
 					Kind:    "week",

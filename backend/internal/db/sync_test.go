@@ -34,7 +34,7 @@ func TestSyncChanges_FullSyncReturnsEverything(t *testing.T) {
 		}
 	}
 
-	changes, err := sync.Changes(ctx, "")
+	changes, err := sync.Changes(ctx, "", SystemScope)
 	if err != nil {
 		t.Fatalf("changes: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestSyncChanges_IncrementalSinceCursor(t *testing.T) {
 	if _, err := tasks.Create(ctx, CreateTaskParams{ID: uuid.New().String(), Title: "old", Status: "backlog"}); err != nil {
 		t.Fatalf("create old: %v", err)
 	}
-	first, err := sync.Changes(ctx, "")
+	first, err := sync.Changes(ctx, "", SystemScope)
 	if err != nil {
 		t.Fatalf("first changes: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestSyncChanges_IncrementalSinceCursor(t *testing.T) {
 		t.Fatalf("bump updated_at: %v", err)
 	}
 
-	delta, err := sync.Changes(ctx, first.Cursor)
+	delta, err := sync.Changes(ctx, first.Cursor, SystemScope)
 	if err != nil {
 		t.Fatalf("delta changes: %v", err)
 	}
@@ -94,11 +94,11 @@ func TestSyncChanges_TombstoneSurfacesDeletion(t *testing.T) {
 	if err := tasks.Delete(ctx, created.ID); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
-	if err := sync.RecordTombstone(ctx, "task", created.ID); err != nil {
+	if err := sync.RecordTombstone(ctx, "task", created.ID, "", false); err != nil {
 		t.Fatalf("tombstone: %v", err)
 	}
 
-	changes, err := sync.Changes(ctx, "")
+	changes, err := sync.Changes(ctx, "", SystemScope)
 	if err != nil {
 		t.Fatalf("changes: %v", err)
 	}
@@ -115,13 +115,13 @@ func TestSyncChanges_ClearTombstoneOnRecreate(t *testing.T) {
 	sync, _ := newSyncTestDB(t)
 
 	id := uuid.New().String()
-	if err := sync.RecordTombstone(ctx, "task", id); err != nil {
+	if err := sync.RecordTombstone(ctx, "task", id, "", false); err != nil {
 		t.Fatalf("tombstone: %v", err)
 	}
 	if err := sync.ClearTombstone(ctx, "task", id); err != nil {
 		t.Fatalf("clear: %v", err)
 	}
-	changes, err := sync.Changes(ctx, "")
+	changes, err := sync.Changes(ctx, "", SystemScope)
 	if err != nil {
 		t.Fatalf("changes: %v", err)
 	}

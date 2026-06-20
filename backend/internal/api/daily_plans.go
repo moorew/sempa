@@ -33,7 +33,7 @@ func (h *planHandler) list(w http.ResponseWriter, r *http.Request) {
 			limit = n
 		}
 	}
-	plans, err := h.store.List(r.Context(), limit)
+	plans, err := h.store.List(r.Context(), limit, ownerID(r))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to list plans")
 		return
@@ -42,7 +42,7 @@ func (h *planHandler) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *planHandler) get(w http.ResponseWriter, r *http.Request) {
-	plan, err := h.store.Get(r.Context(), chi.URLParam(r, "date"))
+	plan, err := h.store.Get(r.Context(), chi.URLParam(r, "date"), ownerID(r))
 	if errors.Is(err, db.ErrNotFound) {
 		respondError(w, http.StatusNotFound, "plan not found")
 		return
@@ -76,6 +76,7 @@ func (h *planHandler) upsert(w http.ResponseWriter, r *http.Request) {
 		Reflection: req.Reflection,
 		Wins:       req.Wins,
 		ShutdownAt: req.ShutdownAt,
+		OwnerID:    ownerID(r),
 	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to upsert plan")

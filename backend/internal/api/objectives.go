@@ -23,6 +23,7 @@ type createObjectiveRequest struct {
 	Description *string `json:"description"`
 	Status      string  `json:"status"`
 	Position    float64 `json:"position"`
+	Shared      bool    `json:"shared"`
 }
 
 type updateObjectiveRequest struct {
@@ -33,6 +34,7 @@ type updateObjectiveRequest struct {
 	// WeekStart lets an objective be re-planned into another week (e.g. carrying
 	// an unfinished objective forward to next week from the weekly review).
 	WeekStart *string `json:"week_start"`
+	Shared    *bool   `json:"shared"`
 }
 
 func (h *objectiveHandler) list(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +43,7 @@ func (h *objectiveHandler) list(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "week_start query param is required")
 		return
 	}
-	objs, err := h.store.ListByWeek(r.Context(), weekStart)
+	objs, err := h.store.ListByWeek(r.Context(), weekStart, ownerID(r))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to list objectives")
 		return
@@ -50,7 +52,7 @@ func (h *objectiveHandler) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *objectiveHandler) get(w http.ResponseWriter, r *http.Request) {
-	obj, err := h.store.Get(r.Context(), chi.URLParam(r, "id"))
+	obj, err := h.store.Get(r.Context(), chi.URLParam(r, "id"), ownerID(r))
 	if errors.Is(err, db.ErrNotFound) {
 		respondError(w, http.StatusNotFound, "objective not found")
 		return
@@ -83,6 +85,8 @@ func (h *objectiveHandler) create(w http.ResponseWriter, r *http.Request) {
 		Description: req.Description,
 		Status:      status,
 		Position:    req.Position,
+		OwnerID:     ownerID(r),
+		Shared:      req.Shared,
 	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create objective")
@@ -97,8 +101,9 @@ func (h *objectiveHandler) create(w http.ResponseWriter, r *http.Request) {
 
 func (h *objectiveHandler) update(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	owner := ownerID(r)
 
-	obj, err := h.store.Get(r.Context(), id)
+	obj, err := h.store.Get(r.Context(), id, owner)
 	if errors.Is(err, db.ErrNotFound) {
 		respondError(w, http.StatusNotFound, "objective not found")
 		return
@@ -107,11 +112,15 @@ func (h *objectiveHandler) update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "failed to get objective")
 		return
 	}
+	wasShared := obj.Shared
 
 	var req updateObjectiveRequest
 	if err := decode(r, &req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
+	}
+	if req.Shared != nil {
+		obj.Shared = *req.Shared
 	}
 
 	if req.Title != nil {
@@ -137,6 +146,10 @@ func (h *objectiveHandler) update(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "failed to update objective")
 		return
 	}
+	// On un-share, revoke from peers so they drop their stale copy.
+	if req.Shared != nil && !updated.Shared && wasShared && h.sync != nil {
+		_ = h.sync.RecordRevocation(r.Context(), "objective", updated.ID, owner)
+	}
 	h.hub.Broadcast("objective:change", map[string]string{"week_start": updated.WeekStart})
 	if prevWeek != updated.WeekStart {
 		h.hub.Broadcast("objective:change", map[string]string{"week_start": prevWeek})
@@ -146,6 +159,13 @@ func (h *objectiveHandler) update(w http.ResponseWriter, r *http.Request) {
 
 func (h *objectiveHandler) delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	owner := ownerID(r)
+	// Scoped Get gates the delete and routes the tombstone.
+	existing, gerr := h.store.Get(r.Context(), id, owner)
+	if errors.Is(gerr, db.ErrNotFound) {
+		respondError(w, http.StatusNotFound, "objective not found")
+		return
+	}
 	err := h.store.Delete(r.Context(), id)
 	if errors.Is(err, db.ErrNotFound) {
 		respondError(w, http.StatusNotFound, "objective not found")
@@ -159,7 +179,7 @@ func (h *objectiveHandler) delete(w http.ResponseWriter, r *http.Request) {
 		h.attach.removeForOwner(r, "objective", id)
 	}
 	if h.sync != nil {
-		_ = h.sync.RecordTombstone(r.Context(), "objective", id)
+		_ = h.sync.RecordTombstone(r.Context(), "objective", id, existing.OwnerID, existing.Shared)
 	}
 	h.hub.Broadcast("objective:change", map[string]string{})
 	respond(w, http.StatusNoContent, nil)

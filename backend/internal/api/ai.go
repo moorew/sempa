@@ -153,7 +153,7 @@ func (h *integrationHandler) aiPredictTime(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	samples, _ := h.tasks.CompletedTimeSamples(r.Context(), 1000)
+	samples, _ := h.tasks.CompletedTimeSamples(r.Context(), 1000, ownerID(r))
 	tagsStr := ""
 	if len(body.Tags) > 0 {
 		tagsStr = " (tags: " + strings.Join(body.Tags, ", ") + ")"
@@ -401,7 +401,7 @@ func (h *integrationHandler) aiPlanDay(w http.ResponseWriter, r *http.Request) {
 	// their estimates, tell the model to pad accordingly. This is the stats
 	// profile feeding back into planning so the day stays realistic.
 	calibration := ""
-	if m := globalTimeMultiplier(r.Context(), h.tasks); m >= 1.2 {
+	if m := globalTimeMultiplier(r.Context(), h.tasks, ownerID(r)); m >= 1.2 {
 		calibration = fmt.Sprintf(
 			"\nThis user historically takes about %.1fx longer than they estimate — pad your minute estimates so the plan is realistic, not optimistic.",
 			m)

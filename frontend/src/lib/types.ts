@@ -33,6 +33,9 @@ export interface Task {
   roughly_at: string | null;
   // Exact timestamp for a hard reminder (ISO 8601). null = no reminder.
   remind_at: string | null;
+  // Multi-user: owning user + whether it's shared with the household.
+  owner_id?: string;
+  shared?: boolean;
 }
 
 export interface Attachment {
@@ -62,6 +65,8 @@ export interface Objective {
   position: number;
   created_at: string;
   updated_at: string;
+  owner_id?: string;
+  shared?: boolean;
 }
 
 export interface DailyPlan {
@@ -118,6 +123,8 @@ export interface List {
   archive_on_complete: boolean;
   created_at: string;
   updated_at: string;
+  owner_id?: string;
+  shared?: boolean;
 }
 
 export interface ListItem {
@@ -129,6 +136,8 @@ export interface ListItem {
   category: string | null; // set by Organize-with-AI
   created_at: string;
   updated_at: string;
+  owner_id?: string;
+  shared?: boolean;
 }
 
 export interface CreateTaskInput {
@@ -146,6 +155,7 @@ export interface CreateTaskInput {
   scheduled_start?: string;
   scheduled_end?: string;
   roughly_at?: string | null;
+  shared?: boolean;
 }
 
 export interface ICalSubscription {
@@ -204,6 +214,8 @@ export interface UpdateTaskInput {
   remind_at?: string | null;
   // Editing a recurring template's schedule (templates only). Empty/null ignored.
   recurrence_rule?: string | null;
+  // Private/Shared toggle (multi-user). Cascades to sub-tasks server-side.
+  shared?: boolean;
 }
 
 // ── Notifications ────────────────────────────────────────────────────────────
@@ -250,6 +262,8 @@ export interface UpdateObjectiveInput {
   position?: number;
   // Re-plan an objective into another week (carry-forward to next week).
   week_start?: string;
+  // Private/Shared toggle (multi-user).
+  shared?: boolean;
 }
 
 export interface UpsertPlanInput {

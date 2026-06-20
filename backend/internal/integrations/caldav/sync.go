@@ -66,7 +66,8 @@ func DeleteTask(ctx context.Context, c *Client, calendarHref, taskID string) err
 // SyncAll pushes every scheduled task to the calendar. Returns the number of
 // events written. Individual failures are collected but do not abort the run.
 func SyncAll(ctx context.Context, c *Client, calendarHref string, tasks *db.TaskStore, appURL string) (int, error) {
-	list, err := tasks.ListScheduled(ctx)
+	// CalDAV export runs server-side across all scheduled tasks.
+	list, err := tasks.ListScheduled(ctx, db.SystemScope)
 	if err != nil {
 		return 0, err
 	}

@@ -14,7 +14,10 @@ type WeekReview struct {
 	NextFocus  *string `json:"next_focus"`
 	CreatedAt  string  `json:"created_at"`
 	UpdatedAt  string  `json:"updated_at"`
+	OwnerID    string  `json:"owner_id"`
 }
+
+const weekReviewCols = `id, week_start, wins, challenges, next_focus, created_at, updated_at, owner_id`
 
 type WeekReviewStore struct {
 	db *sql.DB
@@ -24,18 +27,23 @@ func NewWeekReviewStore(db *sql.DB) *WeekReviewStore {
 	return &WeekReviewStore{db: db}
 }
 
-func (s *WeekReviewStore) Get(ctx context.Context, weekStart string) (WeekReview, error) {
+func (s *WeekReviewStore) Get(ctx context.Context, weekStart, ownerID string) (WeekReview, error) {
+	scope, sargs := ownScope(ownerID)
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, week_start, wins, challenges, next_focus, created_at, updated_at
-		 FROM week_reviews WHERE week_start = ?`, weekStart)
+		`SELECT `+weekReviewCols+` FROM week_reviews WHERE week_start = ?`+scope,
+		append([]any{weekStart}, sargs...)...)
 	return scanWeekReview(row)
 }
 
 // List returns all week reviews, newest first. limit <= 0 means no limit.
-func (s *WeekReviewStore) List(ctx context.Context, limit int) ([]WeekReview, error) {
-	q := `SELECT id, week_start, wins, challenges, next_focus, created_at, updated_at
-		 FROM week_reviews ORDER BY week_start DESC`
-	args := []any{}
+func (s *WeekReviewStore) List(ctx context.Context, limit int, ownerID string) ([]WeekReview, error) {
+	scope, sargs := ownScope(ownerID)
+	q := `SELECT ` + weekReviewCols + ` FROM week_reviews`
+	if scope != "" {
+		q += ` WHERE 1=1` + scope
+	}
+	q += ` ORDER BY week_start DESC`
+	args := append([]any{}, sargs...)
 	if limit > 0 {
 		q += ` LIMIT ?`
 		args = append(args, limit)
@@ -56,17 +64,21 @@ func (s *WeekReviewStore) List(ctx context.Context, limit int) ([]WeekReview, er
 	return reviews, rows.Err()
 }
 
-func (s *WeekReviewStore) Upsert(ctx context.Context, id, weekStart string, wins, challenges, nextFocus *string) (WeekReview, error) {
+func (s *WeekReviewStore) Upsert(ctx context.Context, id, weekStart string, wins, challenges, nextFocus *string, ownerID string) (WeekReview, error) {
+	owner, err := resolveOwner(ctx, s.db, ownerID)
+	if err != nil {
+		return WeekReview{}, err
+	}
 	row := s.db.QueryRowContext(ctx, `
-		INSERT INTO week_reviews (id, week_start, wins, challenges, next_focus)
-		VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT(week_start) DO UPDATE SET
+		INSERT INTO week_reviews (id, week_start, wins, challenges, next_focus, owner_id)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT(owner_id, week_start) DO UPDATE SET
 			wins       = excluded.wins,
 			challenges = excluded.challenges,
 			next_focus = excluded.next_focus,
 			updated_at = datetime('now')
-		RETURNING id, week_start, wins, challenges, next_focus, created_at, updated_at`,
-		id, weekStart, wins, challenges, nextFocus,
+		RETURNING `+weekReviewCols,
+		id, weekStart, wins, challenges, nextFocus, owner,
 	)
 	return scanWeekReview(row)
 }
@@ -74,7 +86,7 @@ func (s *WeekReviewStore) Upsert(ctx context.Context, id, weekStart string, wins
 func scanWeekReview(s scanner) (WeekReview, error) {
 	var r WeekReview
 	var wins, challenges, nextFocus sql.NullString
-	err := s.Scan(&r.ID, &r.WeekStart, &wins, &challenges, &nextFocus, &r.CreatedAt, &r.UpdatedAt)
+	err := s.Scan(&r.ID, &r.WeekStart, &wins, &challenges, &nextFocus, &r.CreatedAt, &r.UpdatedAt, &r.OwnerID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return WeekReview{}, ErrNotFound
 	}

@@ -34,7 +34,7 @@ func TestTaskSearch_TextAndTags(t *testing.T) {
 	mkTask(t, s, "Untagged note about report", nil)
 
 	// Text only — matches title across tagged + untagged.
-	got, err := s.Search(ctx, "report", nil, false, 50)
+	got, err := s.Search(ctx, "report", nil, false, 50, SystemScope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,31 +43,31 @@ func TestTaskSearch_TextAndTags(t *testing.T) {
 	}
 
 	// Tag OR — any of {work, personal}.
-	got, _ = s.Search(ctx, "", []string{"work", "personal"}, false, 50)
+	got, _ = s.Search(ctx, "", []string{"work", "personal"}, false, 50, SystemScope)
 	if len(got) != 3 {
 		t.Errorf("OR {work,personal} want 3, got %d", len(got))
 	}
 
 	// Tag AND — must have both.
-	got, _ = s.Search(ctx, "", []string{"work", "personal"}, true, 50)
+	got, _ = s.Search(ctx, "", []string{"work", "personal"}, true, 50, SystemScope)
 	if m := titles(got); len(got) != 1 || !m["Work and personal errands"] {
 		t.Errorf("AND {work,personal} = %v", titles(got))
 	}
 
 	// Tag + text combined.
-	got, _ = s.Search(ctx, "errands", []string{"work"}, false, 50)
+	got, _ = s.Search(ctx, "errands", []string{"work"}, false, 50, SystemScope)
 	if m := titles(got); len(got) != 1 || !m["Work and personal errands"] {
 		t.Errorf("text+tag = %v", titles(got))
 	}
 
 	// Single tag.
-	got, _ = s.Search(ctx, "", []string{"personal"}, false, 50)
+	got, _ = s.Search(ctx, "", []string{"personal"}, false, 50, SystemScope)
 	if len(got) != 2 {
 		t.Errorf("single tag 'personal' want 2, got %d", len(got))
 	}
 
 	// Empty query + empty tags → nothing.
-	got, _ = s.Search(ctx, "", nil, false, 50)
+	got, _ = s.Search(ctx, "", nil, false, 50, SystemScope)
 	if len(got) != 0 {
 		t.Errorf("empty search want 0, got %d", len(got))
 	}

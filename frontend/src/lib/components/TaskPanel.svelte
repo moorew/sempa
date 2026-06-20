@@ -19,6 +19,7 @@
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
   import { timeInsights } from '$lib/stores/timeInsights.svelte';
   import { timeTracking } from '$lib/stores/timeTracking.svelte';
+  import { household } from '$lib/stores/household.svelte';
   import { capacityState } from '$lib/dayCapacity';
   import { classifyActivity } from '$lib/activityBuckets';
   import { Sparkles } from 'lucide-svelte';
@@ -212,6 +213,9 @@
   let recurrenceRule = $state('');
   let selectedTags = $state<string[]>([]);
   let tagSearch = $state('');
+  // Private/Shared (multi-user household). Toggle only shown when >1 account.
+  let shared = $state(false);
+  $effect(() => { household.ensure(); });
 
   // Estimate calibration nudge: once we know how the user's estimates compare to
   // reality, gently suggest a more honest number. Loads the profile lazily.
@@ -509,6 +513,7 @@
       recurrenceRule = task.recurrence_rule ?? '';
       selectedTags = [...(task.tags ?? [])];
       selectedObjectiveId = task.weekly_objective_id ?? null;
+      shared = task.shared ?? false;
     } else {
       title = ''; description = ''; plannedDate = defaultDate;
       estimateMinutes = null; actualMinutesInput = '';
@@ -517,6 +522,7 @@
       remindDate = ''; remindTime = '';
       recurrenceRule = ''; selectedTags = [];
       selectedObjectiveId = null;
+      shared = false;
     }
     tagSearch = ''; tagDropdownOpen = false; error = ''; suggestedTags = [];
     // Don't auto-open the soft keyboard on mobile: this device doesn't honour
@@ -592,6 +598,7 @@
           // Empty string clears the reminder; a date produces an ISO timestamp.
           remind_at: remindDate ? (combineToISO(remindDate, remindTime) ?? '') : '',
           weekly_objective_id: selectedObjectiveId ?? null,
+          shared,
           // Editing a template's schedule — only sent for templates (the server
           // propagates the change to upcoming instances).
           ...(isTemplate && recurrenceRule ? { recurrence_rule: recurrenceRule } : {}),
@@ -609,6 +616,7 @@
               }),
           time_estimate_minutes: estimateMinutes ?? undefined,
           weekly_objective_id: selectedObjectiveId ?? undefined,
+          shared,
         });
       }
       onSave(saved);
@@ -1139,6 +1147,28 @@
           </p>
         {/if}
       </div>
+
+      <!-- Private / Shared (multi-user household only) -->
+      {#if household.multiUser}
+        <div class="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5"
+             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+          <div class="min-w-0">
+            <p class="text-xs font-medium" style="color: var(--sempa-text);">
+              {shared ? 'Shared with household' : 'Private'}
+            </p>
+            <p class="text-[11px]" style="color: var(--sempa-text-dim);">
+              {shared ? 'Everyone in the household can see and edit this.' : 'Only you can see this.'}
+            </p>
+          </div>
+          <button type="button" role="switch" aria-checked={shared} aria-label="Share with household"
+                  onclick={() => (shared = !shared)}
+                  class="relative h-5 w-9 shrink-0 rounded-full transition-colors"
+                  style="background: {shared ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
+            <span class="absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all"
+                  style="left: {shared ? '1.125rem' : '0.125rem'};"></span>
+          </button>
+        </div>
+      {/if}
 
       <!-- Weekly objective -->
       {#if weekObjectives.length > 0}
