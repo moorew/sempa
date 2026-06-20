@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { flip } from 'svelte/animate';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
@@ -161,9 +161,22 @@
   });
 
   // ── Pomodoro update ───────────────────────────────────────────────────────
+  // Reflect a just-logged session immediately: the confirmed time, and — when
+  // the session was finished via "Done" — the completed status too, so the card
+  // doesn't still look open. untrack keeps the effect keyed to lastTimeUpdate
+  // only (reading+writing `tasks` untracked avoids the read-write $state loop).
   $effect(() => {
     const upd = pomodoro.lastTimeUpdate;
-    if (upd) tasks = tasks.map(t => t.id === upd.taskId ? { ...t, time_actual_minutes: upd.newActual } : t);
+    if (!upd) return;
+    untrack(() => {
+      tasks = tasks.map(t => t.id === upd.taskId
+        ? {
+            ...t,
+            time_actual_minutes: upd.newActual,
+            ...(upd.done ? { status: 'done' as const, completed_at: t.completed_at ?? new Date().toISOString() } : {}),
+          }
+        : t);
+    });
   });
 
   // ── Contextual day plan (intention / reflection) ───────────────────────────

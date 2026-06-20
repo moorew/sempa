@@ -6,6 +6,16 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.3.1] - 2026-06-19
+
+### Fixed
+- **Focus widget: "time spent" now counts up live.** The elapsed readout was
+  static while the countdown moved; it now ticks second-by-second so you can see
+  time accruing against your estimate.
+- **Finishing from the widget now completes the task.** Marking a task done via
+  the focus widget logged the time but left the task looking open in the day view
+  (so you'd complete it twice); the completed status is now reflected immediately.
+
 ## [1.3.0] - 2026-06-19
 
 ### Added

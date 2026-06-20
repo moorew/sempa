@@ -37,7 +37,10 @@ class PomodoroTimer {
   remaining    = $state(25 * 60);
   isRunning    = $state(false);
   completedToday = $state(0);
-  lastTimeUpdate = $state<{ taskId: string; newActual: number } | null>(null);
+  // Running work time in whole seconds — a reactive mirror of #elapsedWorkMs()
+  // that the tick refreshes so the "spent" readout visibly counts up.
+  elapsedSeconds = $state(0);
+  lastTimeUpdate = $state<{ taskId: string; newActual: number; done: boolean } | null>(null);
   pendingConfirm = $state<PendingConfirm | null>(null);
 
   // Custom durations (minutes)
@@ -108,11 +111,11 @@ class PomodoroTimer {
 
   /** Wall-clock running work time this session, in whole minutes. */
   get elapsedWorkMinutes(): number {
-    return Math.round(this.#elapsedWorkMs() / 60000);
+    return Math.round(this.elapsedSeconds / 60);
   }
-  /** "12:34" of elapsed running work time — the honest measure, shown live. */
+  /** "12:34" of elapsed running work time — the honest measure, ticks up live. */
   get elapsedDisplay(): string {
-    return this.#fmt(Math.floor(this.#elapsedWorkMs() / 1000));
+    return this.#fmt(this.elapsedSeconds);
   }
   /** Minutes over (positive) or under (negative) the planned estimate; null if no plan. */
   get overByMinutes(): number | null {
@@ -168,6 +171,7 @@ class PomodoroTimer {
     this.#phaseEndMs = null;
     this.#workAccumulatedMs = 0;
     this.#workSegmentStartMs = null;
+    this.elapsedSeconds = 0;
     this.#persist();
   }
 
@@ -214,7 +218,7 @@ class PomodoroTimer {
         update.completed_at = new Date().toISOString();
       }
       await api.tasks.update(pc.taskId, update);
-      this.lastTimeUpdate = { taskId: pc.taskId, newActual };
+      this.lastTimeUpdate = { taskId: pc.taskId, newActual, done: pc.markDone };
       // Fold the new data point into the planned-vs-actual profile.
       void import('$lib/stores/timeInsights.svelte').then((m) => m.timeInsights.refresh());
     } catch { /* non-critical — task update may retry via sync outbox */ }
@@ -238,6 +242,7 @@ class PomodoroTimer {
     this.isRunning = true;
     this.#phaseEndMs = Date.now() + this.remaining * 1000;
     if (this.phase === 'work') this.#workSegmentStartMs = Date.now();
+    this.#syncElapsed();
     this.#intervalId = setInterval(() => this.#tick(), 250);
     this.#persist();
   }
@@ -252,6 +257,7 @@ class PomodoroTimer {
     this.isRunning = false;
     this.#clearInterval();
     this.#phaseEndMs = null;
+    this.#syncElapsed();
     this.#persist();
   }
 
@@ -259,8 +265,15 @@ class PomodoroTimer {
     if (this.#intervalId !== null) { clearInterval(this.#intervalId); this.#intervalId = null; }
   }
 
+  // Mirror the live wall-clock work time into reactive state so the "spent"
+  // readout counts up second-by-second alongside the countdown.
+  #syncElapsed() {
+    this.elapsedSeconds = Math.floor(this.#elapsedWorkMs() / 1000);
+  }
+
   #tick() {
     if (this.#phaseEndMs === null) return;
+    this.#syncElapsed();
     const rem = Math.round((this.#phaseEndMs - Date.now()) / 1000);
     if (rem <= 0) {
       this.remaining = 0;
@@ -429,6 +442,7 @@ class PomodoroTimer {
       this.isRunning = false;
       this.#phaseEndMs = null;
     }
+    this.#syncElapsed();
   }
 }
 

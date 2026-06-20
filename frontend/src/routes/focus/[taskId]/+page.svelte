@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { page } from '$app/stores';
   import { api } from '$lib/api';
   import type { Task } from '$lib/types';
@@ -43,6 +43,21 @@
 
   const isDone       = $derived(task?.status === 'done' || false);
   const isMyPomodoro = $derived(!!task && pomodoro.taskId === task.id);
+
+  // Reflect a logged/finished session on this page's own task copy so it doesn't
+  // show a stale open state after the widget's Done flow.
+  $effect(() => {
+    const upd = pomodoro.lastTimeUpdate;
+    if (!upd) return;
+    untrack(() => {
+      if (!task || task.id !== upd.taskId) return;
+      task = {
+        ...task,
+        time_actual_minutes: upd.newActual,
+        ...(upd.done ? { status: 'done' as const, completed_at: task.completed_at ?? new Date().toISOString() } : {}),
+      };
+    });
+  });
 </script>
 
 <svelte:head><title>{task?.title ?? 'Focus'} — Sempa</title></svelte:head>
