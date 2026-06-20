@@ -14,8 +14,6 @@ on:
   push:
     tags:
       - 'v*'
-    branches:
-      - feat/ios          # iteration only; remove after merge to main
   workflow_dispatch:
 
 permissions:

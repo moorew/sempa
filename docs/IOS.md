@@ -2,8 +2,19 @@
 
 Sempa's iOS app is built on a **macOS GitHub Actions runner** — no Mac purchase
 required. The Xcode project is **not committed**; it's generated in CI each run
-(`cap add ios`), so iOS config lives in `frontend/capacitor.config.ts` plus the
-PlistBuddy steps in `.github/workflows/ios-release.yml`.
+(`cap add ios --packagemanager Cocoapods`), so iOS config lives in
+`frontend/capacitor.config.ts` plus the PlistBuddy steps in
+`.github/workflows/ios-release.yml`.
+
+**Build notes (why the workflow is shaped the way it is):**
+- **CocoaPods, not SPM.** Capacitor 8 defaults `cap add ios` to Swift Package
+  Manager, but the official plugins' SPM packages don't resolve against core 8.4
+  (sqlcipher.swift wants Swift-6 tools, and `CAPPluginCall`/`PluginConfig` APIs
+  skew). Forcing CocoaPods builds the `.xcworkspace` with compatible plugin pods.
+- **Xcode 16.** The workflow selects the newest Xcode 16 on the runner (sqlcipher
+  + the toolchain need Swift 6 tools; the default Xcode 15.4 fails).
+- **`@capacitor-community/sqlite`** ships an iOS pod, so the offline-first DB
+  works on iOS out of the box.
 
 ## Two phases
 

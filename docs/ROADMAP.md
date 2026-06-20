@@ -74,6 +74,18 @@ are actually finishable.
   updates. Lists also added to the mobile bottom tab bar.
 - Ideas: reorder within AI-grouped view; move an item between lists; list templates.
 
+## iOS
+- **CI build green (feat/ios → main).** `@capacitor/ios` added; iOS Xcode project
+  generated in CI (not committed; `cap add ios --packagemanager Cocoapods`), built
+  unsigned for the simulator on a macOS runner — no Mac needed. Forced CocoaPods
+  (SPM/core-8.4 plugin skew) and Xcode 16 (sqlcipher needs Swift-6 tools).
+  `.github/workflows/ios-release.yml` + `docs/IOS.md`.
+- **Next (needs your Apple account):** add the 4 App Store Connect API-key secrets
+  (see docs/IOS.md) → the same workflow archives + uploads to **TestFlight** on a
+  `v*` tag.
+- **iOS feature parity follow-ons:** push (APNs), haptics (`@capacitor/haptics`),
+  home-screen widgets (WidgetKit), focus-timer Live Activity (ActivityKit).
+
 ## Known issues / recently fixed
 - **Recurrence deletes now tombstone** (fixed v1.8.1) — raw-SQL recurrence
   deletes bypassed the sync layer, stranding stale instances on local-first
