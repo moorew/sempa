@@ -9,6 +9,7 @@
   let loading = $state(true);
   let showArchived = $state(false);
   let newName = $state('');
+  let newNameInput = $state<HTMLInputElement | undefined>();
 
   async function load() {
     try { lists = await api.lists.list(undefined, showArchived); }
@@ -26,6 +27,7 @@
     const name = newName.trim();
     if (!name) return;
     newName = '';
+    newNameInput?.focus(); // keep the keyboard up for rapid entry
     try { const l = await api.lists.create({ name }); lists = [...lists, l]; }
     catch { /* ignore */ }
   }
@@ -49,7 +51,7 @@
   <div class="flex-1 overflow-y-auto px-5 py-6 pb-24">
     <!-- New list -->
     <form class="mb-5 flex gap-2" onsubmit={(e) => { e.preventDefault(); create(); }}>
-      <input bind:value={newName} placeholder="New list (e.g. Groceries)…"
+      <input bind:value={newName} bind:this={newNameInput} placeholder="New list (e.g. Groceries)…"
         class="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
         style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text);" />
       <button type="submit" disabled={!newName.trim()}

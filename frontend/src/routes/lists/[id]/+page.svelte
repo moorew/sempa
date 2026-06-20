@@ -15,6 +15,7 @@
   let linkedTask = $state<Task | null>(null);
   let loading = $state(true);
   let newText = $state('');
+  let newItemInput = $state<HTMLInputElement | undefined>();
   let organizing = $state(false);
 
   async function load() {
@@ -46,6 +47,9 @@
     const text = newText.trim();
     if (!text) return;
     newText = '';
+    // Refocus synchronously (within the tap/submit gesture) so the keyboard
+    // stays up and you can keep adding items without re-tapping.
+    newItemInput?.focus();
     try { const it = await api.lists.addItem(listId, text); items = [...items, it]; } catch { /* ignore */ }
   }
   async function toggleDone(it: ListItem) {
@@ -195,7 +199,8 @@
 
       <!-- Add item -->
       <form class="mb-4 flex gap-2" onsubmit={(e) => { e.preventDefault(); addItem(); }}>
-        <input bind:value={newText} placeholder="Add an item…"
+        <input bind:value={newText} bind:this={newItemInput} placeholder="Add an item…"
+          enterkeyhint="enter" autocapitalize="sentences"
           class="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
           style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text);" />
         <button type="submit" disabled={!newText.trim()}

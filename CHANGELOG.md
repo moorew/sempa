@@ -6,6 +6,13 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.9.2] - 2026-06-20
+
+### Fixed
+- **Adding list items keeps the keyboard up.** Tapping Add (or hitting return) no
+  longer dismisses the keyboard — the input stays focused so you can rattle off
+  items one after another. Same for creating lists.
+
 ## [1.9.1] - 2026-06-20
 
 ### Added
