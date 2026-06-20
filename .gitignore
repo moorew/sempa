@@ -43,3 +43,7 @@ ts-sempa/
 .stfolder/
 .stignore
 *.sync-conflict-*
+
+# iOS Capacitor project is generated in CI (macOS), not committed —
+# config lives in capacitor.config.ts + the ios-release workflow's Plist steps.
+frontend/ios/

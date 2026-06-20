@@ -1,0 +1,155 @@
+name: iOS Release
+
+# Builds the Capacitor iOS app on a macOS runner. The iOS Xcode project is NOT
+# committed — it's generated here each run (`cap add ios`), so config lives in
+# capacitor.config.ts plus the surgical PlistBuddy steps below.
+#
+# Two phases:
+#   1. Simulator build (always) — compiles the app unsigned, proving iOS builds.
+#      Needs NO Apple account/secrets.
+#   2. TestFlight (only when the App Store Connect API-key secrets are present) —
+#      archives a signed build and uploads it. See docs/IOS.md for the secrets.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build iOS
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+
+      - name: Select Xcode 16 (sqlcipher.swift / SPM needs Swift 6 tools)
+        run: |
+          echo "Installed Xcodes:"; ls -d /Applications/Xcode_*.app 2>/dev/null || true
+          XC="$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$XC" ]; then echo "No Xcode 16 on this image"; exit 1; fi
+          sudo xcode-select -s "$XC/Contents/Developer"
+          xcodebuild -version
+
+      - name: Install npm dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend web assets
+        working-directory: frontend
+        run: npm run build
+
+      - name: Generate iOS project (CocoaPods) + sync
+        working-directory: frontend
+        run: |
+          # Force CocoaPods over SPM: the official plugins' SPM packages don't
+          # resolve cleanly against core 8.4 (sqlcipher tools-version + core API
+          # skew). CocoaPods is the mature, plugin-compatible path.
+          if [ ! -d ios ]; then npx cap add ios --packagemanager Cocoapods; fi
+          npx cap sync ios
+
+      - name: CocoaPods install (generates App.xcworkspace)
+        working-directory: frontend
+        run: |
+          POD="$(find ios -name Podfile | head -1)"
+          if [ -z "$POD" ]; then echo "No Podfile — cap didn't use CocoaPods"; find ios -maxdepth 3 | sort; exit 1; fi
+          ( cd "$(dirname "$POD")" && pod install --repo-update && ls -la )
+
+      - name: Configure Info.plist (name, ATS for self-hosted http, URL scheme)
+        working-directory: frontend/ios/App/App
+        run: |
+          PB=/usr/libexec/PlistBuddy
+          plist=Info.plist
+          # Display name
+          $PB -c "Set :CFBundleDisplayName Sempa" "$plist" || \
+            $PB -c "Add :CFBundleDisplayName string Sempa" "$plist"
+          # App Transport Security — Sempa connects to a user's self-hosted server,
+          # often plain http over a private tailnet, which iOS blocks by default.
+          $PB -c "Delete :NSAppTransportSecurity" "$plist" 2>/dev/null || true
+          $PB -c "Add :NSAppTransportSecurity dict" "$plist"
+          $PB -c "Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool true" "$plist"
+          # Deep-link URL scheme (mirrors the Android intent-filter)
+          $PB -c "Delete :CFBundleURLTypes" "$plist" 2>/dev/null || true
+          $PB -c "Add :CFBundleURLTypes array" "$plist"
+          $PB -c "Add :CFBundleURLTypes:0 dict" "$plist"
+          $PB -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$plist"
+          $PB -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string com.clevercode.sempa" "$plist"
+          echo "--- Info.plist ---"; plutil -p "$plist" | sed -n '1,40p'
+
+      - name: Build for iOS Simulator (unsigned)
+        working-directory: frontend/ios/App
+        run: |
+          # Capacitor 8 uses Swift Package Manager (no CocoaPods/workspace);
+          # xcodebuild resolves the local CapApp-SPM package against the project.
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      # ── TestFlight (gated on Apple App Store Connect API-key secrets) ─────────
+      - name: Check for signing secrets
+        id: signing
+        env:
+          ASC_API_KEY_P8: ${{ secrets.IOS_ASC_API_KEY_P8 }}
+        run: |
+          if [ -n "$ASC_API_KEY_P8" ]; then echo "ready=true" >> "$GITHUB_OUTPUT";
+          else echo "ready=false" >> "$GITHUB_OUTPUT"; echo "No iOS signing secrets — skipping TestFlight (simulator build already validated the app)."; fi
+
+      - name: Archive, export & upload to TestFlight
+        if: steps.signing.outputs.ready == 'true' && startsWith(github.ref, 'refs/tags/')
+        working-directory: frontend/ios/App
+        env:
+          ASC_KEY_ID: ${{ secrets.IOS_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.IOS_ASC_ISSUER_ID }}
+          ASC_API_KEY_P8: ${{ secrets.IOS_ASC_API_KEY_P8 }}
+          TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          # App Store Connect API key (.p8), where altool/xcodebuild look for it.
+          mkdir -p ~/.appstoreconnect/private_keys ./private_keys
+          echo "$ASC_API_KEY_P8" | base64 --decode > "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          cp "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8" "./private_keys/AuthKey_${ASC_KEY_ID}.p8"
+
+          cat > ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>${TEAM_ID}</string>
+            <key>destination</key><string>export</string>
+            <key>signingStyle</key><string>automatic</string>
+          </dict></plist>
+          PLIST
+
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
+            -archivePath build/App.xcarchive -destination 'generic/platform=iOS' \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$TEAM_ID" archive
+
+          xcodebuild -exportArchive -archivePath build/App.xcarchive \
+            -exportPath build/ipa -exportOptionsPlist ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+          xcrun altool --upload-app -f "$(ls build/ipa/*.ipa | head -n1)" -t ios \
+            --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
