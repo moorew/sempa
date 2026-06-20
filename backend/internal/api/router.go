@@ -187,6 +187,16 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 			// Planned-vs-actual time profile (per-tag + global multipliers).
 			r.Get("/insights/time", tasks.timeInsights)
 
+			// User & credential management (admin-gated inside the handlers;
+			// self password change is open to any authed user).
+			r.Route("/users", func(r chi.Router) {
+				r.Get("/", auth.listUsers)
+				r.Post("/", auth.createUser)
+				r.Post("/password", auth.changeOwnPassword)
+				r.Delete("/{id}", auth.deleteUser)
+				r.Post("/{id}/password", auth.adminSetPassword)
+			})
+
 			// Lists — standalone checklists, optionally linked to a task.
 			r.Route("/lists", func(r chi.Router) {
 				r.Get("/", lists.list)

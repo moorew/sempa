@@ -17,14 +17,82 @@ import (
 	"time"
 
 	"github.com/clevercode/sempa/internal/config"
+	"github.com/clevercode/sempa/internal/db"
 )
 
 const sessionCookieName = "sempa_session"
+
+// ── Login throttle (brute-force hardening) ────────────────────────────────────
+// Per-key (IP+username) sliding counter: after maxLoginAttempts failures within
+// the window, further attempts are refused until the window passes. In-memory is
+// fine for a single-process self-hosted server.
+const (
+	maxLoginAttempts = 8
+	loginWindow      = 15 * time.Minute
+)
+
+type loginThrottle struct {
+	mu   sync.Mutex
+	hits map[string][]time.Time
+}
+
+func newLoginThrottle() *loginThrottle {
+	t := &loginThrottle{hits: make(map[string][]time.Time)}
+	go func() {
+		for range time.Tick(loginWindow) {
+			now := time.Now()
+			t.mu.Lock()
+			for k, ts := range t.hits {
+				kept := ts[:0]
+				for _, x := range ts {
+					if now.Sub(x) < loginWindow {
+						kept = append(kept, x)
+					}
+				}
+				if len(kept) == 0 {
+					delete(t.hits, k)
+				} else {
+					t.hits[k] = kept
+				}
+			}
+			t.mu.Unlock()
+		}
+	}()
+	return t
+}
+
+// blocked reports whether the key has exceeded the attempt budget.
+func (t *loginThrottle) blocked(key string) bool {
+	now := time.Now()
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	var recent []time.Time
+	for _, x := range t.hits[key] {
+		if now.Sub(x) < loginWindow {
+			recent = append(recent, x)
+		}
+	}
+	t.hits[key] = recent
+	return len(recent) >= maxLoginAttempts
+}
+
+func (t *loginThrottle) fail(key string) {
+	t.mu.Lock()
+	t.hits[key] = append(t.hits[key], time.Now())
+	t.mu.Unlock()
+}
+
+func (t *loginThrottle) reset(key string) {
+	t.mu.Lock()
+	delete(t.hits, key)
+	t.mu.Unlock()
+}
 
 // ── Session store ─────────────────────────────────────────────────────────────
 
 type sessionEntry struct {
 	Email   string
+	UserID  string // users.id (empty for the device/dock scope and legacy rows)
 	Expires time.Time
 	// Scope gates what the session may do. "full" = a normal logged-in client
 	// (everything). "device" = a paired device (the Dock): a tight allowlist of
@@ -56,7 +124,7 @@ func (s *sessionStore) loadFromDB() {
 		return
 	}
 	rows, err := s.db.Query(
-		`SELECT id, email, expires_at, scope FROM sessions WHERE expires_at > ?`,
+		`SELECT id, email, user_id, expires_at, scope FROM sessions WHERE expires_at > ?`,
 		time.Now().UTC().Format(sessionTimeFmt))
 	if err != nil {
 		return
@@ -65,8 +133,8 @@ func (s *sessionStore) loadFromDB() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for rows.Next() {
-		var id, email, exp, scope string
-		if err := rows.Scan(&id, &email, &exp, &scope); err != nil {
+		var id, email, userID, exp, scope string
+		if err := rows.Scan(&id, &email, &userID, &exp, &scope); err != nil {
 			continue
 		}
 		t, err := time.Parse(sessionTimeFmt, exp)
@@ -76,28 +144,28 @@ func (s *sessionStore) loadFromDB() {
 		if scope == "" {
 			scope = "full"
 		}
-		s.entries[id] = sessionEntry{Email: email, Expires: t, Scope: scope}
+		s.entries[id] = sessionEntry{Email: email, UserID: userID, Expires: t, Scope: scope}
 	}
 }
 
 // create mints a normal full-access session (cookie/Bearer login).
-func (s *sessionStore) create(ttl time.Duration, email string) string {
-	return s.createScoped(ttl, email, "full")
+func (s *sessionStore) create(ttl time.Duration, email, userID string) string {
+	return s.createScoped(ttl, email, userID, "full")
 }
 
 // createScoped mints a session with an explicit scope ("full" or "device").
-func (s *sessionStore) createScoped(ttl time.Duration, email, scope string) string {
+func (s *sessionStore) createScoped(ttl time.Duration, email, userID, scope string) string {
 	b := make([]byte, 32)
 	_, _ = rand.Read(b)
 	id := hex.EncodeToString(b)
 	expires := time.Now().Add(ttl)
 	s.mu.Lock()
-	s.entries[id] = sessionEntry{Email: email, Expires: expires, Scope: scope}
+	s.entries[id] = sessionEntry{Email: email, UserID: userID, Expires: expires, Scope: scope}
 	s.mu.Unlock()
 	if s.db != nil {
 		_, _ = s.db.Exec(
-			`INSERT OR REPLACE INTO sessions (id, email, expires_at, scope) VALUES (?, ?, ?, ?)`,
-			id, email, expires.UTC().Format(sessionTimeFmt), scope)
+			`INSERT OR REPLACE INTO sessions (id, email, user_id, expires_at, scope) VALUES (?, ?, ?, ?, ?)`,
+			id, email, userID, expires.UTC().Format(sessionTimeFmt), scope)
 	}
 	return id
 }
@@ -252,6 +320,8 @@ type authHandler struct {
 	sessions   *sessionStore
 	states     *stateStore
 	linkTokens *linkTokenStore
+	users      *db.UserStore
+	throttle   *loginThrottle
 }
 
 func newAuthHandler(cfg config.Config, database *sql.DB) *authHandler {
@@ -260,10 +330,27 @@ func newAuthHandler(cfg config.Config, database *sql.DB) *authHandler {
 		sessions:   newSessionStore(database),
 		states:     newStateStore(),
 		linkTokens: newLinkTokenStore(),
+		users:      db.NewUserStore(database),
+		throttle:   newLoginThrottle(),
 	}
+	// No startup seed on purpose: the FIRST login after this deploys becomes the
+	// admin (env-credential login, or the first Google sign-in when no users
+	// exist). Seeding here would pre-create a user and rob a Google-only owner of
+	// admin. resolveUser's email fallback keeps existing sessions working.
 }
 
-func (h *authHandler) passwordEnabled() bool { return h.cfg.AuthPassword != "" }
+// passwordEnabled is true when password login is usable: either the env bootstrap
+// credential is set, OR at least one user has a password (so admin-created
+// accounts can sign in even without the env credential).
+func (h *authHandler) passwordEnabled() bool {
+	if h.cfg.AuthPassword != "" {
+		return true
+	}
+	n, err := h.users.CountWithPassword(context.Background())
+	return err == nil && n > 0
+}
+
+func (h *authHandler) envPasswordSet() bool { return h.cfg.AuthPassword != "" }
 func (h *authHandler) googleEnabled() bool {
 	return h.cfg.GmailClientID != "" && h.cfg.GmailClientSecret != ""
 }
@@ -347,17 +434,58 @@ func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userMatch := subtle.ConstantTimeCompare([]byte(req.Username), []byte(h.cfg.AuthUsername)) == 1
-	passMatch := subtle.ConstantTimeCompare([]byte(req.Password), []byte(h.cfg.AuthPassword)) == 1
-	if !userMatch || !passMatch {
-		respondError(w, http.StatusUnauthorized, "invalid credentials")
+	// Brute-force throttle, keyed by client IP + the attempted username.
+	key := clientIP(r) + "|" + normalizeEmailLower(req.Username)
+	if h.throttle.blocked(key) {
+		respondError(w, http.StatusTooManyRequests, "too many attempts — try again later")
 		return
 	}
 
-	id := h.sessions.create(30*24*time.Hour, h.cfg.AuthUsername)
+	email, userID, ok := h.verifyPassword(r.Context(), req.Username, req.Password)
+	if !ok {
+		h.throttle.fail(key)
+		respondError(w, http.StatusUnauthorized, "invalid credentials")
+		return
+	}
+	h.throttle.reset(key)
+
+	id := h.sessions.create(30*24*time.Hour, email, userID)
 	h.setSessionCookie(w, id)
 	respond(w, http.StatusOK, map[string]any{"status": "ok", "token": id})
 }
+
+// verifyPassword checks credentials against (1) the env bootstrap admin (always
+// available, never locks you out) and (2) password users in the DB (bcrypt).
+// Returns the canonical email + user id on success.
+func (h *authHandler) verifyPassword(ctx context.Context, username, password string) (email, userID string, ok bool) {
+	// 1. Env bootstrap admin — unchanged, constant-time. On success, ensure a
+	//    matching admin user row exists so it carries a stable id for ownership.
+	if h.envPasswordSet() {
+		userMatch := subtle.ConstantTimeCompare([]byte(username), []byte(h.cfg.AuthUsername)) == 1
+		passMatch := subtle.ConstantTimeCompare([]byte(password), []byte(h.cfg.AuthPassword)) == 1
+		if userMatch && passMatch {
+			u, err := h.users.EnsureByEmail(ctx, normalizeEmailLower(h.cfg.AuthUsername), h.cfg.AuthUsername, true)
+			if err != nil {
+				// DB hiccup shouldn't lock out the bootstrap admin.
+				return normalizeEmailLower(h.cfg.AuthUsername), "", true
+			}
+			return u.Email, u.ID, true
+		}
+	}
+	// 2. Password user in the DB.
+	u, err := h.users.GetByEmail(ctx, username)
+	if err != nil || u.PasswordHash == nil || *u.PasswordHash == "" {
+		// Constant-work compare so timing doesn't reveal whether the user exists.
+		db.CheckPasswordDummy(password)
+		return "", "", false
+	}
+	if db.CheckPassword(*u.PasswordHash, password) {
+		return u.Email, u.ID, true
+	}
+	return "", "", false
+}
+
+func normalizeEmailLower(s string) string { return strings.ToLower(strings.TrimSpace(s)) }
 
 func (h *authHandler) logout(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie(sessionCookieName); err == nil {
@@ -396,12 +524,48 @@ func (h *authHandler) me(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	respond(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"authenticated":  true,
 		"auth_enabled":   true,
 		"google_enabled": h.googleEnabled(),
 		"email":          entry.Email,
-	})
+		"user_id":        entry.UserID,
+	}
+	if u, ok := h.resolveUser(r.Context(), entry); ok {
+		resp["user_id"] = u.ID
+		resp["name"] = u.Name
+		resp["is_admin"] = u.IsAdmin
+	}
+	respond(w, http.StatusOK, resp)
+}
+
+// resolveUser maps a session to its user row, by id when present, else by email
+// — so sessions minted before the multi-user migration (no user_id) still
+// resolve without forcing a re-login.
+func (h *authHandler) resolveUser(ctx context.Context, e sessionEntry) (db.User, bool) {
+	if e.UserID != "" {
+		if u, err := h.users.GetByID(ctx, e.UserID); err == nil {
+			return u, true
+		}
+	}
+	if e.Email != "" {
+		if u, err := h.users.GetByEmail(ctx, e.Email); err == nil {
+			return u, true
+		}
+	}
+	return db.User{}, false
+}
+
+// ── Current-user context ──────────────────────────────────────────────────────
+
+type ctxKey int
+
+const userCtxKey ctxKey = 0
+
+// currentSession returns the session entry attached by requireAuth, if any.
+func currentSession(r *http.Request) (sessionEntry, bool) {
+	e, ok := r.Context().Value(userCtxKey).(sessionEntry)
+	return e, ok
 }
 
 func (h *authHandler) requireAuth(next http.Handler) http.Handler {
@@ -422,7 +586,9 @@ func (h *authHandler) requireAuth(next http.Handler) http.Handler {
 			respondError(w, http.StatusForbidden, "not permitted for this device")
 			return
 		}
-		next.ServeHTTP(w, r)
+		// Expose the session (incl. UserID) to handlers — the basis for Phase 1B
+		// per-user data scoping.
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userCtxKey, entry)))
 	})
 }
 
@@ -546,12 +712,27 @@ func (h *authHandler) googleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !h.emailAllowed(email) {
+	// Allowed if on the env allow-list OR an admin pre-created the account.
+	existing, _ := h.users.GetByEmail(r.Context(), email)
+	if !h.emailAllowed(email) && existing.ID == "" {
 		http.Redirect(w, r, "/login?error="+url.QueryEscape("not_allowed"), http.StatusFound)
 		return
 	}
 
-	id := h.sessions.create(30*24*time.Hour, email)
+	// First Google user (no users yet) becomes admin; the rest are regular.
+	makeAdmin := false
+	if existing.ID == "" {
+		if n, _ := h.users.Count(r.Context()); n == 0 {
+			makeAdmin = true
+		}
+	}
+	user, err := h.users.EnsureByEmail(r.Context(), email, "", makeAdmin)
+	if err != nil {
+		http.Error(w, "failed to provision user", http.StatusInternalServerError)
+		return
+	}
+
+	id := h.sessions.create(30*24*time.Hour, user.Email, user.ID)
 
 	if stateVal.AppReturnPrefix != "" {
 		// Native client (Android custom scheme, Tauri WebView, or Capacitor WebView):

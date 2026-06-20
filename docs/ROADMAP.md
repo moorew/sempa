@@ -86,6 +86,24 @@ are actually finishable.
 - **iOS feature parity follow-ons:** push (APNs), haptics (`@capacitor/haptics`),
   home-screen widgets (WidgetKit), focus-timer Live Activity (ActivityKit).
 
+## Multi-user (household)
+Decision: one server, **household model** — items are private or shared (both see/
+edit); private-by-default; shareable = tasks, lists, weekly objectives. (Not
+container-per-user — federation is the wrong tool for 2 people.)
+- **Phase 1A — identity + credentials (shipped v1.11.0).** `users` table + bcrypt
+  credentials; Google→user records; `user_id` on sessions; admin user-management
+  + self password change (Settings → Users); env login preserved as bootstrap
+  admin; first post-deploy login becomes admin; hardening (bcrypt, login throttle,
+  timing-uniform checks, admin gating). Backend `db/users.go`, `api/users.go`,
+  `auth.go`; frontend `/settings/users`.
+- **Phase 1B — data ownership (next).** Add `owner_id` to every data table +
+  backfill existing rows to the primary user; scope all reads/writes; per-user
+  `/sync/changes` + scoped SSE (the privacy-correctness work). Until this lands,
+  all data is still shared across accounts.
+- **Phase 2 — sharing.** `shared` flag + Private/Shared toggle on tasks/lists/
+  objectives; sync + realtime include shared items for both; cascade to subtasks/
+  list-items. Tags global; reminders to owner (v1).
+
 ## Known issues / recently fixed
 - **Recurrence deletes now tombstone** (fixed v1.8.1) — raw-SQL recurrence
   deletes bypassed the sync layer, stranding stale instances on local-first

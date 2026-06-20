@@ -54,8 +54,8 @@ func TestSessionScopeRoundTrip(t *testing.T) {
 	t.Cleanup(func() { conn.Close() })
 
 	store := newSessionStore(conn)
-	full := store.create(time.Hour, "me@example.com")
-	dev := store.createScoped(time.Hour, "dock", "device")
+	full := store.create(time.Hour, "me@example.com", "u1")
+	dev := store.createScoped(time.Hour, "dock", "", "device")
 
 	if e, ok := store.get(full); !ok || e.Scope != "full" {
 		t.Fatalf("full session scope = %q ok=%v", e.Scope, ok)

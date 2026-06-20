@@ -19,6 +19,7 @@ import type {
   TimeInsights,
   List,
   ListItem,
+  AppUser,
   SyncResult,
   TagDefinition,
   Task,
@@ -257,12 +258,23 @@ const httpApi = {
 
   auth: {
     config: () => req<{ google_enabled: boolean; password_enabled: boolean }>('/api/v1/auth/config'),
-    me: () => req<{ authenticated: boolean; auth_enabled: boolean; google_enabled: boolean; email?: string; username?: string }>('/api/v1/auth/me'),
+    me: () => req<{ authenticated: boolean; auth_enabled: boolean; google_enabled: boolean; email?: string; username?: string; user_id?: string; name?: string; is_admin?: boolean }>('/api/v1/auth/me'),
     login: (username: string, password: string) =>
       req<{ status: string; token?: string }>('/api/v1/auth/login', { method: 'POST', body: body({ username, password }) }),
     logout: () => req<void>('/api/v1/auth/logout', { method: 'POST' }),
     nativeFinalize: (linkToken: string) =>
       req<{ status: string; token?: string }>('/api/v1/auth/native/finalize', { method: 'POST', body: body({ link_token: linkToken }) }),
+    // User & credential management (server-only). Admin-gated server-side.
+    users: {
+      list: () => req<AppUser[]>('/api/v1/users'),
+      create: (input: { email: string; name: string; password: string; is_admin: boolean }) =>
+        req<AppUser>('/api/v1/users', { method: 'POST', body: body(input) }),
+      delete: (id: string) => req<{ status: string }>(`/api/v1/users/${id}`, { method: 'DELETE' }),
+      setPassword: (id: string, password: string) =>
+        req<{ status: string }>(`/api/v1/users/${id}/password`, { method: 'POST', body: body({ password }) }),
+    },
+    changePassword: (current_password: string, new_password: string) =>
+      req<{ status: string }>('/api/v1/users/password', { method: 'POST', body: body({ current_password, new_password }) }),
   },
 
   // Global search across tasks, objectives and journal. Tags filter tasks only;

@@ -97,6 +97,17 @@ export interface TimeInsights {
   recent?: { title: string; estimate_minutes: number; actual_minutes: number; tags: string[] }[];
 }
 
+// A user account (multi-user). The password hash is never sent to the client.
+export interface AppUser {
+  id: string;
+  email: string;
+  name: string;
+  is_admin: boolean;
+  has_password: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // Lists — standalone checklists, optionally linked to a task.
 export interface List {
   id: string;

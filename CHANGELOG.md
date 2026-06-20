@@ -6,6 +6,26 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.11.0] - 2026-06-20
+
+### Added
+- **Multi-user accounts — foundation.** Real per-user identities with credential
+  management at **Settings → Users & password**: an admin can add people
+  (email + password), reset passwords, and grant admin; everyone can change their
+  own password. Google sign-in now creates a user record (the first sign-in — or
+  your env login — becomes admin), and password users don't need the email
+  allow-list. Your existing env `SEMPA_USERNAME`/`SEMPA_PASSWORD` login keeps
+  working as a bootstrap admin, so you can't be locked out.
+- **Security hardening:** bcrypt password storage, login rate-limiting,
+  constant-time credential checks with timing-uniform "unknown user" handling,
+  and admin-gated user management.
+
+### Note
+- This is the **identity** layer only. Per-user data ownership and **shared
+  lists/tasks/objectives** come next — until then, all data is still shared across
+  accounts (anyone who logs in sees everything). After deploying, log out and back
+  in once so your session picks up your new user identity.
+
 ## [1.10.0] - 2026-06-20
 
 ### Added
