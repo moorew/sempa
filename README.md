@@ -32,7 +32,7 @@ The OpenSSF badge above links to Sempa's full [Best Practices assessment](https:
 - **Reminders & notifications** — per-task reminders delivered by Web Push, Android, or a webhook, with selectable alert sounds
 - **Lists** — standalone checklists (e.g. groceries) you can drag-reorder, check off, organize with AI, export to Markdown, and link to tasks
 - **Recurring tasks** — daily, weekly, and monthly templates
-- **Local AI assist** — an optional on-server model (Ollama) powers quick-add parsing, task summaries, tag suggestions, subtask breakdown, day planning, time prediction (from your own logged history), weekly-review drafts and reflection prompts. **100% local & private — nothing ever leaves your server**, every feature is individually toggleable, and it's off until you turn it on. [See the AI section ↓](#ai-assist--local--private)
+- **Local AI assist** — an optional on-server model (Ollama) powers quick-add parsing, task summaries, tag suggestions, subtask breakdown, day planning, time prediction (from your own logged history), list organizing, weekly-review drafts and reflection prompts. **100% local & private — nothing ever leaves your server**, every feature is individually toggleable, and it's off until you turn it on. [See the AI section ↓](#ai-assist--local--private)
 - **In-app updates** — notices new releases, shows what's new, and points you to the installer (silent desktop self-update is opt-in)
 - **Six themes** — Terracotta, Forest, Plum, Slate, OLED Black, and Ocean, each in light + dark
 - **Keyboard shortcuts** — `n` new task, `t` today, `j/k` prev/next week, `?` help
@@ -315,7 +315,7 @@ All integrations are optional and configured through the Settings UI after first
 | **Jira** | Imports assigned issues as tasks. Marking a Jira-sourced task done closes the ticket. |
 | **Calendar feeds (ICS)** | Subscribe to any `.ics` / webcal URL for read-only events. |
 | **Email inbox** | Forward any email to a Fastmail address to auto-create a task. |
-| **AI assist (local)** | A local language model (Ollama, default `qwen2.5:1.5b`) powers title cleanup plus quick-add parsing, tag suggestions, subtask breakdown, day planning, task-time prediction, weekly-review drafts and reflection prompts. **Runs entirely on your server — no data leaves it, no API key.** Opt-in (during `install.sh` or by setting `OLLAMA_BASE_URL`); manage models and toggle each feature in Settings → Integrations → AI. [Details ↓](#ai-assist--local--private) |
+| **AI assist (local)** | A local language model (Ollama, default `qwen2.5:1.5b`) powers title cleanup plus quick-add parsing, tag suggestions, subtask breakdown, day planning, task-time prediction, list organizing, weekly-review drafts and reflection prompts. **Runs entirely on your server — no data leaves it, no API key.** Opt-in (during `install.sh` or by setting `OLLAMA_BASE_URL`); manage models and toggle each feature in Settings → Integrations → AI. [Details ↓](#ai-assist--local--private) |
 
 > **Note on the model-server URL (AI task-title cleanup).** The Ollama endpoint
 > is configurable in Settings → Integrations and may point at an internal /
@@ -354,8 +354,8 @@ After signing in, a short setup wizard helps you connect email and calendar (all
 
 ### Getting around
 
-- **Desktop / web:** a left sidebar with a pinned **Search** pill and a **sectioned nav rail** — by default grouped into Today/This Week, **Rituals** (Plan Day, Shutdown), **Inbox** (Email, Reminders), and **Library** (Backlog, Journal). You can change the grouping (Spaces · Plan·Focus·Review · Flat) and section style (Labels · Dividers) in **Settings → Appearance**. The footer holds a utility icon row (Settings, light/dark, desktop Widget) — plus an **update indicator** when a new version is available — the sync status, and an account chip (avatar + email + Sign out). The day view's right panel is a tabbed dock — **Schedule · Inbox · Jira · Goals** — under a mini-calendar.
-- **Mobile:** a bottom tab bar — **Today**, **Week**, **Journal**, and **More**. The **More** sheet is grouped: a quick row (Settings, light/dark, Widget), a **Plan** group (Plan Day, Schedule, Backlog, Search), an **Inbox** group (Email, Reminders, Jira, Shutdown), and your account row. A **+** button creates a task on list screens.
+- **Desktop / web:** a left sidebar with a pinned **Search** pill and a **sectioned nav rail** — by default grouped into Today/This Week, **Rituals** (Plan Day, Shutdown), **Inbox** (Email, Reminders), and **Library** (Backlog, Lists, Journal, Insights). You can change the grouping (Spaces · Plan·Focus·Review · Flat) and section style (Labels · Dividers) in **Settings → Appearance**. The footer holds a utility icon row (Settings, light/dark, desktop Widget) — plus an **update indicator** when a new version is available — the sync status, and an account chip (avatar + email + Sign out). The day view's right panel is a tabbed dock — **Schedule · Inbox · Jira · Goals** — under a mini-calendar.
+- **Mobile:** a bottom tab bar — **Today**, **Week**, **Journal**, **Lists**, and **More**. The **More** sheet is grouped: a quick row (Settings, light/dark, Widget), a **Plan** group (Plan Day, Schedule, Backlog, Search), an **Inbox** group (Email, Reminders, Jira, Shutdown), and your account row. A **+** button creates a task on list screens.
 
 ### Tasks
 
@@ -451,7 +451,8 @@ Lists live independently of any day, so a half-checked list waits for you.
   title, items as bullets.
 - Archive/unarchive whole lists to keep the view tidy.
 
-*(Lists currently need a reachable server; offline sync is on the roadmap.)*
+Lists are **local-first** like the rest of Sempa — add, reorder, and check items
+with no server or internet; they sync when you're back online.
 
 ### Recurring tasks
 
@@ -518,6 +519,7 @@ Nothing is automatic or destructive — the model **suggests**, you approve.
 | **Title cleanup & summary** | Email / Jira import | Tidies imported email subjects (and issues) into concise, action-oriented task titles with a rough time estimate. |
 | **Plan my day** | Plan Day | Suggests a focused order for today's tasks around your calendar events, with a one-line rationale — applied to your board only when you click. Calibrated by your planned-vs-actual history so the plan stays realistic. |
 | **Predict task time** | ✦ on a task's estimate | Suggests how long a task will take. With little history it gives a clearly-labelled general estimate; once you've logged enough sessions it becomes personalized, grounded in your own similar past tasks. |
+| **Organize a list** | Lists | Groups a list's items into natural categories (Produce, Dairy, …) — applied only when you click. |
 | **Draft weekly review** | Week Review | Drafts your **wins / challenges / next focus** from the week's completed tasks and objectives. You edit before saving. |
 | **Reflection prompts** | Shutdown | Offers a couple of context-aware end-of-day questions based on what you did and didn't finish. |
 

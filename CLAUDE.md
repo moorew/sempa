@@ -16,7 +16,7 @@
 A self-hosted, single-user task manager inspired by Sunsama. Philosophy:
 eliminate distractions, plan with intention, unify task sources. Core surfaces:
 guided daily planning, a daily Kanban, weekly objectives, timeboxing + Pomodoro,
-and a daily shutdown ritual.
+time tracking + insights, standalone Lists, and a daily shutdown ritual.
 
 - **App name is "Sempa"** throughout code and branding (the repo/dir is "aura"/
   "sempa" interchangeably; prefer Sempa in user-facing text).
@@ -129,6 +129,15 @@ CI overrides — are in the private `sempa-ops` guide.)
   local-first schema in **all** of: `lib/tauri/schema.ts`, `lib/tauri/db.ts`
   `COLUMN_RECONCILE`, `src-tauri/src/db.rs` migration, and `sync.svelte.ts`
   `upsertTask`. Miss one and Android upgrades break silently (see gotchas).
+- New **synced entity/table** (e.g. `lists`/`list_items`): the same mirror, wider.
+  Wire **all** of: backend migration + store + handlers/routes + `db/sync.go`
+  `SyncChanges` (collect rows) + delete handlers recording tombstones; then
+  client `schema.ts` CREATE TABLE, `src-tauri/src/db.rs` migration, `local-api.ts`
+  namespace (CRUD + `logMutation` + `flushSoon`), `sync.svelte.ts` (`ServerChanges`
+  fields, `upsertX` lww, pull-apply order parents-before-children, `TOMBSTONE_TABLE`,
+  `restPath`/custom replay for non-uniform REST), and add the namespace to
+  `LOCAL_CORE` in `lib/api.ts`. Make create accept a client id (`clientOrNewID`)
+  so offline-created rows keep their id on sync. Lists are the worked example.
 - **Backend background work** goes through the `poller` pattern (startup +
   interval, idempotent), not ad-hoc goroutines.
 - **Notification channels (Android)** are immutable once created — bump the
