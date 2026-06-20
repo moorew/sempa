@@ -766,6 +766,24 @@
         </button>
       </div>
     </section>
+
+    <!-- Users & credentials -->
+    <a href="/settings/users"
+       class="mt-3 flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
+       style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+      <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
+        <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 3-3.87m6-1.13a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"/>
+        </svg>
+      </div>
+      <div class="flex-1">
+        <p class="text-sm font-semibold" style="color: var(--sempa-text);">Users &amp; password</p>
+        <p class="text-xs" style="color: var(--sempa-text-soft);">Add people, manage credentials, change your password</p>
+      </div>
+      <svg class="h-4 w-4" style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
+      </svg>
+    </a>
   </div>
 {/snippet}
 
@@ -1492,22 +1510,6 @@
         </svg>
       </a>
 
-      <a href="/settings/users"
-         class="flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
-         style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
-          <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 3-3.87m6-1.13a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"/>
-          </svg>
-        </div>
-        <div class="flex-1">
-          <p class="text-sm font-semibold" style="color: var(--sempa-text);">Users &amp; password</p>
-          <p class="text-xs" style="color: var(--sempa-text-soft);">Add people, manage credentials, change your password</p>
-        </div>
-        <svg class="h-4 w-4" style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
-        </svg>
-      </a>
     </div>
   </div>
 {/snippet}
