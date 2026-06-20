@@ -188,6 +188,7 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 				r.Get("/", tasks.list)
 				r.Post("/", tasks.create)
 				r.Get("/recurring", tasks.listTemplates)
+				r.Get("/recurring/instances", tasks.recurringInstances)
 				r.Get("/{id}", tasks.get)
 				r.Patch("/{id}", tasks.update)
 				r.Delete("/{id}", tasks.delete)

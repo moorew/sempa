@@ -425,6 +425,18 @@ func (h *taskHandler) listTemplates(w http.ResponseWriter, r *http.Request) {
 	respond(w, http.StatusOK, templates)
 }
 
+// recurringInstances returns the authoritative (id, origin, date) set of current
+// recurring instances, so local-first clients can self-heal — drop instances the
+// server no longer has (orphans stranded by pre-tombstone recurrence deletes).
+func (h *taskHandler) recurringInstances(w http.ResponseWriter, r *http.Request) {
+	refs, err := h.store.RecurringInstanceIndex(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	respond(w, http.StatusOK, refs)
+}
+
 func (h *taskHandler) delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	// Capture the task first so we know whether it came from Jira: deleting a

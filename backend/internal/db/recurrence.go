@@ -270,6 +270,38 @@ func (s *TaskStore) SyncTemplateInstances(ctx context.Context, originID, today s
 // recurrenceHorizonWeeks mirrors the poller's horizon (+2 weeks).
 const recurrenceHorizonWeeks = 2
 
+// RecurringInstanceRef is a lightweight (id, origin, date) tuple for one
+// recurring instance — the authoritative set a client reconciles against.
+type RecurringInstanceRef struct {
+	ID     string `json:"id"`
+	Origin string `json:"origin"`
+	Date   string `json:"date"`
+}
+
+// RecurringInstanceIndex returns every current (non-cancelled, dated) recurring
+// instance. Clients use this as the source of truth to drop locally-stranded
+// instances the server no longer has (orphans from pre-tombstone deletes).
+func (s *TaskStore) RecurringInstanceIndex(ctx context.Context) ([]RecurringInstanceRef, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, recurrence_origin_id, planned_date FROM tasks
+		WHERE recurrence_origin_id IS NOT NULL
+		  AND status != 'cancelled'
+		  AND planned_date IS NOT NULL`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []RecurringInstanceRef{}
+	for rows.Next() {
+		var ref RecurringInstanceRef
+		if err := rows.Scan(&ref.ID, &ref.Origin, &ref.Date); err != nil {
+			return nil, err
+		}
+		out = append(out, ref)
+	}
+	return out, rows.Err()
+}
+
 // instanceExistsForDate reports whether ANY non-cancelled instance of the
 // template already exists on the given date — customised or pristine. A
 // customised (or carried-forward) instance IS that day's occurrence, so it

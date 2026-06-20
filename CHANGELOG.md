@@ -6,6 +6,24 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [Unreleased]
+
+### Added
+- **Self-heal for stranded recurring duplicates.** After each sync, local-first
+  clients reconcile their recurring instances against the server's authoritative
+  set and drop orphans the server no longer has (the lingering phantom duplicate).
+  Safe by construction: only ever touches server-generated instances (never
+  offline-created items), aborts on any fetch failure, reconciles only per-(origin,
+  date) buckets the server reports, and never deletes an edit pending upload.
+
+### Changed
+- **Smarter tag suggestions.** "Suggest tags" now auto-adds an existing tag only
+  when it clearly applies (its word is in the title/notes, or it's the detected
+  activity), and offers everything else — uncertain existing tags, the activity
+  itself, and new ideas — as tap-to-add chips. All tag matching is now
+  case-insensitive/canonical, so "personal" + "Personal" can't both appear, and
+  irrelevant guesses are no longer auto-applied.
+
 ## [1.8.1] - 2026-06-20
 
 ### Fixed

@@ -20,6 +20,7 @@
   import { timeInsights } from '$lib/stores/timeInsights.svelte';
   import { timeTracking } from '$lib/stores/timeTracking.svelte';
   import { capacityState } from '$lib/dayCapacity';
+  import { classifyActivity } from '$lib/activityBuckets';
   import { Sparkles } from 'lucide-svelte';
   import { dismissibleSheet } from '$lib/actions/sheet';
   import { portal } from '$lib/actions/portal';
@@ -332,22 +333,54 @@
     finally { aiParsing = false; }
   }
 
+  // Tap-to-add tag suggestions surfaced by the AI (uncertain existing + new +
+  // the detected activity), distinct from the ones we auto-apply.
+  let suggestedTags = $state<string[]>([]);
+
   async function aiSuggestTags() {
     if (aiTagging || !title.trim()) return;
     aiTagging = true;
+    suggestedTags = [];
     try {
       const res = await api.ai.suggestTags(title.trim(), description, tagStore.definitions.map(t => t.name));
-      const proposed = [...(res.tags ?? []), ...(res.new_tags ?? [])];
-      if (res.available && proposed.length) {
-        const before = selectedTags.length;
-        selectedTags = Array.from(new Set([...selectedTags, ...proposed]));
-        if (selectedTags.length === before) aiNotice('Those tags are already added');
-      } else {
-        // No match isn't an error, but say so — otherwise the click looks dead.
-        aiNotice('No tags suggested');
+      if (!res.available) { aiNotice('AI is off'); return; }
+
+      // "Smart auto-add": an existing tag is applied only when it clearly applies
+      // — its word appears in the title/notes, or it IS the detected activity.
+      // Everything else uncertain (existing + new + the activity itself) becomes a
+      // tap-to-add suggestion, so the small model can't quietly add junk.
+      const haystack = `${title} ${description}`.toLowerCase();
+      const bucket = classifyActivity(title, selectedTags);
+      const auto: string[] = [];
+      const suggest: string[] = [];
+
+      for (const t of res.tags ?? []) {
+        const l = t.toLowerCase();
+        if (haystack.includes(l) || l === bucket.key) auto.push(l);
+        else suggest.push(l);
       }
+      if (bucket.key !== 'other') suggest.push(bucket.key);   // ground in the timebox activity
+      for (const t of res.new_tags ?? []) suggest.push(t.toLowerCase());
+
+      auto.forEach(addTag);
+
+      const sel = new Set(selectedTags);
+      const seen = new Set<string>();
+      suggestedTags = suggest.filter((t) => {
+        const l = t.trim();
+        if (!l || sel.has(l) || seen.has(l)) return false;
+        seen.add(l);
+        return true;
+      }).slice(0, 6);
+
+      if (auto.length === 0 && suggestedTags.length === 0) aiNotice('No tags to suggest');
     } catch (e) { aiFail(e); }
     finally { aiTagging = false; }
+  }
+
+  function acceptSuggestedTag(t: string) {
+    addTag(t);
+    suggestedTags = suggestedTags.filter((s) => s !== t);
   }
 
   async function aiBreakIntoSubtasks() {
@@ -455,7 +488,7 @@
       recurrenceRule = ''; selectedTags = [];
       selectedObjectiveId = null;
     }
-    tagSearch = ''; tagDropdownOpen = false; error = '';
+    tagSearch = ''; tagDropdownOpen = false; error = ''; suggestedTags = [];
     // Don't auto-open the soft keyboard on mobile: this device doesn't honour
     // adjustResize, so the keyboard overlays the bottom of the sheet and hides
     // the Save button. The user taps the title to start editing. Desktop keeps
@@ -477,6 +510,14 @@
       t.name.toLowerCase().includes(tagSearch.toLowerCase())
     )
   );
+
+  // All tags are stored lowercase, so case-insensitive add/dedup is just a
+  // lowercase compare. This is the single funnel for adding a tag — the AI path
+  // uses it too, so "personal" + "Personal" can never both land.
+  function addTag(name: string) {
+    const n = name.trim().toLowerCase();
+    if (n && !selectedTags.includes(n)) selectedTags = [...selectedTags, n];
+  }
 
   function toggleTag(name: string) {
     name = name.toLowerCase();
@@ -1089,11 +1130,11 @@
             {#if aiTagNotice}
               <span class="text-[11px]" style="color: var(--sempa-text-dim);">{aiTagNotice}</span>
             {/if}
-            {#if aiSuggestTagsOn && title.trim() && tagStore.definitions.length > 0}
+            {#if aiSuggestTagsOn && title.trim()}
               <button type="button" onclick={aiSuggestTags} disabled={aiTagging}
                       class="inline-flex items-center gap-1 text-[11px] font-medium transition-colors disabled:opacity-50"
                       style="color: var(--sempa-accent);"
-                      title="Suggest tags from your existing set">
+                      title="Suggest relevant tags — existing and new">
                 <Sparkles size={12} strokeWidth={2} />
                 {aiTagging ? 'Suggesting…' : 'Suggest'}
               </button>
@@ -1148,6 +1189,24 @@
                 <p class="px-3 py-2 text-sm text-gray-400 dark:text-gray-600">No tags yet — type to create</p>
               {/if}
             </div>
+          </div>
+        {/if}
+
+        <!-- AI suggestions: tap to add. Existing tags reuse their colour; new
+             ideas show a dashed “+” chip. -->
+        {#if suggestedTags.length}
+          <div class="mt-2 flex flex-wrap items-center gap-1.5">
+            <span class="text-[11px]" style="color: var(--sempa-text-dim);">Suggested:</span>
+            {#each suggestedTags as s}
+              {@const known = tagStore.definitions.some((d) => d.name.toLowerCase() === s)}
+              <button type="button" onclick={() => acceptSuggestedTag(s)}
+                class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-opacity hover:opacity-80"
+                style={known
+                  ? `color:#fff; background-color:${tagStore.colorFor(s)};`
+                  : 'color: var(--sempa-text-soft); border: 1px dashed var(--sempa-border); background: var(--sempa-bg);'}>
+                <span style="opacity:0.8;">+</span> {s}
+              </button>
+            {/each}
           </div>
         {/if}
       </div>

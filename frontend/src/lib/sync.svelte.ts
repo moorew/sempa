@@ -418,6 +418,64 @@ async function reachable(): Promise<boolean> {
 }
 
 /**
+ * Self-heal: drop local recurring instances the server no longer has — orphans
+ * stranded by pre-tombstone recurrence deletes (phantom duplicate recurring tasks).
+ *
+ * Why this is safe and not over-aggressive:
+ *  • Only rows with recurrence_origin_id are ever considered. Recurring instances
+ *    are ALWAYS server-generated and synced down — the client never creates them
+ *    — so an offline-created task (origin = null) is structurally never a
+ *    candidate. (This is the guarantee against deleting unsynced offline work.)
+ *  • Aborts on ANY fetch failure or non-array response — never reconciles against
+ *    a missing/partial set (the "server returned [] so I deleted everything" trap).
+ *  • Per-(origin,date) bucket: only reconciles a bucket the server actually
+ *    reports on, so a future day it hasn't generated yet is left untouched.
+ *  • Never deletes an id with a pending outbound mutation (offline edit in flight).
+ */
+async function reconcileRecurringInstances(): Promise<void> {
+    let res: Response;
+    try {
+        res = await serverFetch('/api/v1/tasks/recurring/instances');
+    } catch {
+        return; // offline / unreachable — do nothing
+    }
+    if (!res.ok) return;
+    let server: { id: string; origin: string; date: string }[];
+    try { server = await res.json(); } catch { return; }
+    if (!Array.isArray(server)) return;
+
+    // Authoritative allowed-id set per (origin|date).
+    const buckets = new Map<string, Set<string>>();
+    for (const r of server) {
+        const key = `${r.origin}|${r.date}`;
+        let set = buckets.get(key);
+        if (!set) { set = new Set(); buckets.set(key, set); }
+        set.add(r.id);
+    }
+
+    const local = await query<{ id: string; recurrence_origin_id: string; planned_date: string | null }[]>(
+        `SELECT id, recurrence_origin_id, planned_date FROM tasks
+         WHERE recurrence_origin_id IS NOT NULL AND status != 'cancelled'`);
+    const pending = new Set(
+        (await query<{ entity_id: string }[]>(
+            `SELECT entity_id FROM sync_log WHERE entity_type = 'tasks' AND synced = 0`)).map((r) => r.entity_id));
+
+    const orphans: string[] = [];
+    for (const t of local) {
+        if (!t.planned_date) continue;
+        const allowed = buckets.get(`${t.recurrence_origin_id}|${t.planned_date}`);
+        if (!allowed) continue;           // server hasn't spoken about this bucket
+        if (allowed.has(t.id)) continue;  // legit, keep
+        if (pending.has(t.id)) continue;  // pending upload — hands off
+        orphans.push(t.id);
+    }
+    for (const id of orphans) {
+        await execute(`DELETE FROM tasks WHERE id = ?`, [id]);
+    }
+    if (orphans.length) syncStore._bumpRevision();
+}
+
+/**
  * Run one full sync cycle (push then pull). Safe to call often: concurrent calls
  * are coalesced into a single trailing run.
  */
@@ -434,6 +492,7 @@ export async function sync(): Promise<void> {
         syncStore._set({ syncing: true, lastError: null });
         await pushOutbox();
         await pullChanges();
+        await reconcileRecurringInstances();
         syncStore._set({
             lastSyncedAt: new Date().toISOString(),
             pending: await getPendingMutationCount(),
