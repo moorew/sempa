@@ -6,6 +6,15 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.7.0] - 2026-06-20
+
+### Added
+- **Time insights screen.** A new **Insights** view (in the nav, and linked from
+  Settings → Time tracking) shows your planned-vs-actual profile: a plain-language
+  calibration headline ("1.8× longer than you plan"), planned-vs-actual totals,
+  multipliers **by activity** and **by tag**, and a recent-tasks list with the
+  over/under on each. Shows a friendly "still learning" state until there's data.
+
 ## [1.6.0] - 2026-06-20
 
 ### Added

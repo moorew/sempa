@@ -94,6 +94,7 @@ export interface TimeInsights {
   samples: number;
   global_multiplier: number;
   tags: { tag: string; samples: number; multiplier: number }[];
+  recent?: { title: string; estimate_minutes: number; actual_minutes: number; tags: string[] }[];
 }
 
 export interface CreateTaskInput {

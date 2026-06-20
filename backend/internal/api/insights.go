@@ -21,12 +21,23 @@ type tagMultiplier struct {
 // than you plan" multiplier plus per-tag multipliers. The headline numbers are
 // plain statistics (transparent, work offline); the local AI layers nuance on
 // top of these (see Phase 4 predict-time).
+type recentSample struct {
+	Title           string   `json:"title"`
+	EstimateMinutes int64    `json:"estimate_minutes"`
+	ActualMinutes   int64    `json:"actual_minutes"`
+	Tags            []string `json:"tags"`
+}
+
 type timeInsights struct {
 	Available        bool            `json:"available"`
 	Samples          int             `json:"samples"`
 	GlobalMultiplier float64         `json:"global_multiplier"`
 	Tags             []tagMultiplier `json:"tags"`
+	Recent           []recentSample  `json:"recent"`
 }
+
+// recentSampleCap bounds the per-task list returned for the insights screen.
+const recentSampleCap = 60
 
 func (h *taskHandler) timeInsights(w http.ResponseWriter, r *http.Request) {
 	samples, err := h.store.CompletedTimeSamples(r.Context(), 1000)
@@ -34,7 +45,26 @@ func (h *taskHandler) timeInsights(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "failed to load time samples")
 		return
 	}
-	respond(w, http.StatusOK, computeTimeInsights(samples))
+	ins := computeTimeInsights(samples)
+	// Newest-first; attach a capped slice for the concrete recent-tasks list.
+	recent := make([]recentSample, 0, recentSampleCap)
+	for _, s := range samples {
+		if len(recent) >= recentSampleCap {
+			break
+		}
+		tags := s.Tags
+		if tags == nil {
+			tags = []string{}
+		}
+		recent = append(recent, recentSample{
+			Title:           s.Title,
+			EstimateMinutes: s.Estimate,
+			ActualMinutes:   s.Actual,
+			Tags:            tags,
+		})
+	}
+	ins.Recent = recent
+	respond(w, http.StatusOK, ins)
 }
 
 // computeTimeInsights derives multipliers from completed-task samples. We use

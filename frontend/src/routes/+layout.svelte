@@ -52,7 +52,7 @@
     Sun, CalendarDays, ClipboardCheck, Mail, Moon, SlidersHorizontal,
     ChevronLeft, ChevronRight, Plus, RefreshCw, X, Check,
     Target, Timer, Palette, Menu, Layers, BookOpen, Search, Bell, LayoutGrid,
-    SquareKanban, CalendarClock, ArrowUpCircle,
+    SquareKanban, CalendarClock, ArrowUpCircle, Gauge,
   } from 'lucide-svelte';
   import { createWidgetWindow } from '$lib/tauri/bridge';
 
@@ -391,19 +391,20 @@
         { label: null,      items: [['/home', 'Today', CalendarDays], [`/week/${thisWeek}`, 'This Week', CalendarDays]] },
         { label: 'Rituals', items: [[`/plan/${todayDate}`, 'Plan Day', ClipboardCheck], [`/shutdown/${todayDate}`, 'Shutdown', Moon]] },
         { label: 'Inbox',   items: [['/email', 'Email', Mail], ['/reminders', 'Reminders', Bell]] },
-        { label: 'Library', items: [['/backlog', 'Backlog', Layers], ['/journal', 'Journal', BookOpen]] },
+        { label: 'Library', items: [['/backlog', 'Backlog', Layers], ['/journal', 'Journal', BookOpen], ['/insights', 'Insights', Gauge]] },
       ],
       rhythm: [
         { label: 'Plan',   items: [[`/plan/${todayDate}`, 'Plan Day', ClipboardCheck], [`/week/${thisWeek}`, 'This Week', CalendarDays]] },
         { label: 'Focus',  items: [['/home', 'Today', CalendarDays], ['/backlog', 'Backlog', Layers]] },
         { label: 'Inbox',  items: [['/email', 'Email', Mail], ['/reminders', 'Reminders', Bell]] },
-        { label: 'Review', items: [[`/shutdown/${todayDate}`, 'Shutdown', Moon], ['/journal', 'Journal', BookOpen]] },
+        { label: 'Review', items: [[`/shutdown/${todayDate}`, 'Shutdown', Moon], ['/journal', 'Journal', BookOpen], ['/insights', 'Insights', Gauge]] },
       ],
       flat: [
         { label: null, items: [
           ['/home', 'Today', CalendarDays], ['/search', 'Search', Search], [`/week/${thisWeek}`, 'This Week', CalendarDays],
           [`/plan/${todayDate}`, 'Plan Day', ClipboardCheck], ['/email', 'Email', Mail], ['/backlog', 'Backlog', Layers],
           ['/reminders', 'Reminders', Bell], [`/shutdown/${todayDate}`, 'Shutdown', Moon], ['/journal', 'Journal', BookOpen],
+          ['/insights', 'Insights', Gauge],
         ] },
       ],
     };

@@ -4,7 +4,7 @@
   import { timeCapture } from '$lib/stores/timeCapture.svelte';
   import { pomodoro } from '$lib/stores/pomodoro.svelte';
   import { ACTIVITY_BUCKETS } from '$lib/activityBuckets';
-  import { Clock, Play } from 'lucide-svelte';
+  import { Clock, Play, Gauge } from 'lucide-svelte';
 
   // Visiting settings clears any "paused after repeated skips" state, so toggling
   // here always takes effect immediately.
@@ -156,8 +156,20 @@
       </label>
     </div>
 
-    <!-- Walkthrough -->
+    <!-- Insights + walkthrough -->
     {@render sectionLabel('Help')}
+    <a href="/insights"
+      class="mb-2 flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-colors"
+      style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+      <Gauge size={18} style="color: var(--sempa-accent);" />
+      <div class="flex-1">
+        <p class="text-sm font-medium" style="color: var(--sempa-text);">View your time insights</p>
+        <p class="mt-0.5 text-xs" style="color: var(--sempa-text-dim);">See your planned-vs-actual patterns by activity and tag.</p>
+      </div>
+      <svg class="h-4 w-4" style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
+      </svg>
+    </a>
     <button onclick={() => timeTracking.openWalkthrough()}
       class="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-colors"
       style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">

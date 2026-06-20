@@ -420,6 +420,8 @@ Sempa is built with **time-blindness** in mind: we routinely think something wil
 
 **Day capacity — a gentle “that's too much for one day”.** Set how many focused hours fit in a realistic day and Sempa quietly flags overload: when you set a task's time that tips a day past its limit, a subtle line appears under the estimate (*“Realistically ~7h — over your 6h.”*), and each day shows its planned total, which warms when it's over. No pop-ups, no blocking — just a nudge to help you plan a day you can actually finish. By default it judges days by **realistic** time (your estimates × how long that kind of work actually takes you), so optimistic guesses don't sneak a day over its limit — switch to raw estimates, change the limit, or turn it off in **Settings → Time tracking**.
 
+**Seeing your patterns.** The **Insights** screen (in the nav) turns all this logged data into a picture: a plain-language headline (*“you take 1.8× longer than you plan”*), planned-vs-actual totals, your multipliers **by activity** and **by tag**, and a recent-tasks list showing the over/under on each. It stays in a gentle “still learning” state until there's enough data.
+
 **Time-tracking settings** (Settings → Time tracking) gather it all in one place:
 - **Ask how long a task took** — the completion prompt (and a *skip very quick tasks* sub-toggle).
 - **Day capacity** — on/off, your hours-per-day limit, and whether to judge days by realistic (calibrated) time or raw estimates.
