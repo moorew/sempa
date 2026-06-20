@@ -74,15 +74,18 @@ are actually finishable.
 ## Known issues / recently fixed
 - **Recurrence deletes now tombstone** (fixed v1.8.1) — raw-SQL recurrence
   deletes bypassed the sync layer, stranding stale instances on local-first
-  devices (phantom duplicates). All recurrence deletes now record sync
-  tombstones. Idea: a client-side **sync reconcile** that drops local recurring
-  instances the server no longer has for a day, to heal devices stranded *before*
-  the fix without a manual delete. Also: prune old tombstones over time.
+  devices (phantom duplicates). All recurrence deletes now record sync tombstones.
+- **Client sync-reconcile** (shipped v1.9.0) — `reconcileRecurringInstances` in
+  `sync.svelte` drops local recurring instances the server no longer lists (heals
+  devices stranded *before* the tombstone fix), backed by
+  `GET /tasks/recurring/instances`. Safe: instance-scoped, aborts on fetch
+  failure, per-(origin,date) buckets, skips ids pending upload. Remaining idea:
+  prune old tombstones over time.
 - **Duplicate recurring instances** (fixed v1.6.0) — once an instance was
   customised (or carried forward), the dedup ignored it and a fresh pristine
   duplicate was created. Now: one instance per template per day, with a self-heal
-  pass. Note: server-side recurring deletes don't emit sync tombstones, so a
-  pre-existing duplicate may linger on an offline device until a full resync.
+  pass. (Deletes tombstone since v1.8.1 and devices self-heal since v1.9.0, so
+  stranded duplicates no longer linger.)
 - **First-run walkthrough re-opening every launch** (fixed v1.6.0) — mount-order
   race read the "seen" flag before the store loaded it; gated on an `initialized`
   flag.
