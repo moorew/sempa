@@ -18,6 +18,8 @@
   import { prefs } from '$lib/stores/prefs.svelte';
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
   import { timeInsights } from '$lib/stores/timeInsights.svelte';
+  import { timeTracking } from '$lib/stores/timeTracking.svelte';
+  import { capacityState } from '$lib/dayCapacity';
   import { Sparkles } from 'lucide-svelte';
   import { dismissibleSheet } from '$lib/actions/sheet';
   import { portal } from '$lib/actions/portal';
@@ -254,6 +256,30 @@
       predicting = false;
     }
   }
+
+  // ── Day capacity ────────────────────────────────────────────────────────────
+  // Subtle, non-invasive: when the estimate you're setting tips that day's total
+  // planned time over your limit, a quiet line appears. No blocking, no modal.
+  let dayTasks = $state<Task[]>([]);
+  let loadedCapacityDate = $state<string | null>(null);
+  $effect(() => {
+    const d = plannedDate;
+    const on = timeTracking.capacityEnabled;
+    // Depend only on the date + toggle; the dedupe/assignment stays untracked.
+    untrack(() => {
+      if (!on || !d) { dayTasks = []; loadedCapacityDate = null; return; }
+      if (d === loadedCapacityDate) return;
+      api.tasks.listByDate(d).then((rows) => {
+        if (plannedDate === d) { dayTasks = rows; loadedCapacityDate = d; }
+      }).catch(() => {});
+    });
+  });
+  const capacityHint = $derived.by(() => {
+    if (!timeTracking.capacityEnabled || !plannedDate || !estimateMinutes) return null;
+    const st = capacityState(dayTasks, estimateMinutes, task?.id);
+    return st.over ? st : null;
+  });
+
   let tagDropdownOpen = $state(false);
   let saving = $state(false);
   let error = $state('');
@@ -993,6 +1019,15 @@
         <p class="-mt-1 flex items-center gap-1 text-xs" style="color: var(--sempa-text-dim);">
           <Sparkles size={12} strokeWidth={2} class="shrink-0" style="opacity: 0.6;" />
           {learningHint}
+        </p>
+      {/if}
+
+      {#if capacityHint}
+        <p class="-mt-1 flex items-center gap-1.5 text-xs" style="color: #b07d18;">
+          <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008M10.34 3.94l-7.06 12.2A1.5 1.5 0 004.58 18.5h14.84a1.5 1.5 0 001.3-2.36l-7.06-12.2a1.5 1.5 0 00-2.6 0z"/>
+          </svg>
+          That puts this day at {formatMinutes(capacityHint.total)} — over your {formatMinutes(capacityHint.capacity)}.
         </p>
       {/if}
 

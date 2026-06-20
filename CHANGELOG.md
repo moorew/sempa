@@ -6,6 +6,16 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.5.0] - 2026-06-20
+
+### Added
+- **Day capacity indicator.** Set a realistic hours-per-day limit and Sempa
+  subtly flags overload: setting a task's time that pushes a day past its limit
+  shows a quiet line under the estimate (“That puts this day at 7h — over your
+  6h”), and each day's planned total warms when it's over. No pop-ups — just a
+  nudge to plan a day you can finish. Toggle and set the limit in
+  Settings → Time tracking.
+
 ## [1.4.0] - 2026-06-20
 
 ### Added

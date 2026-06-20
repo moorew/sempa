@@ -5,6 +5,7 @@
   import { compareTasksForDay, today } from '$lib/utils';
   import { goto } from '$app/navigation';
   import { contextMenu } from '$lib/stores/contextMenu.svelte';
+  import { timeTracking } from '$lib/stores/timeTracking.svelte';
   import { Plus } from 'lucide-svelte';
 
   let {
@@ -62,6 +63,10 @@
   const dayStarted  = $derived(!dayComplete && workedMins > 0);
   const barPct      = $derived(
     dayComplete ? 100 : plannedMins === 0 ? 0 : Math.min((workedMins / plannedMins) * 100, 100)
+  );
+  // Subtle over-capacity signal: planned time for the day exceeds the user's limit.
+  const overCapacity = $derived(
+    timeTracking.capacityEnabled && !dayComplete && plannedMins > timeTracking.capacityMinutes
   );
 
   function fmtCapacity(mins: number): string {
@@ -152,9 +157,11 @@
           <span style="color: var(--sempa-success);">{fmtCapacity(workedMins || plannedMins)} done</span>
         {:else if dayStarted}
           <span style="color: var(--sempa-accent);">{fmtCapacity(workedMins)} done</span>
-          <span style="color: var(--sempa-text-dim);">{fmtCapacity(Math.max(plannedMins - workedMins, 0))} left</span>
+          <span style="color: {overCapacity ? '#b07d18' : 'var(--sempa-text-dim)'};">{fmtCapacity(Math.max(plannedMins - workedMins, 0))} left</span>
         {:else}
-          <span style="color: var(--sempa-text-dim);">{fmtCapacity(plannedMins)} planned</span>
+          <span style="color: {overCapacity ? '#b07d18' : 'var(--sempa-text-dim)'};" title={overCapacity ? `Over your ${fmtCapacity(timeTracking.capacityMinutes)} day` : undefined}>
+            {fmtCapacity(plannedMins)} planned{#if overCapacity} · over{/if}
+          </span>
         {/if}
       </div>
     </div>

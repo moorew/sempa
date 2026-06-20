@@ -80,6 +80,31 @@
       {/if}
     </div>
 
+    <!-- Day capacity -->
+    {@render sectionLabel('Day capacity')}
+    <div class="flex flex-col gap-2">
+      {@render toggleRow(
+        'Warn when a day is overloaded',
+        'A subtle hint appears when a day’s planned time runs over your limit — when you set a task’s time, and on the day view. No pop-ups.',
+        timeTracking.capacityEnabled,
+        timeTracking.toggleCapacityEnabled,
+      )}
+      {#if timeTracking.capacityEnabled}
+        <div class="flex items-center justify-between rounded-xl px-4 py-3.5"
+          style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-medium" style="color: var(--sempa-text);">Hours per day</p>
+            <p class="mt-0.5 text-xs" style="color: var(--sempa-text-dim);">How much focused work fits in a realistic day.</p>
+          </div>
+          <input type="number" min="0.5" max="24" step="0.5"
+            value={(timeTracking.capacityMinutes / 60).toString()}
+            onchange={(e) => timeTracking.setCapacityMinutes(Math.round((+(e.currentTarget as HTMLInputElement).value || 6) * 60))}
+            class="w-16 rounded px-2 py-1 text-right text-sm"
+            style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
+        </div>
+      {/if}
+    </div>
+
     <!-- Default times per activity -->
     {@render sectionLabel('Default times by activity')}
     <p class="-mt-1 mb-3 text-xs" style="color: var(--sempa-text-dim);">

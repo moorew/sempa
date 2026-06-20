@@ -418,6 +418,15 @@ Sempa is built with **time-blindness** in mind: we routinely think something wil
 
 **Catching the tasks you don't time.** Most tasks never get a timer started on them — so whenever you complete a task without tracked time, Sempa pops a quick *“How long did that take?”* prompt (one-tap chips or a custom number). It auto-detects the kind of work (Email, Meeting, Deep work, Admin…) and pre-fills a sensible default. It's deliberately un-naggy: it skips very quick tasks, backs off when you're completing a burst at once, and pauses after a few skips. Turn it off, tune the per-activity default times, and replay the intro from **Settings → Time tracking**.
 
+**Day capacity — a gentle “that's too much for one day”.** Set how many focused hours fit in a realistic day and Sempa quietly flags overload: when you set a task's time that tips a day past its limit, a subtle line appears under the estimate (*“That puts this day at 7h — over your 6h.”*), and each day shows its planned total, which warms when it's over. No pop-ups, no blocking — just a nudge to help you plan a day you can actually finish. Turn it off or change the limit in **Settings → Time tracking**.
+
+**Time-tracking settings** (Settings → Time tracking) gather it all in one place:
+- **Ask how long a task took** — the completion prompt (and a *skip very quick tasks* sub-toggle).
+- **Day capacity** — on/off and your hours-per-day limit.
+- **Default times by activity** — the pre-filled duration for each detected activity (Email, Meeting, Deep work, …), all editable.
+- **Focus timer** — your focus / short-break / long-break lengths.
+- **Replay the intro** — watch the walkthrough again anytime.
+
 ### Search & tag filters
 
 **Search** looks across tasks, objectives, and journal entries. On list views you can switch into **tag filter mode** to show only tasks with a given tag. When filtering by a tag, **export** the resulting task list as **CSV** or clean **Markdown** from the Search page.

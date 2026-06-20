@@ -6,6 +6,10 @@ const PROMPT_KEY = 'sempa.tt.promptOnComplete';
 const SKIPQUICK_KEY = 'sempa.tt.skipQuick';
 const BUCKET_KEY = 'sempa.tt.bucketMinutes';
 const WALKTHROUGH_KEY = 'sempa.tt.walkthroughSeen';
+const CAPACITY_ON_KEY = 'sempa.tt.capacityEnabled';
+const CAPACITY_MIN_KEY = 'sempa.tt.capacityMinutes';
+
+const DEFAULT_CAPACITY_MINUTES = 360; // 6h of focused work — a humane default
 
 function createTimeTrackingStore() {
   // Ask "how long did that take?" when a task is completed without tracked time.
@@ -17,6 +21,9 @@ function createTimeTrackingStore() {
   // First-run walkthrough seen flag, and live open state (so settings can replay).
   let walkthroughSeen = $state(false);
   let walkthroughOpen = $state(false);
+  // Day-capacity indicator: warn (subtly) when a day's planned time runs over.
+  let capacityEnabled = $state(true);
+  let capacityMinutes = $state(DEFAULT_CAPACITY_MINUTES);
 
   function init() {
     if (typeof localStorage === 'undefined') return;
@@ -26,6 +33,10 @@ function createTimeTrackingStore() {
     if (sq !== null) skipQuick = sq === '1';
     const w = localStorage.getItem(WALKTHROUGH_KEY);
     if (w !== null) walkthroughSeen = w === '1';
+    const ce = localStorage.getItem(CAPACITY_ON_KEY);
+    if (ce !== null) capacityEnabled = ce === '1';
+    const cm = localStorage.getItem(CAPACITY_MIN_KEY);
+    if (cm !== null) { const n = parseInt(cm, 10); if (n > 0) capacityMinutes = n; }
     try {
       const raw = localStorage.getItem(BUCKET_KEY);
       if (raw) bucketMinutes = JSON.parse(raw);
@@ -48,6 +59,14 @@ function createTimeTrackingStore() {
     walkthroughSeen = true;
     if (typeof localStorage !== 'undefined') localStorage.setItem(WALKTHROUGH_KEY, '1');
   }
+  function setCapacityEnabled(on: boolean) {
+    capacityEnabled = on;
+    if (typeof localStorage !== 'undefined') localStorage.setItem(CAPACITY_ON_KEY, on ? '1' : '0');
+  }
+  function setCapacityMinutes(minutes: number) {
+    capacityMinutes = Math.max(30, Math.min(1440, minutes));
+    if (typeof localStorage !== 'undefined') localStorage.setItem(CAPACITY_MIN_KEY, String(capacityMinutes));
+  }
   function openWalkthrough() { walkthroughOpen = true; }
   function dismissWalkthrough() {
     walkthroughOpen = false;
@@ -65,7 +84,12 @@ function createTimeTrackingStore() {
     get bucketMinutes() { return bucketMinutes; },
     get walkthroughSeen() { return walkthroughSeen; },
     get walkthroughOpen() { return walkthroughOpen; },
+    get capacityEnabled() { return capacityEnabled; },
+    get capacityMinutes() { return capacityMinutes; },
     init,
+    setCapacityEnabled,
+    toggleCapacityEnabled: () => setCapacityEnabled(!capacityEnabled),
+    setCapacityMinutes,
     openWalkthrough,
     dismissWalkthrough,
     setPromptOnComplete,

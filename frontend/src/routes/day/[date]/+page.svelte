@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
+  import { timeTracking } from '$lib/stores/timeTracking.svelte';
   import { flip } from 'svelte/animate';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
@@ -374,6 +375,7 @@
   const mobileActive    = $derived(mobileDayTasks.filter(t => t.status !== 'done'));
   const mobileDone      = $derived(mobileDayTasks.filter(t => t.status === 'done'));
   const mobileDayEstimate = $derived(mobileDayTasks.reduce((s, t) => s + (t.time_estimate_minutes ?? 0), 0));
+  const mobileOverCapacity = $derived(timeTracking.capacityEnabled && mobileDayEstimate > timeTracking.capacityMinutes);
 
   // ── Mobile long-press drag-to-reorder ──────────────────────────────────────
   // While a card is picked up we drive a live order of ids (reorderOrder) so the
@@ -935,7 +937,7 @@
     {#if mobileDayTasks.length > 0}
       <div class="flex items-center gap-3 mt-2 text-[11px]" style="color: var(--sempa-text-dim);">
         <span>{mobileDone.length}/{mobileDayTasks.length} done</span>
-        {#if mobileDayEstimate > 0}<span>{formatMinutes(mobileDayEstimate)} planned</span>{/if}
+        {#if mobileDayEstimate > 0}<span style={mobileOverCapacity ? 'color:#b07d18;' : ''}>{formatMinutes(mobileDayEstimate)} planned{#if mobileOverCapacity} · over{/if}</span>{/if}
       </div>
     {/if}
   </header>
