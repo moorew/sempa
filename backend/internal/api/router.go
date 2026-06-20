@@ -70,6 +70,7 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 		hub:        hub,
 	}
 
+	listStore := db.NewListStore(database)
 	tasks := &taskHandler{
 		store:   db.NewTaskStore(database),
 		tags:    tagStore,
@@ -78,8 +79,10 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 		hub:     hub,
 		attach:  attachments,
 		sync:    syncStore,
+		lists:   listStore,
 	}
 	objectives := &objectiveHandler{store: objectiveStore, hub: hub, attach: attachments, sync: syncStore}
+	lists := &listHandler{store: listStore, hub: hub, sync: syncStore}
 
 	backupSvc := backup.NewService(database, cfg.DBPath, blobs.Dir())
 	backups := &backupHandler{
@@ -183,6 +186,22 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 
 			// Planned-vs-actual time profile (per-tag + global multipliers).
 			r.Get("/insights/time", tasks.timeInsights)
+
+			// Lists — standalone checklists, optionally linked to a task.
+			r.Route("/lists", func(r chi.Router) {
+				r.Get("/", lists.list)
+				r.Post("/", lists.create)
+				r.Get("/{id}", lists.get)
+				r.Patch("/{id}", lists.update)
+				r.Delete("/{id}", lists.delete)
+				r.Get("/{id}/items", lists.items)
+				r.Post("/{id}/items", lists.createItem)
+				r.Post("/{id}/items/reorder", lists.reorderItems)
+			})
+			r.Route("/list-items", func(r chi.Router) {
+				r.Patch("/{id}", lists.updateItem)
+				r.Delete("/{id}", lists.deleteItem)
+			})
 
 			r.Route("/tasks", func(r chi.Router) {
 				r.Get("/", tasks.list)
@@ -354,6 +373,7 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 				r.Post("/tidy-notes", integrations.aiTidyNotes)
 				r.Post("/plan-day", integrations.aiPlanDay)
 				r.Post("/predict-time", integrations.aiPredictTime)
+				r.Post("/organize-list", integrations.aiOrganizeList)
 				r.Post("/weekly-review", integrations.aiWeeklyReview)
 				r.Post("/reflection-prompts", integrations.aiReflectionPrompts)
 			})

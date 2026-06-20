@@ -17,6 +17,8 @@ import type {
   WebhookConfig,
   PomodoroSession,
   TimeInsights,
+  List,
+  ListItem,
   SyncResult,
   TagDefinition,
   Task,
@@ -307,6 +309,9 @@ const httpApi = {
     predictTime: (title: string, tags: string[]) =>
       req<{ available: boolean; personalized?: boolean; samples?: number; minutes?: number; note?: string }>(
         '/api/v1/ai/predict-time', { method: 'POST', body: body({ title, tags }) }, 90_000),
+    organizeList: (items: string[]) =>
+      req<{ available: boolean; groups?: { category: string; items: string[] }[] }>(
+        '/api/v1/ai/organize-list', { method: 'POST', body: body({ items }) }, 90_000),
     weeklyReview: (completed: string[], objectives: { title: string; status: string }[]) =>
       req<{ available: boolean; wins?: string[]; challenges?: string[]; next_focus?: string }>(
         '/api/v1/ai/weekly-review', { method: 'POST', body: body({ completed, objectives }) }, 90_000),
@@ -437,6 +442,32 @@ const httpApi = {
     // Planned-vs-actual time profile. Server-only (not in LOCAL_CORE), so callers
     // must tolerate failure on pure-offline clients with no server configured.
     time: () => req<TimeInsights>('/api/v1/insights/time'),
+  },
+
+  // Lists — currently server-backed (not in LOCAL_CORE), so they require a
+  // reachable server; offline sync is a planned fast-follow.
+  lists: {
+    list: (taskId?: string, archived = false) => {
+      const qs = new URLSearchParams();
+      if (taskId) qs.set('task_id', taskId);
+      if (archived) qs.set('archived', '1');
+      const q = qs.toString();
+      return req<List[]>(`/api/v1/lists${q ? `?${q}` : ''}`);
+    },
+    get: (id: string) => req<List>(`/api/v1/lists/${id}`),
+    create: (input: { name: string; task_id?: string | null }) =>
+      req<List>('/api/v1/lists', { method: 'POST', body: body(input) }),
+    update: (id: string, patch: { name?: string; task_id?: string | null; position?: number; archived?: boolean; archive_on_complete?: boolean }) =>
+      req<List>(`/api/v1/lists/${id}`, { method: 'PATCH', body: body(patch) }),
+    delete: (id: string) => req<{ status: string }>(`/api/v1/lists/${id}`, { method: 'DELETE' }),
+    items: (id: string) => req<ListItem[]>(`/api/v1/lists/${id}/items`),
+    addItem: (id: string, text: string) =>
+      req<ListItem>(`/api/v1/lists/${id}/items`, { method: 'POST', body: body({ text }) }),
+    reorder: (id: string, ids: string[]) =>
+      req<{ status: string }>(`/api/v1/lists/${id}/items/reorder`, { method: 'POST', body: body({ ids }) }),
+    updateItem: (id: string, patch: { text?: string; done?: boolean; position?: number; category?: string | null }) =>
+      req<ListItem>(`/api/v1/list-items/${id}`, { method: 'PATCH', body: body(patch) }),
+    deleteItem: (id: string) => req<{ status: string }>(`/api/v1/list-items/${id}`, { method: 'DELETE' }),
   },
 
   tags: {

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import type { Objective, PomodoroSession, Task, TaskStatus } from '$lib/types';
+  import type { List, Objective, PomodoroSession, Task, TaskStatus } from '$lib/types';
   import { tagStore } from '$lib/stores/tags.svelte';
   import { api } from '$lib/api';
   import { weekStart as calcWeekStart, extractBareUrls, formatMinutes, bareUrl, prettyUrl } from '$lib/utils';
@@ -381,6 +381,36 @@
   function acceptSuggestedTag(t: string) {
     addTag(t);
     suggestedTags = suggestedTags.filter((s) => s !== t);
+  }
+
+  // ── Linked lists (edit mode) ─────────────────────────────────────────────────
+  let taskLists = $state<List[]>([]);
+  let unlinkedLists = $state<List[]>([]);
+  let newListName = $state('');
+  $effect(() => {
+    if (!open || !task) { taskLists = []; unlinkedLists = []; return; }
+    const tid = task.id;
+    api.lists.list().then((all) => {
+      if (task?.id !== tid) return;
+      taskLists = all.filter((l) => l.task_id === tid);
+      unlinkedLists = all.filter((l) => !l.task_id);
+    }).catch(() => {});
+  });
+  async function createLinkedList() {
+    const name = newListName.trim();
+    if (!name || !task) return;
+    newListName = '';
+    try { taskLists = [...taskLists, await api.lists.create({ name, task_id: task.id })]; } catch { /* ignore */ }
+  }
+  async function attachList(id: string) {
+    if (!task || !id) return;
+    try {
+      taskLists = [...taskLists, await api.lists.update(id, { task_id: task.id })];
+      unlinkedLists = unlinkedLists.filter((l) => l.id !== id);
+    } catch { /* ignore */ }
+  }
+  async function detachList(l: List) {
+    try { await api.lists.update(l.id, { task_id: '' }); taskLists = taskLists.filter((x) => x.id !== l.id); } catch { /* ignore */ }
   }
 
   async function aiBreakIntoSubtasks() {
@@ -1318,6 +1348,40 @@
               </div>
             {/each}
           </div>
+        </div>
+      {/if}
+
+      <!-- Linked lists (existing tasks only) -->
+      {#if isEdit && task}
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400">Lists</label>
+          {#if taskLists.length}
+            <div class="mb-2 flex flex-wrap gap-1.5">
+              {#each taskLists as l}
+                <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs"
+                  style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
+                  <a href={`/lists/${l.id}`} class="hover:underline">{l.name || 'Untitled list'}</a>
+                  <button type="button" onclick={() => detachList(l)} aria-label="Unlink list" class="ml-0.5 opacity-70 hover:opacity-100">×</button>
+                </span>
+              {/each}
+            </div>
+          {/if}
+          <div class="flex items-center gap-2">
+            <input bind:value={newListName} placeholder="New list for this task…"
+              onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); createLinkedList(); } }}
+              class="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none
+                     dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200" />
+            <button type="button" onclick={createLinkedList} disabled={!newListName.trim()}
+              class="shrink-0 rounded-lg px-3 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+              style="background: var(--sempa-accent);">+ New</button>
+          </div>
+          {#if unlinkedLists.length}
+            <div class="mt-2">
+              <SempaSelect value={null} placeholder="Attach an existing list…"
+                options={[{ value: null, label: 'Attach an existing list…' }, ...unlinkedLists.map((l) => ({ value: l.id, label: l.name || 'Untitled list' }))]}
+                onchange={(v) => v && attachList(v as string)} />
+            </div>
+          {/if}
         </div>
       {/if}
 

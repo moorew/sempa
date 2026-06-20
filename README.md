@@ -30,6 +30,7 @@ The OpenSSF badge above links to Sempa's full [Best Practices assessment](https:
 - **Shutdown ritual** — guided end-of-day reflection
 - **Jira sync** — bi-directional: import assigned issues, mark done in Sempa to close the ticket
 - **Reminders & notifications** — per-task reminders delivered by Web Push, Android, or a webhook, with selectable alert sounds
+- **Lists** — standalone checklists (e.g. groceries) you can drag-reorder, check off, organize with AI, export to Markdown, and link to tasks
 - **Recurring tasks** — daily, weekly, and monthly templates
 - **Local AI assist** — an optional on-server model (Ollama) powers quick-add parsing, task summaries, tag suggestions, subtask breakdown, day planning, time prediction (from your own logged history), weekly-review drafts and reflection prompts. **100% local & private — nothing ever leaves your server**, every feature is individually toggleable, and it's off until you turn it on. [See the AI section ↓](#ai-assist--local--private)
 - **In-app updates** — notices new releases, shows what's new, and points you to the installer (silent desktop self-update is opt-in)
@@ -432,6 +433,25 @@ Sempa is built with **time-blindness** in mind: we routinely think something wil
 ### Search & tag filters
 
 **Search** looks across tasks, objectives, and journal entries. On list views you can switch into **tag filter mode** to show only tasks with a given tag. When filtering by a tag, **export** the resulting task list as **CSV** or clean **Markdown** from the Search page.
+
+### Lists
+
+The **Lists** view holds standalone, undated checklists — your ongoing groceries
+list, a packing list, materials to buy. Add items, **drag to reorder**, and tick
+them off (checked items grey out and strike through in place; untick to restore).
+Lists live independently of any day, so a half-checked list waits for you.
+
+- **Link to a task.** From a task's **Lists** section, attach an existing list or
+  spin up a new one — e.g. attach your groceries list to this week's “Groceries”
+  task, then a fresh one next week. Optionally tick **“archive when the task is
+  done”** per list for automatic cleanup; otherwise lists never auto-archive.
+- **Organize with AI.** Groups the list's items into natural categories (Produce,
+  Dairy, …) using the local model.
+- **Export Markdown.** Downloads the list as a `.md` file — the list name as the
+  title, items as bullets.
+- Archive/unarchive whole lists to keep the view tidy.
+
+*(Lists currently need a reachable server; offline sync is on the roadmap.)*
 
 ### Recurring tasks
 

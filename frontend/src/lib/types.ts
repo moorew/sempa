@@ -97,6 +97,29 @@ export interface TimeInsights {
   recent?: { title: string; estimate_minutes: number; actual_minutes: number; tags: string[] }[];
 }
 
+// Lists — standalone checklists, optionally linked to a task.
+export interface List {
+  id: string;
+  name: string;
+  task_id: string | null;
+  position: number;
+  archived_at: string | null;
+  archive_on_complete: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ListItem {
+  id: string;
+  list_id: string;
+  text: string;
+  position: number;
+  done: boolean;        // greys/strikes the row in place
+  category: string | null; // set by Organize-with-AI
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CreateTaskInput {
   title: string;
   description?: string | null;

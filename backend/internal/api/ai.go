@@ -296,6 +296,40 @@ func cleanNewTags(raw, existing, selected []string) []string {
 	return out
 }
 
+// aiOrganizeList groups a list's items into a few natural categories.
+func (h *integrationHandler) aiOrganizeList(w http.ResponseWriter, r *http.Request) {
+	cfg, ok := h.aiCfg(r.Context())
+	if !ok {
+		aiUnavailable(w)
+		return
+	}
+	var body struct {
+		Items []string `json:"items"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if len(body.Items) == 0 {
+		respond(w, http.StatusOK, map[string]any{"available": true, "groups": []any{}})
+		return
+	}
+	ij, _ := json.Marshal(body.Items)
+	prompt := fmt.Sprintf(`Group these checklist items into a few natural categories.
+Every item must appear exactly once, copied VERBATIM (exact text). Keep category names short (1–2 words). Don't invent items.
+Return JSON: {"groups":[{"category":"<short label>","items":["<item>", ...]}]}
+Items: %s`, string(ij))
+
+	var out struct {
+		Groups []struct {
+			Category string   `json:"category"`
+			Items    []string `json:"items"`
+		} `json:"groups"`
+	}
+	if err := ai.JSON(r.Context(), cfg, prompt, &out); err != nil {
+		respondError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	respond(w, http.StatusOK, map[string]any{"available": true, "groups": out.Groups})
+}
+
 // aiBreakdown splits a task into a few concrete subtasks.
 func (h *integrationHandler) aiBreakdown(w http.ResponseWriter, r *http.Request) {
 	cfg, ok := h.aiCfg(r.Context())

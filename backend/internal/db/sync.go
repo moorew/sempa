@@ -22,6 +22,8 @@ type SyncChanges struct {
 	Plans       []DailyPlan     `json:"plans"`
 	Tags        []TagDefinition `json:"tags"`
 	WeekReviews []WeekReview    `json:"week_reviews"`
+	Lists       []List          `json:"lists"`
+	ListItems   []ListItem      `json:"list_items"`
 	Deletions   []Tombstone     `json:"deletions"`
 	Cursor      string          `json:"cursor"`
 }
@@ -68,6 +70,8 @@ func (s *SyncStore) Changes(ctx context.Context, since string) (SyncChanges, err
 		Plans:       []DailyPlan{},
 		Tags:        []TagDefinition{},
 		WeekReviews: []WeekReview{},
+		Lists:       []List{},
+		ListItems:   []ListItem{},
 		Deletions:   []Tombstone{},
 	}
 
@@ -158,6 +162,38 @@ func (s *SyncStore) Changes(ctx context.Context, since string) (SyncChanges, err
 				return out, err
 			}
 			out.WeekReviews = append(out.WeekReviews, r)
+		}
+		rows.Close()
+	}
+
+	// Lists
+	if rows, err := s.db.QueryContext(ctx,
+		`SELECT `+listCols+` FROM lists`+filter+` ORDER BY updated_at`, args...); err != nil {
+		return out, err
+	} else {
+		for rows.Next() {
+			l, err := scanList(rows)
+			if err != nil {
+				rows.Close()
+				return out, err
+			}
+			out.Lists = append(out.Lists, l)
+		}
+		rows.Close()
+	}
+
+	// List items
+	if rows, err := s.db.QueryContext(ctx,
+		`SELECT `+listItemCols+` FROM list_items`+filter+` ORDER BY updated_at`, args...); err != nil {
+		return out, err
+	} else {
+		for rows.Next() {
+			it, err := scanListItem(rows)
+			if err != nil {
+				rows.Close()
+				return out, err
+			}
+			out.ListItems = append(out.ListItems, it)
 		}
 		rows.Close()
 	}

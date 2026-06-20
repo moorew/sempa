@@ -23,6 +23,7 @@ type taskHandler struct {
 	hub     *EventHub
 	attach  *attachmentHandler // for cascading attachment cleanup on delete
 	sync    *db.SyncStore      // records tombstones so deletes propagate offline
+	lists   *db.ListStore      // for archive-on-complete of linked lists
 }
 
 type createTaskRequest struct {
@@ -329,6 +330,11 @@ func (h *taskHandler) update(w http.ResponseWriter, r *http.Request) {
 	// untouched instances; customised/worked instances are preserved.
 	if isTemplate {
 		_ = h.store.SyncTemplateInstances(r.Context(), updated.ID, r.URL.Query().Get("today"))
+	}
+
+	// Optional cleanup: archive linked lists that opted in, on completion.
+	if req.Status != nil && *req.Status == "done" && h.lists != nil {
+		_, _ = h.lists.ArchiveForCompletedTask(r.Context(), updated.ID)
 	}
 
 	// Re-arm the reminder loop whenever the reminder time was touched.

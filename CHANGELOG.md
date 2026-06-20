@@ -6,9 +6,18 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
-## [Unreleased]
+## [1.9.0] - 2026-06-20
 
 ### Added
+- **Lists.** A new **Lists** view for standalone, undated checklists (e.g. an
+  ongoing groceries list). Add items, **drag to reorder**, and check items off
+  (they grey out / strike through in place). Lists persist independently and can
+  be **linked to a task** from the task editor's new "Lists" section — attach an
+  existing list or create one for the task. **Organize with AI** groups a list's
+  items into natural categories; **Export Markdown** downloads it (name as the
+  title, items as bullets). Lists can be archived/unarchived, with an optional
+  per-list "archive when its task is completed" cleanup. *(Currently requires a
+  reachable server; full offline sync is a planned follow-up.)*
 - **Self-heal for stranded recurring duplicates.** After each sync, local-first
   clients reconcile their recurring instances against the server's authoritative
   set and drop orphans the server no longer has (the lingering phantom duplicate).

@@ -59,6 +59,17 @@ are actually finishable.
 
 ---
 
+## Lists
+- **Shipped v1.9.0** — standalone checklists, drag-reorder, check-off (grey/strike
+  in place), task linking (from the task editor), Organize-with-AI, Markdown
+  export, archive/unarchive, optional archive-on-task-complete.
+- **Next: offline sync for Lists.** Currently server-backed (httpApi). To make
+  them local-first like tasks, wire the 5 spots: `lists`/`list_items` into
+  `schema.ts`, `db.rs` migration, `local-api.ts` CRUD, `sync.svelte` upsert +
+  apply + TOMBSTONE_TABLE (`list`/`list_item`), and add `lists` to `LOCAL_CORE`.
+  Backend already emits them in `/sync/changes`, so this is additive.
+- Ideas: reorder within AI-grouped view; move an item between lists; list templates.
+
 ## Known issues / recently fixed
 - **Recurrence deletes now tombstone** (fixed v1.8.1) — raw-SQL recurrence
   deletes bypassed the sync layer, stranding stale instances on local-first
