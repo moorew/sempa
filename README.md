@@ -416,6 +416,8 @@ Sempa is built with **time-blindness** in mind: we routinely think something wil
 
 **Predicting from the start.** With AI assist on, **Estimate with AI** suggests how long a task will take. Early on it gives a sensible general estimate (clearly labelled), and a small *“Learning your timing — N of 3 logged”* note sets expectations. Once you've logged a handful of tasks, predictions become **personalized**, grounded in your own similar past work. Predictions get better the more you use it — the first week is about gathering your data.
 
+**Catching the tasks you don't time.** Most tasks never get a timer started on them — so whenever you complete a task without tracked time, Sempa pops a quick *“How long did that take?”* prompt (one-tap chips or a custom number). It auto-detects the kind of work (Email, Meeting, Deep work, Admin…) and pre-fills a sensible default. It's deliberately un-naggy: it skips very quick tasks, backs off when you're completing a burst at once, and pauses after a few skips. Turn it off, tune the per-activity default times, and replay the intro from **Settings → Time tracking**.
+
 ### Search & tag filters
 
 **Search** looks across tasks, objectives, and journal entries. On list views you can switch into **tag filter mode** to show only tasks with a given tag. When filtering by a tag, **export** the resulting task list as **CSV** or clean **Markdown** from the Search page.

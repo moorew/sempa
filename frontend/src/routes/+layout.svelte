@@ -7,6 +7,7 @@
   import { pomodoro } from '$lib/stores/pomodoro.svelte';
   import { theme } from '$lib/stores/theme.svelte';
   import { prefs } from '$lib/stores/prefs.svelte';
+  import { timeTracking } from '$lib/stores/timeTracking.svelte';
   import { quotes } from '$lib/stores/quotes.svelte';
   import { tagStore } from '$lib/stores/tags.svelte';
   import { mobile } from '$lib/stores/mobile.svelte';
@@ -33,6 +34,8 @@
   import { startSync, sync as runSync, syncStore } from '$lib/sync.svelte';
   import PomodoroTimer from '$lib/components/PomodoroTimer.svelte';
   import SessionConfirm from '$lib/components/SessionConfirm.svelte';
+  import TaskTimeModal from '$lib/components/TaskTimeModal.svelte';
+  import TimeTrackingWalkthrough from '$lib/components/TimeTrackingWalkthrough.svelte';
   import BottomSheet from '$lib/components/BottomSheet.svelte';
   import TitleBar from '$lib/components/TitleBar.svelte';
   import SyncIndicator from '$lib/components/SyncIndicator.svelte';
@@ -150,6 +153,7 @@
     if (isStandaloneWindow) return;
 
     prefs.init();
+    timeTracking.init();
     quotes.init();
     mobile.init();
     cockpit.init();
@@ -789,6 +793,10 @@
 {/if}
 
 <SessionConfirm />
+{#if !isStandaloneWindow}
+  <TaskTimeModal />
+  <TimeTrackingWalkthrough />
+{/if}
 
 <!-- ── In-app update toast + floating sync status (main window only) ─────── -->
 {#if !isStandaloneWindow}

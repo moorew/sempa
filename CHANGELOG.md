@@ -6,6 +6,25 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.4.0] - 2026-06-20
+
+### Added
+- **Capture time on every completion.** Finish a task without the focus timer and
+  Sempa pops a quick "How long did that take?" prompt — one-tap chips or a custom
+  value — so even the small tasks you'd forget to track still build your
+  planned-vs-actual profile. It's smart about it: skips trivially-quick tasks,
+  backs off during a burst of completions, and pauses after repeated skips so it
+  never nags. Never double-asks when the focus timer already logged the time.
+- **Auto-detected activity types.** Tasks are classified into activities (Email,
+  Meeting, Deep work, Admin, Errand…) from their title, each with a sensible
+  default time that pre-fills the prompt instantly. When the local AI is on, it
+  refines the suggestion from your own history in the background.
+- **Time-tracking settings** (Settings → Time tracking) — toggle the completion
+  prompt, skip-quick-tasks, edit the default time for each activity, set focus
+  timer durations, and replay the intro.
+- **First-run walkthrough** — a short, dismissible intro to the time-tracking
+  features, re-watchable anytime from the settings above.
+
 ## [1.3.1] - 2026-06-19
 
 ### Fixed

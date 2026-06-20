@@ -621,16 +621,40 @@ export function resetApiResolver() {
 function resolveApi(): typeof httpApi {
   if (_api) return _api;
 
+  let base: typeof httpApi;
   if (hasLocalDb()) {
     // Hybrid: local core overlaid on the HTTP API (which still serves
     // server-only namespaces when a server URL is set).
     const composite = { ...httpApi } as Record<string, unknown>;
     const local = localApi as unknown as Record<string, unknown>;
     for (const ns of LOCAL_CORE) composite[ns] = local[ns];
-    _api = composite as unknown as typeof httpApi;
+    base = composite as unknown as typeof httpApi;
   } else {
-    _api = httpApi;
+    base = httpApi;
   }
+
+  // Single choke point for completion time-capture: api.tasks.update is only
+  // ever called by user actions (sync/remote changes take a different path), so
+  // wrapping it here catches every "mark done" surface without touching all 20+
+  // call sites. We prompt only when a task is completed WITHOUT tracked time —
+  // the focus-timer flow includes time_actual_minutes, so it's never double-asked.
+  const origUpdate = base.tasks.update;
+  _api = {
+    ...base,
+    tasks: {
+      ...base.tasks,
+      update: async (id: string, patch: UpdateTaskInput) => {
+        const res = await origUpdate(id, patch);
+        const p = patch as Record<string, unknown>;
+        if (p.status === 'done' && p.time_actual_minutes == null) {
+          import('$lib/stores/timeCapture.svelte')
+            .then((m) => m.timeCapture.maybePrompt(res))
+            .catch(() => {});
+        }
+        return res;
+      },
+    },
+  } as typeof httpApi;
   return _api;
 }
 
