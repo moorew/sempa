@@ -444,8 +444,8 @@ const httpApi = {
     time: () => req<TimeInsights>('/api/v1/insights/time'),
   },
 
-  // Lists — currently server-backed (not in LOCAL_CORE), so they require a
-  // reachable server; offline sync is a planned fast-follow.
+  // Lists — local-first (in LOCAL_CORE): reads/writes the local DB on Tauri/
+  // Capacitor and syncs; this httpApi path serves server-configured web clients.
   lists: {
     list: (taskId?: string, archived = false) => {
       const qs = new URLSearchParams();
@@ -643,7 +643,7 @@ import { localApi } from './tauri/local-api';
 import { hasLocalDb } from './tauri/bridge';
 
 // Namespaces served from the local DB when one exists.
-const LOCAL_CORE = ['setup', 'tasks', 'objectives', 'plans', 'pomodoros', 'tags', 'recurring', 'weeks'] as const;
+const LOCAL_CORE = ['setup', 'tasks', 'objectives', 'plans', 'pomodoros', 'tags', 'recurring', 'weeks', 'lists'] as const;
 
 let _api: typeof httpApi | null = null;
 export function resetApiResolver() {

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 
 	"github.com/clevercode/sempa/internal/db"
 )
@@ -47,6 +46,7 @@ func (h *listHandler) get(w http.ResponseWriter, r *http.Request) {
 
 func (h *listHandler) create(w http.ResponseWriter, r *http.Request) {
 	var req struct {
+		ID     string  `json:"id"`
 		Name   string  `json:"name"`
 		TaskID *string `json:"task_id"`
 	}
@@ -55,7 +55,7 @@ func (h *listHandler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	l, err := h.store.Create(r.Context(), db.CreateListParams{
-		ID: uuid.New().String(), Name: req.Name, TaskID: req.TaskID,
+		ID: clientOrNewID(req.ID), Name: req.Name, TaskID: req.TaskID,
 	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create list")
@@ -146,6 +146,7 @@ func (h *listHandler) items(w http.ResponseWriter, r *http.Request) {
 func (h *listHandler) createItem(w http.ResponseWriter, r *http.Request) {
 	listID := chi.URLParam(r, "id")
 	var req struct {
+		ID   string `json:"id"`
 		Text string `json:"text"`
 	}
 	if err := decode(r, &req); err != nil {
@@ -153,7 +154,7 @@ func (h *listHandler) createItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	it, err := h.store.CreateItem(r.Context(), db.CreateItemParams{
-		ID: uuid.New().String(), ListID: listID, Text: req.Text,
+		ID: clientOrNewID(req.ID), ListID: listID, Text: req.Text,
 	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to add item")

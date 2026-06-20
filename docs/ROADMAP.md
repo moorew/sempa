@@ -63,11 +63,12 @@ are actually finishable.
 - **Shipped v1.9.0** — standalone checklists, drag-reorder, check-off (grey/strike
   in place), task linking (from the task editor), Organize-with-AI, Markdown
   export, archive/unarchive, optional archive-on-task-complete.
-- **Next: offline sync for Lists.** Currently server-backed (httpApi). To make
-  them local-first like tasks, wire the 5 spots: `lists`/`list_items` into
-  `schema.ts`, `db.rs` migration, `local-api.ts` CRUD, `sync.svelte` upsert +
-  apply + TOMBSTONE_TABLE (`list`/`list_item`), and add `lists` to `LOCAL_CORE`.
-  Backend already emits them in `/sync/changes`, so this is additive.
+- **Offline sync — shipped v1.9.1.** Lists are now local-first like tasks: wired
+  `lists`/`list_items` through `schema.ts`, `db.rs` (migration v8), `local-api.ts`
+  CRUD, `sync.svelte` (upsert + pull apply + `TOMBSTONE_TABLE` + `replayListItem`),
+  and `LOCAL_CORE`. List/item create accept a client id (`clientOrNewID`) so
+  offline-created rows keep their id on sync. Reorder replays as per-item position
+  updates. Lists also added to the mobile bottom tab bar.
 - Ideas: reorder within AI-grouped view; move an item between lists; list templates.
 
 ## Known issues / recently fixed

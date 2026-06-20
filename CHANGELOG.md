@@ -6,6 +6,16 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.9.1] - 2026-06-20
+
+### Added
+- **Lists now work offline.** Lists and their items are local-first like tasks —
+  created, edited, reordered, and checked off with no server or internet, syncing
+  when you're back online. (Wired `lists`/`list_items` through the local schema,
+  Tauri migration, local API, and the sync engine's pull/push/tombstone paths.)
+- **Lists in the bottom tab bar** on mobile, for one-tap access (no more digging
+  through “More”).
+
 ## [1.9.0] - 2026-06-20
 
 ### Added

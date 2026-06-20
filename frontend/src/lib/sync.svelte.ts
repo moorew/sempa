@@ -107,6 +107,8 @@ interface ServerChanges {
     plans: Record<string, unknown>[];
     tags: Record<string, unknown>[];
     week_reviews: Record<string, unknown>[];
+    lists: Record<string, unknown>[];
+    list_items: Record<string, unknown>[];
     deletions: Tombstone[];
     cursor: string;
 }
@@ -150,6 +152,7 @@ function restPath(entityType: string): string | null {
         case 'tasks': return '/api/v1/tasks';
         case 'objectives': return '/api/v1/objectives';
         case 'tags': return '/api/v1/tags';
+        case 'lists': return '/api/v1/lists';
         case 'plans': return '/api/v1/plans';        // create/update both PUT /{date}
         case 'week_reviews': return '/api/v1/weeks';  // PUT /{ws}/review
         default: return null;
@@ -165,6 +168,8 @@ async function pushOutbox(): Promise<void> {
             ok = await replayPlan(m);
         } else if (m.entity_type === 'week_reviews') {
             ok = await replayWeekReview(m);
+        } else if (m.entity_type === 'list_items') {
+            ok = await replayListItem(m);
         } else {
             ok = await replay(m);
         }
@@ -183,6 +188,31 @@ async function replayPlan(m: PendingMutation): Promise<boolean> {
             method: 'PUT', body: JSON.stringify(payload),
         });
         return res.ok;
+    } catch { return false; }
+}
+
+// List items have a non-uniform REST shape: create is nested under the list
+// (POST /lists/{list_id}/items), while update/delete use /list-items/{id}.
+// Reorder is replayed as per-item position updates, so it rides the update path.
+async function replayListItem(m: PendingMutation): Promise<boolean> {
+    const payload = m.payload ? JSON.parse(m.payload) : {};
+    try {
+        let res: Response;
+        if (m.action === 'create') {
+            const listId = payload.list_id;
+            res = await serverFetch(`/api/v1/lists/${encodeURIComponent(listId)}/items`, {
+                method: 'POST', body: JSON.stringify({ ...payload, id: m.entity_id }),
+            });
+        } else if (m.action === 'update') {
+            res = await serverFetch(`/api/v1/list-items/${encodeURIComponent(m.entity_id)}`, {
+                method: 'PATCH', body: JSON.stringify(payload),
+            });
+        } else {
+            res = await serverFetch(`/api/v1/list-items/${encodeURIComponent(m.entity_id)}`, { method: 'DELETE' });
+        }
+        if (res.ok) return true;
+        if (res.status === 404 && m.action !== 'create') return true;
+        return false;
     } catch { return false; }
 }
 
@@ -254,6 +284,9 @@ async function pullChanges(): Promise<void> {
     for (const p of changes.plans) await tryUpsert(() => upsertPlan(p));
     for (const r of changes.week_reviews) await tryUpsert(() => upsertWeekReview(r));
     for (const t of orderTasksByDependency(changes.tasks)) await tryUpsert(() => upsertTask(t));
+    // Lists before their items (FK), and both can reference tasks (already applied).
+    for (const l of changes.lists ?? []) await tryUpsert(() => upsertList(l));
+    for (const it of changes.list_items ?? []) await tryUpsert(() => upsertListItem(it));
     for (const d of changes.deletions) await tryUpsert(() => applyDeletion(d));
 
     // Anything actually changed locally → tell the UI to re-read. Do this BEFORE
@@ -268,7 +301,8 @@ async function pullChanges(): Promise<void> {
         await setSyncState(CURSOR_KEY, changes.cursor);
     } else if (failed > 0) {
         const total = changes.tasks.length + changes.objectives.length + changes.plans.length
-            + changes.tags.length + changes.week_reviews.length;
+            + changes.tags.length + changes.week_reviews.length
+            + (changes.lists?.length ?? 0) + (changes.list_items?.length ?? 0);
         throw new Error(`Applied ${applied}, skipped ${failed} of ${total} changes (will retry next sync)`);
     }
 }
@@ -324,6 +358,39 @@ async function upsertTask(t: Record<string, unknown>): Promise<boolean> {
             t.created_at ?? null, t.updated_at ?? null, JSON.stringify(t.tags ?? []),
             t.recurrence_rule ?? null, t.recurrence_origin_id ?? null, t.is_customized ? 1 : 0,
             t.scheduled_start ?? null, t.scheduled_end ?? null, t.roughly_at ?? null, t.remind_at ?? null,
+        ],
+    );
+    return true;
+}
+
+async function upsertList(l: Record<string, unknown>): Promise<boolean> {
+    if (!(await lww('lists', l))) return false;
+    await execute(
+        `INSERT INTO lists (id, name, task_id, position, archived_at, archive_on_complete, created_at, updated_at)
+         VALUES (?,?,?,?,?,?,?,?)
+         ON CONFLICT(id) DO UPDATE SET
+            name=excluded.name, task_id=excluded.task_id, position=excluded.position,
+            archived_at=excluded.archived_at, archive_on_complete=excluded.archive_on_complete,
+            updated_at=excluded.updated_at`,
+        [
+            l.id, l.name ?? '', l.task_id ?? null, l.position ?? 0, l.archived_at ?? null,
+            l.archive_on_complete ? 1 : 0, l.created_at ?? null, l.updated_at ?? null,
+        ],
+    );
+    return true;
+}
+
+async function upsertListItem(it: Record<string, unknown>): Promise<boolean> {
+    if (!(await lww('list_items', it))) return false;
+    await execute(
+        `INSERT INTO list_items (id, list_id, text, position, done, category, created_at, updated_at)
+         VALUES (?,?,?,?,?,?,?,?)
+         ON CONFLICT(id) DO UPDATE SET
+            list_id=excluded.list_id, text=excluded.text, position=excluded.position,
+            done=excluded.done, category=excluded.category, updated_at=excluded.updated_at`,
+        [
+            it.id, it.list_id, it.text ?? '', it.position ?? 0, it.done ? 1 : 0,
+            it.category ?? null, it.created_at ?? null, it.updated_at ?? null,
         ],
     );
     return true;
@@ -393,6 +460,8 @@ const TOMBSTONE_TABLE: Record<string, string> = {
     plan: 'daily_plans',
     tag: 'tag_definitions',
     week_review: 'week_reviews',
+    list: 'lists',
+    list_item: 'list_items',
 };
 
 async function applyDeletion(d: Tombstone): Promise<boolean> {

@@ -13,6 +13,7 @@ import type {
     Objective, CreateObjectiveInput, UpdateObjectiveInput,
     DailyPlan, UpsertPlanInput,
     PomodoroSession, TagDefinition, WeekReview,
+    List, ListItem,
 } from '$lib/types';
 import { weekStart as computeWeekStart } from '$lib/utils';
 
@@ -327,6 +328,96 @@ export const localApi = {
             return query<PomodoroSession[]>(
                 `SELECT * FROM pomodoro_sessions WHERE task_id = ? ORDER BY started_at DESC`, [taskId],
             );
+        },
+    },
+
+    // Lists — local-first like tasks: reads/writes local SQLite and queues each
+    // mutation for replay. Mirrors httpApi.lists exactly so the resolver can swap.
+    lists: {
+        list: async (taskId?: string, archived = false): Promise<List[]> => {
+            const conds: string[] = [];
+            const args: unknown[] = [];
+            if (!archived) conds.push('archived_at IS NULL');
+            if (taskId) { conds.push('task_id = ?'); args.push(taskId); }
+            const where = conds.length ? ` WHERE ${conds.join(' AND ')}` : '';
+            return query<List[]>(`SELECT * FROM lists${where} ORDER BY position, created_at`, args);
+        },
+        get: async (id: string): Promise<List> =>
+            (await query<List[]>(`SELECT * FROM lists WHERE id = ?`, [id]))[0],
+        create: async (input: { name: string; task_id?: string | null }): Promise<List> => {
+            const id = uuid(); const ts = now();
+            await execute(
+                `INSERT INTO lists (id, name, task_id, position, archive_on_complete, created_at, updated_at)
+                 VALUES (?, ?, ?, COALESCE((SELECT MAX(position)+1 FROM lists), 0), 0, ?, ?)`,
+                [id, input.name, input.task_id ?? null, ts, ts]);
+            await logMutation('lists', id, 'create', { name: input.name, task_id: input.task_id ?? null });
+            flushSoon();
+            return (await query<List[]>(`SELECT * FROM lists WHERE id = ?`, [id]))[0];
+        },
+        update: async (id: string, patch: { name?: string; task_id?: string | null; position?: number; archived?: boolean; archive_on_complete?: boolean }): Promise<List> => {
+            const sets: string[] = []; const args: unknown[] = [];
+            const log: Record<string, unknown> = {};
+            if (patch.name !== undefined) { sets.push('name = ?'); args.push(patch.name); log.name = patch.name; }
+            if (patch.task_id !== undefined) { sets.push('task_id = ?'); args.push(patch.task_id || null); log.task_id = patch.task_id ?? ''; }
+            if (patch.position !== undefined) { sets.push('position = ?'); args.push(patch.position); log.position = patch.position; }
+            if (patch.archived !== undefined) { sets.push('archived_at = ?'); args.push(patch.archived ? now() : null); log.archived = patch.archived; }
+            if (patch.archive_on_complete !== undefined) { sets.push('archive_on_complete = ?'); args.push(patch.archive_on_complete ? 1 : 0); log.archive_on_complete = patch.archive_on_complete; }
+            sets.push('updated_at = ?'); args.push(now());
+            args.push(id);
+            await execute(`UPDATE lists SET ${sets.join(', ')} WHERE id = ?`, args);
+            await logMutation('lists', id, 'update', log);
+            flushSoon();
+            return (await query<List[]>(`SELECT * FROM lists WHERE id = ?`, [id]))[0];
+        },
+        delete: async (id: string): Promise<{ status: string }> => {
+            // Remove items locally too (FK cascade isn't guaranteed on-device); the
+            // server cascade + tombstones cover other devices on replay.
+            await execute(`DELETE FROM list_items WHERE list_id = ?`, [id]);
+            await execute(`DELETE FROM lists WHERE id = ?`, [id]);
+            await logMutation('lists', id, 'delete', {});
+            flushSoon();
+            return { status: 'deleted' };
+        },
+        items: async (id: string): Promise<ListItem[]> =>
+            query<ListItem[]>(`SELECT * FROM list_items WHERE list_id = ? ORDER BY position, created_at`, [id]),
+        addItem: async (id: string, text: string): Promise<ListItem> => {
+            const itemId = uuid(); const ts = now();
+            await execute(
+                `INSERT INTO list_items (id, list_id, text, position, done, created_at, updated_at)
+                 VALUES (?, ?, ?, COALESCE((SELECT MAX(position)+1 FROM list_items WHERE list_id = ?), 0), 0, ?, ?)`,
+                [itemId, id, text, id, ts, ts]);
+            await logMutation('list_items', itemId, 'create', { list_id: id, text });
+            flushSoon();
+            return (await query<ListItem[]>(`SELECT * FROM list_items WHERE id = ?`, [itemId]))[0];
+        },
+        reorder: async (id: string, ids: string[]): Promise<{ status: string }> => {
+            const ts = now();
+            for (let i = 0; i < ids.length; i++) {
+                await execute(`UPDATE list_items SET position = ?, updated_at = ? WHERE id = ?`, [i, ts, ids[i]]);
+                await logMutation('list_items', ids[i], 'update', { position: i });
+            }
+            flushSoon();
+            return { status: 'ok' };
+        },
+        updateItem: async (id: string, patch: { text?: string; done?: boolean; position?: number; category?: string | null }): Promise<ListItem> => {
+            const sets: string[] = []; const args: unknown[] = [];
+            const log: Record<string, unknown> = {};
+            if (patch.text !== undefined) { sets.push('text = ?'); args.push(patch.text); log.text = patch.text; }
+            if (patch.done !== undefined) { sets.push('done = ?'); args.push(patch.done ? 1 : 0); log.done = patch.done; }
+            if (patch.position !== undefined) { sets.push('position = ?'); args.push(patch.position); log.position = patch.position; }
+            if (patch.category !== undefined) { sets.push('category = ?'); args.push(patch.category || null); log.category = patch.category ?? ''; }
+            sets.push('updated_at = ?'); args.push(now());
+            args.push(id);
+            await execute(`UPDATE list_items SET ${sets.join(', ')} WHERE id = ?`, args);
+            await logMutation('list_items', id, 'update', log);
+            flushSoon();
+            return (await query<ListItem[]>(`SELECT * FROM list_items WHERE id = ?`, [id]))[0];
+        },
+        deleteItem: async (id: string): Promise<{ status: string }> => {
+            await execute(`DELETE FROM list_items WHERE id = ?`, [id]);
+            await logMutation('list_items', id, 'delete', {});
+            flushSoon();
+            return { status: 'deleted' };
         },
     },
 

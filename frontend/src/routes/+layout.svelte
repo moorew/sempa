@@ -437,6 +437,7 @@
     { href: '/home', label: 'Today', prefix: '/home', icon: 'today' },
     { href: `/week/${thisWeek}`, label: 'Week',  prefix: '/week/', icon: 'week' },
     { href: '/journal',          label: 'Journal', prefix: '/journal', icon: 'journal' },
+    { href: '/lists',            label: 'Lists', prefix: '/lists', icon: 'lists' },
     { href: '#more',             label: 'More',  prefix: '__more', icon: 'more' },
   ]);
 </script>
@@ -669,6 +670,8 @@
           <Mail size={22} strokeWidth={active ? 2.25 : 1.75} />
         {:else if tab.icon === 'journal'}
           <BookOpen size={22} strokeWidth={active ? 2.25 : 1.75} />
+        {:else if tab.icon === 'lists'}
+          <ListChecks size={22} strokeWidth={active ? 2.25 : 1.75} />
         {:else}
           <Menu size={22} strokeWidth={active ? 2.25 : 1.75} />
         {/if}
