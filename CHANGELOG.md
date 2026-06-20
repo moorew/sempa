@@ -6,6 +6,23 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.11.2] - 2026-06-20
+
+### Changed
+- **Multi-user: data-ownership foundation (internal).** Every user-owned entity
+  (tasks, lists, list items, weekly objectives, daily plans, week reviews,
+  pomodoro sessions) now carries an `owner_id`, and a one-time startup backfill
+  assigns all your existing data to your account. Behaviour is unchanged — data is
+  still shared across accounts — but this is the groundwork for per-user privacy,
+  landing next.
+
+## [1.11.1] - 2026-06-20
+
+### Fixed
+- **"Users & password" is now under Settings → Account**, where account and
+  credential management belongs — it was previously buried under the Tasks
+  settings section and hard to find.
+
 ## [1.11.0] - 2026-06-20
 
 ### Added

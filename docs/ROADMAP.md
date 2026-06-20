@@ -96,10 +96,16 @@ container-per-user — federation is the wrong tool for 2 people.)
   admin; first post-deploy login becomes admin; hardening (bcrypt, login throttle,
   timing-uniform checks, admin gating). Backend `db/users.go`, `api/users.go`,
   `auth.go`; frontend `/settings/users`.
-- **Phase 1B — data ownership (next).** Add `owner_id` to every data table +
-  backfill existing rows to the primary user; scope all reads/writes; per-user
-  `/sync/changes` + scoped SSE (the privacy-correctness work). Until this lands,
-  all data is still shared across accounts.
+- **Phase 1B — data ownership (in progress).**
+  - **1B-1 ownership foundation (shipped v1.11.2).** Migration 024 adds `owner_id`
+    to tasks, lists, list_items, weekly_objectives, daily_plans, week_reviews,
+    pomodoro_sessions (+ indexes). Startup `db.BackfillOwnership` claims every
+    still-unowned (`owner_id=''`) row for the primary (oldest) user — idempotent,
+    no-op with no users. **Behaviour-neutral**: nothing is scoped yet, so data is
+    still shared; this just attributes existing rows so the flip can't hide them.
+  - **1B-2 scoping (next).** Set `owner_id` on create from the session user; scope
+    every read + `/sync/changes` + SSE by owner; map device/Dock sessions to the
+    primary user. Isolation tests (user A never sees user B's rows). The privacy flip.
 - **Phase 2 — sharing.** `shared` flag + Private/Shared toggle on tasks/lists/
   objectives; sync + realtime include shared items for both; cascade to subtasks/
   list-items. Tags global; reminders to owner (v1).

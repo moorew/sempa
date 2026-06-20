@@ -39,6 +39,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Claim any pre-multi-user rows for the primary (oldest) user, so the
+	// existing single user keeps all their data once per-user scoping lands.
+	// Idempotent — only touches still-unowned rows.
+	if n, err := db.BackfillOwnership(context.Background(), database); err != nil {
+		slog.Error("backfill ownership", "err", err)
+		os.Exit(1)
+	} else if n > 0 {
+		slog.Info("backfilled data ownership", "rows", n)
+	}
+
 	blobs, err := blob.New(cfg.AttachmentsDir)
 	if err != nil {
 		slog.Error("open attachments dir", "err", err)
