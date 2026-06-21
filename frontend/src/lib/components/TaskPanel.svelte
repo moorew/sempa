@@ -1153,19 +1153,19 @@
         <div class="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5"
              style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
           <div class="min-w-0">
-            <p class="text-xs font-medium" style="color: var(--sempa-text);">
-              {shared ? 'Shared with household' : 'Private'}
+            <p class="text-[13px] font-medium" style="color: var(--sempa-text);">
+              {shared ? 'Shared' : 'Private'}
             </p>
-            <p class="text-[11px]" style="color: var(--sempa-text-dim);">
-              {shared ? 'Everyone in the household can see and edit this.' : 'Only you can see this.'}
+            <p class="text-[11.5px]" style="color: var(--sempa-text-soft);">
+              {shared ? 'Everyone can see and edit this.' : 'Only you can see this.'}
             </p>
           </div>
-          <button type="button" role="switch" aria-checked={shared} aria-label="Share with household"
+          <button type="button" role="switch" aria-checked={shared} aria-label="Share task"
                   onclick={() => (shared = !shared)}
-                  class="relative h-5 w-9 shrink-0 rounded-full transition-colors"
+                  class="relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors"
                   style="background: {shared ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
-            <span class="absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all"
-                  style="left: {shared ? '1.125rem' : '0.125rem'};"></span>
+            <span class="absolute top-[3px] h-[20px] w-[20px] rounded-full bg-white transition-all"
+                  style="left: {shared ? '21px' : '3px'};"></span>
           </button>
         </div>
       {/if}

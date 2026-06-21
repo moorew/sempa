@@ -6,6 +6,13 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.12.2] - 2026-06-21
+
+### Changed
+- **Sharing control is now an on-brand toggle.** The list sharing checkbox was a
+  default browser checkbox; it's now the same themed Sempa switch used elsewhere,
+  and the label is simply **Private / Shared** (was "Share with household").
+
 ## [1.12.1] - 2026-06-20
 
 ### Added

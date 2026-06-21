@@ -180,13 +180,27 @@
         {:else}
           <span>Not linked to a task — attach it from a task's “Lists” section.</span>
         {/if}
-        {#if household.multiUser}
-          <label class="inline-flex cursor-pointer items-center gap-1.5">
-            <input type="checkbox" checked={list.shared} onchange={toggleShared} />
-            {list.shared ? 'Shared with household' : 'Share with household'}
-          </label>
-        {/if}
       </div>
+
+      <!-- Private / Shared (multi-user household only) -->
+      {#if household.multiUser}
+        <div class="mb-4 flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5"
+             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+          <div class="min-w-0">
+            <p class="text-[13px] font-medium" style="color: var(--sempa-text);">{list.shared ? 'Shared' : 'Private'}</p>
+            <p class="text-[11.5px]" style="color: var(--sempa-text-soft);">
+              {list.shared ? 'Everyone can see and edit this list.' : 'Only you can see this list.'}
+            </p>
+          </div>
+          <button type="button" role="switch" aria-checked={list.shared} aria-label="Share list"
+                  onclick={toggleShared}
+                  class="relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors"
+                  style="background: {list.shared ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
+            <span class="absolute top-[3px] h-[20px] w-[20px] rounded-full bg-white transition-all"
+                  style="left: {list.shared ? '21px' : '3px'};"></span>
+          </button>
+        </div>
+      {/if}
 
       <!-- Actions -->
       <div class="mb-4 flex flex-wrap gap-2">
