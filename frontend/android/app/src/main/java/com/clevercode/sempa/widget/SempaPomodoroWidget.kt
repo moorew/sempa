@@ -3,10 +3,14 @@ package com.clevercode.sempa.widget
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.SystemClock
+import android.widget.RemoteViews
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.*
+import androidx.glance.appwidget.AndroidRemoteViews
+import com.clevercode.sempa.R
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
@@ -68,9 +72,23 @@ class SempaPomodoroWidget : GlanceAppWidget() {
             }
         }
 
+        // A native Chronometer that ticks down on its own (no per-second widget
+        // refresh, no battery cost) — the live mirror of the app timer. Its base is
+        // in elapsedRealtime() terms; convert from the wall-clock remaining. Only
+        // while running (paused shows static text) and on API 24+ (count-down).
+        val isFocus = phase.startsWith("Focus", true)
+        val chronoRv: RemoteViews? =
+            if (active && running && remainingMs > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                RemoteViews(context.packageName, R.layout.widget_focus_chrono).apply {
+                    setChronometerCountDown(R.id.focus_chrono, true)
+                    setChronometer(R.id.focus_chrono, SystemClock.elapsedRealtime() + remainingMs, null, true)
+                    setTextColor(R.id.focus_chrono, if (isFocus) 0xFFB3592E.toInt() else 0xFF22C55E.toInt())
+                }
+            } else null
+
         provideContent {
             if (active) {
-                ActiveContent(title = title, phase = phase, running = running, minsLeft = minsLeft)
+                ActiveContent(title = title, phase = phase, running = running, minsLeft = minsLeft, chronoRv = chronoRv)
             } else {
                 IdleContent(tasks = tasks)
             }
@@ -79,7 +97,7 @@ class SempaPomodoroWidget : GlanceAppWidget() {
 }
 
 @Composable
-private fun ActiveContent(title: String, phase: String, running: Boolean, minsLeft: Int) {
+private fun ActiveContent(title: String, phase: String, running: Boolean, minsLeft: Int, chronoRv: RemoteViews?) {
     val accent = if (phase.startsWith("Focus", true)) SempaWidgetTheme.primary else SempaWidgetTheme.green
     Box(
         modifier = GlanceModifier
@@ -101,11 +119,16 @@ private fun ActiveContent(title: String, phase: String, running: Boolean, minsLe
                 maxLines = 1,
             )
             Spacer(modifier = GlanceModifier.height(6.dp))
-            Text(
-                text = if (!running) "Paused" else if (minsLeft > 0) "$minsLeft min left" else "Almost done",
-                style = TextStyle(color = ColorProvider(SempaWidgetTheme.onSurface), fontSize = 26.sp, fontWeight = FontWeight.Bold),
-                maxLines = 1,
-            )
+            if (chronoRv != null) {
+                // Live, self-ticking countdown — mirrors the app timer.
+                AndroidRemoteViews(remoteViews = chronoRv)
+            } else {
+                Text(
+                    text = if (!running) "Paused" else if (minsLeft > 0) "$minsLeft min left" else "Almost done",
+                    style = TextStyle(color = ColorProvider(SempaWidgetTheme.onSurface), fontSize = 26.sp, fontWeight = FontWeight.Bold),
+                    maxLines = 1,
+                )
+            }
 
             Spacer(modifier = GlanceModifier.defaultWeight())
 
