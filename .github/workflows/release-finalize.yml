@@ -27,11 +27,12 @@ concurrency:
 jobs:
   checksums:
     name: Sign SHA256SUMS
-    # Manual dispatch, or a successful tag (v*) release build.
+    # Manual dispatch, or any successful platform release build. Whether this is
+    # actually a tagged release is decided in "Resolve tag" (a non-tag build —
+    # e.g. a Linux PR run — resolves no tag and the rest of the job is skipped).
     if: >-
       ${{ github.event_name == 'workflow_dispatch' ||
-          (github.event.workflow_run.conclusion == 'success' &&
-           startsWith(github.event.workflow_run.head_branch, 'v')) }}
+          github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write   # upload the checksums to the release
@@ -39,12 +40,34 @@ jobs:
     steps:
       - name: Resolve tag
         id: tag
+        # workflow_run.head_branch is the DEFAULT branch ('main') for a
+        # tag-triggered build — NOT the tag — so derive the tag from the build's
+        # commit SHA. Sets should=false (and the rest of the job is skipped) when
+        # the build isn't a release tag.
         env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
           DISPATCH_TAG: ${{ github.event.inputs.tag }}
-          RUN_TAG: ${{ github.event.workflow_run.head_branch }}
-        run: echo "tag=${DISPATCH_TAG:-$RUN_TAG}" >> "$GITHUB_OUTPUT"
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ -n "$DISPATCH_TAG" ]; then
+            TAG="$DISPATCH_TAG"
+          else
+            TAG=$(gh api "repos/$REPO/tags" --paginate \
+                    --jq ".[] | select(.commit.sha==\"$HEAD_SHA\") | .name" \
+                  | grep -E '^v[0-9]' | head -1 || true)
+          fi
+          if [ -z "$TAG" ]; then
+            echo "No release tag for this build — nothing to finalize."
+            echo "should=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Finalizing $TAG"
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+            echo "should=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Download release assets
+        if: steps.tag.outputs.should == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -57,12 +80,14 @@ jobs:
           ls -la
 
       - name: Generate SHA256SUMS
+        if: steps.tag.outputs.should == 'true'
         working-directory: assets
         run: |
           find . -maxdepth 1 -type f -printf '%f\n' | sort | xargs -r sha256sum > ../SHA256SUMS
           echo "----- SHA256SUMS -----"; cat ../SHA256SUMS
 
       - name: Install cosign
+        if: steps.tag.outputs.should == 'true'
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:
           # cosign v2: classic detached .sig + .pem (Scorecard-recognized; what
@@ -70,6 +95,7 @@ jobs:
           cosign-release: 'v2.6.3'
 
       - name: Sign SHA256SUMS (keyless cosign)
+        if: steps.tag.outputs.should == 'true'
         run: |
           cosign sign-blob --yes \
             --output-signature SHA256SUMS.cosign.sig \
@@ -79,6 +105,7 @@ jobs:
       # Remove any stale per-artifact signatures / prior checksums so the release
       # ends up with exactly one signed manifest.
       - name: Prune stale signatures from the release
+        if: steps.tag.outputs.should == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -92,6 +119,7 @@ jobs:
           done
 
       - name: Upload checksums to the release
+        if: steps.tag.outputs.should == 'true'
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
