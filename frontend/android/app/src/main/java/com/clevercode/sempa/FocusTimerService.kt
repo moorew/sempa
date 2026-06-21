@@ -9,6 +9,11 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import androidx.glance.appwidget.updateAll
+import com.clevercode.sempa.widget.SempaPomodoroWidget
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlin.math.ceil
 
 /**
@@ -28,24 +33,41 @@ class FocusTimerService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_STOP -> { stopForegroundCompat(); stopSelf(); return START_NOT_STICKY }
+            ACTION_STOP -> {
+                setActive(false); refreshFocusWidget()
+                stopForegroundCompat(); stopSelf(); return START_NOT_STICKY
+            }
 
             ACTION_BTN_DONE -> {
                 relayAction("done")
+                setActive(false); refreshFocusWidget()
                 stopForegroundCompat(); stopSelf()
                 return START_NOT_STICKY
             }
 
             ACTION_BTN_PAUSE -> {
                 relayAction("pause")
-                // Reflect the pause in the shade even if the app is closed.
+                // Persist the pause (running=false, banked remaining) so BOTH the
+                // notification AND the home-screen widget reflect it even with the
+                // app closed; end=0 marks "no live countdown anchor".
                 val p = loadState()
-                startForegroundCompat(buildNotification(p.title, p.phase, false, 0L, remainingNow(p)))
+                val rem = remainingNow(p)
+                saveState(p.title, p.phase, false, 0L, rem)
+                startForegroundCompat(buildNotification(p.title, p.phase, false, 0L, rem))
+                refreshFocusWidget()
                 return START_STICKY
             }
 
             ACTION_BTN_RESUME -> {
                 relayAction("resume")
+                // Resume the countdown natively (new anchor = now + remaining) so the
+                // widget/notification tick again even when the app isn't running; the
+                // web store reconciles its own clock when next opened.
+                val p = loadState()
+                val end = System.currentTimeMillis() + p.remaining
+                saveState(p.title, p.phase, true, end, p.remaining)
+                startForegroundCompat(buildNotification(p.title, p.phase, true, end, p.remaining))
+                refreshFocusWidget()
                 return START_STICKY
             }
 
@@ -58,6 +80,7 @@ class FocusTimerService : Service() {
                 val remaining = intent?.getLongExtra(EXTRA_REMAINING, 0L) ?: 0L
                 saveState(title, phase, running, endTime, remaining)
                 startForegroundCompat(buildNotification(title, phase, running, endTime, remaining))
+                refreshFocusWidget()
                 return START_STICKY
             }
         }
@@ -137,7 +160,16 @@ class FocusTimerService : Service() {
         prefs().edit()
             .putString(KEY_TITLE, title).putString(KEY_PHASE, phase)
             .putBoolean(KEY_RUNNING, running).putLong(KEY_END, endTime).putLong(KEY_REMAIN, remaining)
+            .putBoolean(KEY_ACTIVE, true) // a saved session is, by definition, active
             .apply()
+    }
+    private fun setActive(active: Boolean) { prefs().edit().putBoolean(KEY_ACTIVE, active).apply() }
+
+    /** Re-render the home-screen Pomodoro widget after a state change. */
+    private fun refreshFocusWidget() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try { SempaPomodoroWidget().updateAll(applicationContext) } catch (_: Exception) {}
+        }
     }
     private fun loadState(): State {
         val p = prefs()
@@ -173,10 +205,17 @@ class FocusTimerService : Service() {
 
         const val KEY_PENDING = "pending_action"
         const val KEY_PENDING_TS = "pending_ts"
-        private const val KEY_TITLE = "s_title"
-        private const val KEY_PHASE = "s_phase"
-        private const val KEY_RUNNING = "s_running"
-        private const val KEY_END = "s_end"
-        private const val KEY_REMAIN = "s_remain"
+        // A task id stashed by the widget's "start this task" tap, drained by JS on
+        // next foreground (consumePendingStart) so the web store owns the actual start.
+        const val KEY_PENDING_START = "pending_start_task"
+        // Whether a focus session is currently active (drives the widget's active vs
+        // idle layout). Read by SempaPomodoroWidget; written here.
+        const val KEY_ACTIVE = "s_active"
+        // Read by SempaPomodoroWidget to render the active session, so non-private.
+        const val KEY_TITLE = "s_title"
+        const val KEY_PHASE = "s_phase"
+        const val KEY_RUNNING = "s_running"
+        const val KEY_END = "s_end"
+        const val KEY_REMAIN = "s_remain"
     }
 }

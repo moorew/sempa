@@ -15,7 +15,8 @@ interface FocusTimerPlugin {
   show(opts: { title: string; phase: string; running: boolean; endTime: number; remaining: number }): Promise<void>;
   stop(): Promise<void>;
   consumePendingAction(): Promise<{ action?: string }>;
-  addListener?(event: string, cb: (data: { action?: string }) => void): unknown;
+  consumePendingStart?(): Promise<{ taskId?: string }>;
+  addListener?(event: string, cb: (data: { action?: string; taskId?: string }) => void): unknown;
 }
 
 function plugin(): FocusTimerPlugin | null {
@@ -55,6 +56,8 @@ export function initFocusNotification(): void {
   if (!p || inited) return;
   inited = true;
   try { p.addListener?.('focusAction', (e) => void route(e?.action)); } catch { /* ignore */ }
+  // Widget "start this task" taps, delivered live when the app is already running.
+  try { p.addListener?.('focusStart', (e) => void startFocusTask(e?.taskId)); } catch { /* ignore */ }
   void drainPending();
   // Re-check on every foreground, for taps made while the app was closed.
   try {
@@ -68,6 +71,20 @@ async function drainPending(): Promise<void> {
   const p = plugin();
   if (!p) return;
   try { const r = await p.consumePendingAction(); await route(r?.action); } catch { /* ignore */ }
+  try { const r = await p.consumePendingStart?.(); await startFocusTask(r?.taskId); } catch { /* ignore */ }
+}
+
+/** Start the timer for a task chosen from the home-screen widget. The web store is
+ *  the single source of truth, so the widget only ever asks; we start it here. */
+async function startFocusTask(taskId?: string): Promise<void> {
+  if (!taskId) return;
+  const { pomodoro } = await import('$lib/stores/pomodoro.svelte');
+  const { api } = await import('$lib/api');
+  try {
+    const t = await api.tasks.get(taskId);
+    if (!t) return;
+    pomodoro.start(t.id, t.title, t.time_actual_minutes ?? 0, t.time_estimate_minutes ?? null);
+  } catch { /* task gone / offline — ignore */ }
 }
 
 async function route(action?: string): Promise<void> {

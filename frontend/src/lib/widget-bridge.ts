@@ -10,7 +10,7 @@ interface WidgetBridgePlugin {
   updateWidgetData(opts: {
     todayTotal: number;
     todayDone: number;
-    tasks: { title: string; done: boolean }[];
+    tasks: { id: string; title: string; done: boolean }[];
     week: { date: string; count: number }[];
   }): Promise<void>;
 }
@@ -38,6 +38,7 @@ export function syncWidgetData(todayTasks: Task[], weekTaskCounts?: Map<string, 
   const total = todayTasks.length;
   const done = todayTasks.filter(t => t.status === 'done').length;
   const tasks = todayTasks.slice(0, 10).map(t => ({
+    id: t.id,
     title: t.title,
     done: t.status === 'done',
   }));
