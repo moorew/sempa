@@ -8,4 +8,10 @@
     <string name="widget_medium_desc">Today\'s tasks with quick actions</string>
     <string name="widget_large_desc">Weekly overview with today\'s task list</string>
     <string name="widget_pomodoro_desc">Focus timer — start a task and control your Pomodoro</string>
+    <!-- Names shown in the home-screen widget picker (without these, every widget
+         just reads "sempa" and they're indistinguishable). -->
+    <string name="widget_small_label">Sempa · Progress</string>
+    <string name="widget_medium_label">Sempa · Today\'s tasks</string>
+    <string name="widget_large_label">Sempa · Weekly overview</string>
+    <string name="widget_pomodoro_label">Sempa · Focus timer</string>
 </resources>

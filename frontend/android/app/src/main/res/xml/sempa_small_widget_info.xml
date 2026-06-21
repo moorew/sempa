@@ -9,4 +9,4 @@
     android:updatePeriodMillis="900000"
     android:widgetCategory="home_screen"
     android:description="@string/widget_small_desc"
-    android:previewLayout="@layout/glance_default_loading_layout" />
+    android:previewImage="@mipmap/ic_launcher" />

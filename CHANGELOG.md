@@ -6,6 +6,15 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.14.1] - 2026-06-21
+
+### Fixed
+- **Home-screen widget picker now names each widget.** All four widgets showed as
+  "sempa" with a blank white preview, so you couldn't tell which was the focus
+  timer. They now have distinct labels — "Sempa · Focus timer", "Sempa · Today's
+  tasks", "Sempa · Weekly overview", "Sempa · Progress" — and show the app icon as
+  a preview instead of a white square.
+
 ## [1.14.0] - 2026-06-21
 
 ### Added
