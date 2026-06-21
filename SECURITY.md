@@ -99,16 +99,24 @@ are dismissed in the Security tab with a justification and documented here:
   risk is accepted. See `backend/internal/integrations/fastmail/aititle.go`. If
   Sempa ever gains lower-privilege/multi-user roles, revisit this.
 
-- **`glib` < 0.20 unsoundness (GHSA-wrw7-89jp-8q8g) — Linux-only Tauri build
-  graph.** `glib` 0.18 is pulled in transitively by the gtk-rs / `webkit2gtk`
-  stack that Tauri uses **only on Linux**. Sempa ships a **Windows** desktop app
-  (which uses the WebView2 runtime — no gtk/glib) and an **Android** app; there
-  is **no Linux desktop release**, so `glib` never appears in a shipped artifact.
-  The advisory is a Rust *soundness* issue in the gtk-rs `glib` bindings (unsound
-  `Variant`/value iterators), reachable only by specific misuse of those APIs
-  within the process — Sempa's own code never calls `glib` directly. A fix
-  requires the whole gtk-rs stack to move to 0.20, which is gated on Tauri/`wry`
-  support; we will pick it up with the next Tauri upgrade. Accepted until then.
+- **gtk-rs / `glib` advisories — Linux-only Tauri build graph.** The gtk-rs GTK3
+  binding crates (`glib`, `atk`, `gdk*`, `gtk`, `gdk-pixbuf`, …) are pulled in
+  transitively by the `webkit2gtk` webview Tauri uses **only on Linux**. The
+  Windows desktop app uses the WebView2 runtime (no gtk/glib) and the Android app
+  uses Capacitor, so these never appear there. The Linux desktop **does** ship
+  (AppImage/deb/rpm), so the crates are in those artifacts. Two flavours of
+  finding, both accepted:
+  - *Soundness* (`glib` < 0.20, GHSA-wrw7-89jp-8q8g): a Rust soundness issue in
+    the bindings (unsound `Variant`/value iterators), reachable only by specific
+    misuse of those APIs in-process — Sempa never calls `glib` directly.
+  - *Unmaintained* (e.g. **RUSTSEC-2024-0413** `atk`, and the sibling `gdk*`/`gtk`
+    crates): the gtk-rs GTK3 repos were archived. These are *informational*
+    "unmaintained" advisories, **not exploitable CVEs**, and **no patched version
+    exists**.
+  In every case the only real fix is the whole gtk-rs stack moving off GTK3,
+  which is gated on Tauri/`wry`/`webkit2gtk` support — we pick it up with the next
+  Tauri upgrade. Our gating scanners (`govulncheck`, Trivy, CodeQL) don't flag
+  them; they surface only in OSV/Scorecard's posture report. Accepted until then.
 
 - **CodeQL `go/request-forgery` (SSRF) — link-preview / unfurl fetcher.**
   `unfurl.Fetch` / `FetchImage` deliberately fetch a user-supplied URL (to build
@@ -146,11 +154,11 @@ are dismissed in the Security tab with a justification and documented here:
   - *Binary-Artifacts* — the only checked-in binary is the standard Gradle wrapper
     JAR (a verified Android build file).
   - *Maintained* — time-based ("created in the last 90 days"); resolves on its own.
-  - *Vulnerabilities* — the 18 findings are RUSTSEC advisories in the **Tauri Linux
-    desktop build graph** (gtk-rs / `webkit2gtk` stack) in `Cargo.lock`. Sempa ships
-    no Linux desktop build today, so none are in a shipped artifact. They'll be
-    addressed (via a Tauri/gtk-rs upgrade and `cargo update`) when the Linux client
-    lands. See the `glib` entry above.
+  - *Vulnerabilities* — the ~18 findings are RUSTSEC advisories in the **Tauri Linux
+    desktop build graph** (gtk-rs GTK3 / `webkit2gtk` stack) in `Cargo.lock` —
+    overwhelmingly *unmaintained* advisories (e.g. RUSTSEC-2024-0413) with no
+    patched versions, not exploitable CVEs. Fixed only by Tauri moving off GTK3.
+    See the gtk-rs / `glib` entry above for the full rationale.
 
 ## Reporting a vulnerability
 
