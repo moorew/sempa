@@ -104,6 +104,42 @@ func TestUserStore_EnsureAndHashing(t *testing.T) {
 	}
 }
 
+func TestEmailOnAllowList_ClosedByDefault(t *testing.T) {
+	// Empty list = nobody (closed by default — the Google gate relies on invites).
+	empty := newAuthTest(t, config.Config{})
+	if empty.emailOnAllowList("anyone@example.com") {
+		t.Fatal("empty allow-list must NOT allow arbitrary emails")
+	}
+	// Non-empty list = explicit, case-insensitive membership only.
+	listed := newAuthTest(t, config.Config{AllowedEmails: []string{"me@example.com"}})
+	if !listed.emailOnAllowList("Me@Example.com") {
+		t.Fatal("listed email should match case-insensitively")
+	}
+	if listed.emailOnAllowList("intruder@example.com") {
+		t.Fatal("unlisted email must be rejected")
+	}
+}
+
+// A Google invite is a passwordless DB user. It must be creatable and findable by
+// email, since that's exactly how the Google sign-in gate recognises an invitee.
+func TestInvite_PasswordlessUserIsFoundByEmail(t *testing.T) {
+	h := newAuthTest(t, config.Config{})
+	ctx := context.Background()
+
+	invited, err := h.users.Create(ctx, db.CreateUserParams{Email: "Her@Example.com", Name: "Her"})
+	if err != nil {
+		t.Fatalf("invite create: %v", err)
+	}
+	if invited.HasPassword {
+		t.Fatal("an invite must have no password")
+	}
+	// The gate looks the invitee up by (case-insensitive) email.
+	found, err := h.users.GetByEmail(ctx, "her@example.com")
+	if err != nil || found.ID != invited.ID {
+		t.Fatalf("invited user must be found by email: %v", err)
+	}
+}
+
 func mustHash(t *testing.T, pw string) string {
 	t.Helper()
 	h, err := db.HashPassword(pw)

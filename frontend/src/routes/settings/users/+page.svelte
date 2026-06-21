@@ -20,18 +20,26 @@
     finally { loading = false; }
   });
 
-  // ── Add user (admin) ─────────────────────────────────────────────────────────
+  // ── Invite / add a person (admin) ────────────────────────────────────────────
+  // Default is a Google-only invite (no password held). A password account is an
+  // opt-in fallback behind the toggle.
   let nEmail = $state(''); let nName = $state(''); let nPass = $state(''); let nAdmin = $state(false);
+  let nUsePassword = $state(false);
   let adding = $state(false);
+  const canAdd = $derived(!!nEmail.trim() && (!nUsePassword || nPass.length >= 8));
   async function addUser() {
-    if (adding || !nEmail.trim() || nPass.length < 8) return;
+    if (adding || !canAdd) return;
     adding = true;
     try {
-      const u = await api.auth.users.create({ email: nEmail.trim(), name: nName.trim(), password: nPass, is_admin: nAdmin });
+      const u = await api.auth.users.create({
+        email: nEmail.trim(), name: nName.trim(), is_admin: nAdmin,
+        ...(nUsePassword ? { password: nPass } : {}),  // omitted = Google-only invite
+      });
       users = [...users, u];
-      nEmail = ''; nName = ''; nPass = ''; nAdmin = false;
-      notify(true, 'User created');
-    } catch (e) { notify(false, e instanceof Error ? e.message : 'Failed to create user'); }
+      const wasGoogle = !nUsePassword;
+      nEmail = ''; nName = ''; nPass = ''; nAdmin = false; nUsePassword = false;
+      notify(true, wasGoogle ? `Invited ${u.email} — they can now Sign in with Google` : 'Account created');
+    } catch (e) { notify(false, e instanceof Error ? e.message : 'Failed to add person'); }
     finally { adding = false; }
   }
   async function removeUser(u: AppUser) {
@@ -92,7 +100,9 @@
                 </p>
                 <p class="truncate text-xs" style="color: var(--sempa-text-dim);">{u.email}{u.has_password ? '' : ' · Google'}</p>
               </div>
-              <button onclick={() => resetPassword(u)} aria-label="Reset password" class="rounded p-1.5 transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);"><KeyRound size={15} /></button>
+              {#if u.has_password}
+                <button onclick={() => resetPassword(u)} aria-label="Reset password" class="rounded p-1.5 transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);"><KeyRound size={15} /></button>
+              {/if}
               {#if u.id !== me?.user_id}
                 <button onclick={() => removeUser(u)} aria-label="Delete user" class="rounded p-1.5 transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);"><Trash2 size={15} /></button>
               {/if}
@@ -100,20 +110,31 @@
           {/each}
         </div>
 
-        <p class="mb-2 text-[10.5px] font-bold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Add a person</p>
+        <p class="mb-2 text-[10.5px] font-bold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Invite a person</p>
         <div class="mb-8 flex flex-col gap-2 rounded-xl px-4 py-4" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
-          <input bind:value={nEmail} type="email" placeholder="Email" autocomplete="off"
+          <p class="text-xs" style="color: var(--sempa-text-dim);">
+            They sign in with their Google account — no password is stored. Just enter
+            their email and tell them to open Sempa and choose “Sign in with Google”.
+          </p>
+          <input bind:value={nEmail} type="email" placeholder="Google email" autocomplete="off"
             class="rounded-lg px-3 py-2 text-sm outline-none" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
           <input bind:value={nName} placeholder="Name (optional)"
-            class="rounded-lg px-3 py-2 text-sm outline-none" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
-          <input bind:value={nPass} type="password" placeholder="Temporary password (min 8)" autocomplete="new-password"
             class="rounded-lg px-3 py-2 text-sm outline-none" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
           <label class="flex items-center gap-2 text-sm" style="color: var(--sempa-text-soft);">
             <input type="checkbox" bind:checked={nAdmin} /> Administrator
           </label>
-          <button onclick={addUser} disabled={adding || !nEmail.trim() || nPass.length < 8}
+
+          <label class="mt-1 flex items-center gap-2 text-xs" style="color: var(--sempa-text-dim);">
+            <input type="checkbox" bind:checked={nUsePassword} /> Set a password instead (no Google account)
+          </label>
+          {#if nUsePassword}
+            <input bind:value={nPass} type="password" placeholder="Password (min 8)" autocomplete="new-password"
+              class="rounded-lg px-3 py-2 text-sm outline-none" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
+          {/if}
+
+          <button onclick={addUser} disabled={adding || !canAdd}
             class="mt-1 rounded-lg py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40" style="background: var(--sempa-accent);">
-            {adding ? 'Adding…' : 'Add user'}
+            {adding ? 'Adding…' : (nUsePassword ? 'Create account' : 'Invite via Google')}
           </button>
         </div>
       {/if}

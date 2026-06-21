@@ -358,10 +358,12 @@ func (h *authHandler) googleEnabled() bool {
 // authEnabled returns true when any auth mechanism is configured.
 func (h *authHandler) authEnabled() bool { return h.passwordEnabled() || h.googleEnabled() }
 
-func (h *authHandler) emailAllowed(email string) bool {
-	if len(h.cfg.AllowedEmails) == 0 {
-		return true
-	}
+// emailOnAllowList reports EXPLICIT membership of the env allow-list. Note the
+// closed-by-default semantics: an empty list means "nobody is allowed via the
+// list" (the Google gate then relies on UI invites + first-user bootstrap). This
+// is deliberately different from a fall-open "empty = everyone" — that would let
+// any Google account create itself on the server.
+func (h *authHandler) emailOnAllowList(email string) bool {
 	email = strings.ToLower(strings.TrimSpace(email))
 	for _, a := range h.cfg.AllowedEmails {
 		if a == email {
@@ -755,21 +757,22 @@ func (h *authHandler) googleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Allowed if on the env allow-list OR an admin pre-created the account.
+	// Closed by default. A Google account may sign in only if it was INVITED (an
+	// admin pre-created the row in the UI), it's on the env allow-list, or it's the
+	// very first account on a fresh server (bootstrap). An empty allow-list no
+	// longer means "anyone with a Google account" — invites are the front door.
 	existing, _ := h.users.GetByEmail(r.Context(), email)
-	if !h.emailAllowed(email) && existing.ID == "" {
+	invited := existing.ID != ""
+	userCount, _ := h.users.Count(r.Context())
+	firstUser := !invited && userCount == 0
+	if !invited && !firstUser && !h.emailOnAllowList(email) {
 		http.Redirect(w, r, "/login?error="+url.QueryEscape("not_allowed"), http.StatusFound)
 		return
 	}
 
-	// First Google user (no users yet) becomes admin; the rest are regular.
-	makeAdmin := false
-	if existing.ID == "" {
-		if n, _ := h.users.Count(r.Context()); n == 0 {
-			makeAdmin = true
-		}
-	}
-	user, err := h.users.EnsureByEmail(r.Context(), email, "", makeAdmin)
+	// First user on a fresh server becomes admin; invited members are regular
+	// unless an admin marked them admin when inviting.
+	user, err := h.users.EnsureByEmail(r.Context(), email, "", firstUser)
 	if err != nil {
 		http.Error(w, "failed to provision user", http.StatusInternalServerError)
 		return

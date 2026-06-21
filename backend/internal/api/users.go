@@ -61,17 +61,24 @@ func (h *authHandler) createUser(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusUnprocessableEntity, "email is required")
 		return
 	}
-	if len(req.Password) < minPasswordLen {
-		respondError(w, http.StatusUnprocessableEntity, "password must be at least 8 characters")
-		return
-	}
-	hash, err := db.HashPassword(req.Password)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to hash password")
-		return
+	// Passwordless = a Google-only invite: the account exists immediately and the
+	// person signs in with Google (the invited DB row passes the auth gate). A
+	// password is only required (and only stored) for credential accounts.
+	var hashPtr *string
+	if req.Password != "" {
+		if len(req.Password) < minPasswordLen {
+			respondError(w, http.StatusUnprocessableEntity, "password must be at least 8 characters")
+			return
+		}
+		hash, err := db.HashPassword(req.Password)
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to hash password")
+			return
+		}
+		hashPtr = &hash
 	}
 	user, err := h.users.Create(r.Context(), db.CreateUserParams{
-		Email: req.Email, Name: req.Name, PasswordHash: &hash, IsAdmin: req.IsAdmin,
+		Email: req.Email, Name: req.Name, PasswordHash: hashPtr, IsAdmin: req.IsAdmin,
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {

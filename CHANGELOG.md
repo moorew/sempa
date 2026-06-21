@@ -6,6 +6,20 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.12.1] - 2026-06-20
+
+### Added
+- **Invite members with Google — no password stored.** Settings → Account → Users
+  now invites people by email as **Google-only accounts**: they sign in with
+  Google and Sempa never holds a credential for them. A password account is still
+  available behind a toggle if you want one.
+
+### Security
+- **Google sign-in is now closed by default.** A Google account can sign in only
+  if it was invited, is on the env allow-list, or is the very first account on a
+  fresh server. Previously an *empty* allow-list let any Google account create
+  itself — that fall-open is fixed.
+
 ## [1.12.0] - 2026-06-20
 
 ### Added

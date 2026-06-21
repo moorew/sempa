@@ -267,7 +267,8 @@ const httpApi = {
     // User & credential management (server-only). Admin-gated server-side.
     users: {
       list: () => req<AppUser[]>('/api/v1/users'),
-      create: (input: { email: string; name: string; password: string; is_admin: boolean }) =>
+      // password omitted/empty = a Google-only invite (passwordless account).
+      create: (input: { email: string; name: string; password?: string; is_admin: boolean }) =>
         req<AppUser>('/api/v1/users', { method: 'POST', body: body(input) }),
       delete: (id: string) => req<{ status: string }>(`/api/v1/users/${id}`, { method: 'DELETE' }),
       setPassword: (id: string, password: string) =>
