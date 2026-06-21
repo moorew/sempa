@@ -70,8 +70,13 @@
   // The floating widget and sticky-note windows are likewise standalone, chromeless
   // Tauri windows — they own their entire UI and must never render the app shell
   // (sidebar / mobile bottom nav), which was bleeding into the narrow widget.
+  // The standalone Pomodoro widget is its own chromeless Tauri window that owns the
+  // whole surface (its own full-window timer + inline confirm); the global corner
+  // timer and confirm modal are suppressed on it (see below).
+  let isPomodoroWidget = $derived(($page.url.pathname as string) === '/pomodoro-widget');
   let isStandaloneWindow = $derived(
     isReminderPopup ||
+    isPomodoroWidget ||
     ($page.url.pathname as string) === '/widget' ||
     ($page.url.pathname as string) === '/sticky' ||
     ($page.url.pathname as string) === '/quick-add' ||
@@ -794,11 +799,13 @@
   </BottomSheet>
 {/if}
 
-{#if pomodoro.taskId}
+{#if pomodoro.taskId && !isPomodoroWidget}
   <PomodoroTimer />
 {/if}
 
-<SessionConfirm />
+{#if !isPomodoroWidget}
+  <SessionConfirm />
+{/if}
 {#if !isStandaloneWindow}
   <TaskTimeModal />
   <TimeTrackingWalkthrough />

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { pomodoro } from '$lib/stores/pomodoro.svelte';
   import { formatMinutes } from '$lib/utils';
+  import { isTauri, openPomodoroWidget } from '$lib/tauri/bridge';
 
   // Phase accent follows the active theme: work uses the brand accent; breaks
   // use the success hue so the timer matches whichever theme the user picked.
@@ -51,6 +52,14 @@
           <path stroke-linecap="round" stroke-linejoin="round" d={collapsed ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'} />
         </svg>
       </button>
+      {#if isTauri()}
+        <button onclick={() => openPomodoroWidget()}
+          class="rounded p-1 transition-opacity hover:opacity-70" aria-label="Pop out timer to a floating window">
+          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14 5h5m0 0v5m0-5l-7 7M9 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-3" />
+          </svg>
+        </button>
+      {/if}
       <button onclick={openSettings}
         class="rounded p-1 transition-opacity hover:opacity-70" aria-label="Timer settings">
         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
