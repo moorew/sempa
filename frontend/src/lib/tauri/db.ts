@@ -89,12 +89,25 @@ const COLUMN_RECONCILE: Record<string, Array<[string, string]>> = {
         ['scheduled_end', 'TEXT'],
         ['roughly_at', 'TEXT'],
         ['remind_at', 'TEXT'],
+        ['shared', 'INTEGER NOT NULL DEFAULT 0'],
     ],
     daily_plans: [
         ['intention', 'TEXT'],
         ['reflection', 'TEXT'],
         ['wins', 'TEXT'],
         ['shutdown_at', 'TEXT'],
+    ],
+    // Multi-user sharing — the column the Private/Shared toggle writes. Without
+    // these, an upgraded install has no `shared` column and the toggle's UPDATE
+    // throws "no such column: shared".
+    weekly_objectives: [
+        ['shared', 'INTEGER NOT NULL DEFAULT 0'],
+    ],
+    lists: [
+        ['shared', 'INTEGER NOT NULL DEFAULT 0'],
+    ],
+    list_items: [
+        ['shared', 'INTEGER NOT NULL DEFAULT 0'],
     ],
 };
 

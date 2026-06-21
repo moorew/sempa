@@ -6,6 +6,16 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.12.3] - 2026-06-21
+
+### Fixed
+- **Sharing now works on the desktop and Android apps.** The Private/Shared
+  toggle wrote a `shared` column that the on-device database didn't have, so it
+  errored on tasks and silently did nothing on lists. The column is now mirrored
+  through the local schema, the on-open reconcile, the desktop migration, sync,
+  and the local API — so the toggle works offline-first and syncs both ways.
+  (The web app was unaffected.)
+
 ## [1.12.2] - 2026-06-21
 
 ### Changed

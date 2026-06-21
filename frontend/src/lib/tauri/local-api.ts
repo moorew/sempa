@@ -126,15 +126,15 @@ export const localApi = {
             await execute(
                 `INSERT INTO tasks (id, title, description, planned_date, week_start, status, position,
                  time_estimate_minutes, weekly_objective_id, parent_task_id, tags,
-                 recurrence_rule, scheduled_start, scheduled_end, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                 recurrence_rule, scheduled_start, scheduled_end, created_at, updated_at, shared)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     id, input.title, input.description ?? null, input.planned_date ?? null,
                     ws, input.status ?? 'planned', input.position ?? 0,
                     input.time_estimate_minutes ?? null, input.weekly_objective_id ?? null,
                     input.parent_task_id ?? null, JSON.stringify(input.tags ?? []),
                     input.recurrence_rule ?? null, input.scheduled_start ?? null,
-                    input.scheduled_end ?? null, ts, ts,
+                    input.scheduled_end ?? null, ts, ts, input.shared ? 1 : 0,
                 ],
             );
             // Log the full created row (not just input) so server-side computed
@@ -152,6 +152,9 @@ export const localApi = {
                 if (key === 'tags') {
                     sets.push('tags = ?');
                     vals.push(JSON.stringify(val));
+                } else if (key === 'shared') {
+                    sets.push('shared = ?');
+                    vals.push(val ? 1 : 0);  // SQLite wants 0/1, not a JS boolean
                 } else {
                     sets.push(`${key} = ?`);
                     vals.push(val);
@@ -354,7 +357,7 @@ export const localApi = {
             flushSoon();
             return (await query<List[]>(`SELECT * FROM lists WHERE id = ?`, [id]))[0];
         },
-        update: async (id: string, patch: { name?: string; task_id?: string | null; position?: number; archived?: boolean; archive_on_complete?: boolean }): Promise<List> => {
+        update: async (id: string, patch: { name?: string; task_id?: string | null; position?: number; archived?: boolean; archive_on_complete?: boolean; shared?: boolean }): Promise<List> => {
             const sets: string[] = []; const args: unknown[] = [];
             const log: Record<string, unknown> = {};
             if (patch.name !== undefined) { sets.push('name = ?'); args.push(patch.name); log.name = patch.name; }
@@ -362,6 +365,7 @@ export const localApi = {
             if (patch.position !== undefined) { sets.push('position = ?'); args.push(patch.position); log.position = patch.position; }
             if (patch.archived !== undefined) { sets.push('archived_at = ?'); args.push(patch.archived ? now() : null); log.archived = patch.archived; }
             if (patch.archive_on_complete !== undefined) { sets.push('archive_on_complete = ?'); args.push(patch.archive_on_complete ? 1 : 0); log.archive_on_complete = patch.archive_on_complete; }
+            if (patch.shared !== undefined) { sets.push('shared = ?'); args.push(patch.shared ? 1 : 0); log.shared = patch.shared; }
             sets.push('updated_at = ?'); args.push(now());
             args.push(id);
             await execute(`UPDATE lists SET ${sets.join(', ')} WHERE id = ?`, args);

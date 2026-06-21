@@ -234,6 +234,20 @@ pub fn get_migrations() -> Vec<Migration> {
             "#,
             kind: MigrationKind::Up,
         },
+        Migration {
+            // Multi-user sharing. Mirrors the server (migration 025) and schema.ts
+            // so the Private/Shared toggle's UPDATE finds the column and synced
+            // rows carrying `shared` upsert cleanly.
+            version: 9,
+            description: "add shared flag to shareable entities",
+            sql: r#"
+                ALTER TABLE tasks ADD COLUMN shared INTEGER NOT NULL DEFAULT 0;
+                ALTER TABLE lists ADD COLUMN shared INTEGER NOT NULL DEFAULT 0;
+                ALTER TABLE list_items ADD COLUMN shared INTEGER NOT NULL DEFAULT 0;
+                ALTER TABLE weekly_objectives ADD COLUMN shared INTEGER NOT NULL DEFAULT 0;
+            "#,
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
