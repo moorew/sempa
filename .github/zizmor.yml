@@ -2,7 +2,7 @@
 rules:
   cache-poisoning:
     ignore:
-      # android/windows release run only on `push: tags` + `workflow_dispatch`
+      # android/windows/ios release run only on `push: tags` + `workflow_dispatch`
       # — never on untrusted pull requests — so a poisoned cache can't reach
       # them in practice. zizmor flags the cache-capable setup-* actions (and
       # the Windows Rust build cache, which we keep for speed) regardless of the
@@ -10,6 +10,7 @@ rules:
       # from these builds as defense-in-depth.
       - android-release.yml
       - windows-release.yml
+      - ios-release.yml
       # linux-release ALSO runs on pull_request, but GitHub scopes a PR's cache
       # to its own `refs/pull/N/merge` — a tag or `main` build cannot restore a
       # cache a PR wrote — so the publishing path can't be poisoned either. The
