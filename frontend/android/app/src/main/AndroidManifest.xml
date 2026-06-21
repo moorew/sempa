@@ -40,6 +40,7 @@
         <!-- Widget receivers -->
         <receiver
             android:name=".widget.SempaSmallWidgetReceiver"
+            android:label="@string/widget_small_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -51,6 +52,7 @@
 
         <receiver
             android:name=".widget.SempaMediumWidgetReceiver"
+            android:label="@string/widget_medium_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -62,6 +64,7 @@
 
         <receiver
             android:name=".widget.SempaLargeWidgetReceiver"
+            android:label="@string/widget_large_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -73,6 +76,7 @@
 
         <receiver
             android:name=".widget.SempaPomodoroWidgetReceiver"
+            android:label="@string/widget_pomodoro_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
