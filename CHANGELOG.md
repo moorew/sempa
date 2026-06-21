@@ -6,6 +6,14 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.14.2] - 2026-06-21
+
+### Changed
+- **The Android focus widget now shows a live, ticking countdown.** Instead of a
+  static "X min left", the widget mirrors the running app timer with a real mm:ss
+  countdown (a native chronometer that ticks on its own — no battery cost), kept in
+  sync with start/pause/resume. It keeps ticking with the app closed.
+
 ## [1.14.1] - 2026-06-21
 
 ### Fixed
