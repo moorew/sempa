@@ -60,13 +60,119 @@ class PomodoroTimer {
   #workAccumulatedMs = 0;                    // running work time banked from prior segments
   #workSegmentStartMs: number | null = null; // epoch the current running work segment began
 
+  // ── Cross-window coordination ──────────────────────────────────────────────
+  // The timer is a module singleton, but on desktop (Tauri) it runs in several
+  // webviews at once (main window + the floating Pomodoro widget window), which
+  // share localStorage. Without coordination each instance would tick its own
+  // interval and double-fire phase completions, notifications and API writes.
+  //
+  // We elect ONE leader via the Web Locks API (it auto-releases when a window
+  // closes or crashes — no heartbeat to get wrong). The leader is the sole owner
+  // of the interval, persistence, notifications and API calls; it publishes state
+  // snapshots over a BroadcastChannel. Followers never tick — they mirror the
+  // leader's snapshots and forward user actions to it as commands, so there's a
+  // single source of truth. A lone window (web, Android, desktop-main-only) is
+  // trivially its own leader, so single-window behaviour is unchanged.
+  #isLeader = false;
+  #bc: BroadcastChannel | null = null;
+  #releaseLock: (() => void) | null = null;
+  #lastBroadcastRemaining = -1;
+
   constructor() {
     if (typeof window !== 'undefined') {
       this.#loadPrefs();
       this.totalSeconds = this.workMins * 60;
       this.remaining    = this.workMins * 60;
-      this.#restore();
+      // Paint last-known state immediately; leadership (and ticking) is resolved
+      // asynchronously below so two windows never both drive the clock.
+      this.#restoreForDisplay();
+      this.#initCoordination();
     }
+  }
+
+  // ── Coordination internals ─────────────────────────────────────────────────
+  #initCoordination() {
+    try { this.#bc = new BroadcastChannel('sempa-pomodoro'); } catch { this.#bc = null; }
+    if (this.#bc) this.#bc.onmessage = (ev) => this.#onMessage(ev.data);
+
+    const locks = (typeof navigator !== 'undefined' ? (navigator as Navigator & { locks?: LockManager }).locks : undefined);
+    if (locks?.request) {
+      // Hold the exclusive lock for this window's lifetime: the callback's promise
+      // resolves only on pagehide, so we keep leadership until the window closes
+      // (or crashes — the browser then auto-releases it to the next waiter).
+      void locks.request('sempa-pomodoro-leader', { mode: 'exclusive' }, () => {
+        this.#becomeLeader();
+        return new Promise<void>((resolve) => { this.#releaseLock = resolve; });
+      }).catch(() => { /* lock unavailable → stay a follower; a leader exists */ });
+      // Nudge whoever currently leads to send us a snapshot so we paint live state.
+      this.#post({ type: 'sync-request' });
+      window.addEventListener('pagehide', () => this.#releaseLock?.());
+    } else {
+      // No Web Locks in this webview → act as sole leader. Multi-window would then
+      // fall back to pre-coordination behaviour; single-window is unaffected.
+      this.#becomeLeader();
+    }
+  }
+
+  #becomeLeader() {
+    if (this.#isLeader) return;
+    this.#isLeader = true;
+    this.#clearInterval();
+    // Re-read the authoritative persisted state and resume ticking if a session
+    // was live (epoch anchors make this exact, even across a leader handover).
+    this.#restoreForLeader();
+    this.#broadcastState();
+  }
+
+  #onMessage(data: unknown) {
+    if (!data || typeof data !== 'object') return;
+    const msg = data as { type?: string; state?: unknown; method?: string; args?: unknown[] };
+    if (msg.type === 'state') {
+      if (!this.#isLeader && msg.state) this.#applyRemoteState(msg.state as Record<string, unknown>);
+    } else if (msg.type === 'command') {
+      // Only the leader executes mutations — followers forwarded them here.
+      if (this.#isLeader && msg.method) {
+        (this as unknown as Record<string, (...a: unknown[]) => unknown>)[msg.method]?.(...(msg.args ?? []));
+      }
+    } else if (msg.type === 'sync-request') {
+      if (this.#isLeader) this.#broadcastState();
+    }
+  }
+
+  #post(msg: unknown) { try { this.#bc?.postMessage(msg); } catch { /* channel closed */ } }
+
+  /** Forward a mutating call from a follower to the leader (single writer). */
+  #forward(method: string, args: unknown[]) { this.#post({ type: 'command', method, args }); }
+
+  #broadcastState() {
+    if (!this.#isLeader) return;
+    this.#post({ type: 'state', state: this.#snapshot() });
+  }
+
+  #snapshot() {
+    return {
+      taskId: this.taskId, taskTitle: this.taskTitle, plannedMinutes: this.plannedMinutes,
+      phase: this.phase, totalSeconds: this.totalSeconds, remaining: this.remaining,
+      isRunning: this.isRunning, completedToday: this.completedToday,
+      elapsedSeconds: this.elapsedSeconds, pendingConfirm: this.pendingConfirm,
+      workMins: this.workMins, shortBreakMins: this.shortBreakMins, longBreakMins: this.longBreakMins,
+    };
+  }
+
+  #applyRemoteState(s: Record<string, unknown>) {
+    this.taskId         = (s.taskId as string | null) ?? null;
+    this.taskTitle      = (s.taskTitle as string | null) ?? null;
+    this.plannedMinutes = (s.plannedMinutes as number | null) ?? null;
+    this.phase          = (s.phase as Phase) ?? 'work';
+    this.totalSeconds   = (s.totalSeconds as number) ?? this.workMins * 60;
+    this.remaining      = (s.remaining as number) ?? this.totalSeconds;
+    this.isRunning      = Boolean(s.isRunning);
+    this.completedToday = (s.completedToday as number) ?? 0;
+    this.elapsedSeconds = (s.elapsedSeconds as number) ?? 0;
+    this.pendingConfirm = (s.pendingConfirm as PendingConfirm | null) ?? null;
+    if (typeof s.workMins === 'number')       this.workMins = s.workMins;
+    if (typeof s.shortBreakMins === 'number') this.shortBreakMins = s.shortBreakMins;
+    if (typeof s.longBreakMins === 'number')  this.longBreakMins = s.longBreakMins;
   }
 
   // ── Preferences ────────────────────────────────────────────────────────────
@@ -83,6 +189,7 @@ class PomodoroTimer {
   }
 
   setPrefs(workMins: number, shortBreakMins: number, longBreakMins: number) {
+    if (!this.#isLeader) { this.#forward('setPrefs', [workMins, shortBreakMins, longBreakMins]); return; }
     this.workMins       = workMins;
     this.shortBreakMins = shortBreakMins;
     this.longBreakMins  = longBreakMins;
@@ -137,6 +244,7 @@ class PomodoroTimer {
 
   // ── Lifecycle ────────────────────────────────────────────────────────────────
   start(taskId: string, taskTitle: string, currentActualMinutes = 0, plannedMinutes: number | null = null) {
+    if (!this.#isLeader) { this.#forward('start', [taskId, taskTitle, currentActualMinutes, plannedMinutes]); return; }
     this.#clearInterval();
     this.#rolloverDay();
     this.taskId          = taskId;
@@ -152,16 +260,26 @@ class PomodoroTimer {
     this.#resume();
   }
 
-  togglePause() { this.isRunning ? this.#pause() : this.#resume(); }
+  togglePause() {
+    if (!this.#isLeader) { this.#forward('togglePause', []); return; }
+    this.isRunning ? this.#pause() : this.#resume();
+  }
 
   /** Stop the session and open the confirm sheet (logs time, leaves status as-is). */
-  requestStop() { this.#endSession(false); }
+  requestStop() {
+    if (!this.#isLeader) { this.#forward('requestStop', []); return; }
+    this.#endSession(false);
+  }
 
   /** Mark the task done and open the confirm sheet to log the time spent. */
-  finishTask() { this.#endSession(true); }
+  finishTask() {
+    if (!this.#isLeader) { this.#forward('finishTask', []); return; }
+    this.#endSession(true);
+  }
 
   /** Hard reset with no logging (used internally and by "discard"). */
   reset() {
+    if (!this.#isLeader) { this.#forward('reset', []); return; }
     this.#clearInterval();
     this.taskId = null; this.taskTitle = null; this.plannedMinutes = null;
     this.phase = 'work';
@@ -200,6 +318,7 @@ class PomodoroTimer {
 
   /** Persist the confirmed minutes: accumulate into the task and log a session. */
   async confirmSession(minutes: number) {
+    if (!this.#isLeader) { this.#forward('confirmSession', [minutes]); return; }
     const pc = this.pendingConfirm;
     if (!pc) return;
     this.pendingConfirm = null;
@@ -234,6 +353,7 @@ class PomodoroTimer {
 
   /** Close the confirm sheet without logging anything. */
   discardSession() {
+    if (!this.#isLeader) { this.#forward('discardSession', []); return; }
     this.pendingConfirm = null;
     this.#sessionStart = null;
     this.#workAccumulatedMs = 0;
@@ -302,6 +422,12 @@ class PomodoroTimer {
       void this.#onComplete();
     } else {
       this.remaining = rem;
+    }
+    // Mirror the live countdown to follower windows, but only when the displayed
+    // second actually changes (the interval fires 4×/s) to keep the channel quiet.
+    if (this.remaining !== this.#lastBroadcastRemaining) {
+      this.#lastBroadcastRemaining = this.remaining;
+      this.#broadcastState();
     }
   }
 
@@ -410,9 +536,52 @@ class PomodoroTimer {
         savedAt: Date.now(),
       }));
     } catch { /* ignore quota / serialization errors */ }
+    // Every structural change (start/pause/resume/complete/confirm/reset) flows
+    // through here on the leader — mirror it to follower windows.
+    this.#broadcastState();
   }
 
-  #restore() {
+  // Followers (and the first paint before leadership resolves) read last-known
+  // state for display ONLY — never starting the interval, persisting, or firing
+  // notifications. A live snapshot from the leader arrives moments later and takes
+  // over. Approximate the "spent" readout from the stored anchors to avoid a flash
+  // of 00:00 while we wait for it.
+  #restoreForDisplay() {
+    let raw: string | null = null;
+    try { raw = localStorage.getItem(STATE_KEY); } catch { return; }
+    if (!raw) return;
+    let s: any;
+    try { s = JSON.parse(raw); } catch { return; }
+
+    this.#completedDate = s.completedDate ?? todayKey();
+    this.completedToday = s.completedDate === todayKey() ? (s.completedToday ?? 0) : 0;
+
+    if (s.pendingConfirm) { this.pendingConfirm = s.pendingConfirm; return; }
+    if (!s.taskId) return;
+
+    this.taskId         = s.taskId;
+    this.taskTitle      = s.taskTitle ?? null;
+    this.plannedMinutes = s.plannedMinutes ?? null;
+    this.phase          = s.phase ?? 'work';
+    this.totalSeconds   = s.totalSeconds ?? this.workMins * 60;
+
+    if (s.isRunning && typeof s.phaseEndMs === 'number') {
+      const rem = Math.round((s.phaseEndMs - Date.now()) / 1000);
+      this.remaining = Math.max(0, rem);
+      this.isRunning = rem > 0; // if it elapsed while away, the leader settles it
+    } else {
+      this.remaining = s.remaining ?? this.totalSeconds;
+      this.isRunning = false;
+    }
+
+    let ms = s.workAccumulatedMs ?? 0;
+    if (s.isRunning && s.phase === 'work' && typeof s.workSegmentStartMs === 'number') {
+      ms += Math.max(0, Date.now() - s.workSegmentStartMs);
+    }
+    this.elapsedSeconds = Math.floor(ms / 1000);
+  }
+
+  #restoreForLeader() {
     let raw: string | null = null;
     try { raw = localStorage.getItem(STATE_KEY); } catch { return; }
     if (!raw) return;

@@ -52,6 +52,57 @@ pub fn create_widget(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> 
     Ok(())
 }
 
+/// Create the floating Pomodoro timer widget — a compact, always-on-top focus
+/// surface that mirrors the in-app timer. It loads `/pomodoro-widget`, which binds
+/// to the shared `pomodoro` store; the store's cross-window leader election means
+/// this window is a follower of the main window (no double-ticking). Opaque +
+/// chromeless (see the reminder-popup note on why transparent windows show a grey
+/// backing); WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE on Windows so it floats above work
+/// without stealing focus or appearing in Alt+Tab.
+pub fn create_pomodoro_widget(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(win) = app.get_webview_window("pomodoro") {
+        let _ = win.show();
+        let _ = win.set_always_on_top(true);
+        let _ = win.set_focus();
+        return Ok(());
+    }
+
+    let win_w = 320.0;
+    let win_h = 300.0;
+    let mut builder = WebviewWindowBuilder::new(
+        app,
+        "pomodoro",
+        WebviewUrl::App("/pomodoro-widget".into()),
+    )
+    .title("Sempa — Focus")
+    .inner_size(win_w, win_h)
+    .min_inner_size(280.0, 200.0)
+    .resizable(true)
+    .decorations(false)
+    .always_on_top(true)
+    .transparent(false)
+    .skip_taskbar(true)
+    .visible(true);
+
+    // Bottom-right corner; the webview paints edge-to-edge so it looks chromeless.
+    if let Ok(Some(monitor)) = app.primary_monitor() {
+        let size = monitor.size();
+        let scale = monitor.scale_factor();
+        let x = (size.width as f64 / scale) - win_w - 20.0;
+        let y = (size.height as f64 / scale) - win_h - 40.0;
+        builder = builder.position(x, y);
+    }
+
+    let _window = builder.build()?;
+
+    #[cfg(target_os = "windows")]
+    {
+        apply_widget_window_flags(&_window);
+    }
+
+    Ok(())
+}
+
 /// Create the reminder popup — a Granola-style card that floats in the top-right
 /// of the desktop, above the app window and OUTSIDE it, so a fired reminder is
 /// visible even when Sempa is in the background. It never steals focus

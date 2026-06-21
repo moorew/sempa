@@ -8,12 +8,13 @@ use tauri::{
 pub fn create_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let open = MenuItem::with_id(app, "open", "Open sempa", true, None::<&str>)?;
     let show_widget = MenuItem::with_id(app, "show_widget", "Show widget", true, None::<&str>)?;
+    let focus_timer = MenuItem::with_id(app, "focus_timer", "Focus timer", true, None::<&str>)?;
     let quick_add = MenuItem::with_id(app, "quick_add", "Quick Add Task", true, None::<&str>)?;
     let sync_now = MenuItem::with_id(app, "sync_now", "Sync Now", true, None::<&str>)?;
     let separator = MenuItem::with_id(app, "sep", "────────────", false, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Exit", true, None::<&str>)?;
 
-    let menu = Menu::with_items(app, &[&open, &show_widget, &quick_add, &sync_now, &separator, &quit])?;
+    let menu = Menu::with_items(app, &[&open, &show_widget, &focus_timer, &quick_add, &sync_now, &separator, &quit])?;
 
     let icon = app
         .default_window_icon()
@@ -40,6 +41,12 @@ pub fn create_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                 // showing today's tasks at a glance.
                 if let Err(e) = crate::windows::create_widget(app) {
                     eprintln!("widget creation failed: {e}");
+                }
+            }
+            "focus_timer" => {
+                // Spawn (or re-focus) the floating Pomodoro timer widget.
+                if let Err(e) = crate::windows::create_pomodoro_widget(app) {
+                    eprintln!("pomodoro widget creation failed: {e}");
                 }
             }
             "quick_add" => {

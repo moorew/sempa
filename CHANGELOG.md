@@ -6,6 +6,17 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.13.0] - 2026-06-21
+
+### Added
+- **Floating focus-timer widget on the desktop.** Pop the Pomodoro timer out into
+  its own compact, always-on-top window that stays above your other apps — start a
+  task from today's list, pause/resume, and log time without the main window in
+  focus. Open it from the tray ("Focus timer") or the pop-out button on the in-app
+  timer. Under the hood the timer now coordinates across windows (a single owner
+  drives the clock) so the main window and the widget never double-count.
+  _(The Android home-screen widget is coming in a follow-up.)_
+
 ## [1.12.4] - 2026-06-21
 
 ### Fixed

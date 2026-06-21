@@ -111,6 +111,19 @@ pub async fn open_external(app: AppHandle, url: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub async fn create_pomodoro_widget_window(app: AppHandle) -> Result<(), String> {
+    crate::windows::create_pomodoro_widget(&app).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn close_pomodoro_widget(app: AppHandle) -> Result<(), String> {
+    if let Some(win) = app.get_webview_window("pomodoro") {
+        win.close().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn show_reminder_popup(app: AppHandle) -> Result<(), String> {
     crate::windows::create_reminder_popup(&app).map_err(|e| e.to_string())
 }

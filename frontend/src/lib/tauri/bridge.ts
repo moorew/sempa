@@ -123,6 +123,12 @@ export async function createWidgetWindow(): Promise<void> {
     if (t) await t.invoke('create_widget_window');
 }
 
+/** Pop the focus timer out into its own floating, always-on-top desktop window. */
+export async function openPomodoroWidget(): Promise<void> {
+    const t = getTauri();
+    if (t) await t.invoke('create_pomodoro_widget_window');
+}
+
 export async function createStickyNote(
     noteId: string,
     x = 100,
