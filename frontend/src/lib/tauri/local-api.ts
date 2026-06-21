@@ -30,6 +30,7 @@ function parseTaskRow(row: Record<string, unknown>): Task {
         ...row,
         tags: typeof row.tags === 'string' ? JSON.parse(row.tags || '[]') : (row.tags ?? []),
         is_customized: Boolean(row.is_customized),
+        shared: Boolean(row.shared),
     } as Task;
 }
 

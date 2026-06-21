@@ -119,6 +119,12 @@ interface ServerChanges {
 // marked synced), false to leave it queued for the next attempt.
 async function replay(m: PendingMutation): Promise<boolean> {
     const payload = m.payload ? JSON.parse(m.payload) : {};
+    // `shared` lives in local SQLite as an integer (0/1); offline-created tasks and
+    // objectives log the full row, so the queued payload carries `shared: 0`. The
+    // server field is a Go *bool and json.Decode 400s on a number — wedging the
+    // outbox forever. Coerce to a real boolean so it pushes (this also recovers any
+    // integer payloads already queued before this fix).
+    if (typeof payload.shared === 'number') payload.shared = payload.shared !== 0;
     const path = restPath(m.entity_type);
     if (!path) return true; // unknown entity → drop, don't wedge the queue
 

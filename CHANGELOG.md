@@ -6,6 +6,16 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.12.4] - 2026-06-21
+
+### Fixed
+- **Android/desktop sync no longer gets stuck at "1 to sync".** A task or weekly
+  objective created offline logged its `shared` flag as a SQLite integer (`0`/`1`),
+  but the server expects a JSON boolean and rejected the push — wedging the whole
+  outbox so nothing synced afterwards. The sync engine now sends `shared` as a
+  proper boolean, which also clears any mutation already stuck from this. (A
+  follow-on to the 1.12.3 sharing fix.)
+
 ## [1.12.3] - 2026-06-21
 
 ### Fixed
