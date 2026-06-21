@@ -65,6 +65,18 @@ class FocusTimerPlugin : Plugin() {
         call.resolve(JSObject().put("action", action ?: ""))
     }
 
+    /** Returns and clears a task id stashed by the home-screen widget's "start this
+     *  task" tap, so the web store performs the actual start (prior time, estimate,
+     *  end-of-session confirm). */
+    @PluginMethod
+    fun consumePendingStart(call: PluginCall) {
+        val ctx = context ?: return call.reject("no context")
+        val prefs = ctx.getSharedPreferences(FocusTimerService.PREFS, Context.MODE_PRIVATE)
+        val taskId = prefs.getString(FocusTimerService.KEY_PENDING_START, null)
+        if (taskId != null) prefs.edit().remove(FocusTimerService.KEY_PENDING_START).apply()
+        call.resolve(JSObject().put("taskId", taskId ?: ""))
+    }
+
     private fun startService(ctx: Context, i: Intent) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ctx.startForegroundService(i)
         else ctx.startService(i)
@@ -80,6 +92,15 @@ class FocusTimerPlugin : Plugin() {
             ctx.getSharedPreferences(FocusTimerService.PREFS, Context.MODE_PRIVATE)
                 .edit().remove(FocusTimerService.KEY_PENDING).apply()
             p.notifyListeners("focusAction", JSObject().put("action", action))
+        }
+
+        /** Deliver a widget "start this task" tap to JS live (app already running);
+         *  clears the prefs stash so consumePendingStart doesn't re-fire it. */
+        fun emitStart(ctx: Context, taskId: String) {
+            val p = active ?: return
+            ctx.getSharedPreferences(FocusTimerService.PREFS, Context.MODE_PRIVATE)
+                .edit().remove(FocusTimerService.KEY_PENDING_START).apply()
+            p.notifyListeners("focusStart", JSObject().put("taskId", taskId))
         }
     }
 }

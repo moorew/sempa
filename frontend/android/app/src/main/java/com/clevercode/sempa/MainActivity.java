@@ -2,6 +2,7 @@ package com.clevercode.sempa;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.VibrationEffect;
@@ -24,6 +25,28 @@ public class MainActivity extends BridgeActivity {
 
         // Expose haptics to WebView
         getBridge().getWebView().addJavascriptInterface(new HapticsInterface(), "SempaHaptics");
+
+        // Launched from the home-screen Pomodoro widget's "start this task" tap:
+        // stash the id for JS to drain on init (the web store owns the actual start).
+        handleStartFocus(getIntent(), false);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        // App already running → deliver live as well as stashing.
+        handleStartFocus(intent, true);
+    }
+
+    private void handleStartFocus(Intent intent, boolean emitLive) {
+        if (intent == null) return;
+        String taskId = intent.getStringExtra("startFocusTaskId");
+        if (taskId == null || taskId.isEmpty()) return;
+        getSharedPreferences(FocusTimerService.PREFS, MODE_PRIVATE)
+            .edit().putString(FocusTimerService.KEY_PENDING_START, taskId).apply();
+        intent.removeExtra("startFocusTaskId"); // don't reprocess on rotation/relaunch
+        if (emitLive) FocusTimerPlugin.Companion.emitStart(this, taskId);
     }
 
     private void createNotificationChannels() {

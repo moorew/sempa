@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.glance.appwidget.updateAll
 import com.clevercode.sempa.widget.SempaLargeWidget
 import com.clevercode.sempa.widget.SempaMediumWidget
+import com.clevercode.sempa.widget.SempaPomodoroWidget
 import com.clevercode.sempa.widget.SempaSmallWidget
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -38,11 +39,14 @@ class WidgetBridgePlugin : Plugin() {
             for (i in 0..9) {
                 editor.remove("task_${i}_title")
                 editor.remove("task_${i}_done")
+                editor.remove("task_${i}_id")
             }
             for (i in 0 until minOf(tasks.length(), 10)) {
                 val t = tasks.getJSONObject(i)
                 editor.putString("task_${i}_title", t.optString("title", ""))
                 editor.putBoolean("task_${i}_done", t.optBoolean("done", false))
+                // Task id powers the Pomodoro widget's "start this task" tap.
+                editor.putString("task_${i}_id", t.optString("id", ""))
             }
             editor.putInt("task_count", minOf(tasks.length(), 10))
         }
@@ -68,6 +72,7 @@ class WidgetBridgePlugin : Plugin() {
                 SempaSmallWidget().updateAll(ctx)
                 SempaMediumWidget().updateAll(ctx)
                 SempaLargeWidget().updateAll(ctx)
+                SempaPomodoroWidget().updateAll(ctx)
             } catch (_: Exception) {}
         }
 

@@ -6,6 +6,17 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.14.0] - 2026-06-21
+
+### Added
+- **Android home-screen focus widget.** Add the Sempa focus widget to your home
+  screen to run the Pomodoro timer without opening the app: when a session is
+  active it shows the phase, task, and minutes left with Pause/Resume and Done
+  controls; when idle it lists today's tasks so you can tap one to start focusing
+  (the app opens briefly to begin, and time is logged as usual on finish). The
+  widget mirrors the native focus service, so it keeps working while the app is
+  closed.
+
 ## [1.13.0] - 2026-06-21
 
 ### Added
