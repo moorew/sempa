@@ -27,6 +27,12 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="com.clevercode.sempa" />
             </intent-filter>
+            <!-- Share-to-Sempa: accept text/links shared from other apps. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
 
         <!-- Themed launcher icons. Exactly one alias is enabled at a time; the app

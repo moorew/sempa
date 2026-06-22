@@ -51,6 +51,20 @@ class WidgetBridgePlugin : Plugin() {
         call.resolve()
     }
 
+    /** Return + clear any text shared into Sempa (ACTION_SEND), stashed by
+     *  MainActivity. The web layer turns it into a prefilled new task. */
+    @PluginMethod
+    fun consumePendingShare(call: PluginCall) {
+        val ctx = context ?: return call.reject("No context")
+        val prefs = ctx.getSharedPreferences("sempa_share", Context.MODE_PRIVATE)
+        val text = prefs.getString("text", "") ?: ""
+        val subject = prefs.getString("subject", "") ?: ""
+        if (text.isNotEmpty() || subject.isNotEmpty()) {
+            prefs.edit().remove("text").remove("subject").apply()
+        }
+        call.resolve(JSObject().put("text", text).put("subject", subject))
+    }
+
     @PluginMethod
     fun updateWidgetData(call: PluginCall) {
         val ctx = context ?: run {

@@ -6,6 +6,14 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.18.0] - 2026-06-22
+
+### Added
+- **Share to Sempa (Android).** Share a link or text from any app — browser, email,
+  anything — and pick Sempa: it opens a new task prefilled with what you shared (a
+  page's title becomes the task, its URL drops into the notes as a link). Capture
+  without leaving the app you're in.
+
 ## [1.17.0] - 2026-06-22
 
 ### Added
