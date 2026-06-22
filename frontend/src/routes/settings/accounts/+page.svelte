@@ -4,6 +4,7 @@
   import { api, getServerUrl, clearTauriToken, clearNativeToken, resetApiResolver } from '$lib/api';
   import type { AiTitleConfig } from '$lib/api';
   import { theme } from '$lib/stores/theme.svelte';
+  import type { ThemeName } from '$lib/stores/theme.svelte';
   import { windowChrome } from '$lib/stores/windowChrome.svelte';
   import { prefs, AI_FEATURE_META } from '$lib/stores/prefs.svelte';
   import { quotes } from '$lib/stores/quotes.svelte';
@@ -28,6 +29,29 @@
   import { realtime } from '$lib/stores/realtime.svelte';
   import { goto } from '$app/navigation';
   import UpdatesPanel from '$lib/components/UpdatesPanel.svelte';
+  import { canThemeAppIcon, setAppIcon } from '$lib/widget-bridge';
+
+  // ── Themed app icon (Android) ──────────────────────────────────────────────
+  // Switching the launcher icon refreshes it in the launcher, so we never do it
+  // silently: after the user picks a theme we ASK whether to match the icon. The
+  // chosen icon is remembered so we only prompt on an actual change.
+  const APP_ICON_KEY = 'sempa_app_icon';
+  let iconPromptTheme = $state<{ id: string; label: string } | null>(null);
+
+  function chooseTheme(id: ThemeName, label: string) {
+    theme.setTheme(id);
+    if (!canThemeAppIcon()) return;
+    const current = (typeof localStorage !== 'undefined' && localStorage.getItem(APP_ICON_KEY)) || 'terracotta';
+    if (current !== id) iconPromptTheme = { id, label };
+  }
+
+  function confirmAppIcon() {
+    const t = iconPromptTheme;
+    if (!t) return;
+    setAppIcon(t.id);
+    try { localStorage.setItem(APP_ICON_KEY, t.id); } catch { /* ignore */ }
+    iconPromptTheme = null;
+  }
 
   // ── Account / profile ──────────────────────────────────────────────────────
   let me = $state<{ authenticated: boolean; auth_enabled?: boolean; google_enabled?: boolean; email?: string }>({ authenticated: false });
@@ -1634,7 +1658,7 @@
             {#each theme.THEMES as t (t.id)}
               {@const selected = theme.theme === t.id}
               {@const previewDark = t.darkOnly || theme.dark}
-              <button onclick={() => theme.setTheme(t.id)}
+              <button onclick={() => chooseTheme(t.id, t.label)}
                       aria-pressed={selected}
                       title={t.label}
                       class="text-left transition-all"
@@ -1679,6 +1703,24 @@
               </button>
             {/each}
           </div>
+
+          {#if iconPromptTheme}
+            <div class="mt-3 flex items-center justify-between gap-3 rounded-xl p-3"
+                 style="background: var(--sempa-accent-bg); border:1px solid var(--sempa-border);">
+              <p class="text-[12px] leading-snug" style="color: var(--sempa-text);">
+                Match your app icon to <strong>{iconPromptTheme.label}</strong>?
+                <span style="color: var(--sempa-text-dim);">The home-screen icon will refresh.</span>
+              </p>
+              <div class="flex shrink-0 items-center gap-2">
+                <button onclick={() => (iconPromptTheme = null)}
+                        class="rounded-lg px-2.5 py-1.5 text-[12px] transition-opacity hover:opacity-70"
+                        style="color: var(--sempa-text-dim);">Not now</button>
+                <button onclick={confirmAppIcon}
+                        class="rounded-lg px-3 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90"
+                        style="background: var(--sempa-accent);">Update icon</button>
+              </div>
+            </div>
+          {/if}
         </div>
 
         <!-- Text size -->

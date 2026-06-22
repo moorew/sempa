@@ -26,6 +26,7 @@ interface WidgetBridgePlugin {
     week?: { date: string; count: number }[];
     theme?: WidgetThemeColors;
   }): Promise<void>;
+  setAppIcon?(opts: { theme: string }): Promise<void>;
 }
 
 function getPlugin(): WidgetBridgePlugin | null {
@@ -112,4 +113,15 @@ export function syncWidgetTheme() {
   const theme = readThemeColors();
   if (!theme) return;
   plugin.updateWidgetData({ theme }).catch(() => {});
+}
+
+/** Whether the native launcher-icon switch is available (Android with the plugin). */
+export function canThemeAppIcon(): boolean {
+  return !!getPlugin()?.setAppIcon;
+}
+
+/** Switch the Android launcher icon to the variant for `theme` (terracotta, forest,
+ *  plum, slate, oled, ocean). User-initiated only — the launcher briefly refreshes. */
+export function setAppIcon(theme: string) {
+  getPlugin()?.setAppIcon?.({ theme }).catch(() => {});
 }
