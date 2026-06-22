@@ -6,6 +6,12 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.20.0] - 2026-06-22
+
+### Added
+- **Swipe a task left to push it to tomorrow** (mobile), alongside the existing
+  swipe-right-to-complete. A quick gesture to clear today without opening the task.
+
 ## [1.19.0] - 2026-06-22
 
 ### Added
