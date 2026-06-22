@@ -617,6 +617,19 @@
   }
 
   // ── Complete ──────────────────────────────────────────────────────────────
+  // Swipe-left on a mobile card → bump the task to the next day. Optimistic: it
+  // leaves this day's board immediately; reverts on failure.
+  async function handleReschedule(id: string) {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    const tomorrow = offsetDate(date, 1);
+    const prev = tasks.slice();
+    tasks = tasks.filter(t => t.id !== id);
+    try {
+      await api.tasks.update(id, { planned_date: tomorrow, week_start: weekStart(tomorrow) });
+    } catch { tasks = prev; }
+  }
+
   async function handleComplete(id: string) {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
@@ -1030,6 +1043,7 @@
             <MobileTaskCard
               {task}
               onComplete={handleComplete}
+              onReschedule={handleReschedule}
               onTrash={handleTrashRequest}
               onClick={openMobileView}
               onFocusClick={handleFocus}

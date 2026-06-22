@@ -7,6 +7,7 @@
   let {
     task,
     onComplete,
+    onReschedule,
     onTrash,
     onClick,
     onFocusClick,
@@ -17,6 +18,8 @@
   }: {
     task: Task;
     onComplete?: (id: string) => void;
+    /** Swipe left → reschedule (to tomorrow). Only enabled when supplied. */
+    onReschedule?: (id: string) => void;
     onTrash?: (id: string, title: string) => void;
     onClick?: (task: Task) => void;
     onFocusClick?: (id: string, title: string) => void;
@@ -114,11 +117,15 @@
       if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
       locked = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
     }
-    if (locked !== 'h' || dx <= 0) return;
+    if (locked !== 'h') return;
+    // Right = complete, left = reschedule; each direction only if its handler exists
+    // (e.g. completed-section cards have neither extra). Damp + clamp both ways.
+    if (dx > 0 && !onComplete) return;
+    if (dx < 0 && !onReschedule) return;
 
     const prev = deltaX;
-    deltaX = Math.min(dx * 0.4, MAX_SWIPE);
-    if (prev < TRIGGER && deltaX >= TRIGGER) hapticTick();
+    deltaX = Math.max(-MAX_SWIPE, Math.min(dx * 0.4, MAX_SWIPE));
+    if (Math.abs(prev) < TRIGGER && Math.abs(deltaX) >= TRIGGER) hapticTick();
   }
 
   function handleTouchEnd() {
@@ -137,10 +144,13 @@
     if (deltaX > TRIGGER) {
       hapticClick();
       onComplete?.(task.id);
+    } else if (deltaX < -TRIGGER) {
+      hapticClick();
+      onReschedule?.(task.id);
     }
     // Suppress the synthetic click that follows any real horizontal swipe so a
-    // swipe-to-complete doesn't also open the task detail.
-    if (locked === 'h' && deltaX > 4) {
+    // swipe doesn't also open the task detail.
+    if (locked === 'h' && Math.abs(deltaX) > 4) {
       suppressClick = true;
       setTimeout(() => { suppressClick = false; }, 350);
     }
@@ -155,12 +165,23 @@
 </script>
 
 <div class="relative overflow-hidden rounded-xl" data-task-id={task.id}>
-  <!-- Swipe reveal (green check) -->
+  <!-- Swipe-right reveal (complete — green check) -->
   {#if deltaX > 0}
     <div class="absolute inset-y-0 left-0 flex items-center pl-4"
          style="color: var(--sempa-success); width: {deltaX}px;">
       <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+      </svg>
+    </div>
+  {/if}
+
+  <!-- Swipe-left reveal (reschedule to tomorrow — calendar + arrow) -->
+  {#if deltaX < 0}
+    <div class="absolute inset-y-0 right-0 flex items-center justify-end pr-4"
+         style="color: var(--sempa-accent); width: {-deltaX}px;">
+      <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 011 1v13a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M11 15h4m0 0l-2-2m2 2l-2 2"/>
       </svg>
     </div>
   {/if}
