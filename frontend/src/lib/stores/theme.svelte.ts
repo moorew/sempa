@@ -138,6 +138,8 @@ function createThemeStore() {
     if (!meta) return;
     const c = getComputedStyle(document.documentElement).getPropertyValue('--sempa-bg-main').trim();
     if (c) meta.setAttribute('content', c);
+    // Keep the home-screen widgets in step with the active theme (Android only).
+    void import('$lib/widget-bridge').then((m) => m.syncWidgetTheme()).catch(() => {});
   }
 
   /** True for the active light/dark preference, ignoring an OLED override. */

@@ -23,6 +23,7 @@ import java.time.format.DateTimeFormatter
 class SempaSmallWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        SempaWidgetTheme.refresh(context)
         val prefs = context.getSharedPreferences("sempa_widget", Context.MODE_PRIVATE)
         val total = prefs.getInt("today_total", 0)
         val done = prefs.getInt("today_done", 0)
