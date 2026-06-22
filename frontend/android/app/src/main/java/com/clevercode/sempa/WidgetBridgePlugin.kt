@@ -2,9 +2,9 @@ package com.clevercode.sempa
 
 import android.content.Context
 import androidx.glance.appwidget.updateAll
+import com.clevercode.sempa.widget.SempaFocusWidget
 import com.clevercode.sempa.widget.SempaLargeWidget
 import com.clevercode.sempa.widget.SempaMediumWidget
-import com.clevercode.sempa.widget.SempaPomodoroWidget
 import com.clevercode.sempa.widget.SempaSmallWidget
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -72,7 +72,7 @@ class WidgetBridgePlugin : Plugin() {
                 SempaSmallWidget().updateAll(ctx)
                 SempaMediumWidget().updateAll(ctx)
                 SempaLargeWidget().updateAll(ctx)
-                SempaPomodoroWidget().updateAll(ctx)
+                SempaFocusWidget.updateAll(ctx)
             } catch (_: Exception) {}
         }
 

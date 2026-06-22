@@ -75,7 +75,7 @@
         </receiver>
 
         <receiver
-            android:name=".widget.SempaPomodoroWidgetReceiver"
+            android:name=".widget.SempaFocusWidget"
             android:label="@string/widget_pomodoro_label"
             android:exported="true">
             <intent-filter>

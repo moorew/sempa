@@ -23,7 +23,7 @@ class WidgetRefreshWorker(
                 SempaSmallWidget().updateAll(applicationContext)
                 SempaMediumWidget().updateAll(applicationContext)
                 SempaLargeWidget().updateAll(applicationContext)
-                SempaPomodoroWidget().updateAll(applicationContext)
+                SempaFocusWidget.updateAll(applicationContext)
                 Result.success()
             } catch (e: Exception) {
                 Result.retry()

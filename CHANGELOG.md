@@ -6,6 +6,22 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.14.4] - 2026-06-21
+
+### Fixed
+- **App no longer crashes when finishing/discarding a focus session** (which left
+  the "How long did you work?" sheet stuck on every launch). The focus service was
+  started with `startForegroundService()` but stopped without `startForeground()`,
+  violating Android's contract; it now promotes to the foreground for an instant
+  before tearing down, so Done/Discard/Stop are safe and the stuck sheet clears.
+
+### Changed
+- **Focus widget rebuilt for a proper, resizable timer.** It's now a native widget
+  (not Glance) so it shows a real ticking countdown with the phase, task, and
+  Pause/Resume + Done controls — and it works from a small tile up to a large one.
+  Idle, it lists today's tasks to start. (Remove and re-add the widget after
+  updating.)
+
 ## [1.14.3] - 2026-06-21
 
 ### Fixed

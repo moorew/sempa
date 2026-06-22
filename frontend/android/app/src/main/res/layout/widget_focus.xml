@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Classic RemoteViews layout for the home-screen Focus widget. Centered + weighted
+     so it reads well from a small (2x2) tile up to a large one. The active state uses
+     a native Chronometer for a live, self-ticking countdown; the idle state lists
+     today's tasks to start. State + values are set in SempaFocusWidget. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:background="@drawable/widget_card_bg"
+    android:padding="14dp">
+
+    <!-- ACTIVE: live timer -->
+    <LinearLayout
+        android:id="@+id/focus_active"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <TextView
+            android:id="@+id/focus_phase"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="FOCUS"
+            android:textColor="#B3592E"
+            android:textStyle="bold"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/focus_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:gravity="center"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="Task"
+            android:textColor="#2B221B"
+            android:textSize="13sp" />
+
+        <Chronometer
+            android:id="@+id/focus_chrono"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="#2B221B"
+            android:textStyle="bold"
+            android:fontFamily="monospace"
+            android:textSize="30sp" />
+
+        <TextView
+            android:id="@+id/focus_static"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:visibility="gone"
+            android:text="Paused"
+            android:textColor="#2B221B"
+            android:textStyle="bold"
+            android:textSize="24sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/focus_toggle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:background="@drawable/widget_preview_pill"
+                android:paddingTop="9dp"
+                android:paddingBottom="9dp"
+                android:text="Pause"
+                android:textColor="#B3592E"
+                android:textStyle="bold"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/focus_done"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:gravity="center"
+                android:background="@drawable/widget_preview_pill"
+                android:paddingTop="9dp"
+                android:paddingBottom="9dp"
+                android:text="Done"
+                android:textColor="#B3592E"
+                android:textStyle="bold"
+                android:textSize="13sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- IDLE: pick a task -->
+    <LinearLayout
+        android:id="@+id/focus_idle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Focus on…"
+            android:textColor="#2B221B"
+            android:textStyle="bold"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/focus_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:visibility="gone"
+            android:text="Open Sempa to plan today"
+            android:textColor="#B0A498"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/focus_task_0"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/widget_preview_pill"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:paddingTop="7dp"
+            android:paddingBottom="7dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:visibility="gone"
+            android:textColor="#2B221B"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/focus_task_1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:background="@drawable/widget_preview_pill"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:paddingTop="7dp"
+            android:paddingBottom="7dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:visibility="gone"
+            android:textColor="#2B221B"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/focus_task_2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:background="@drawable/widget_preview_pill"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:paddingTop="7dp"
+            android:paddingBottom="7dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:visibility="gone"
+            android:textColor="#2B221B"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/focus_task_3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:background="@drawable/widget_preview_pill"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:paddingTop="7dp"
+            android:paddingBottom="7dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:visibility="gone"
+            android:textColor="#2B221B"
+            android:textSize="13sp" />
+    </LinearLayout>
+</LinearLayout>
