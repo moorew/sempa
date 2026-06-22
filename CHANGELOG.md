@@ -6,6 +6,16 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.15.0] - 2026-06-21
+
+### Added
+- **Widgets now follow your theme.** All home-screen widgets pick up the active
+  theme's colours — accent preset (Terracotta, Forest, Plum, Slate, OLED, Ocean)
+  and light/dark — and update when you change it.
+- **Calm resting state for the focus widget.** When there are no tasks, the focus
+  widget shows a friendly resting face with "All clear · Tap to plan today", so it
+  looks good on your home screen all the time.
+
 ## [1.14.4] - 2026-06-21
 
 ### Fixed

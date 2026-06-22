@@ -6,10 +6,12 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.os.Build
 import android.os.SystemClock
 import android.view.View
 import android.widget.RemoteViews
+import androidx.compose.ui.graphics.toArgb
 import com.clevercode.sempa.FocusTimerService
 import com.clevercode.sempa.MainActivity
 import com.clevercode.sempa.R
@@ -17,13 +19,15 @@ import kotlin.math.ceil
 
 /**
  * Home-screen Focus widget — a CLASSIC RemoteViews AppWidgetProvider (not Glance) so
- * we get a real, self-ticking native Chronometer and full control over the layout at
- * any widget size. State is read from SharedPreferences (no JS needed while closed):
+ * we get a real, self-ticking native Chronometer and full layout control at any size.
+ * Three states (from SharedPreferences, no JS needed while closed):
  *
- *  • ACTIVE  — `sempa_focus_timer` (written by FocusTimerService): phase, task, a live
- *    countdown, and Pause/Resume + Done buttons wired to the service.
- *  • IDLE    — today's not-done tasks from the `sempa_widget` cache (WidgetBridge);
- *    tapping one opens the app with `startFocusTaskId` so the web store starts it.
+ *  • ACTIVE — live timer (phase, task, ticking countdown, Pause/Resume + Done).
+ *  • TASKS  — idle with today's not-done tasks to start.
+ *  • REST   — idle with no tasks: a calm resting face, so it looks good on the home
+ *    screen all the time.
+ *
+ * Colours track the app's active theme via [SempaWidgetTheme] (pushed by WidgetBridge).
  */
 class SempaFocusWidget : AppWidgetProvider() {
 
@@ -36,10 +40,6 @@ class SempaFocusWidget : AppWidgetProvider() {
         private val ROW_IDS = intArrayOf(
             R.id.focus_task_0, R.id.focus_task_1, R.id.focus_task_2, R.id.focus_task_3,
         )
-        // Not `const`: 0xFFB3592E exceeds Int range as a literal, so .toInt() (a call)
-        // is needed — which a const val can't hold.
-        private val FOCUS_TERRACOTTA = 0xFFB3592E.toInt()
-        private val BREAK_GREEN = 0xFF22C55E.toInt()
 
         /** Re-render every placed Focus widget. Safe to call from any thread. */
         fun updateAll(context: Context) {
@@ -51,13 +51,27 @@ class SempaFocusWidget : AppWidgetProvider() {
         }
 
         private fun buildViews(context: Context): RemoteViews {
+            SempaWidgetTheme.refresh(context)
             val rv = RemoteViews(context.packageName, R.layout.widget_focus)
+
+            // Theme the card + pill backgrounds (tinting keeps the rounded shape).
+            // setColorStateList (background tint) is API 31+; on older the layout's
+            // brand defaults remain. Text/accent colours below theme on all versions.
+            tintBg(rv, R.id.focus_root, SempaWidgetTheme.surface.toArgb())
+            for (id in intArrayOf(R.id.focus_toggle, R.id.focus_done, *ROW_IDS)) {
+                tintBg(rv, id, SempaWidgetTheme.accentBg.toArgb())
+            }
+
             val fp = context.getSharedPreferences(FocusTimerService.PREFS, Context.MODE_PRIVATE)
             val active = fp.getBoolean(FocusTimerService.KEY_ACTIVE, false)
 
             if (active) {
+                rv.setViewVisibility(R.id.focus_active, View.VISIBLE)
+                rv.setViewVisibility(R.id.focus_tasks, View.GONE)
+                rv.setViewVisibility(R.id.focus_rest, View.GONE)
                 renderActive(context, rv, fp)
             } else {
+                rv.setViewVisibility(R.id.focus_active, View.GONE)
                 renderIdle(context, rv)
             }
             return rv
@@ -71,30 +85,33 @@ class SempaFocusWidget : AppWidgetProvider() {
             val remain = fp.getLong(FocusTimerService.KEY_REMAIN, 0L)
             val now = System.currentTimeMillis()
             val remainingMs = if (running && endTime > now) endTime - now else remain
-            val accent = if (phase.startsWith("Focus", true)) FOCUS_TERRACOTTA else BREAK_GREEN
+            val accent = if (phase.startsWith("Focus", true)) SempaWidgetTheme.primary.toArgb() else SempaWidgetTheme.green.toArgb()
+            val onSurface = SempaWidgetTheme.onSurface.toArgb()
 
-            rv.setViewVisibility(R.id.focus_active, View.VISIBLE)
-            rv.setViewVisibility(R.id.focus_idle, View.GONE)
             rv.setTextViewText(R.id.focus_phase, phase.uppercase())
             rv.setTextColor(R.id.focus_phase, accent)
             rv.setTextViewText(R.id.focus_title, title)
+            rv.setTextColor(R.id.focus_title, onSurface)
 
             if (running && remainingMs > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 // Live, self-ticking countdown. Chronometer base is in elapsedRealtime().
                 rv.setChronometerCountDown(R.id.focus_chrono, true)
                 rv.setChronometer(R.id.focus_chrono, SystemClock.elapsedRealtime() + remainingMs, null, true)
-                rv.setTextColor(R.id.focus_chrono, accent)
+                rv.setTextColor(R.id.focus_chrono, onSurface)
                 rv.setViewVisibility(R.id.focus_chrono, View.VISIBLE)
                 rv.setViewVisibility(R.id.focus_static, View.GONE)
             } else {
                 rv.setChronometer(R.id.focus_chrono, SystemClock.elapsedRealtime(), null, false)
                 rv.setViewVisibility(R.id.focus_chrono, View.GONE)
                 rv.setViewVisibility(R.id.focus_static, View.VISIBLE)
+                rv.setTextColor(R.id.focus_static, onSurface)
                 val mins = if (remainingMs > 0) ceil(remainingMs / 60000.0).toInt() else 0
                 rv.setTextViewText(R.id.focus_static, if (!running) "Paused" else if (mins > 0) "$mins min" else "Done soon")
             }
 
             rv.setTextViewText(R.id.focus_toggle, if (running) "Pause" else "Resume")
+            rv.setTextColor(R.id.focus_toggle, SempaWidgetTheme.primary.toArgb())
+            rv.setTextColor(R.id.focus_done, SempaWidgetTheme.primary.toArgb())
             rv.setOnClickPendingIntent(
                 R.id.focus_toggle,
                 servicePI(context, if (running) FocusTimerService.ACTION_BTN_PAUSE else FocusTimerService.ACTION_BTN_RESUME, 11),
@@ -103,9 +120,6 @@ class SempaFocusWidget : AppWidgetProvider() {
         }
 
         private fun renderIdle(context: Context, rv: RemoteViews) {
-            rv.setViewVisibility(R.id.focus_active, View.GONE)
-            rv.setViewVisibility(R.id.focus_idle, View.VISIBLE)
-
             val wp = context.getSharedPreferences("sempa_widget", Context.MODE_PRIVATE)
             val count = wp.getInt("task_count", 0)
             val tasks = ArrayList<Pair<String, String>>()
@@ -118,22 +132,39 @@ class SempaFocusWidget : AppWidgetProvider() {
                 i++
             }
 
-            for (idx in ROW_IDS.indices) {
-                val rowId = ROW_IDS[idx]
-                if (idx < tasks.size) {
-                    rv.setTextViewText(rowId, "▶  ${tasks[idx].second}")
-                    rv.setViewVisibility(rowId, View.VISIBLE)
-                    rv.setOnClickPendingIntent(rowId, activityPI(context, tasks[idx].first, 20 + idx))
-                } else {
-                    rv.setViewVisibility(rowId, View.GONE)
-                }
-            }
+            val onSurface = SempaWidgetTheme.onSurface.toArgb()
 
             if (tasks.isEmpty()) {
-                rv.setViewVisibility(R.id.focus_empty, View.VISIBLE)
-                rv.setOnClickPendingIntent(R.id.focus_empty, activityPI(context, null, 30))
+                // REST: calm resting face.
+                rv.setViewVisibility(R.id.focus_tasks, View.GONE)
+                rv.setViewVisibility(R.id.focus_rest, View.VISIBLE)
+                rv.setInt(R.id.focus_rest_face, "setColorFilter", SempaWidgetTheme.primary.toArgb())
+                rv.setTextColor(R.id.focus_rest_title, onSurface)
+                rv.setTextColor(R.id.focus_rest_sub, SempaWidgetTheme.onSurfaceDim.toArgb())
+                rv.setOnClickPendingIntent(R.id.focus_rest, activityPI(context, null, 30))
             } else {
-                rv.setViewVisibility(R.id.focus_empty, View.GONE)
+                // TASKS: pick one to start.
+                rv.setViewVisibility(R.id.focus_tasks, View.VISIBLE)
+                rv.setViewVisibility(R.id.focus_rest, View.GONE)
+                rv.setTextColor(R.id.focus_tasks_header, onSurface)
+                for (idx in ROW_IDS.indices) {
+                    val rowId = ROW_IDS[idx]
+                    if (idx < tasks.size) {
+                        rv.setTextViewText(rowId, "▶  ${tasks[idx].second}")
+                        rv.setTextColor(rowId, onSurface)
+                        rv.setViewVisibility(rowId, View.VISIBLE)
+                        rv.setOnClickPendingIntent(rowId, activityPI(context, tasks[idx].first, 20 + idx))
+                    } else {
+                        rv.setViewVisibility(rowId, View.GONE)
+                    }
+                }
+            }
+        }
+
+        /** Tint a view's background drawable (keeps its rounded shape). API 31+ only. */
+        private fun tintBg(rv: RemoteViews, viewId: Int, color: Int) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                rv.setColorStateList(viewId, "setBackgroundTintList", ColorStateList.valueOf(color))
             }
         }
 

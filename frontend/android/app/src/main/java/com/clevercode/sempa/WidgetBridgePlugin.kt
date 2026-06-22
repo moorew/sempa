@@ -64,6 +64,17 @@ class WidgetBridgePlugin : Plugin() {
             }
         }
 
+        // Active theme colours (pushed by the web app) so every widget matches the
+        // app's theme — accent preset and light/dark. Only overwrite when present,
+        // so a task-only push doesn't wipe the theme and vice-versa.
+        val theme = call.getObject("theme")
+        if (theme != null) {
+            for (k in arrayOf("primary", "accent_bg", "surface", "on_surface", "on_surface_dim", "outline", "green")) {
+                val v = theme.optString(k, "")
+                if (v.isNotEmpty()) editor.putString("theme_$k", v)
+            }
+        }
+
         editor.apply()
 
         // Trigger widget refresh
