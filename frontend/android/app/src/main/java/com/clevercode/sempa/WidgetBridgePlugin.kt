@@ -1,6 +1,8 @@
 package com.clevercode.sempa
 
+import android.content.ComponentName
 import android.content.Context
+import android.content.pm.PackageManager
 import androidx.glance.appwidget.updateAll
 import com.clevercode.sempa.widget.SempaFocusWidget
 import com.clevercode.sempa.widget.SempaLargeWidget
@@ -17,6 +19,37 @@ import kotlinx.coroutines.launch
 
 @CapacitorPlugin(name = "WidgetBridge")
 class WidgetBridgePlugin : Plugin() {
+
+    /**
+     * Switch the launcher icon to the variant matching the given theme by enabling
+     * that activity-alias and disabling the others. The web app calls this only when
+     * the user opts in (after a theme change), so the brief launcher refresh is
+     * expected. Enables the target FIRST (a launcher entry always exists) and no-ops
+     * when it's already current (no needless flicker).
+     */
+    @PluginMethod
+    fun setAppIcon(call: PluginCall) {
+        val ctx = context ?: return call.reject("No context")
+        val theme = call.getString("theme") ?: return call.reject("theme required")
+        val target = ALIASES[theme] ?: return call.resolve() // unknown theme → leave as-is
+        val pm = ctx.packageManager
+        val pkg = ctx.packageName
+        fun comp(alias: String) = ComponentName(pkg, "$pkg.$alias")
+
+        val explicit = ALIASES.values.firstOrNull {
+            pm.getComponentEnabledSetting(comp(it)) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        }
+        val current = explicit ?: ALIASES.getValue("terracotta") // manifest default
+        if (current == target) return call.resolve()
+
+        pm.setComponentEnabledSetting(comp(target), PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
+        for (alias in ALIASES.values) {
+            if (alias != target) {
+                pm.setComponentEnabledSetting(comp(alias), PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
+            }
+        }
+        call.resolve()
+    }
 
     @PluginMethod
     fun updateWidgetData(call: PluginCall) {
@@ -88,5 +121,17 @@ class WidgetBridgePlugin : Plugin() {
         }
 
         call.resolve()
+    }
+
+    companion object {
+        // theme name (from the web theme store) → launcher activity-alias.
+        private val ALIASES = mapOf(
+            "terracotta" to "IconTerracotta",
+            "forest" to "IconForest",
+            "plum" to "IconPlum",
+            "slate" to "IconSlate",
+            "oled" to "IconOled",
+            "ocean" to "IconOcean",
+        )
     }
 }

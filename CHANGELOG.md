@@ -6,6 +6,15 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.16.0] - 2026-06-21
+
+### Added
+- **Theme-matched app icon (Android, opt-in).** When you switch theme, Sempa asks
+  if you'd like to match the home-screen app icon too. Say yes and the launcher icon
+  swaps to an accent-coloured variant (Terracotta, Forest, Plum, Slate, OLED, Ocean).
+  It's always your choice — nothing changes the icon silently — because Android
+  briefly refreshes the launcher icon when it switches.
+
 ## [1.15.0] - 2026-06-21
 
 ### Added

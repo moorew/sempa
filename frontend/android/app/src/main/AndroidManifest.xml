@@ -9,6 +9,10 @@
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
 
+        <!-- MainActivity is NOT the launcher entry itself: the MAIN/LAUNCHER lives on
+             the theme aliases below (exactly one enabled at a time) so the user can
+             match the app icon to the active theme. MainActivity keeps the deep-link
+             VIEW filter and remains every alias's targetActivity. -->
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation"
             android:name=".MainActivity"
@@ -18,16 +22,64 @@
             android:exported="true"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="com.clevercode.sempa" />
             </intent-filter>
         </activity>
+
+        <!-- Themed launcher icons. Exactly one alias is enabled at a time; the app
+             switches them (WidgetBridge.setAppIcon) when the user opts to match the
+             icon to a new theme. Terracotta is the default. -->
+        <activity-alias android:name=".IconTerracotta" android:targetActivity=".MainActivity"
+            android:exported="true" android:enabled="true" android:label="@string/title_activity_main"
+            android:icon="@mipmap/ic_launcher_terracotta" android:roundIcon="@mipmap/ic_launcher_terracotta_round">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".IconForest" android:targetActivity=".MainActivity"
+            android:exported="true" android:enabled="false" android:label="@string/title_activity_main"
+            android:icon="@mipmap/ic_launcher_forest" android:roundIcon="@mipmap/ic_launcher_forest_round">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".IconPlum" android:targetActivity=".MainActivity"
+            android:exported="true" android:enabled="false" android:label="@string/title_activity_main"
+            android:icon="@mipmap/ic_launcher_plum" android:roundIcon="@mipmap/ic_launcher_plum_round">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".IconSlate" android:targetActivity=".MainActivity"
+            android:exported="true" android:enabled="false" android:label="@string/title_activity_main"
+            android:icon="@mipmap/ic_launcher_slate" android:roundIcon="@mipmap/ic_launcher_slate_round">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".IconOled" android:targetActivity=".MainActivity"
+            android:exported="true" android:enabled="false" android:label="@string/title_activity_main"
+            android:icon="@mipmap/ic_launcher_oled" android:roundIcon="@mipmap/ic_launcher_oled_round">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias android:name=".IconOcean" android:targetActivity=".MainActivity"
+            android:exported="true" android:enabled="false" android:label="@string/title_activity_main"
+            android:icon="@mipmap/ic_launcher_ocean" android:roundIcon="@mipmap/ic_launcher_ocean_round">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <provider
             android:name="androidx.core.content.FileProvider"

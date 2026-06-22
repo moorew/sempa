@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Per-theme app-icon background colours (match the theme accents in themes.css).
+     Used by the themed adaptive launcher icons + activity-aliases. -->
+<resources>
+    <color name="icon_bg_terracotta">#b3592e</color>
+    <color name="icon_bg_forest">#3f6f47</color>
+    <color name="icon_bg_plum">#7a4a9e</color>
+    <color name="icon_bg_slate">#4a5a6b</color>
+    <color name="icon_bg_oled">#e08246</color>
+    <color name="icon_bg_ocean">#2f6499</color>
+</resources>
