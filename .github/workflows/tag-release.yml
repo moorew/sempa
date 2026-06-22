@@ -3,13 +3,17 @@ name: Tag release
 # Cuts a release tag automatically when the version in frontend/package.json is
 # bumped on main. A tag is created only when there's no matching v<version> tag
 # yet, so ordinary docs/CI merges don't trigger a release — bump the version to
-# ship one. The tag then kicks off the Windows, Linux + Android release builds.
+# ship one. The tag then kicks off the Windows, Linux, Android, iOS + image builds,
+# which each cut the GitHub Release and upload their artifacts.
 #
-# The tag is created via the REST API (not `git push`) so the checkout doesn't
-# need to persist credentials. Tags created with the built-in token do NOT
-# trigger other workflows (GitHub blocks that to prevent loops), so we dispatch
-# the release workflows explicitly with the tag as their ref — which produces the
-# same result (they create the GitHub Release whenever github.ref is a tag).
+# The tag is pushed with git. Tags pushed with a PAT (RELEASE_PAT) DO trigger the
+# `on: push: tags` release workflows (a plain GITHUB_TOKEN push does NOT — GitHub
+# blocks that to prevent loops). So:
+#   • RELEASE_PAT set  → push the tag → every release workflow runs ON THE TAG and
+#     creates the Release automatically. Nothing else needed.
+#   • RELEASE_PAT unset → fall back to creating the tag with the built-in token and
+#     dispatching the builds by ref (artifacts build, but the Release isn't cut —
+#     push the tag manually to finish). No worse than before; add the PAT to fix.
 
 on:
   push:
@@ -28,31 +32,46 @@ jobs:
     name: Tag on version bump
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # create the tag ref
-      actions: write    # dispatch the release workflows
+      contents: write   # create/push the tag ref
+      actions: write    # dispatch the release workflows (fallback path)
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
-          persist-credentials: false
+          # Persist a PAT when available so a `git push` of the tag triggers the
+          # release workflows; otherwise the built-in token (push works, but the
+          # tag-triggered workflows won't fire — handled by the fallback below).
+          token: ${{ secrets.RELEASE_PAT || github.token }}
+          persist-credentials: true
 
       - name: Read version from package.json
         id: ver
         run: echo "v=v$(jq -r .version frontend/package.json)" >> "$GITHUB_OUTPUT"
 
-      - name: Tag and trigger release builds if version is new
+      - name: Tag the version (auto-releases when RELEASE_PAT is set)
         env:
           V: ${{ steps.ver.outputs.v }}
           GH_TOKEN: ${{ github.token }}
+          HAS_PAT: ${{ secrets.RELEASE_PAT != '' }}
         run: |
           if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$V" >/dev/null 2>&1; then
             echo "Tag $V already exists — nothing to release."
             exit 0
           fi
-          gh api "repos/$GITHUB_REPOSITORY/git/refs" \
-            -f "ref=refs/tags/$V" -f "sha=$GITHUB_SHA" >/dev/null
-          echo "Created tag $V at $GITHUB_SHA"
-          gh workflow run windows-release.yml --ref "$V"
-          gh workflow run linux-release.yml --ref "$V"
-          gh workflow run android-release.yml --ref "$V"
-          gh workflow run publish-image.yml --ref "$V"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "$V" "$GITHUB_SHA"
+          git push origin "refs/tags/$V"
+          echo "Pushed tag $V at $GITHUB_SHA"
+
+          if [ "$HAS_PAT" = "true" ]; then
+            echo "RELEASE_PAT present — the tag push will trigger the release workflows; they cut the GitHub Release automatically."
+          else
+            echo "::warning::RELEASE_PAT not set — a GITHUB_TOKEN tag push does not trigger workflows. Dispatching builds by ref (artifacts only; the GitHub Release is NOT cut). Add a RELEASE_PAT secret to fully automate releases."
+            gh workflow run windows-release.yml --ref "$V" || true
+            gh workflow run linux-release.yml --ref "$V" || true
+            gh workflow run android-release.yml --ref "$V" || true
+            gh workflow run ios-release.yml --ref "$V" || true
+            gh workflow run publish-image.yml --ref "$V" || true
+          fi
