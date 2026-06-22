@@ -10,6 +10,7 @@
   import { timeTracking } from '$lib/stores/timeTracking.svelte';
   import { initFocusNotification } from '$lib/focusTimerNotification';
   import { initShareTarget } from '$lib/shareTarget';
+  import { initMobileDeepLinks } from '$lib/deeplinkMobile';
   import { quotes } from '$lib/stores/quotes.svelte';
   import { tagStore } from '$lib/stores/tags.svelte';
   import { mobile } from '$lib/stores/mobile.svelte';
@@ -163,6 +164,7 @@
     timeTracking.init();
     initFocusNotification();
     initShareTarget();
+    void initMobileDeepLinks((u) => goto(u));
     quotes.init();
     mobile.init();
     cockpit.init();

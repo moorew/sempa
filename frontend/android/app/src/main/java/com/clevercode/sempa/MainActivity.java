@@ -3,8 +3,13 @@ package com.clevercode.sempa;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import androidx.core.content.pm.ShortcutInfoCompat;
+import androidx.core.content.pm.ShortcutManagerCompat;
+import androidx.core.graphics.drawable.IconCompat;
+import java.util.Arrays;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
@@ -22,6 +27,7 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         createNotificationChannels();
         WidgetRefreshWorker.Companion.enqueuePeriodicRefresh(this);
+        registerShortcuts();
 
         // Expose haptics to WebView
         getBridge().getWebView().addJavascriptInterface(new HapticsInterface(), "SempaHaptics");
@@ -57,6 +63,35 @@ public class MainActivity extends BridgeActivity {
             .putString("subject", subject == null ? "" : subject.toString())
             .apply();
         intent.removeExtra(Intent.EXTRA_TEXT); // don't reprocess on rotation/relaunch
+    }
+
+    /** Long-press launcher icon → New task / Plan today / Daily shutdown. Each opens
+     *  a sempa:// deep link the web layer routes (initMobileDeepLinks). Dynamic (not
+     *  static XML) so they attach to the app regardless of which icon alias is the
+     *  active launcher. */
+    private void registerShortcuts() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return; // ShortcutManager is API 25+
+        ShortcutInfoCompat newTask = buildShortcut("new", "New task", "New task",
+            R.drawable.ic_shortcut_new, "com.clevercode.sempa://new");
+        ShortcutInfoCompat plan = buildShortcut("plan", "Plan today", "Plan today",
+            R.drawable.ic_shortcut_plan, "com.clevercode.sempa://plan");
+        ShortcutInfoCompat shutdown = buildShortcut("shutdown", "Shutdown", "Daily shutdown",
+            R.drawable.ic_shortcut_shutdown, "com.clevercode.sempa://shutdown");
+        try {
+            ShortcutManagerCompat.setDynamicShortcuts(this, Arrays.asList(newTask, plan, shutdown));
+        } catch (Exception ignored) { /* some launchers cap/forbid shortcuts */ }
+    }
+
+    private ShortcutInfoCompat buildShortcut(String id, String shortLabel, String longLabel, int iconRes, String uri) {
+        Intent intent = new Intent(this, MainActivity.class)
+            .setAction(Intent.ACTION_VIEW)
+            .setData(Uri.parse(uri));
+        return new ShortcutInfoCompat.Builder(this, id)
+            .setShortLabel(shortLabel)
+            .setLongLabel(longLabel)
+            .setIcon(IconCompat.createWithResource(this, iconRes))
+            .setIntent(intent)
+            .build();
     }
 
     private void handleStartFocus(Intent intent, boolean emitLive) {
