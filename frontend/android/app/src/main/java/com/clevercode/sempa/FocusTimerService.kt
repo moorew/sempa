@@ -9,11 +9,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import androidx.glance.appwidget.updateAll
-import com.clevercode.sempa.widget.SempaPomodoroWidget
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import com.clevercode.sempa.widget.SempaFocusWidget
 import kotlin.math.ceil
 
 /**
@@ -35,13 +31,13 @@ class FocusTimerService : Service() {
         when (intent?.action) {
             ACTION_STOP -> {
                 setActive(false); refreshFocusWidget()
-                stopForegroundCompat(); stopSelf(); return START_NOT_STICKY
+                finishForeground(); return START_NOT_STICKY
             }
 
             ACTION_BTN_DONE -> {
                 relayAction("done")
                 setActive(false); refreshFocusWidget()
-                stopForegroundCompat(); stopSelf()
+                finishForeground()
                 return START_NOT_STICKY
             }
 
@@ -165,11 +161,25 @@ class FocusTimerService : Service() {
     }
     private fun setActive(active: Boolean) { prefs().edit().putBoolean(KEY_ACTIVE, active).apply() }
 
-    /** Re-render the home-screen Pomodoro widget after a state change. */
+    /** Re-render the home-screen focus widget after a state change. */
     private fun refreshFocusWidget() {
-        CoroutineScope(Dispatchers.IO).launch {
-            try { SempaPomodoroWidget().updateAll(applicationContext) } catch (_: Exception) {}
-        }
+        try { SempaFocusWidget.updateAll(applicationContext) } catch (_: Exception) {}
+    }
+
+    /**
+     * Stop the service WITHOUT tripping the startForegroundService() contract.
+     * The plugin delivers STOP/DONE via startForegroundService(); if we then just
+     * stopForeground()+stopSelf() Android crashes the app with "did not then call
+     * Service.startForeground()". So promote to the foreground for an instant
+     * (satisfying the contract) and immediately tear it down.
+     */
+    private fun finishForeground() {
+        try {
+            val p = loadState()
+            startForegroundCompat(buildNotification(p.title, p.phase, false, 0L, remainingNow(p)))
+        } catch (_: Exception) { /* best effort */ }
+        stopForegroundCompat()
+        stopSelf()
     }
     private fun loadState(): State {
         val p = prefs()
@@ -209,9 +219,9 @@ class FocusTimerService : Service() {
         // next foreground (consumePendingStart) so the web store owns the actual start.
         const val KEY_PENDING_START = "pending_start_task"
         // Whether a focus session is currently active (drives the widget's active vs
-        // idle layout). Read by SempaPomodoroWidget; written here.
+        // idle layout). Read by SempaFocusWidget; written here.
         const val KEY_ACTIVE = "s_active"
-        // Read by SempaPomodoroWidget to render the active session, so non-private.
+        // Read by SempaFocusWidget to render the active session, so non-private.
         const val KEY_TITLE = "s_title"
         const val KEY_PHASE = "s_phase"
         const val KEY_RUNNING = "s_running"
