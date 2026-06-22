@@ -6,6 +6,13 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.19.0] - 2026-06-22
+
+### Added
+- **Quick actions on the Android app icon.** Long-press Sempa on your home screen
+  for shortcuts straight to **New task**, **Plan today**, and **Daily shutdown** —
+  no need to open the app and navigate first.
+
 ## [1.18.0] - 2026-06-22
 
 ### Added

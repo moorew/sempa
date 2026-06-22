@@ -26,7 +26,9 @@ export function routeForDeepLink(raw: string): string | null {
     } catch {
         return null;
     }
-    if (url.protocol !== 'sempa:') return null;
+    // Desktop uses the `sempa://` scheme; Android registers `com.clevercode.sempa://`
+    // (Capacitor's custom scheme) — accept both so the same router serves both.
+    if (url.protocol !== 'sempa:' && url.protocol !== 'com.clevercode.sempa:') return null;
 
     // sempa://<host><path> — the host is the action (URL drops the leading //).
     const action = (url.hostname || url.pathname.replace(/^\/+/, '')).toLowerCase();
