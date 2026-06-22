@@ -6,6 +6,18 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.14.3] - 2026-06-21
+
+### Fixed
+- **Starting a task from the home-screen widget no longer pops "How long did you
+  work on that?".** A leftover, unconfirmed prior session could ambush a fresh
+  start; the widget start now supersedes it, ignores any stale notification action,
+  and begins cleanly. Also made the timer's single-owner coordination
+  desktop-only, so on Android the start always takes effect immediately.
+- **Widget picker previews.** Replaced the oversized app-icon previews with proper
+  per-widget mock previews (Focus timer, Today's tasks, Weekly overview, Progress)
+  so each widget is recognisable before you add it.
+
 ## [1.14.2] - 2026-06-21
 
 ### Changed

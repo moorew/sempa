@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static preview of the Focus-timer widget shown in the home-screen picker. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_preview_bg"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="FOCUS"
+        android:textColor="#B3592E"
+        android:textStyle="bold"
+        android:textSize="11sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="Write the spec"
+        android:textColor="#2B221B"
+        android:textSize="14sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="24:59"
+        android:textColor="#2B221B"
+        android:textStyle="bold"
+        android:fontFamily="monospace"
+        android:textSize="28sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:background="@drawable/widget_preview_pill"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:text="Pause"
+            android:textColor="#B3592E"
+            android:textSize="13sp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:gravity="center"
+            android:background="@drawable/widget_preview_pill"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:text="Done"
+            android:textColor="#B3592E"
+            android:textSize="13sp" />
+    </LinearLayout>
+</LinearLayout>

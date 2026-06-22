@@ -70,8 +70,20 @@ export function initFocusNotification(): void {
 async function drainPending(): Promise<void> {
   const p = plugin();
   if (!p) return;
-  try { const r = await p.consumePendingAction(); await route(r?.action); } catch { /* ignore */ }
-  try { const r = await p.consumePendingStart?.(); await startFocusTask(r?.taskId); } catch { /* ignore */ }
+  // A widget "start this task" tap WINS and is handled first: starting fresh, we
+  // must ignore any stale notification action (e.g. a leftover "done" that was
+  // never drained) — otherwise it would immediately end the just-started session
+  // and pop the "how long did you work?" sheet. Always consume the action stash to
+  // clear it, but only route it when we didn't just start a task.
+  let started = false;
+  try {
+    const r = await p.consumePendingStart?.();
+    if (r?.taskId) { await startFocusTask(r.taskId); started = true; }
+  } catch { /* ignore */ }
+  try {
+    const r = await p.consumePendingAction();
+    if (!started) await route(r?.action);
+  } catch { /* ignore */ }
 }
 
 /** Start the timer for a task chosen from the home-screen widget. The web store is
@@ -83,6 +95,10 @@ async function startFocusTask(taskId?: string): Promise<void> {
   try {
     const t = await api.tasks.get(taskId);
     if (!t) return;
+    // Starting a task from the widget supersedes any unconfirmed prior session:
+    // drop its lingering confirm sheet so the new timer starts cleanly instead of
+    // asking the user to log time for a task they're no longer on.
+    if (pomodoro.pendingConfirm) pomodoro.discardSession();
     pomodoro.start(t.id, t.title, t.time_actual_minutes ?? 0, t.time_estimate_minutes ?? null);
   } catch { /* task gone / offline — ignore */ }
 }

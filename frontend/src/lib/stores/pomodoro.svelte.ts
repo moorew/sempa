@@ -1,5 +1,6 @@
 import { api } from '$lib/api';
 import { syncFocusNotification } from '$lib/focusTimerNotification';
+import { isTauri } from '$lib/tauri/bridge';
 
 type Phase = 'work' | 'short_break' | 'long_break';
 
@@ -95,7 +96,14 @@ class PomodoroTimer {
     try { this.#bc = new BroadcastChannel('sempa-pomodoro'); } catch { this.#bc = null; }
     if (this.#bc) this.#bc.onmessage = (ev) => this.#onMessage(ev.data);
 
-    const locks = (typeof navigator !== 'undefined' ? (navigator as Navigator & { locks?: LockManager }).locks : undefined);
+    // Leader election only matters where several timer webviews coexist — that's
+    // ONLY the Tauri desktop shell (main window + the floating widget window).
+    // Capacitor (Android) and a normal browser tab are single-context, so electing
+    // a leader asynchronously risks a mutation (e.g. start) firing before the lock
+    // is granted and being forwarded to nobody. Become leader immediately there.
+    const locks = (isTauri() && typeof navigator !== 'undefined'
+      ? (navigator as Navigator & { locks?: LockManager }).locks
+      : undefined);
     if (locks?.request) {
       // Hold the exclusive lock for this window's lifetime: the callback's promise
       // resolves only on pagehide, so we keep leadership until the window closes
