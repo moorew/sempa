@@ -6,6 +6,13 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.16.1] - 2026-06-22
+
+### Fixed
+- **Focus widget resting face.** The face's lines were too thick and the eyes/smile
+  merged into one blob; the stroke is lighter now and the eyes and smile are spaced
+  apart so it reads as a calm face.
+
 ## [1.16.0] - 2026-06-21
 
 ### Added

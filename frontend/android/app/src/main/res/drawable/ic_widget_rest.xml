@@ -1,34 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- A calm, content "resting" face for the focus widget's no-tasks state: two
-     smiling closed eyes and a gentle smile, drawn in Sempa terracotta. Vector so it
-     stays crisp at any widget size. -->
+     clearly-separated smiling closed eyes and a gentle smile below, drawn in Sempa
+     terracotta (tinted to the theme accent at runtime). Stroke is kept light and the
+     three arcs are spaced apart so their round caps never merge into one blob. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="56dp"
-    android:height="56dp"
+    android:width="60dp"
+    android:height="60dp"
     android:viewportWidth="48"
     android:viewportHeight="48">
 
     <!-- Left eye (smiling arc) -->
     <path
-        android:pathData="M13,19 Q18,25 23,19"
+        android:pathData="M13,20 Q17,24 21,20"
         android:strokeColor="#B3592E"
-        android:strokeWidth="3"
+        android:strokeWidth="2.4"
         android:strokeLineCap="round"
         android:fillColor="#00000000" />
 
-    <!-- Right eye (smiling arc) -->
+    <!-- Right eye (smiling arc) — well separated from the left so caps don't touch -->
     <path
-        android:pathData="M25,19 Q30,25 35,19"
+        android:pathData="M27,20 Q31,24 35,20"
         android:strokeColor="#B3592E"
-        android:strokeWidth="3"
+        android:strokeWidth="2.4"
         android:strokeLineCap="round"
         android:fillColor="#00000000" />
 
-    <!-- Gentle smile -->
+    <!-- Gentle smile, wider and set lower with a clear gap from the eyes -->
     <path
-        android:pathData="M19,30 Q24,35 29,30"
+        android:pathData="M16,30 Q24,37 32,30"
         android:strokeColor="#B3592E"
-        android:strokeWidth="3"
+        android:strokeWidth="2.4"
         android:strokeLineCap="round"
         android:fillColor="#00000000" />
 </vector>
