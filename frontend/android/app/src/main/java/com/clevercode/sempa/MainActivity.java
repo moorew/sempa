@@ -29,6 +29,9 @@ public class MainActivity extends BridgeActivity {
         // Launched from the home-screen Pomodoro widget's "start this task" tap:
         // stash the id for JS to drain on init (the web store owns the actual start).
         handleStartFocus(getIntent(), false);
+        // Shared into Sempa from another app (ACTION_SEND): stash for JS to turn
+        // into a new task on init.
+        handleSharedText(getIntent());
     }
 
     @Override
@@ -37,6 +40,23 @@ public class MainActivity extends BridgeActivity {
         setIntent(intent);
         // App already running → deliver live as well as stashing.
         handleStartFocus(intent, true);
+        handleSharedText(intent);
+    }
+
+    /** A Share-to-Sempa intent (text/*): stash the text + subject; JS drains it on
+     *  init / next foreground and opens a prefilled new-task composer. */
+    private void handleSharedText(Intent intent) {
+        if (intent == null || !Intent.ACTION_SEND.equals(intent.getAction())) return;
+        String type = intent.getType();
+        if (type == null || !type.startsWith("text/")) return;
+        CharSequence text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
+        if (text == null || text.length() == 0) return;
+        CharSequence subject = intent.getCharSequenceExtra(Intent.EXTRA_SUBJECT);
+        getSharedPreferences("sempa_share", MODE_PRIVATE).edit()
+            .putString("text", text.toString())
+            .putString("subject", subject == null ? "" : subject.toString())
+            .apply();
+        intent.removeExtra(Intent.EXTRA_TEXT); // don't reprocess on rotation/relaunch
     }
 
     private void handleStartFocus(Intent intent, boolean emitLive) {

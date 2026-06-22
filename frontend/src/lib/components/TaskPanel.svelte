@@ -79,6 +79,8 @@
     task = null,          // null = create mode; Task = edit mode
     defaultStatus = 'planned' as TaskStatus,
     defaultDate,
+    defaultTitle = '',    // prefill for create mode (e.g. shared-in text)
+    defaultNotes = '',    // prefill notes for create mode (e.g. a shared URL)
     onSave,
     onClose,
     inline = false,       // when true, renders content only (no overlay/aside wrapper)
@@ -87,6 +89,8 @@
     task?: Task | null;
     defaultStatus?: TaskStatus;
     defaultDate: string;
+    defaultTitle?: string;
+    defaultNotes?: string;
     onSave: (task: Task) => void;
     onClose: () => void;
     inline?: boolean;
@@ -515,7 +519,7 @@
       selectedObjectiveId = task.weekly_objective_id ?? null;
       shared = task.shared ?? false;
     } else {
-      title = ''; description = ''; plannedDate = defaultDate;
+      title = defaultTitle; description = defaultNotes; plannedDate = defaultDate;
       estimateMinutes = null; actualMinutesInput = '';
       scheduledStartDate = ''; scheduledStartTime = '';
       scheduledEndDate = '';   scheduledEndTime = '';

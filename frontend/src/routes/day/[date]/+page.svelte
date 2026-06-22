@@ -60,6 +60,8 @@
   let panelTask   = $state<Task | null>(null);
   let panelStatus = $state<TaskStatus>('planned');
   let panelDate   = $state(date);
+  let panelTitle  = $state('');  // create-mode prefill (e.g. shared-in text)
+  let panelNotes  = $state('');
 
   // Mobile task detail view (read-first, tap Edit to open full panel)
   let mobileViewOpen = $state(false);
@@ -289,7 +291,10 @@
   $effect(() => {
     const newParam = $page.url.searchParams.get('new');
     if (!newParam) return;
-    openCreate(date);
+    // Optional prefill, e.g. from a Share-to-Sempa intent (title + notes/URL).
+    const t = $page.url.searchParams.get('title') ?? '';
+    const n = $page.url.searchParams.get('notes') ?? '';
+    openCreate(date, t, n);
     history.replaceState({}, '', $page.url.pathname);
   });
 
@@ -786,8 +791,9 @@
   }
 
   // ── Panel ─────────────────────────────────────────────────────────────────
-  function openCreate(d: string) {
-    panelTask = null; panelStatus = 'planned'; panelDate = d; panelOpen = true;
+  function openCreate(d: string, prefillTitle = '', prefillNotes = '') {
+    panelTask = null; panelStatus = 'planned'; panelDate = d;
+    panelTitle = prefillTitle; panelNotes = prefillNotes; panelOpen = true;
   }
   function openEdit(task: Task) { panelTask = task; panelOpen = true; }
 
@@ -1077,6 +1083,7 @@
 
   <!-- TaskPanel handles its own mobile bottom sheet -->
   <TaskPanel open={panelOpen} task={panelTask} defaultStatus={panelStatus} defaultDate={panelDate}
+             defaultTitle={panelTitle} defaultNotes={panelNotes}
              onSave={handlePanelSave} onClose={() => panelOpen = false} />
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -1363,6 +1370,7 @@
 </div>
 
 <TaskPanel open={panelOpen} task={panelTask} defaultStatus={panelStatus} defaultDate={panelDate}
+           defaultTitle={panelTitle} defaultNotes={panelNotes}
            onSave={handlePanelSave} onClose={() => (panelOpen = false)} />
 {/if}
 
