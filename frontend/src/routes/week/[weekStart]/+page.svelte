@@ -7,13 +7,14 @@
   import { appendPosition, insertPosition, formatWeekRange, offsetDate, today, weekStart as calcWeekStart } from '$lib/utils';
   import { mobile } from '$lib/stores/mobile.svelte';
   import { prefs } from '$lib/stores/prefs.svelte';
+  import { household } from '$lib/stores/household.svelte';
   import SempaPattern from '$lib/components/ui/SempaPattern.svelte';
   import SempaSelect from '$lib/components/ui/SempaSelect.svelte';
   import AttachmentList from '$lib/components/AttachmentList.svelte';
   import { swipeNavigate } from '$lib/actions/swipeNavigate';
   import { tagStore } from '$lib/stores/tags.svelte';
   import TagFilterBar from '$lib/components/TagFilterBar.svelte';
-  import { SlidersHorizontal, CalendarArrowDown, GripVertical } from 'lucide-svelte';
+  import { SlidersHorizontal, CalendarArrowDown, GripVertical, Users2 } from 'lucide-svelte';
   import { moveObjectiveToNextWeek, moveAllUnfinishedToNextWeek, unfinishedObjectives } from '$lib/objectives';
   import { contextMenu, type MenuItem } from '$lib/stores/contextMenu.svelte';
   import { celebrate } from '$lib/celebrate';
@@ -91,7 +92,7 @@
 
   import { realtime } from '$lib/stores/realtime.svelte';
 
-  onMount(load);
+  onMount(() => { void household.ensure(); load(); });
   $effect(() => { weekStartDate; void load(); });
 
   $effect(() => {
@@ -128,6 +129,14 @@
     catch { objectives = objectives.map(o => o.id === obj.id ? obj : o); }
   }
 
+  // Private/Shared (multi-user household). Optimistic; reverts on failure.
+  async function toggleObjShared(obj: Objective) {
+    const next = !obj.shared;
+    objectives = objectives.map(o => o.id === obj.id ? { ...o, shared: next } : o);
+    try { await api.objectives.update(obj.id, { shared: next }); }
+    catch { objectives = objectives.map(o => o.id === obj.id ? obj : o); }
+  }
+
   async function addObjective() {
     const title = addingTitle.trim();
     if (!title) return;
@@ -161,6 +170,9 @@
       { label: 'Add task', onClick: () => { expandedId = obj.id; } },
     ];
     if (!done) items.push({ label: 'Move to next week', onClick: () => replanObjective(obj) });
+    if (household.multiUser) {
+      items.push({ label: obj.shared ? 'Make private' : 'Share with household', onClick: () => toggleObjShared(obj) });
+    }
     items.push('separator');
     items.push({ label: 'Delete', danger: true, onClick: () => deleteObjective(obj.id) });
     contextMenu.show(e, items);
@@ -558,7 +570,7 @@
             <div class="flex-1 min-w-0">
               <p class="text-sm font-semibold {isDone ? 'line-through' : ''}"
                  style="color: {isDone ? 'var(--sempa-text-dim)' : 'var(--sempa-text)'}">
-                {obj.title}
+                {obj.title}{#if household.multiUser && obj.shared}<Users2 class="ml-1.5 inline h-3.5 w-3.5 align-[-2px]" style="color: var(--sempa-accent);" aria-label="Shared with household" />{/if}
               </p>
 
               <!-- Task progress bar + label -->

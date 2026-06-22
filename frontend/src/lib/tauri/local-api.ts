@@ -235,8 +235,13 @@ export const localApi = {
             const sets: string[] = [];
             const vals: unknown[] = [];
             for (const [key, val] of Object.entries(patch).filter(([, v]) => v !== undefined)) {
-                sets.push(`${key} = ?`);
-                vals.push(val);
+                if (key === 'shared') {
+                    sets.push('shared = ?');
+                    vals.push(val ? 1 : 0); // SQLite wants 0/1, not a JS boolean
+                } else {
+                    sets.push(`${key} = ?`);
+                    vals.push(val);
+                }
             }
             if (sets.length === 0) return localApi.objectives.get(id);
             sets.push('updated_at = ?');

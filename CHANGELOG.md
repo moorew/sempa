@@ -6,6 +6,14 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.17.0] - 2026-06-22
+
+### Added
+- **Share weekly objectives with your household.** Objectives now have the same
+  Private/Shared control as tasks and lists (multi-user installs only): right-click
+  an objective → "Share with household" / "Make private". Shared objectives show a
+  small people icon. Completes the multi-user sharing model.
+
 ## [1.16.1] - 2026-06-22
 
 ### Fixed
