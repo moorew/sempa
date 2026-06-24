@@ -179,15 +179,21 @@
       window.location.href = `${base}/api/v1/auth/google?${params}&capacitor_origin=${encodeURIComponent(origin)}`;
     } else if (isTauri()) {
       const tauriOrigin = window.location.origin;
-      if (tauriOrigin.startsWith('https:')) {
-        // Windows (https://tauri.localhost): WebView2 follows the https redirect
-        // back into the app origin, so navigate the WebView as before.
-        window.location.href = `${base}/api/v1/auth/google?${params}&tauri=true&tauri_origin=${encodeURIComponent(tauriOrigin)}`;
-      } else {
+      // The split is by webview, not by https: Linux/macOS serve the app from the
+      // custom `tauri://localhost` scheme (WebKitGTK), while Windows WebView2 serves
+      // from `http(s)://tauri.localhost`. Only the `tauri:` scheme webview refuses to
+      // redirect back to a non-HTTPS origin — Windows follows the redirect fine, so
+      // gate on the scheme, not on https. (Windows is http://tauri.localhost by
+      // default, so an `https:`-only check sent it down the Linux path and broke it.)
+      if (tauriOrigin.startsWith('tauri:')) {
         // Linux/macOS (tauri://localhost): WebKitGTK refuses to redirect a webview
         // to a non-HTTPS scheme, so run OAuth in the SYSTEM browser and return via
         // the sempa:// deep link (handled by the deep-link router → /login?link_token).
         void openExternal(`${base}/api/v1/auth/google?${params}&desktop_deeplink=true`);
+      } else {
+        // Windows (http(s)://tauri.localhost): WebView2 follows the redirect back
+        // into the app origin, so navigate the WebView and return to .../login.
+        window.location.href = `${base}/api/v1/auth/google?${params}&tauri=true&tauri_origin=${encodeURIComponent(tauriOrigin)}`;
       }
     } else {
       window.location.href = `${base}/api/v1/auth/google?${params}`;
