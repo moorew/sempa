@@ -178,23 +178,17 @@
       const origin = window.location.origin;
       window.location.href = `${base}/api/v1/auth/google?${params}&capacitor_origin=${encodeURIComponent(origin)}`;
     } else if (isTauri()) {
-      const tauriOrigin = window.location.origin;
-      // The split is by webview, not by https: Linux/macOS serve the app from the
-      // custom `tauri://localhost` scheme (WebKitGTK), while Windows WebView2 serves
-      // from `http(s)://tauri.localhost`. Only the `tauri:` scheme webview refuses to
-      // redirect back to a non-HTTPS origin — Windows follows the redirect fine, so
-      // gate on the scheme, not on https. (Windows is http://tauri.localhost by
-      // default, so an `https:`-only check sent it down the Linux path and broke it.)
-      if (tauriOrigin.startsWith('tauri:')) {
-        // Linux/macOS (tauri://localhost): WebKitGTK refuses to redirect a webview
-        // to a non-HTTPS scheme, so run OAuth in the SYSTEM browser and return via
-        // the sempa:// deep link (handled by the deep-link router → /login?link_token).
-        void openExternal(`${base}/api/v1/auth/google?${params}&desktop_deeplink=true`);
-      } else {
-        // Windows (http(s)://tauri.localhost): WebView2 follows the redirect back
-        // into the app origin, so navigate the WebView and return to .../login.
-        window.location.href = `${base}/api/v1/auth/google?${params}&tauri=true&tauri_origin=${encodeURIComponent(tauriOrigin)}`;
-      }
+      // ALL desktop platforms (Windows + Linux/macOS): run OAuth in the SYSTEM
+      // browser and return via the sempa:// deep link. Do NOT navigate the in-app
+      // webview to Google — Google blocks OAuth inside embedded webviews (WebView2
+      // and WebKitGTK alike, "disallowed_useragent"), so it loads then hangs at the
+      // account chooser/consent. The system browser is the RFC 8252 native-app
+      // pattern; the deep-link router (initDeepLinks → routeForDeepLink) catches
+      // sempa://login?link_token=… on return and finalizes the session. This relies
+      // on the `sempa://` scheme being registered on every desktop OS — see the
+      // deep-link plugin `schemes` in tauri.conf.json (was Linux-overlay-only, which
+      // is why Windows previously had to fall back to the broken webview path).
+      void openExternal(`${base}/api/v1/auth/google?${params}&desktop_deeplink=true`);
     } else {
       window.location.href = `${base}/api/v1/auth/google?${params}`;
     }
