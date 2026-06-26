@@ -1636,6 +1636,17 @@
   </div>
 {/snippet}
 
+<!-- Sempa-styled on/off switch — the brand toggle used across settings. -->
+{#snippet toggleSwitch(on: boolean, toggle: () => void, label: string)}
+  <button onclick={toggle} role="switch" aria-checked={on} aria-label={label}
+          class="relative shrink-0 rounded-full transition-colors"
+          style="width:44px; height:24px; padding:0; border:none; appearance:none; -webkit-appearance:none; cursor:pointer;
+                 background: {on ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
+    <span class="absolute rounded-full bg-white"
+          style="top:4px; left:{on ? '24px' : '4px'}; width:16px; height:16px; transition: left 150ms ease;"></span>
+  </button>
+{/snippet}
+
 {#snippet appearanceContent()}
   <!-- ═══════════════════════════════════════════════════════════════════════
        SECTION: Appearance
@@ -1770,35 +1781,31 @@
         <!-- Match system accent — opt-in, only when the platform exposes an accent
              colour to the webview (Linux GNOME 47+/KDE; also Windows). -->
         {#if theme.canMatchAccent}
-        <label style="display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
           <span class="min-w-0">
             <span class="text-xs font-medium" style="color: var(--sempa-text);">Match system accent</span>
             <span class="mt-0.5 block text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
               Use your desktop's accent colour instead of the theme's. Off keeps the Sempa accent.
             </span>
           </span>
-          <input type="checkbox" checked={theme.matchAccent}
-                 onchange={(e) => theme.setMatchAccent((e.target as HTMLInputElement).checked)}
-                 style="width:18px; height:18px; accent-color: var(--sempa-accent); cursor:pointer; flex-shrink:0;" />
-        </label>
+          {@render toggleSwitch(theme.matchAccent, () => theme.setMatchAccent(!theme.matchAccent), 'Match system accent')}
+        </div>
         {/if}
 
         <!-- Use system UI font — swap the brand sans for the native UI font. -->
-        <label style="display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
           <span class="min-w-0">
             <span class="text-xs font-medium" style="color: var(--sempa-text);">Use system UI font</span>
             <span class="mt-0.5 block text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
-              Render the interface in your desktop's font instead of Plus Jakarta Sans.
+              Render the interface in your device's font instead of Plus Jakarta Sans.
             </span>
           </span>
-          <input type="checkbox" checked={theme.systemFont}
-                 onchange={(e) => theme.setUiFont((e.target as HTMLInputElement).checked ? 'system' : 'brand')}
-                 style="width:18px; height:18px; accent-color: var(--sempa-accent); cursor:pointer; flex-shrink:0;" />
-        </label>
+          {@render toggleSwitch(theme.systemFont, () => theme.setUiFont(theme.systemFont ? 'brand' : 'system'), 'Use system UI font')}
+        </div>
 
         <!-- Use system title bar — hand window decorations back to the WM (desktop). -->
         {#if isTauri()}
-        <label style="display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
           <span class="min-w-0">
             <span class="text-xs font-medium" style="color: var(--sempa-text);">Use system title bar</span>
             <span class="mt-0.5 block text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
@@ -1806,10 +1813,8 @@
               which mirrors your system's window-button layout.
             </span>
           </span>
-          <input type="checkbox" checked={windowChrome.useSystemTitlebar}
-                 onchange={(e) => windowChrome.setUseSystemTitlebar((e.target as HTMLInputElement).checked)}
-                 style="width:18px; height:18px; accent-color: var(--sempa-accent); cursor:pointer; flex-shrink:0;" />
-        </label>
+          {@render toggleSwitch(windowChrome.useSystemTitlebar, () => windowChrome.setUseSystemTitlebar(!windowChrome.useSystemTitlebar), 'Use system title bar')}
+        </div>
         {/if}
 
         <!-- Sidebar navigation grouping (desktop rail only) -->

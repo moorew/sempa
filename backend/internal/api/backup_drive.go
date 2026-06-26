@@ -1,10 +1,12 @@
 package api
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/google/uuid"
@@ -22,6 +24,43 @@ func driveRedirectURI(cfg config.Config) string {
 	return cfg.AppURL + "/api/v1/backup/drive/callback"
 }
 
+// driveStateSep separates the CSRF token from the (base64url) deep-link return
+// prefix inside the OAuth `state` param. `state` is opaque to Google and
+// round-trips unchanged, so it's a safe carrier. The separator is outside both
+// the hex (CSRF) and base64url alphabets, so it can't collide.
+const driveStateSep = "~"
+
+// driveReturnPrefix returns the deep-link scheme a native client must be bounced
+// back to after consent, or "" for web (which uses the popup + HTML result page).
+// Android opens consent in a Chrome Custom Tab and can't make use of a "Return to
+// Sempa" web page — it needs a com.clevercode.sempa:// deep link to re-foreground
+// the app, mirroring the Google sign-in flow.
+func driveReturnPrefix(r *http.Request) string {
+	if r.URL.Query().Get("native") == "true" {
+		return "com.clevercode.sempa://drive-backup"
+	}
+	return ""
+}
+
+// splitDriveState separates the CSRF token from an optional base64url return
+// prefix. The prefix is whitelisted to our own deep-link schemes so a tampered
+// state can never turn the callback into an open redirect.
+func splitDriveState(state string) (csrf, returnPrefix string) {
+	csrf = state
+	if i := strings.IndexByte(state, driveStateSep[0]); i >= 0 {
+		csrf = state[:i]
+		if b, err := base64.RawURLEncoding.DecodeString(state[i+1:]); err == nil {
+			returnPrefix = string(b)
+		}
+	}
+	switch returnPrefix {
+	case "com.clevercode.sempa://drive-backup", "sempa://drive-backup":
+	default:
+		returnPrefix = ""
+	}
+	return
+}
+
 // driveAuth starts the Google consent flow for the drive.file scope.
 func (h *backupHandler) driveAuth(w http.ResponseWriter, r *http.Request) {
 	if h.cfg.GmailClientID == "" {
@@ -29,21 +68,24 @@ func (h *backupHandler) driveAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	state := gmail.GenerateState()
-	url := gmail.AuthURLForScopes(h.cfg.GmailClientID, driveRedirectURI(h.cfg), state, gmail.ScopeDriveFile)
-	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+	if prefix := driveReturnPrefix(r); prefix != "" {
+		state += driveStateSep + base64.RawURLEncoding.EncodeToString([]byte(prefix))
+	}
+	consentURL := gmail.AuthURLForScopes(h.cfg.GmailClientID, driveRedirectURI(h.cfg), state, gmail.ScopeDriveFile)
+	http.Redirect(w, r, consentURL, http.StatusTemporaryRedirect)
 }
 
 // driveCallback exchanges the code and stores the Drive token.
 func (h *backupHandler) driveCallback(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
-	state := r.URL.Query().Get("state")
-	if !gmail.ConsumeState(state) {
-		writeOAuthResultPage(w, h.cfg.FrontendURL, false, "This sign-in link expired. Please try connecting again.")
+	csrf, returnPrefix := splitDriveState(r.URL.Query().Get("state"))
+	if !gmail.ConsumeState(csrf) {
+		h.driveOAuthDone(w, returnPrefix, false, "This sign-in link expired. Please try connecting again.")
 		return
 	}
 	stored, err := gmail.ExchangeCode(r.Context(), h.cfg.GmailClientID, h.cfg.GmailClientSecret, driveRedirectURI(h.cfg), code)
 	if err != nil {
-		writeOAuthResultPage(w, h.cfg.FrontendURL, false, "Token exchange failed: "+err.Error())
+		h.driveOAuthDone(w, returnPrefix, false, "Token exchange failed: "+err.Error())
 		return
 	}
 	if email, err := gmail.FetchEmail(r.Context(), stored.AccessToken); err == nil {
@@ -51,10 +93,27 @@ func (h *backupHandler) driveCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	cfgJSON, _ := json.Marshal(stored)
 	if _, err := h.configs.Upsert(r.Context(), uuid.New().String(), backupDriveType, string(cfgJSON)); err != nil {
-		writeOAuthResultPage(w, h.cfg.FrontendURL, false, "Could not save the connection. Please try again.")
+		h.driveOAuthDone(w, returnPrefix, false, "Could not save the connection. Please try again.")
 		return
 	}
-	writeOAuthResultPage(w, h.cfg.FrontendURL, true, "")
+	h.driveOAuthDone(w, returnPrefix, true, "")
+}
+
+// driveOAuthDone finishes the consent flow. Native clients (Android) get a deep
+// link that re-foregrounds the app so the backup page can re-check status; web
+// and desktop get the self-contained HTML result page.
+func (h *backupHandler) driveOAuthDone(w http.ResponseWriter, returnPrefix string, ok bool, errMsg string) {
+	if returnPrefix != "" {
+		status := "error"
+		if ok {
+			status = "connected"
+		}
+		q := url.Values{"drive": {status}, "redirect": {"/settings/backup"}}
+		w.Header().Set("Location", returnPrefix+"?"+q.Encode())
+		w.WriteHeader(http.StatusFound)
+		return
+	}
+	writeOAuthResultPage(w, h.cfg.FrontendURL, ok, errMsg)
 }
 
 // writeOAuthResultPage renders a small self-contained page after the Drive OAuth

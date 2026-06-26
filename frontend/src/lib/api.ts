@@ -382,7 +382,8 @@ const httpApi = {
     restore: (file: File, passphrase?: string, onProgress?: (pct: number) => void) =>
       uploadMultipart<{ status: string }>('/api/v1/backup/restore', file,
         passphrase ? { passphrase } : {}, onProgress),
-    driveAuthUrl: () => authedFileUrl('/api/v1/backup/drive/auth'),
+    driveAuthUrl: (native = false) =>
+      authedFileUrl('/api/v1/backup/drive/auth' + (native ? '?native=true' : '')),
     driveStatus: () => req<{ connected: boolean; email?: string; needs_reconnect?: boolean }>('/api/v1/backup/drive'),
     driveDisconnect: () => req<void>('/api/v1/backup/drive', { method: 'DELETE' }),
   },

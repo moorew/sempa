@@ -261,10 +261,13 @@ SEMPA_ALLOWED_EMAILS=you@gmail.com
 Setup steps:
 1. Go to [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials)
 2. Create an OAuth 2.0 Client ID (Web application)
-3. Add an Authorised redirect URI: `{APP_URL}/api/v1/auth/google/callback`
+3. Add these Authorised redirect URIs:
+   - `{APP_URL}/api/v1/auth/google/callback` — sign-in
+   - `{APP_URL}/api/v1/backup/drive/callback` — Google Drive backup destination
 4. Copy the Client ID and Secret into `.env.local`
+5. **Publish the app to Production.** On the [OAuth consent screen → Audience](https://console.cloud.google.com/auth/audience) page, set the publishing status to **In production** (not "Testing"). An app left in Testing **expires every refresh token after 7 days**, which silently breaks Google Drive backups (and Gmail/Calendar) a week after you connect them. Because the app only requests its own scopes for a single user, you can ignore the "unverified app" warning — click **Advanced → Go to Sempa**. Verification is only needed to remove that warning, not to stop the 7-day expiry.
 
-> The same credentials are used for Gmail integration — you only need one OAuth client for everything.
+> The same credentials are used for Gmail integration and Google Drive backups — you only need one OAuth client for everything.
 
 **Username & password**
 

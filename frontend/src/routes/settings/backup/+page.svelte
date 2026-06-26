@@ -42,6 +42,7 @@
   let CapBrowser: any = null;
   let isNative = $state(false);
   let browserListener: { remove: () => void } | null = null;
+  let driveAppUrlListener: { remove: () => void } | null = null;
   let messageListener: ((e: MessageEvent) => void) | null = null;
   let focusListener: (() => void) | null = null;
 
@@ -73,6 +74,7 @@
     if (messageListener) window.removeEventListener('message', messageListener);
     if (focusListener) window.removeEventListener('focus', focusListener);
     browserListener?.remove();
+    driveAppUrlListener?.remove();
   });
 
   async function initNative() {
@@ -198,12 +200,29 @@
   }
 
   async function connectDrive() {
-    const url = api.backup.driveAuthUrl();
+    const url = api.backup.driveAuthUrl(isNative);
     error = ''; notice = '';
     if (isNative && CapBrowser) {
-      // Android: open in a Chrome Custom Tab (keeps the app's WebView intact).
-      // The token is stored server-side; when the tab closes we re-check status.
+      // Android: open consent in a Chrome Custom Tab (keeps the app's WebView
+      // intact). The token is stored server-side; when the server finishes it
+      // bounces to a com.clevercode.sempa://drive-backup deep link that
+      // re-foregrounds the app — we catch it via appUrlOpen, close the tab, and
+      // re-check status. browserFinished covers the manual-cancel path (user
+      // backs out of the tab without finishing).
       browserListener?.remove();
+      driveAppUrlListener?.remove();
+      try {
+        const { App } = await import('@capacitor/app');
+        driveAppUrlListener = await App.addListener('appUrlOpen', (d: { url?: string }) => {
+          if (!d?.url || !d.url.includes('drive-backup')) return;
+          void CapBrowser.close?.().catch(() => {});
+          if (d.url.includes('drive=error')) error = 'Google Drive connection failed. Please try again.';
+          else notice = 'Google Drive connected.';
+          void refreshDriveStatus();
+          driveAppUrlListener?.remove();
+          driveAppUrlListener = null;
+        });
+      } catch { /* @capacitor/app unavailable */ }
       browserListener = await CapBrowser.addListener('browserFinished', () => {
         void refreshDriveStatus();
       });
@@ -279,6 +298,8 @@
   <h1 class="mb-1 text-xl font-bold" style="color: var(--sempa-text);">Backup &amp; Restore</h1>
   <p class="mb-6 text-sm" style="color: var(--sempa-text-soft);">
     Bundle everything — tasks, objectives, plans, and attached files — into one file you can restore anywhere.
+    <a href="https://sempa.ca/docs.html#backup" target="_blank" rel="noopener"
+       style="color: var(--sempa-accent); text-decoration: underline;">Full setup &amp; restore guide →</a>
   </p>
 
   {#if loading}
@@ -431,7 +452,10 @@
                   <div class="rounded-lg border px-3 py-2" style="border-color: color-mix(in srgb, var(--sempa-amber) 40%, transparent); background: color-mix(in srgb, var(--sempa-amber) 8%, transparent);">
                     <p class="text-xs" style="color: var(--sempa-amber);">
                       Google access expired — backups are failing. Reconnect to restore them.
-                      <span style="color: var(--sempa-text-dim);">(Tip: publish your Google OAuth app to stop tokens expiring every 7 days.)</span>
+                      <span class="mt-1 block" style="color: var(--sempa-text-dim);">This happens because the Google OAuth app is in “Testing”, which expires tokens after 7 days.
+                        <a href="https://console.cloud.google.com/auth/audience" target="_blank" rel="noopener"
+                           style="color: var(--sempa-accent); text-decoration: underline;">Publish it to Production</a>
+                        to fix it permanently.</span>
                     </p>
                     <button onclick={connectDrive}
                             class="mt-2 rounded-md px-3 py-1.5 text-xs font-medium text-white" style="background: var(--sempa-amber);">
@@ -451,6 +475,10 @@
                 {:else}
                   <p class="text-xs" style="color: var(--sempa-amber);">Google OAuth isn’t configured on this server (set GMAIL_CLIENT_ID/SECRET).</p>
                 {/if}
+                <p class="text-[11px]" style="color: var(--sempa-text-dim);">
+                  <a href="https://sempa.ca/docs.html#backup" target="_blank" rel="noopener"
+                     style="color: var(--sempa-accent); text-decoration: underline;">Google Drive setup &amp; reconnect guide →</a>
+                </p>
                 <input bind:value={dest.folder_id} placeholder="Advanced: specific Drive folder ID (blank = auto “Sempa Backups” folder)"
                        class="w-full rounded-md border px-2 py-1.5 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);" />
               </div>

@@ -6,6 +6,30 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.21.1] - 2026-06-26
+
+### Fixed
+- **Reconnecting Google Drive on Android returns you to the app**, not the web
+  app. The consent flow now bounces back through a `com.clevercode.sempa://`
+  deep link (the same path Google sign-in uses) so the Custom Tab closes and the
+  backup page re-checks status automatically.
+- **Appearance toggles use the Sempa-styled switch** instead of the raw OS
+  checkbox (Use system UI font, Match system accent, Use system title bar), and
+  the system-font description is now device-neutral ("your device's font")
+  instead of always saying "desktop".
+
+### Changed
+- **Clearer guidance on the 7-day Google token expiry.** The "backups are
+  failing" banner and the README now explain that an OAuth app left in "Testing"
+  expires refresh tokens every 7 days, and link to the step to publish it to
+  Production — the permanent fix. The README also lists the Drive backup
+  redirect URI that must be authorised.
+
+### Added
+- **Links to the full backup guide** (`sempa.ca/docs.html#backup`) from the
+  Backup & Restore page header and the Google Drive destination, covering setup
+  and reconnecting.
+
 ## [1.21.0] - 2026-06-25
 
 ### Fixed

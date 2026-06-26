@@ -48,6 +48,12 @@ export function routeForDeepLink(raw: string): string | null {
             // OAuth return from the system browser: sempa://login?link_token=…&redirect=…
             // Forward to the login page WITH the query so it can finalize the token.
             return `/login${url.search}`;
+        case 'drive':
+        case 'drive-backup':
+            // Google Drive backup OAuth return (Android Custom Tab / system browser):
+            // com.clevercode.sempa://drive-backup?drive=connected — land on the backup
+            // page WITH the query so it can show the result and re-check status.
+            return `/settings/backup${url.search}`;
         default:
             return '/home';
     }
