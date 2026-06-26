@@ -13,6 +13,13 @@ type Config struct {
 	Env            string
 	FrontendDir    string // path to built static frontend; empty = API-only mode
 
+	// Timezone is the server's home IANA timezone (e.g. "America/Toronto"), used
+	// for every server-side day-boundary calculation (recurrence rollover, the
+	// recurrence-horizon poller, the morning digest). Empty → UTC. The container
+	// clock is UTC, so without this the day turns over at the wrong local moment.
+	// Overridable at runtime by the notifications.timezone setting.
+	Timezone string
+
 	// OAuth / integration
 	AppURL            string // e.g. https://blackbox.clevercode.ts.net
 	FrontendURL       string // e.g. http://localhost:5173 (dev only)
@@ -60,6 +67,7 @@ func Load() Config {
 		AttachmentsDir:       env("ATTACHMENTS_DIR", filepath.Join(filepath.Dir(dbPath), "attachments")),
 		Env:                  env("ENV", "development"),
 		FrontendDir:          env("FRONTEND_DIR", ""),
+		Timezone:             env("SEMPA_TIMEZONE", ""),
 		AppURL:               env("APP_URL", "http://localhost:8080"),
 		FrontendURL:          env("FRONTEND_URL", "http://localhost:5173"),
 		GmailClientID:        env("GMAIL_CLIENT_ID", ""),

@@ -246,6 +246,9 @@ export interface NotificationSettings {
   digest_hour: number;
   webhook: WebhookConfig;
   routines: RoutineConfig;
+  /** Server's home IANA timezone (e.g. "America/Toronto"); the GET always
+   *  returns it resolved to a concrete zone for travel detection. */
+  timezone?: string;
 }
 
 export interface CreateObjectiveInput {

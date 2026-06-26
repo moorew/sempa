@@ -6,6 +6,23 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.21.0] - 2026-06-25
+
+### Fixed
+- **Recurring tasks no longer disappear in the evening.** The server computed
+  "today" from its UTC clock, so the daily rollover ran at the wrong moment
+  (e.g. 8pm US-Eastern) and deleted that day's still-pending recurring task.
+  Sempa now uses a configured home timezone for every day boundary.
+
+### Added
+- **Timezone support.** Set your home timezone during install (auto-detected) or
+  any time in **Settings → Notifications → Timezone**. It governs when the day
+  rolls over for recurring tasks, the daily board, and the morning digest.
+- **Travel-aware.** Your task times float — an 8am task stays 8am wherever you
+  are — and the day boundary follows your device automatically. When you land in
+  a new timezone, Sempa offers to make it your home or keep it just for the trip
+  (and reverts on its own when you get back).
+
 ## [1.20.0] - 2026-06-22
 
 ### Added

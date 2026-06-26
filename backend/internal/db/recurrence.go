@@ -66,6 +66,16 @@ func (s *TaskStore) GenerateForDate(ctx context.Context, date string) error {
 	// 2. Ensure ONE instance exists for every template due on `date`. Any
 	//    non-cancelled instance already on the day counts — a carried-forward or
 	//    customised instance IS that day's occurrence, so we don't add a duplicate.
+	return s.ensureInstancesForDate(ctx, t)
+}
+
+// ensureInstancesForDate is the non-destructive half of rollover: it creates a
+// pristine instance for every template due on `t` that doesn't already have one.
+// It never deletes or moves anything, so it is safe to run from the timezone-
+// agnostic horizon poller (which must not delete a still-current instance based
+// on the server's own midnight — see SeedHorizon).
+func (s *TaskStore) ensureInstancesForDate(ctx context.Context, t time.Time) error {
+	date := t.Format("2006-01-02")
 	templates, err := s.ListRecurringTemplates(ctx, SystemScope)
 	if err != nil {
 		return err
@@ -80,6 +90,31 @@ func (s *TaskStore) GenerateForDate(ctx context.Context, date string) error {
 		if err := s.createInstance(ctx, tmpl, t); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// GenerateForDay backs the by-date list endpoint. Crucially, destructive rollover
+// (delete pristine past, carry forward modified) is anchored to the caller's real
+// `today` — NOT to the date being viewed — so opening a future day never deletes
+// today's instances, and a travelling client rolls the day over on its own local
+// midnight. The viewed date's instances are then ensured non-destructively.
+// `today` is the client's device date (YYYY-MM-DD); "" falls back to the server's.
+func (s *TaskStore) GenerateForDay(ctx context.Context, date, today string) error {
+	if today == "" {
+		today = ServerToday()
+	}
+	if err := s.GenerateForDate(ctx, today); err != nil {
+		return err
+	}
+	// For a future day, also materialise its instances. Past days were already
+	// settled by the rollover above, so we leave them alone.
+	if date > today {
+		t, err := time.Parse("2006-01-02", date)
+		if err != nil {
+			return fmt.Errorf("invalid date %q: %w", date, err)
+		}
+		return s.ensureInstancesForDate(ctx, t)
 	}
 	return nil
 }
@@ -135,7 +170,7 @@ func (s *TaskStore) tombstoneAndDeleteTasks(ctx context.Context, where string, a
 // vanish). Pristine-existence checks keep it idempotent and duplicate-free.
 func (s *TaskStore) GenerateForWeek(ctx context.Context, weekStart, today string) error {
 	if today == "" {
-		today = time.Now().Format("2006-01-02")
+		today = ServerToday()
 	}
 	ws, err := time.Parse("2006-01-02", weekStart)
 	if err != nil {
@@ -178,7 +213,7 @@ func (s *TaskStore) GenerateForWeek(ctx context.Context, weekStart, today string
 // date. It is idempotent (pristine-existence checks keep it duplicate-free).
 func (s *TaskStore) GenerateHorizon(ctx context.Context, today string, weeksAhead int) error {
 	if today == "" {
-		today = time.Now().Format("2006-01-02")
+		today = ServerToday()
 	}
 	t, err := time.Parse("2006-01-02", today)
 	if err != nil {
@@ -191,6 +226,63 @@ func (s *TaskStore) GenerateHorizon(ctx context.Context, today string, weeksAhea
 	for i := 0; i <= weeksAhead; i++ {
 		ws := curWS.AddDate(0, 0, i*7).Format("2006-01-02")
 		if err := s.GenerateForWeek(ctx, ws, today); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// SeedHorizon is the recurrence poller's entry point: it materialises future
+// instances for offline-first clients WITHOUT the destructive rollover that
+// GenerateForDate/GenerateForWeek perform. This matters because the poller fires
+// on a server timer with no client context — if it deleted "past pristine"
+// instances at the server's own midnight, a user travelling west of the home
+// zone would lose a still-current task hours early (the very bug that started in
+// UTC). Instead:
+//
+//   - Exact same-day rollover is left to active clients, which call
+//     GenerateForWeek/GenerateForDay with their own device date.
+//   - The poller only ENSURES upcoming instances exist, plus a conservative
+//     cleanup of pristine instances older than a 2-day grace window. 2 days
+//     safely exceeds the ~26h maximum spread between any two timezones, so the
+//     timer can never delete something that is still "today" for the user.
+//
+// `today` is YYYY-MM-DD in the server's home zone; "" uses ServerToday().
+func (s *TaskStore) SeedHorizon(ctx context.Context, today string, weeksAhead int) error {
+	if today == "" {
+		today = ServerToday()
+	}
+	t, err := time.Parse("2006-01-02", today)
+	if err != nil {
+		return fmt.Errorf("invalid today %q: %w", today, err)
+	}
+
+	// Bound pile-up of abandoned pristine instances without risking the current
+	// day in any timezone (2-day grace > max inter-zone spread).
+	grace := t.AddDate(0, 0, -2).Format("2006-01-02")
+	if err := s.tombstoneAndDeleteTasks(ctx, `
+		recurrence_origin_id IS NOT NULL
+		  AND is_customized = 0
+		  AND status IN ('backlog','planned')
+		  AND (time_actual_minutes IS NULL OR time_actual_minutes = 0)
+		  AND planned_date IS NOT NULL
+		  AND planned_date < ?`, grace); err != nil {
+		return err
+	}
+
+	curWS, err := time.Parse("2006-01-02", weekStartOf(t))
+	if err != nil {
+		return err
+	}
+	for i := 0; i <= weeksAhead; i++ {
+		ws := curWS.AddDate(0, 0, i*7)
+		// Current week: seed today onward (afterDate = yesterday). Future weeks:
+		// seed every due day.
+		after := ""
+		if i == 0 {
+			after = t.AddDate(0, 0, -1).Format("2006-01-02")
+		}
+		if err := s.seedWeekInstances(ctx, ws, after); err != nil {
 			return err
 		}
 	}
@@ -257,7 +349,7 @@ func (s *TaskStore) createInstance(ctx context.Context, tmpl Task, t time.Time) 
 // instances are left exactly as they are.
 func (s *TaskStore) SyncTemplateInstances(ctx context.Context, originID, today string) error {
 	if today == "" {
-		today = time.Now().Format("2006-01-02")
+		today = ServerToday()
 	}
 	if err := s.tombstoneAndDeleteTasks(ctx, `
 		recurrence_origin_id = ?

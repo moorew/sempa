@@ -238,6 +238,7 @@ All configuration is in two files that you create locally:
 |----------|---------|-------------|
 | `APP_URL` | `http://localhost:9001` | The URL where Sempa is accessible (no trailing slash) |
 | `HOST_PORT` | `9001` | The port to expose on the host |
+| `SEMPA_TIMEZONE` | `UTC` | Your home [IANA timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) (e.g. `America/Toronto`, `Europe/London`). Sets when the day rolls over for recurring tasks, the daily board, and the morning digest — set this to your real zone or "today" turns over at the wrong hour. `install.sh` auto-detects it; also changeable at runtime in **Settings → Notifications → Timezone**. Travelling devices follow their own zone automatically. |
 
 ### `.env.local`
 

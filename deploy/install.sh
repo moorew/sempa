@@ -12,6 +12,9 @@ if [ ! -f /etc/aura/env ]; then
 # Aura secrets — edit and then: systemctl restart aura
 # GMAIL_CLIENT_ID=
 # GMAIL_CLIENT_SECRET=
+# Home IANA timezone for day boundaries (recurring tasks, daily board, digest).
+# Defaults to UTC if unset — set this to your real zone, e.g.:
+# SEMPA_TIMEZONE=America/Toronto
 ENVEOF
   chmod 600 /etc/aura/env
 fi

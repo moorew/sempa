@@ -27,6 +27,13 @@ func main() {
 
 	cfg := config.Load()
 
+	// Server home timezone: env default now, overridden by the persisted setting
+	// once the DB is open (below). Everything server-side that asks "what day is
+	// it" reads db.ServerToday(); without this it would use the container's UTC
+	// clock and roll the day over hours early for the user.
+	db.SetFallbackLocation(db.ResolveLocation(cfg.Timezone))
+	db.SetServerLocation(db.ResolveLocation(cfg.Timezone))
+
 	database, err := db.Open(cfg.DBPath)
 	if err != nil {
 		slog.Error("open database", "err", err)
@@ -62,6 +69,13 @@ func main() {
 	// Web Push (VAPID) key pair — generated once and persisted in the DB so the
 	// browser's stored subscriptions stay valid across restarts.
 	configStore := db.NewIntegrationConfigStore(database)
+
+	// Apply the persisted timezone override (Settings → Timezone), if any. Empty
+	// resolves back to the SEMPA_TIMEZONE env default set above.
+	st := notify.LoadSettings(ctx, configStore)
+	db.SetServerLocation(db.ResolveLocation(st.Timezone))
+	slog.Info("server timezone", "zone", db.ServerLocation().String(), "today", db.ServerToday())
+
 	vapidKeys, err := loadOrCreateVAPID(ctx, configStore)
 	if err != nil {
 		slog.Error("vapid keys", "err", err)

@@ -231,6 +231,23 @@ the same area.
   font CDN.
 
 ### Backend
+- **Server "today" must use the home timezone, never the container clock.** The
+  container runs UTC, so a bare `time.Now()` rolls the date over at the wrong
+  local hour — midnight UTC is 8pm US-Eastern, which is how a pristine "today"
+  recurring instance got deleted hours early. All server-side day math reads
+  `db.ServerToday()` / `db.ServerNow()` (config `SEMPA_TIMEZONE`, overridable at
+  runtime via the `notifications.timezone` setting). Tasks are **floating**
+  (naive `YYYY-MM-DD` + `HH:MM`, never rewritten on travel); the zone only
+  governs the day boundary + server-side digest/poller firing.
+- **The recurrence poller must be non-destructive (`SeedHorizon`, not
+  `GenerateHorizon`).** A server timer has no client context, so if it ran the
+  destructive same-day rollover it would delete a still-current instance at the
+  *server's* midnight — wrong for any user travelling west of home. The poller
+  only ensures future instances + prunes pristine ones older than a 2-day grace
+  (> max inter-zone spread). Exact same-day rollover is client-driven: clients
+  pass their device `?today=` to list/week/create, so rollover keys off the
+  user's real local date. Travel detection compares device zone vs the home zone
+  (returned on `GET /notifications/settings`) and prompts via `TimezoneBanner`.
 - **Sessions must persist.** They're DB-backed (table `sessions`); an in-memory
   store logged everyone out on every redeploy (symptom: tasks show but all tags
   render **grey**, because `/api/v1/tags` 401s and the color falls back).

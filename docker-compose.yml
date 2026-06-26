@@ -62,6 +62,12 @@ services:
       APP_URL: "${APP_URL:-https://sempa.clevercode.ts.net}"
       FRONTEND_URL: "${APP_URL:-https://sempa.clevercode.ts.net}"
       ENV: "production"
+      # Home timezone (IANA) for all server-side day boundaries: recurring-task
+      # rollover, the recurrence horizon, and the morning digest. The container
+      # clock is UTC, so without this "today" turns over at the wrong local hour
+      # (e.g. 8pm Eastern) and pristine recurring instances get pruned early.
+      # Overridable at runtime from Settings → Notifications → Timezone.
+      SEMPA_TIMEZONE: "${SEMPA_TIMEZONE:-UTC}"
       # Empty unless local AI was enabled at install (keeps the AI feature off and
       # the settings fields blank otherwise). install.sh writes the loopback URL.
       OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-}"

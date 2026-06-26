@@ -27,6 +27,11 @@ type Settings struct {
 	DigestHour     int           `json:"digest_hour"`
 	Webhook        WebhookConfig `json:"webhook"`
 	Routines       RoutineConfig `json:"routines"`
+
+	// Timezone is the server's home IANA timezone (e.g. "America/Toronto"). Empty
+	// means "use the SEMPA_TIMEZONE env default". It governs server-side day
+	// boundaries; clients read it back as their "home" zone for travel detection.
+	Timezone string `json:"timezone,omitempty"`
 }
 
 // RoutineConfig drives the in-app scheduled workflows (rendered client-side, not

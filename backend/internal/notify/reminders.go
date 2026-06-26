@@ -30,8 +30,9 @@ func StartReminders(ctx context.Context, tasks *db.TaskStore, dispatcher *Dispat
 		// 1. Per-task hard reminders.
 		checkDueReminders(ctx, tasks, dispatcher)
 
-		// 2. Morning digest, once per day at the configured hour.
-		now := time.Now()
+		// 2. Morning digest, once per day at the configured hour — in the server's
+		//    home timezone, so "8am" means the user's 8am, not the container's UTC.
+		now := db.ServerNow()
 		today := now.Format("2006-01-02")
 		if st.MorningDigest && now.Hour() == st.DigestHour && lastDigestDate != today {
 			sendMorningDigest(ctx, tasks, dispatcher, today)

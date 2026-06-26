@@ -22,6 +22,8 @@
   import { initLocalReminders, syncLocalReminders } from '$lib/localReminders';
   import RoutineBanner from '$lib/components/RoutineBanner.svelte';
   import ReminderBanner from '$lib/components/ReminderBanner.svelte';
+  import TimezoneBanner from '$lib/components/TimezoneBanner.svelte';
+  import { timezone } from '$lib/stores/timezone.svelte';
   import { reminderAlerts } from '$lib/stores/reminderAlerts.svelte';
   import { initDesktopReminderPopup, syncDesktopPopup } from '$lib/desktopReminderPopup';
   import { ensureDesktopNotifyPermission } from '$lib/desktopNotify';
@@ -88,6 +90,7 @@
   // gates the shared spacing wrapper so there's no empty offset when none are.
   let hasBanners = $derived(
     reminderAlerts.alerts.length > 0 || routines.weeklyPlanDue || routines.shutdownDue
+      || timezone.mismatch
   );
   let shortcutsOpen      = $state(false);
   let userEmail          = $state<string | undefined>(undefined);
@@ -342,6 +345,9 @@
       // Arm the in-app routine scheduler (weekly planning / daily shutdown
       // prompts). Idempotent: re-calling on every authenticated landing is safe.
       routines.init((url) => goto(url));
+      // Watch for the device travelling to a new timezone (routines.init above
+      // loads the home zone via notificationSettings). Idempotent.
+      timezone.init();
       // Schedule on-device OS alarms for upcoming reminders (Android only —
       // fires even with no server/internet). Coalesced + diff-based.
       initLocalReminders((url) => goto(url));
@@ -649,6 +655,7 @@
            style="margin: max(36px, calc(env(safe-area-inset-top, 0px) + 12px)) 16px 0;">
         <ReminderBanner />
         <RoutineBanner />
+        <TimezoneBanner />
       </div>
     {/if}
     {#key $page.url.pathname}

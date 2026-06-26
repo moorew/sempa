@@ -10,7 +10,28 @@
   } from '$lib/webpush';
   import type { NotificationSettings } from '$lib/types';
   import { NOTIFICATION_SOUNDS, playSound, DEFAULT_SOUND_ID } from '$lib/sounds';
-  import { Bell, Send, Play } from 'lucide-svelte';
+  import { deviceTimeZone, zoneLabel } from '$lib/timezone';
+  import { Bell, Send, Play, Plane } from 'lucide-svelte';
+
+  // A curated set of common IANA zones; the current home + this device are always
+  // merged in so the picker can represent whatever is actually configured.
+  const COMMON_ZONES = [
+    'UTC',
+    'America/Vancouver', 'America/Los_Angeles', 'America/Denver', 'America/Chicago',
+    'America/Toronto', 'America/New_York', 'America/Halifax', 'America/St_Johns',
+    'America/Sao_Paulo', 'Europe/London', 'Europe/Dublin', 'Europe/Paris',
+    'Europe/Berlin', 'Europe/Madrid', 'Europe/Athens', 'Africa/Johannesburg',
+    'Asia/Dubai', 'Asia/Kolkata', 'Asia/Bangkok', 'Asia/Singapore',
+    'Asia/Hong_Kong', 'Asia/Shanghai', 'Asia/Tokyo', 'Australia/Sydney',
+    'Pacific/Auckland',
+  ];
+  const deviceZone = deviceTimeZone();
+  const zoneOptions = $derived.by(() => {
+    const set = new Set(COMMON_ZONES);
+    if (settings?.timezone) set.add(settings.timezone);
+    set.add(deviceZone);
+    return [...set].sort();
+  });
 
   let settings = $state<NotificationSettings | null>(null);
   let loading = $state(true);
@@ -54,7 +75,12 @@
     // Local-first: show cached settings immediately (works offline, never hangs).
     // init() reconciles with the server in the background for next time.
     await notificationSettings.init();
+    // The picker edits the server's home timezone, so make sure we're working
+    // from the authoritative value (the GET resolves it to a concrete zone)
+    // rather than an older cache that predates the field.
+    await notificationSettings.refreshFromServer().catch(() => {});
     settings = structuredClone($state.snapshot(notificationSettings.settings));
+    if (!settings.timezone) settings.timezone = deviceZone;
     loading = false;
     isWebPushSubscribed().then((v) => (webPushSubscribed = v)).catch(() => {});
   });
@@ -174,6 +200,36 @@
         <div style="border-top: 1px solid var(--sempa-border);"></div>
         {@render toggleRow('Custom alert sound', 'Play a calm tone with reminders.',
           settings.sound_enabled, (v) => { settings!.sound_enabled = v; void save(); }, !settings.master_enabled)}
+      </section>
+
+      <!-- ── Timezone ────────────────────────────────────────────────────── -->
+      {@render sectionLabel('Timezone')}
+      <section class="mb-7 rounded-xl border px-4 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <p class="mb-1.5 font-semibold" style="font-size:13px; color: var(--sempa-text);">Home timezone</p>
+        <p class="mb-3" style="font-size:11.5px; color: var(--sempa-text-soft);">
+          Sempa anchors recurring tasks and the morning digest to this zone. Task
+          times stay put wherever you travel — only the day boundary follows your
+          device.
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <select bind:value={settings.timezone}
+                  class="rounded-lg border px-3 py-2 text-sm"
+                  style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);">
+            {#each zoneOptions as z}
+              <option value={z}>{z.replace(/_/g, ' ')}</option>
+            {/each}
+          </select>
+          {#if deviceZone !== settings.timezone}
+            <button onclick={() => { settings!.timezone = deviceZone; }}
+                    class="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-semibold transition-opacity hover:opacity-90"
+                    style="border-color: var(--sempa-border); color: var(--sempa-accent);">
+              <Plane size={13} /> Use {zoneLabel(deviceZone)}
+            </button>
+          {/if}
+        </div>
+        <p class="mt-2" style="font-size:11px; color: var(--sempa-text-dim);">
+          This device: {deviceZone}{deviceZone !== settings.timezone ? ' — currently away from home' : ''}
+        </p>
       </section>
 
       <!-- ── Sound picker ────────────────────────────────────────────────── -->

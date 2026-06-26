@@ -15,9 +15,15 @@ type notificationHandler struct {
 }
 
 // getSettings returns the current notification settings, falling back to
-// defaults when nothing has been saved yet.
+// defaults when nothing has been saved yet. The timezone is always returned
+// resolved to the *effective* home zone (env default if unset) so clients have a
+// concrete IANA name to compare the device against for travel detection.
 func (h *notificationHandler) getSettings(w http.ResponseWriter, r *http.Request) {
-	respond(w, http.StatusOK, notify.LoadSettings(r.Context(), h.configs))
+	st := notify.LoadSettings(r.Context(), h.configs)
+	if st.Timezone == "" {
+		st.Timezone = db.ServerLocation().String()
+	}
+	respond(w, http.StatusOK, st)
 }
 
 // putSettings persists the notification settings document.
@@ -35,6 +41,12 @@ func (h *notificationHandler) putSettings(w http.ResponseWriter, r *http.Request
 	if _, err := h.configs.Upsert(r.Context(), newID(), "notifications", string(raw)); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to save settings")
 		return
+	}
+	// Apply a timezone change immediately so recurrence + digest pick up the new
+	// home zone without a redeploy (empty resolves back to the env default).
+	db.SetServerLocation(db.ResolveLocation(s.Timezone))
+	if s.Timezone == "" {
+		s.Timezone = db.ServerLocation().String()
 	}
 	respond(w, http.StatusOK, s)
 }

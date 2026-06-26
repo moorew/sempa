@@ -334,7 +334,7 @@ const httpApi = {
   },
 
   tasks: {
-    listByDate:   (date: string)        => req<Task[]>(`/api/v1/tasks?date=${date}`),
+    listByDate:   (date: string)        => req<Task[]>(`/api/v1/tasks?date=${date}&today=${localToday()}`),
     listByWeek:   (weekStart: string)   => req<Task[]>(`/api/v1/tasks?week_start=${weekStart}&today=${localToday()}`),
     listBacklog:  ()                    => req<Task[]>('/api/v1/tasks'),
     listByRecurrenceOrigin: (originId: string) => req<Task[]>(`/api/v1/tasks?recurrence_origin=${originId}`),
@@ -343,7 +343,9 @@ const httpApi = {
     listWithReminders: ()               => req<Task[]>('/api/v1/tasks?with_reminders=1'),
     get:          (id: string)        => req<Task>(`/api/v1/tasks/${id}`),
     create: (input: CreateTaskInput) =>
-      req<Task>('/api/v1/tasks', { method: 'POST', body: body(input) }),
+      // ?today= so a recurring template's first instance lands on the user's
+      // device date, not the server's home/UTC date.
+      req<Task>(`/api/v1/tasks?today=${localToday()}`, { method: 'POST', body: body(input) }),
     update: (id: string, patch: UpdateTaskInput) =>
       req<Task>(`/api/v1/tasks/${id}`, { method: 'PATCH', body: body(patch) }),
     delete: (id: string) => req<void>(`/api/v1/tasks/${id}`, { method: 'DELETE' }),

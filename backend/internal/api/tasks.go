@@ -78,7 +78,10 @@ func (h *taskHandler) list(w http.ResponseWriter, r *http.Request) {
 	if weekStart != "" {
 		_ = h.store.GenerateForWeek(r.Context(), weekStart, q.Get("today"))
 	} else if date != "" {
-		_ = h.store.GenerateForDate(r.Context(), date)
+		// Anchor rollover to the client's real today (q.Get("today")), not the
+		// date being viewed, so paging to another day never deletes today's
+		// instances and a travelling client rolls over on its own local midnight.
+		_ = h.store.GenerateForDay(r.Context(), date, q.Get("today"))
 	}
 
 	parentID := q.Get("parent_id")
@@ -205,9 +208,14 @@ func (h *taskHandler) create(w http.ResponseWriter, r *http.Request) {
 		h.markRecurringInstanceModified(r.Context(), *req.ParentTaskID, owner)
 	}
 
-	// If this is a recurring template, immediately generate today's instance
+	// If this is a recurring template, immediately generate today's instance.
+	// Prefer the client's device date (?today=) so the first instance lands on
+	// the user's actual today; fall back to the server's home zone, never UTC.
 	if req.RecurrenceRule != nil && *req.RecurrenceRule != "" {
-		today := time.Now().Format("2006-01-02")
+		today := r.URL.Query().Get("today")
+		if today == "" {
+			today = db.ServerToday()
+		}
 		_ = h.store.GenerateForDate(r.Context(), today)
 	}
 

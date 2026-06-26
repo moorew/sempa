@@ -45,9 +45,14 @@ func StartRecurrence(ctx context.Context, database *sql.DB) {
 
 func pollRecurrence(ctx context.Context, database *sql.DB) {
 	store := db.NewTaskStore(database)
-	if err := store.GenerateHorizon(ctx, "", recurrenceWeeksAhead); err != nil {
+	// SeedHorizon (not GenerateHorizon) so this server timer only materialises
+	// future instances and never runs destructive same-day rollover — that is the
+	// client's job, anchored to its own device date. Otherwise a user travelling
+	// west of the home zone loses a still-current task at the server's midnight
+	// (the original UTC bug). "" uses the configured home timezone's today.
+	if err := store.SeedHorizon(ctx, "", recurrenceWeeksAhead); err != nil {
 		slog.Error("recurrence scheduler: generation failed", "err", err)
 		return
 	}
-	slog.Info("recurrence scheduler: horizon generated", "weeks_ahead", recurrenceWeeksAhead)
+	slog.Info("recurrence scheduler: horizon seeded", "weeks_ahead", recurrenceWeeksAhead, "today", db.ServerToday())
 }
