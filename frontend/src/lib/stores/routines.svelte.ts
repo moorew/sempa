@@ -21,7 +21,7 @@
  */
 
 import { today, weekStart } from '$lib/utils';
-import { isTauri, hasLocalDb } from '$lib/platform';
+import { isTauri, isCapacitor, hasLocalDb } from '$lib/platform';
 import { localApi } from '$lib/tauri/local-api';
 import { playSound, DEFAULT_SOUND_ID } from '$lib/sounds';
 import { notificationSettings } from '$lib/stores/notificationSettings.svelte';
@@ -184,11 +184,22 @@ function createRoutinesStore() {
 
       // Push to the shared alert list. On desktop this drives the floating
       // top-right card (see $lib/desktopReminderPopup, wired from +layout); on
-      // web it drives the in-app banner; on Android the on-device OS alarm
-      // already fired, and the banner backs it up.
+      // web it drives the in-app banner; on Android the banner backs up the OS
+      // alarm.
       for (const t of fresh) {
         reminderAlerts.push(t);
         notified.add(`${t.id}|${t.remind_at}`);
+      }
+
+      // Android: post a real OS notification too. The pre-scheduled alarm is the
+      // primary background channel, but it can be missing (wiped by an app
+      // update) or the reminder can come due while the app is foregrounded — in
+      // those cases the in-app banner alone is silent and easily missed. Reusing
+      // the task's notifId means this collapses with a scheduled alarm that DID
+      // fire rather than duplicating it. (Desktop has its own native path below.)
+      if (isCapacitor()) {
+        const { fireImmediateReminder } = await import('$lib/localReminders');
+        for (const t of fresh) void fireImmediateReminder(t);
       }
 
       // Desktop: fire a NATIVE OS notification too. This is the reliable channel

@@ -6,6 +6,17 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.21.3] - 2026-06-28
+
+### Fixed
+- **Android reminders now raise a system notification, not just an in-app
+  banner.** When a reminder came due while the app was open (or its scheduled
+  OS alarm was missing), only the in-app banner showed — silent and easy to miss
+  if you weren't looking at the screen. The in-app reminder poll now also posts a
+  real OS notification (with sound) on Android, reusing the task's notification id
+  so it collapses with a scheduled alarm rather than duplicating it. This mirrors
+  the native-notification backup desktop already had.
+
 ## [1.21.2] - 2026-06-28
 
 ### Fixed

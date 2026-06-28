@@ -308,6 +308,50 @@ export async function syncLocalReminders(): Promise<void> {
 }
 
 /**
+ * Post an OS notification for a reminder that is due RIGHT NOW. This is the
+ * catch-up channel for Android: the in-app poll (routines.svelte.ts) calls this
+ * the moment it detects a due reminder, so the user gets a real system-tray
+ * notification + channel sound even when the pre-scheduled alarm never fired —
+ * e.g. it was wiped by an app update, or the reminder came due while the app was
+ * foregrounded (when only the in-app banner would otherwise show).
+ *
+ * It reuses the task's stable notifId and our high-importance channel, so if the
+ * scheduled alarm *did* fire, posting with the same id collapses into it rather
+ * than producing a duplicate. Best-effort and Capacitor-only; silent on failure.
+ */
+export async function fireImmediateReminder(task: { id: string; title: string }): Promise<void> {
+  if (!isCapacitor()) return;
+  try {
+    const LN = await loadPlugin();
+    if (!LN) return;
+    if (!(await ensurePermission(LN))) return;
+    await bindListeners(LN);
+
+    const st = notificationSettings.settings;
+    if (!st.master_enabled) return;
+    const soundOn = st.master_enabled && st.sound_enabled;
+    const soundId = st.sound_id || DEFAULT_SOUND_ID;
+    const channelId = await ensureChannel(LN, soundId, soundOn);
+
+    await LN.schedule({
+      notifications: [
+        {
+          // Same id as the scheduled alarm → collapses instead of duplicating.
+          id: notifIdFor(task.id),
+          title: 'Reminder',
+          body: task.title,
+          channelId,
+          actionTypeId: 'REMINDER',
+          extra: { taskId: task.id, url: `/focus/${task.id}` },
+        },
+      ],
+    });
+  } catch {
+    /* best-effort — the in-app banner still surfaced it */
+  }
+}
+
+/**
  * Fire a real on-device notification a couple of seconds from now so the user
  * can verify the OS path (permission + channel + sound + heads-up) in isolation,
  * independent of reminder timing/sync. Returns a human-readable result for the
