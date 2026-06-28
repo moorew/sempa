@@ -6,6 +6,15 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.21.2] - 2026-06-28
+
+### Fixed
+- **Android reminders fire again after an app update.** Updating the app makes
+  Android silently cancel every on-device alarm we'd scheduled, but the local
+  bookkeeping still believed those reminders were armed — so they were never
+  re-scheduled and quietly stopped firing. The app now re-arms every upcoming
+  reminder whenever it detects it's running a new version.
+
 ## [1.21.1] - 2026-06-26
 
 ### Fixed

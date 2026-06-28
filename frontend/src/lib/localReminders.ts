@@ -24,6 +24,13 @@ import { notificationSettings } from '$lib/stores/notificationSettings.svelte';
 import { DEFAULT_SOUND_ID, NOTIFICATION_SOUNDS } from '$lib/sounds';
 
 const MAP_KEY = 'sempa-local-reminder-map';
+// Records the app version the OS alarms were last scheduled under. Android cancels
+// ALL pending AlarmManager alarms when the app is updated, but our diff map in
+// localStorage survives the update — so without this every armed reminder would
+// look "unchanged" and never be re-scheduled, and reminders silently stop firing
+// after an upgrade. When this differs from the running version we force a full
+// re-arm (see syncLocalReminders).
+const APP_VERSION_KEY = 'sempa-local-reminder-app-version';
 
 // Android notification channels are IMMUTABLE once created — importance and
 // sound are frozen at first creation and silently ignored on later edits. Early
@@ -90,6 +97,17 @@ async function loadPlugin(): Promise<LocalNotif | null> {
     return mod.LocalNotifications;
   } catch {
     return null;
+  }
+}
+
+// Current app version (e.g. "1.21.2"), or "" if unavailable. Used to detect an
+// app update, after which Android has dropped all our scheduled alarms.
+async function appVersion(): Promise<string> {
+  try {
+    const { App } = await import('@capacitor/app');
+    return (await App.getInfo()).version || '';
+  } catch {
+    return '';
   }
 }
 
@@ -223,6 +241,12 @@ export async function syncLocalReminders(): Promise<void> {
     // as heads-up notifications; pick the per-sound one when sound is enabled.
     const channelId = await ensureChannel(LN, soundId, soundOn);
 
+    // After an app update Android has silently cancelled every alarm we'd
+    // scheduled, while our diff map (below) still says they're armed. Detect the
+    // version change and re-arm every future reminder regardless of the diff.
+    const version = await appVersion();
+    const forceReschedule = version !== '' && version !== localStorage.getItem(APP_VERSION_KEY);
+
     const prev = readMap();
     const next: ScheduleMap = {};
     const toSchedule: Parameters<LocalNotif['schedule']>[0]['notifications'] = [];
@@ -246,7 +270,7 @@ export async function syncLocalReminders(): Promise<void> {
           prev[t.id].remindAt === entry.remindAt &&
           prev[t.id].title === entry.title &&
           prev[t.id].soundId === entry.soundId;
-        if (unchanged) continue; // already scheduled correctly
+        if (unchanged && !forceReschedule) continue; // already scheduled correctly
 
         toSchedule.push({
           id: notifId,
@@ -269,6 +293,9 @@ export async function syncLocalReminders(): Promise<void> {
     if (toCancel.length) await LN.cancel({ notifications: toCancel }).catch(() => {});
     if (toSchedule.length) await LN.schedule({ notifications: toSchedule }).catch(() => {});
     writeMap(next);
+    // Record the version we just (re)armed under, so the force-reschedule above
+    // fires once per update rather than on every sync.
+    if (version) localStorage.setItem(APP_VERSION_KEY, version);
   } catch {
     /* best-effort; the server push channel is the backup */
   } finally {
