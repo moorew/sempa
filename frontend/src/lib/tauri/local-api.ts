@@ -171,6 +171,16 @@ export const localApi = {
             return localApi.tasks.get(id);
         },
         delete: async (id: string): Promise<void> => {
+            // Cascade to sub-tasks (mirrors the server): the parent_task_id FK is
+            // ON DELETE SET NULL, so without this a deleted parent orphans its
+            // children into top-level tasks that resurface on the board.
+            const children = await query<{ id: string }[]>(
+                `SELECT id FROM tasks WHERE parent_task_id = ?`, [id]);
+            for (const c of children) {
+                await execute(`DELETE FROM tasks WHERE id = ?`, [c.id]);
+                await recordLocalTombstone('task', c.id);
+                await logMutation('tasks', c.id, 'delete', {});
+            }
             await execute(`DELETE FROM tasks WHERE id = ?`, [id]);
             await recordLocalTombstone('task', id);
             await logMutation('tasks', id, 'delete', {});

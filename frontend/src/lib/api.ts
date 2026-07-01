@@ -334,7 +334,7 @@ const httpApi = {
     // Turn a URL or pasted text into a task (+ steps as subtasks) and a companion
     // list (+ items). Longer timeout: it may fetch a page AND run inference.
     import: (input: { url?: string; text?: string }) =>
-      req<{ available: boolean; type?: string; title?: string; notes?: string; steps?: string[]; list_name?: string; items?: string[]; source_url?: string }>(
+      req<{ available: boolean; type?: string; title?: string; notes?: string; steps?: { title: string; detail: string }[]; list_name?: string; items?: string[]; source_url?: string }>(
         '/api/v1/ai/import', { method: 'POST', body: body(input) }, 120_000),
   },
 

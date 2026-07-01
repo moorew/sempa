@@ -6,6 +6,7 @@
   import { prefs } from '$lib/stores/prefs.svelte';
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
   import { importModal } from '$lib/stores/importModal.svelte';
+  import { confirmDialog } from '$lib/stores/confirmDialog.svelte';
   import { ListChecks, Plus, Archive, ArchiveRestore, Trash2, Sparkles } from 'lucide-svelte';
 
   const showImport = $derived(
@@ -42,7 +43,13 @@
     try { await api.lists.update(l.id, { archived }); await load(); } catch { /* ignore */ }
   }
   async function remove(l: List) {
-    if (!confirm(`Delete “${l.name || 'this list'}” and its items?`)) return;
+    const ok = await confirmDialog.ask({
+      title: `Delete “${l.name || 'this list'}”?`,
+      message: 'This also deletes all of its items. This can’t be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+    });
+    if (!ok) return;
     try { await api.lists.delete(l.id); lists = lists.filter((x) => x.id !== l.id); } catch { /* ignore */ }
   }
 </script>

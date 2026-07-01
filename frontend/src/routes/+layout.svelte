@@ -53,6 +53,7 @@
   import AiImportModal from '$lib/components/AiImportModal.svelte';
   import AiSetupBanner from '$lib/components/AiSetupBanner.svelte';
   import CommandPalette from '$lib/components/CommandPalette.svelte';
+  import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
   import { realtime } from '$lib/stores/realtime.svelte';
   import { celebrate } from '$lib/celebrate';
   import type { Snippet } from 'svelte';
@@ -478,6 +479,7 @@
 <!-- Global overlays — mounted once, opened from anywhere via their stores. -->
 <AiImportModal />
 <CommandPalette />
+<ConfirmDialog />
 
 {#if isLoginPage || isSetupPage || isStandaloneWindow}
   {@render children()}

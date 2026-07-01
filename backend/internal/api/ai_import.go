@@ -20,15 +20,23 @@ import (
 // schema.org/Recipe JSON-LD we parse it deterministically (far more reliable
 // than a small model) and skip the LLM entirely.
 
+// importStep is one step → one subtask: a short action title plus the fuller
+// detail (goes into the subtask's description rather than cramming everything
+// into the title).
+type importStep struct {
+	Title  string `json:"title"`
+	Detail string `json:"detail"`
+}
+
 // importResult is the structured extraction the client turns into a parent task
 // (+ steps as subtasks) and a new list (+ items).
 type importResult struct {
-	Type     string   `json:"type"`
-	Title    string   `json:"title"`
-	Notes    string   `json:"notes"`
-	Steps    []string `json:"steps"`
-	ListName string   `json:"list_name"`
-	Items    []string `json:"items"`
+	Type     string       `json:"type"`
+	Title    string       `json:"title"`
+	Notes    string       `json:"notes"`
+	Steps    []importStep `json:"steps"`
+	ListName string       `json:"list_name"`
+	Items    []string     `json:"items"`
 }
 
 func (h *integrationHandler) aiImport(w http.ResponseWriter, r *http.Request) {
@@ -90,7 +98,7 @@ Return JSON with exactly these keys:
 "type": one of the four above
 "title": a short, action-oriented task title (e.g. "Smoke a brisket", "Pack for Lisbon"). No trailing punctuation.
 "notes": one short sentence of context, or ""
-"steps": array of the ordered steps/instructions, each a short imperative sentence
+"steps": array of ordered steps. Each step is an object {"title","detail"}: "title" is a short imperative label (6 words max, e.g. "Trim the brisket"), "detail" is the full instruction text (or "" if the title already says everything).
 "list_name": a short name for the companion list (e.g. "Brisket — groceries", "Lisbon — packing"), or ""
 "items": array of physical things to buy or gather (ingredients, supplies, packing items), each copied with its quantity if given. Empty array if there are none.
 Only use steps and items supported by the content — do not invent any.
@@ -119,7 +127,7 @@ func importResponse(res importResult, sourceURL string) map[string]any {
 	if title == "" {
 		title = "Imported task"
 	}
-	steps := cleanList(res.Steps, 40)
+	steps := cleanSteps(res.Steps, 40)
 	items := cleanList(res.Items, 100)
 	listName := strings.TrimSpace(res.ListName)
 	if listName == "" && len(items) > 0 {
@@ -135,6 +143,44 @@ func importResponse(res importResult, sourceURL string) map[string]any {
 		"items":      items,
 		"source_url": sourceURL,
 	}
+}
+
+// cleanSteps trims, drops empties, caps, and ensures each step has a title
+// (deriving one from the detail if needed). A detail identical to the title is
+// dropped so the description isn't a duplicate of the title.
+func cleanSteps(in []importStep, max int) []importStep {
+	out := []importStep{}
+	for _, s := range in {
+		title := strings.TrimSpace(s.Title)
+		detail := strings.TrimSpace(s.Detail)
+		if title == "" && detail == "" {
+			continue
+		}
+		if title == "" {
+			title = stepTitle(detail)
+		}
+		if strings.EqualFold(detail, title) {
+			detail = ""
+		}
+		out = append(out, importStep{Title: clip(title, 120), Detail: detail})
+		if len(out) >= max {
+			break
+		}
+	}
+	return out
+}
+
+// stepTitle derives a short label from a full instruction: the first sentence
+// if it's brief, else the first several words.
+func stepTitle(s string) string {
+	s = strings.TrimSpace(s)
+	if i := strings.IndexAny(s, ".!?"); i > 0 && i < 60 {
+		return strings.TrimSpace(s[:i])
+	}
+	if words := strings.Fields(s); len(words) > 9 {
+		return strings.Join(words[:9], " ")
+	}
+	return s
 }
 
 // ── schema.org/Recipe (JSON-LD) extraction ───────────────────────────────────
@@ -251,16 +297,17 @@ func jsonLDStrings(v any) []string {
 // jsonLDInstructions normalises recipeInstructions, which appears as: a plain
 // (possibly newline-separated) string; an array of strings; an array of
 // HowToStep objects ({text|name}); or HowToSection objects wrapping
-// itemListElement.
-func jsonLDInstructions(v any) []string {
-	out := []string{}
+// itemListElement. Each becomes a step with a derived title + full detail; a
+// HowToStep's `name` (when present) is used as the title.
+func jsonLDInstructions(v any) []importStep {
+	out := []importStep{}
 	var walk func(any)
 	walk = func(x any) {
 		switch t := x.(type) {
 		case string:
 			for _, line := range strings.Split(html.UnescapeString(t), "\n") {
 				if s := strings.TrimSpace(line); s != "" {
-					out = append(out, s)
+					out = append(out, importStep{Title: stepTitle(s), Detail: s})
 				}
 			}
 		case []any:
@@ -272,12 +319,18 @@ func jsonLDInstructions(v any) []string {
 				walk(t["itemListElement"])
 				return
 			}
-			if s := jsonLDString(t["text"]); s != "" {
-				out = append(out, s)
+			text := jsonLDString(t["text"])
+			name := jsonLDString(t["name"])
+			if text != "" {
+				title := name
+				if title == "" {
+					title = stepTitle(text)
+				}
+				out = append(out, importStep{Title: title, Detail: text})
 				return
 			}
-			if s := jsonLDString(t["name"]); s != "" {
-				out = append(out, s)
+			if name != "" {
+				out = append(out, importStep{Title: stepTitle(name), Detail: name})
 			}
 		}
 	}

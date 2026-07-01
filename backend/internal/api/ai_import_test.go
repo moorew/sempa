@@ -28,8 +28,11 @@ func TestExtractRecipeJSONLD_HowToSteps(t *testing.T) {
 	if len(rec.Items) != 3 || rec.Items[0] != "1 whole brisket" {
 		t.Errorf("ingredients = %#v", rec.Items)
 	}
-	if len(rec.Steps) != 3 || rec.Steps[2] != "Smoke at 225F for 12 hours." {
+	if len(rec.Steps) != 3 || rec.Steps[2].Detail != "Smoke at 225F for 12 hours." {
 		t.Errorf("steps = %#v", rec.Steps)
+	}
+	if rec.Steps[0].Title == "" {
+		t.Errorf("step title not derived: %#v", rec.Steps[0])
 	}
 	if rec.ListName != "Smoked Brisket — groceries" {
 		t.Errorf("list name = %q", rec.ListName)
@@ -55,7 +58,7 @@ func TestExtractRecipeJSONLD_Graph_ArrayType_StringInstructions(t *testing.T) {
 	if rec.Title != "Pancakes" {
 		t.Errorf("title = %q", rec.Title)
 	}
-	if len(rec.Steps) != 3 || rec.Steps[0] != "Mix dry." {
+	if len(rec.Steps) != 3 || rec.Steps[0].Detail != "Mix dry." {
 		t.Errorf("steps = %#v", rec.Steps)
 	}
 	if len(rec.Items) != 2 {

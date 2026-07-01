@@ -26,7 +26,7 @@
   let title = $state('');
   let notes = $state('');
   let sourceUrl = $state('');
-  let steps = $state<string[]>([]);
+  let steps = $state<{ title: string; detail: string }[]>([]);
   let items = $state<{ text: string; include: boolean }[]>([]);
   let listName = $state('');
   let makeList = $state(true);
@@ -71,7 +71,9 @@
       title = (res.title ?? '').trim();
       notes = (res.notes ?? '').trim();
       sourceUrl = res.source_url ?? '';
-      steps = (res.steps ?? []).map((s) => s.trim()).filter(Boolean);
+      steps = (res.steps ?? [])
+        .map((s) => ({ title: (s.title ?? '').trim(), detail: (s.detail ?? '').trim() }))
+        .filter((s) => s.title || s.detail);
       items = (res.items ?? []).map((t) => ({ text: t.trim(), include: true })).filter((i) => i.text);
       listName = (res.list_name ?? '').trim();
       makeList = items.length > 0;
@@ -112,11 +114,16 @@
         position: 0,
       });
 
-      // Steps → subtasks, in order, sharing the parent's placement.
+      // Steps → subtasks, in order, sharing the parent's placement. Title is the
+      // short label; the fuller instruction goes into the subtask description.
       let pos = 0;
-      for (const s of steps.map((x) => x.trim()).filter(Boolean)) {
+      for (const s of steps) {
+        const stepTitle = s.title.trim() || s.detail.trim();
+        if (!stepTitle) continue;
+        const detail = s.detail.trim();
         await api.tasks.create({
-          title: s,
+          title: stepTitle,
+          description: detail && detail !== stepTitle ? detail : undefined,
           parent_task_id: parent.id,
           planned_date: plannedDate,
           status,
@@ -223,15 +230,20 @@
             <p class="mb-1.5 text-[11px] font-medium uppercase tracking-wide" style="color: var(--sempa-text-dim);">
               Steps ({steps.length} subtasks)
             </p>
-            <div class="mb-4 flex flex-col gap-1.5">
+            <div class="mb-4 flex flex-col gap-2.5">
               {#each steps as _, i (i)}
-                <div class="flex items-center gap-2">
-                  <span class="w-5 shrink-0 text-right text-xs" style="color: var(--sempa-text-dim);">{i + 1}.</span>
-                  <input bind:value={steps[i]}
-                         class="flex-1 rounded-lg px-2.5 py-1.5 text-sm outline-none"
-                         style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
+                <div class="flex items-start gap-2">
+                  <span class="w-5 shrink-0 pt-2 text-right text-xs" style="color: var(--sempa-text-dim);">{i + 1}.</span>
+                  <div class="min-w-0 flex-1 space-y-1">
+                    <input bind:value={steps[i].title} placeholder="Step"
+                           class="w-full rounded-lg px-2.5 py-1.5 text-sm font-medium outline-none"
+                           style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
+                    <textarea bind:value={steps[i].detail} rows={2} placeholder="Details (optional)"
+                              class="w-full resize-none rounded-lg px-2.5 py-1.5 text-xs outline-none"
+                              style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text-soft);"></textarea>
+                  </div>
                   <button onclick={() => removeStep(i)} aria-label="Remove step"
-                          class="shrink-0 rounded p-1 transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);">
+                          class="mt-1 shrink-0 rounded p-1 transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);">
                     <Trash2 size={14} />
                   </button>
                 </div>

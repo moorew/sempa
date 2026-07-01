@@ -499,6 +499,27 @@ func (h *taskHandler) delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "task not found")
 		return
 	}
+	// Cascade to sub-tasks: the parent_task_id FK is ON DELETE SET NULL, so
+	// without this a deleted parent would orphan its sub-tasks into top-level
+	// tasks (they'd resurface on the board). Fetch children BEFORE deleting the
+	// parent (afterwards the FK would have nulled the link). One level deep — the
+	// only nesting the app creates.
+	if children, cerr := h.store.ListByParent(r.Context(), id, owner); cerr == nil {
+		for _, c := range children {
+			if delErr := h.store.Delete(r.Context(), c.ID); delErr != nil {
+				continue
+			}
+			if h.attach != nil {
+				h.attach.removeForOwner(r, "task", c.ID)
+			}
+			if h.sync != nil {
+				_ = h.sync.RecordTombstone(r.Context(), "task", c.ID, c.OwnerID, c.Shared)
+			}
+			if h.configs != nil {
+				go h.deleteCalDAVBlock(c.ID)
+			}
+		}
+	}
 	err := h.store.Delete(r.Context(), id)
 	if errors.Is(err, db.ErrNotFound) {
 		respondError(w, http.StatusNotFound, "task not found")
