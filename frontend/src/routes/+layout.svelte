@@ -62,7 +62,7 @@
     Sun, CalendarDays, ClipboardCheck, Mail, Moon, SlidersHorizontal,
     ChevronLeft, ChevronRight, Plus, RefreshCw, X, Check,
     Target, Timer, Palette, Menu, Layers, BookOpen, Search, Bell, LayoutGrid,
-    SquareKanban, CalendarClock, ArrowUpCircle, Gauge, ListChecks,
+    SquareKanban, CalendarClock, ArrowUpCircle, Gauge, ListChecks, Sparkles,
   } from 'lucide-svelte';
   import { createWidgetWindow } from '$lib/tauri/bridge';
 
@@ -762,6 +762,15 @@
           {#if theme.dark}<Sun size={20} strokeWidth={1.9} />{:else}<Moon size={20} strokeWidth={1.9} />{/if}
           <span style="font-size: 12.5px; font-weight: 600;">{theme.dark ? 'Light mode' : 'Dark mode'}</span>
         </button>
+        {#if prefs.aiOn('aiImport') && prefs.importEntryOn('button') && aiStatus.reachable}
+          <button onclick={() => { importModal.show(); moreSheetOpen = false; }}
+                  aria-label="Import with AI"
+                  class="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-xl py-3 transition-opacity active:opacity-80"
+                  style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
+            <Sparkles size={20} strokeWidth={1.9} />
+            <span style="font-size: 12.5px; font-weight: 600;">AI Import</span>
+          </button>
+        {/if}
         {#if isTauri()}
           <button onclick={() => createWidgetWindow()} aria-label="Open widget"
                   class="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-xl py-3 transition-opacity active:opacity-80"

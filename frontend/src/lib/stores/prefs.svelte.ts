@@ -43,7 +43,7 @@ const IMPORT_ENTRIES_KEY = 'sempa.aiImportEntries';
 type ImportEntries = Record<ImportEntry, boolean>;
 const IMPORT_ENTRIES_DEFAULT: ImportEntries = { button: true, shortcut: true };
 export const IMPORT_ENTRY_META: { key: ImportEntry; label: string; hint: string }[] = [
-  { key: 'button',   label: 'Import button',        hint: 'Show an “Import with AI” button on the Lists page.' },
+  { key: 'button',   label: 'Import button',        hint: 'Show an “Import with AI” button on the Lists page and in the mobile menu.' },
   { key: 'shortcut', label: 'Keyboard quick-launch', hint: 'Open Import from anywhere with Ctrl/⌘ + Shift + I.' },
 ];
 
