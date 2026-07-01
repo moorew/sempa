@@ -3,7 +3,14 @@
   import { api } from '$lib/api';
   import type { List } from '$lib/types';
   import { realtime } from '$lib/stores/realtime.svelte';
-  import { ListChecks, Plus, Archive, ArchiveRestore, Trash2 } from 'lucide-svelte';
+  import { prefs } from '$lib/stores/prefs.svelte';
+  import { aiStatus } from '$lib/stores/aiStatus.svelte';
+  import { importModal } from '$lib/stores/importModal.svelte';
+  import { ListChecks, Plus, Archive, ArchiveRestore, Trash2, Sparkles } from 'lucide-svelte';
+
+  const showImport = $derived(
+    prefs.aiOn('aiImport') && prefs.importEntryOn('button') && aiStatus.reachable,
+  );
 
   let lists = $state<List[]>([]);
   let loading = $state(true);
@@ -46,6 +53,14 @@
   <div class="flex items-center gap-2.5 px-5 py-4" style="border-bottom: 1px solid var(--sempa-border);">
     <ListChecks size={20} style="color: var(--sempa-accent);" />
     <h1 class="text-base font-semibold" style="color: var(--sempa-text);">Lists</h1>
+    {#if showImport}
+      <button onclick={() => importModal.show()}
+        class="ml-auto flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors"
+        style="border: 1px solid var(--sempa-border); color: var(--sempa-accent);"
+        title="Turn a recipe, itinerary or brief into a task + list">
+        <Sparkles size={14} /> Import with AI
+      </button>
+    {/if}
   </div>
 
   <div class="flex-1 overflow-y-auto px-5 py-6 pb-24">
@@ -76,7 +91,10 @@
       </div>
     {/if}
 
-    {#if archived.length || showArchived}
+    <!-- Always render the toggle: it's the only way to load archived lists
+         (the initial fetch excludes them), so gating it on archived.length made
+         archived lists permanently unreachable. -->
+    {#if !loading}
       <button onclick={() => (showArchived = !showArchived)}
         class="mt-6 text-xs font-medium transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);">
         {showArchived ? 'Hide' : 'Show'} archived

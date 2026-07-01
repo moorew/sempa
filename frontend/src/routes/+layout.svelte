@@ -48,6 +48,9 @@
   import UpdateToast from '$lib/components/UpdateToast.svelte';
   import { updates } from '$lib/stores/updates.svelte';
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
+  import { importModal } from '$lib/stores/importModal.svelte';
+  import AiImportModal from '$lib/components/AiImportModal.svelte';
+  import AiSetupBanner from '$lib/components/AiSetupBanner.svelte';
   import { realtime } from '$lib/stores/realtime.svelte';
   import { celebrate } from '$lib/celebrate';
   import type { Snippet } from 'svelte';
@@ -135,6 +138,14 @@
     if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
       e.preventDefault();
       goto('/search');
+      return;
+    }
+    // Cmd/Ctrl+Shift+I opens AI Import (when enabled + a model is reachable).
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'i' || e.key === 'I')) {
+      if (prefs.aiOn('aiImport') && prefs.importEntryOn('shortcut') && aiStatus.reachable) {
+        e.preventDefault();
+        importModal.show();
+      }
       return;
     }
     if (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable) return;
@@ -461,6 +472,9 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
+<!-- AI Import modal — mounted once, opened from anywhere via the importModal store. -->
+<AiImportModal />
+
 {#if isLoginPage || isSetupPage || isStandaloneWindow}
   {@render children()}
 {:else if cockpit.active}
@@ -656,6 +670,7 @@
         <ReminderBanner />
         <RoutineBanner />
         <TimezoneBanner />
+        <AiSetupBanner />
       </div>
     {/if}
     {#key $page.url.pathname}

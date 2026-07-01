@@ -134,6 +134,50 @@ func Fetch(ctx context.Context, rawURL string) (*Meta, int, error) {
 	return parseMeta(string(body), resp.Request.URL), resp.StatusCode, nil
 }
 
+// FetchContent downloads rawURL and returns the raw HTML body (up to 1 MB) for
+// callers that need the FULL document, not just <head> metadata — e.g. reading
+// schema.org/Recipe JSON-LD or the article body for AI import. Same SSRF guards
+// and redirect limits as Fetch.
+func FetchContent(ctx context.Context, rawURL string) (string, int, error) {
+	u, err := ValidatePublicURL(rawURL)
+	if err != nil {
+		return "", 0, err
+	}
+	client := &http.Client{
+		Timeout: 15 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 5 {
+				return fmt.Errorf("stopped after 5 redirects")
+			}
+			if _, err := ValidatePublicURL(req.URL.String()); err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return "", 0, err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; SempaBot/1.0; +https://github.com/moorew/sempa)")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", 0, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", resp.StatusCode, fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+	if ct := strings.ToLower(resp.Header.Get("Content-Type")); ct != "" &&
+		!strings.Contains(ct, "html") && !strings.Contains(ct, "xml") && !strings.Contains(ct, "json") {
+		return "", resp.StatusCode, fmt.Errorf("not an HTML page (%s)", ct)
+	}
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	return string(body), resp.StatusCode, nil
+}
+
 // parseMeta extracts preview metadata from an HTML document, resolving relative
 // image/favicon URLs against base. Split out from Fetch so it's unit-testable
 // without a network round-trip.

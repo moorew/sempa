@@ -5,7 +5,9 @@ import { api } from '$lib/api';
 
 function createAiStatus() {
   let reachable = $state(false);
-  let loaded = false;
+  // Reactive so UI (e.g. the setup nudge) can wait for the first check to land
+  // rather than flashing while reachable is still its default false.
+  let loaded = $state(false);
 
   async function load() {
     if (loaded) return;
@@ -25,6 +27,7 @@ function createAiStatus() {
 
   return {
     get reachable() { return reachable; },
+    get loaded() { return loaded; },
     load,
     refresh,
   };

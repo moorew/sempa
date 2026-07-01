@@ -248,6 +248,23 @@ pub fn get_migrations() -> Vec<Migration> {
             "#,
             kind: MigrationKind::Up,
         },
+        Migration {
+            // Local delete tombstones — guard a locally-deleted row from being
+            // resurrected by a stale server copy re-sent on pull (e.g. before our
+            // delete has pushed, or if the outbox is wedged). Purely client-side;
+            // never synced. Mirrors schema.ts.
+            version: 10,
+            description: "local sync tombstones",
+            sql: r#"
+                CREATE TABLE IF NOT EXISTS sync_tombstones (
+                    entity_type TEXT NOT NULL,
+                    entity_id TEXT NOT NULL,
+                    deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    PRIMARY KEY (entity_type, entity_id)
+                );
+            "#,
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

@@ -386,6 +386,7 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 				r.Post("/organize-list", integrations.aiOrganizeList)
 				r.Post("/weekly-review", integrations.aiWeeklyReview)
 				r.Post("/reflection-prompts", integrations.aiReflectionPrompts)
+				r.Post("/import", integrations.aiImport)
 			})
 		})
 	})

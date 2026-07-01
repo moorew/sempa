@@ -274,4 +274,75 @@ describe.each(SCHEMAS)('sync engine on %s schema', (_name, schema) => {
         const pending = db.select<{ c: number }[]>('SELECT COUNT(*) c FROM sync_log WHERE synced = 0');
         expect(pending[0].c).toBe(0);
     });
+
+    it('does not resurrect a locally-deleted task when the server re-sends a stale copy', async () => {
+        // Deleted locally at 12:00 (tombstone recorded) but the delete has not
+        // pushed yet, so the server still returns the old 10:00 copy on pull.
+        // Without the tombstone guard this row re-inserts every launch — the
+        // "deleted task reappears" bug.
+        db.execute(
+            `INSERT INTO sync_tombstones (entity_type, entity_id, deleted_at)
+             VALUES ('task', 'zombie', '2026-06-09 12:00:00')`,
+        );
+        stubServer({ tasks: [sampleTask({ id: 'zombie', title: 'Back from the dead',
+            updated_at: '2026-06-09 10:00:00' })] });
+
+        await sync();
+
+        expect(db.select("SELECT * FROM tasks WHERE id = 'zombie'")).toHaveLength(0);
+    });
+
+    it('lets a genuinely newer server row through and retires the stale tombstone', async () => {
+        // A legitimate re-creation: the server copy is newer than the delete, so
+        // it should win AND clear the now-stale tombstone.
+        db.execute(
+            `INSERT INTO sync_tombstones (entity_type, entity_id, deleted_at)
+             VALUES ('task', 'reborn', '2026-06-09 10:00:00')`,
+        );
+        stubServer({ tasks: [sampleTask({ id: 'reborn', title: 'Recreated',
+            updated_at: '2026-06-09 13:00:00' })] });
+
+        await sync();
+
+        const rows = db.select<{ title: string }[]>("SELECT title FROM tasks WHERE id = 'reborn'");
+        expect(rows).toHaveLength(1);
+        expect(rows[0].title).toBe('Recreated');
+        expect(db.select("SELECT * FROM sync_tombstones WHERE entity_id = 'reborn'")).toHaveLength(0);
+    });
+
+    it('quarantines a server-rejected mutation so it cannot block a later delete', async () => {
+        // A poison create (bad payload → permanent 400) sits ahead of an unrelated
+        // delete in the outbox. The old "break on first failure" wedged the queue,
+        // stranding the delete on the server — which is how deletes came back on
+        // other devices. The poison must be dead-lettered and the delete let through.
+        db.execute(`INSERT INTO sync_log (entity_type, entity_id, action, payload)
+                    VALUES ('tasks', 'poison', 'create', '{"title":"Bad"}')`);
+        db.execute(`INSERT INTO sync_log (entity_type, entity_id, action, payload)
+                    VALUES ('tasks', 'victim', 'delete', '{}')`);
+
+        const calls: { method: string; url: string }[] = [];
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+            const method = init?.method ?? 'GET';
+            calls.push({ method, url });
+            if (url.includes('/api/v1/health')) return new Response('ok', { status: 200 });
+            if (url.includes('/api/v1/sync/changes')) {
+                return new Response(JSON.stringify({
+                    tasks: [], objectives: [], plans: [], tags: [], week_reviews: [],
+                    deletions: [], cursor: '2026-06-09 12:00:00',
+                }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            }
+            // The poison create is permanently rejected; everything else succeeds.
+            if (method === 'POST' && url.includes('/api/v1/tasks')) return new Response('bad', { status: 400 });
+            return new Response('{}', { status: 200 });
+        }));
+
+        await sync();
+
+        // The delete still reached the server despite the poison ahead of it.
+        expect(calls.some(c => c.method === 'DELETE' && c.url.includes('victim'))).toBe(true);
+        // Poison dead-lettered (synced=2); nothing left pending.
+        const poison = db.select<{ synced: number }[]>("SELECT synced FROM sync_log WHERE entity_id = 'poison'");
+        expect(poison[0].synced).toBe(2);
+        expect(db.select<{ c: number }[]>('SELECT COUNT(*) c FROM sync_log WHERE synced = 0')[0].c).toBe(0);
+    });
 });

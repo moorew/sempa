@@ -6,7 +6,7 @@
  * reachable. See $lib/sync.svelte.ts.
  */
 
-import { query, execute, logMutation } from './db';
+import { query, execute, logMutation, recordLocalTombstone } from './db';
 import { flushSoon } from '$lib/sync.svelte';
 import type {
     Task, CreateTaskInput, UpdateTaskInput,
@@ -172,6 +172,7 @@ export const localApi = {
         },
         delete: async (id: string): Promise<void> => {
             await execute(`DELETE FROM tasks WHERE id = ?`, [id]);
+            await recordLocalTombstone('task', id);
             await logMutation('tasks', id, 'delete', {});
             flushSoon();
         },
@@ -254,6 +255,7 @@ export const localApi = {
         },
         delete: async (id: string): Promise<void> => {
             await execute(`DELETE FROM weekly_objectives WHERE id = ?`, [id]);
+            await recordLocalTombstone('objective', id);
             await logMutation('objectives', id, 'delete', {});
             flushSoon();
         },
@@ -382,8 +384,13 @@ export const localApi = {
         delete: async (id: string): Promise<{ status: string }> => {
             // Remove items locally too (FK cascade isn't guaranteed on-device); the
             // server cascade + tombstones cover other devices on replay.
+            const items = await query<{ id: string }[]>(`SELECT id FROM list_items WHERE list_id = ?`, [id]);
             await execute(`DELETE FROM list_items WHERE list_id = ?`, [id]);
             await execute(`DELETE FROM lists WHERE id = ?`, [id]);
+            // Tombstone the list and its items so a not-yet-pushed delete can't be
+            // resurrected by a re-pull (items would otherwise re-insert as orphans).
+            await recordLocalTombstone('list', id);
+            for (const it of items) await recordLocalTombstone('list_item', it.id);
             await logMutation('lists', id, 'delete', {});
             flushSoon();
             return { status: 'deleted' };
@@ -425,6 +432,7 @@ export const localApi = {
         },
         deleteItem: async (id: string): Promise<{ status: string }> => {
             await execute(`DELETE FROM list_items WHERE id = ?`, [id]);
+            await recordLocalTombstone('list_item', id);
             await logMutation('list_items', id, 'delete', {});
             flushSoon();
             return { status: 'deleted' };
@@ -472,6 +480,7 @@ export const localApi = {
         },
         delete: async (id: string): Promise<void> => {
             await execute(`DELETE FROM tasks WHERE id = ?`, [id]);
+            await recordLocalTombstone('task', id);
             await logMutation('tasks', id, 'delete', {});
             flushSoon();
         },

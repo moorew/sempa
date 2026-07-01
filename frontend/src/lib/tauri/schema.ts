@@ -112,6 +112,16 @@ CREATE TABLE IF NOT EXISTS sync_state (
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Local delete tombstones. Purely client-side (never synced): they guard a
+-- locally-deleted row from being resurrected by a stale server copy re-sent on
+-- pull (e.g. before our delete has pushed). See sync.svelte.ts lww().
+CREATE TABLE IF NOT EXISTS sync_tombstones (
+    entity_type TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (entity_type, entity_id)
+);
+
 CREATE TABLE IF NOT EXISTS lists (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL DEFAULT '',

@@ -17,6 +17,8 @@ import { isTauri } from './tauri/bridge';
 import {
     getPendingMutations,
     markMutationsSynced,
+    quarantineMutation,
+    clearLocalTombstone,
     getPendingMutationCount,
     getSyncState,
     setSyncState,
@@ -115,9 +117,28 @@ interface ServerChanges {
 
 // ── Push: replay the outbox ──────────────────────────────────────────────────
 
-// Maps an outbox entry to its REST call. Returns true on success (entry will be
-// marked synced), false to leave it queued for the next attempt.
-async function replay(m: PendingMutation): Promise<boolean> {
+// Outcome of replaying one outbox entry:
+//   'done'      — applied (or a harmless no-op like a 404 delete); mark synced.
+//   'transient' — network/5xx/auth: keep queued, stop the pass, retry next cycle.
+//   'permanent' — a 4xx the server will NEVER accept (bad payload): quarantine it
+//                 so it can't wedge every later mutation (notably deletes).
+type PushResult = 'done' | 'transient' | 'permanent';
+
+// 4xx statuses that a plain retry can't fix — the payload itself is rejected.
+// 401/403 (auth) and 5xx are treated as transient on purpose: they resolve
+// without dropping the user's change.
+const PERMANENT_STATUSES = new Set([400, 409, 413, 422]);
+
+function classify(res: Response, action: string): PushResult {
+    if (res.ok) return 'done';
+    // 404 on update/delete = already gone server-side; a no-op, not a failure.
+    if (res.status === 404 && action !== 'create') return 'done';
+    if (PERMANENT_STATUSES.has(res.status)) return 'permanent';
+    return 'transient';
+}
+
+// Maps an outbox entry to its REST call.
+async function replay(m: PendingMutation): Promise<PushResult> {
     const payload = m.payload ? JSON.parse(m.payload) : {};
     // `shared` lives in local SQLite as an integer (0/1); offline-created tasks and
     // objectives log the full row, so the queued payload carries `shared: 0`. The
@@ -126,7 +147,7 @@ async function replay(m: PendingMutation): Promise<boolean> {
     // integer payloads already queued before this fix).
     if (typeof payload.shared === 'number') payload.shared = payload.shared !== 0;
     const path = restPath(m.entity_type);
-    if (!path) return true; // unknown entity → drop, don't wedge the queue
+    if (!path) return 'done'; // unknown entity → drop, don't wedge the queue
 
     try {
         let res: Response;
@@ -140,14 +161,9 @@ async function replay(m: PendingMutation): Promise<boolean> {
         } else {
             res = await serverFetch(`${path}/${encodeURIComponent(m.entity_id)}`, { method: 'DELETE' });
         }
-
-        // 2xx = applied. 404 on update/delete = already gone server-side; treat
-        // as done so a deleted-elsewhere row doesn't wedge the queue forever.
-        if (res.ok) return true;
-        if (res.status === 404 && m.action !== 'create') return true;
-        return false;
+        return classify(res, m.action);
     } catch {
-        return false; // network error — keep queued
+        return 'transient'; // network error — keep queued
     }
 }
 
@@ -165,42 +181,73 @@ function restPath(entityType: string): string | null {
     }
 }
 
-async function pushOutbox(): Promise<void> {
+// Outbox entity_type (as logged by local-api) → the singular entity type used
+// for local tombstones. Lets a confirmed delete-push clear its tombstone.
+const SYNC_LOG_TO_TOMBSTONE: Record<string, string> = {
+    tasks: 'task',
+    objectives: 'objective',
+    tags: 'tag',
+    lists: 'list',
+    list_items: 'list_item',
+};
+
+// Replays queued mutations in order. Returns human-readable descriptions of any
+// mutations that were quarantined (dead-lettered) this pass, for surfacing.
+async function pushOutbox(): Promise<string[]> {
     const pending = await getPendingMutations();
     const done: number[] = [];
+    const quarantined: string[] = [];
     for (const m of pending) {
-        let ok: boolean;
+        let result: PushResult;
         if (m.entity_type === 'plans') {
-            ok = await replayPlan(m);
+            result = await replayPlan(m);
         } else if (m.entity_type === 'week_reviews') {
-            ok = await replayWeekReview(m);
+            result = await replayWeekReview(m);
         } else if (m.entity_type === 'list_items') {
-            ok = await replayListItem(m);
+            result = await replayListItem(m);
         } else {
-            ok = await replay(m);
+            result = await replay(m);
         }
-        if (!ok) break; // preserve order — stop at first failure, retry next cycle
+
+        if (result === 'transient') break; // preserve order — retry next cycle
+
+        if (result === 'permanent') {
+            // The server will never accept this payload. Dead-letter it so it
+            // stops blocking every later mutation (this is what stranded deletes
+            // on the server and made deleted tasks reappear on other devices).
+            await quarantineMutation(m.id);
+            quarantined.push(`${m.action} ${m.entity_type}/${m.entity_id}`);
+            continue;
+        }
+
+        // Applied. A confirmed delete means the server is now authoritative and
+        // won't re-send the row, so the local tombstone guard can be retired.
+        if (m.action === 'delete') {
+            const et = SYNC_LOG_TO_TOMBSTONE[m.entity_type];
+            if (et) await clearLocalTombstone(et, m.entity_id);
+        }
         done.push(m.id);
     }
     await markMutationsSynced(done);
+    return quarantined;
 }
 
 // Plans are upserted by date (PUT /plans/{date}); the payload carries plan_date.
-async function replayPlan(m: PendingMutation): Promise<boolean> {
+async function replayPlan(m: PendingMutation): Promise<PushResult> {
     const payload = m.payload ? JSON.parse(m.payload) : {};
     const date = payload.plan_date ?? m.entity_id;
     try {
         const res = await serverFetch(`/api/v1/plans/${encodeURIComponent(date)}`, {
             method: 'PUT', body: JSON.stringify(payload),
         });
-        return res.ok;
-    } catch { return false; }
+        return classify(res, m.action);
+    } catch { return 'transient'; }
 }
 
 // List items have a non-uniform REST shape: create is nested under the list
 // (POST /lists/{list_id}/items), while update/delete use /list-items/{id}.
 // Reorder is replayed as per-item position updates, so it rides the update path.
-async function replayListItem(m: PendingMutation): Promise<boolean> {
+async function replayListItem(m: PendingMutation): Promise<PushResult> {
     const payload = m.payload ? JSON.parse(m.payload) : {};
     try {
         let res: Response;
@@ -216,22 +263,20 @@ async function replayListItem(m: PendingMutation): Promise<boolean> {
         } else {
             res = await serverFetch(`/api/v1/list-items/${encodeURIComponent(m.entity_id)}`, { method: 'DELETE' });
         }
-        if (res.ok) return true;
-        if (res.status === 404 && m.action !== 'create') return true;
-        return false;
-    } catch { return false; }
+        return classify(res, m.action);
+    } catch { return 'transient'; }
 }
 
 // Week reviews are upserted by week_start (PUT /weeks/{ws}/review).
-async function replayWeekReview(m: PendingMutation): Promise<boolean> {
+async function replayWeekReview(m: PendingMutation): Promise<PushResult> {
     const payload = m.payload ? JSON.parse(m.payload) : {};
     const ws = payload.week_start ?? m.entity_id;
     try {
         const res = await serverFetch(`/api/v1/weeks/${encodeURIComponent(ws)}/review`, {
             method: 'PUT', body: JSON.stringify(payload),
         });
-        return res.ok;
-    } catch { return false; }
+        return classify(res, m.action);
+    } catch { return 'transient'; }
 }
 
 // ── Pull: apply server changes locally ───────────────────────────────────────
@@ -324,6 +369,28 @@ async function pullChanges(): Promise<void> {
 // matched on that natural key — both here and in the ON CONFLICT target below.
 async function lww(table: string, row: Record<string, unknown>, keyCol = 'id'): Promise<boolean> {
     const key = row[keyCol] as string;
+
+    // Tombstone guard: a row deleted locally must not be resurrected by a stale
+    // server copy re-sent on pull (e.g. before our delete has pushed, or while
+    // the outbox is wedged). Only id-keyed tables carry tombstones. If the
+    // incoming row is genuinely NEWER than the delete, it's a legitimate
+    // re-creation — retire the stale tombstone and let it through.
+    if (keyCol === 'id') {
+        const entityType = ENTITY_TYPE_BY_TABLE[table];
+        if (entityType) {
+            const tomb = await query<{ deleted_at: string }[]>(
+                `SELECT deleted_at FROM sync_tombstones WHERE entity_type = ? AND entity_id = ?`,
+                [entityType, key],
+            );
+            if (tomb.length > 0) {
+                const remoteTs = (row.updated_at as string) ?? '';
+                if (remoteTs <= tomb[0].deleted_at) return false; // local delete wins
+                await execute(`DELETE FROM sync_tombstones WHERE entity_type = ? AND entity_id = ?`,
+                    [entityType, key]);
+            }
+        }
+    }
+
     const existing = await query<{ updated_at: string }[]>(
         `SELECT updated_at FROM ${table} WHERE ${keyCol} = ?`, [key],
     );
@@ -471,10 +538,18 @@ const TOMBSTONE_TABLE: Record<string, string> = {
     list_item: 'list_items',
 };
 
+// Inverse of TOMBSTONE_TABLE (local table name → tombstone entity type), used by
+// lww() to look up whether a pulled row was deleted locally.
+const ENTITY_TYPE_BY_TABLE: Record<string, string> = Object.fromEntries(
+    Object.entries(TOMBSTONE_TABLE).map(([entityType, table]) => [table, entityType]),
+);
+
 async function applyDeletion(d: Tombstone): Promise<boolean> {
     const table = TOMBSTONE_TABLE[d.entity_type];
     if (!table) return false;
     const res = await execute(`DELETE FROM ${table} WHERE id = ?`, [d.entity_id]);
+    // The server confirmed this delete — retire any local tombstone for it.
+    await clearLocalTombstone(d.entity_type, d.entity_id);
     return (res?.rowsAffected ?? 0) > 0;
 }
 
@@ -566,13 +641,19 @@ export async function sync(): Promise<void> {
         if (!online) return;
 
         syncStore._set({ syncing: true, lastError: null });
-        await pushOutbox();
+        const quarantined = await pushOutbox();
         await pullChanges();
         await reconcileRecurringInstances();
         syncStore._set({
             lastSyncedAt: new Date().toISOString(),
             pending: await getPendingMutationCount(),
         });
+        // Surface any dead-lettered mutations (pull didn't throw if we got here).
+        if (quarantined.length > 0) {
+            syncStore._set({
+                lastError: `Skipped ${quarantined.length} change(s) the server rejected: ${quarantined.join(', ')}`,
+            });
+        }
     } catch (e) {
         syncStore._set({ lastError: e instanceof Error ? e.message : String(e) });
     } finally {

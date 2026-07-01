@@ -13,7 +13,7 @@ const CELEBRATE_SOUND_KEY = 'sempa.celebrateSound';
 // by AI being enabled + reachable on the server, so these only matter once AI is set up.
 export type AiFeature =
   | 'quickAdd' | 'summarize' | 'suggestTags' | 'breakdown' | 'tidyNotes'
-  | 'planDay' | 'predictTime' | 'organizeList' | 'weeklyReview' | 'reflection';
+  | 'planDay' | 'predictTime' | 'organizeList' | 'weeklyReview' | 'reflection' | 'aiImport';
 
 export const AI_FEATURE_META: { key: AiFeature; label: string; hint: string }[] = [
   { key: 'quickAdd',     label: 'Natural-language quick add', hint: 'Type "lunch with Sam thu 1pm 30m #personal" → a structured task.' },
@@ -26,13 +26,26 @@ export const AI_FEATURE_META: { key: AiFeature; label: string; hint: string }[] 
   { key: 'organizeList', label: 'Organize a list',             hint: 'Group a list’s items into natural categories.' },
   { key: 'weeklyReview', label: 'Draft weekly review',        hint: 'Draft wins / challenges / next focus from the week.' },
   { key: 'reflection',   label: 'Reflection prompts',         hint: 'Context-aware end-of-day questions in Shutdown.' },
+  { key: 'aiImport',     label: 'Import from URL or text',    hint: 'Turn a recipe, itinerary or brief into a task with steps + a shopping list.' },
 ];
 
 type AiFeatures = Record<AiFeature, boolean>;
 const AI_FEATURES_DEFAULT: AiFeatures = {
   quickAdd: true, summarize: true, suggestTags: true, breakdown: true, tidyNotes: true,
   planDay: true, predictTime: true, organizeList: true, weeklyReview: true, reflection: true,
+  aiImport: true,
 };
+
+// Which entry points expose AI Import. Both default on; each is independently
+// switchable. Only relevant when the aiImport feature itself is on + reachable.
+export type ImportEntry = 'button' | 'shortcut';
+const IMPORT_ENTRIES_KEY = 'sempa.aiImportEntries';
+type ImportEntries = Record<ImportEntry, boolean>;
+const IMPORT_ENTRIES_DEFAULT: ImportEntries = { button: true, shortcut: true };
+export const IMPORT_ENTRY_META: { key: ImportEntry; label: string; hint: string }[] = [
+  { key: 'button',   label: 'Import button',        hint: 'Show an “Import with AI” button on the Lists page.' },
+  { key: 'shortcut', label: 'Keyboard quick-launch', hint: 'Open Import from anywhere with Ctrl/⌘ + Shift + I.' },
+];
 
 // How the desktop navigation rail is organised. 'spaces' (default) groups by
 // place; 'rhythm' groups by plan→focus→review; 'flat' is the original one-list.
@@ -52,6 +65,7 @@ function createPrefsStore() {
   let navGrouping = $state<NavGrouping>('spaces');
   let navSections = $state<NavSections>('labels');
   let aiFeatures = $state<AiFeatures>({ ...AI_FEATURES_DEFAULT });
+  let importEntries = $state<ImportEntries>({ ...IMPORT_ENTRIES_DEFAULT });
   // Soft chime on the day/week celebration moments. Off by default — the
   // celebrations are visual-first; sound is opt-in.
   let celebrateSound = $state(false);
@@ -69,6 +83,10 @@ function createPrefsStore() {
     try {
       const raw = localStorage.getItem(AI_FEATURES_KEY);
       if (raw) aiFeatures = { ...AI_FEATURES_DEFAULT, ...JSON.parse(raw) };
+    } catch { /* keep defaults */ }
+    try {
+      const raw = localStorage.getItem(IMPORT_ENTRIES_KEY);
+      if (raw) importEntries = { ...IMPORT_ENTRIES_DEFAULT, ...JSON.parse(raw) };
     } catch { /* keep defaults */ }
   }
 
@@ -94,6 +112,11 @@ function createPrefsStore() {
     if (typeof localStorage !== 'undefined') localStorage.setItem(AI_FEATURES_KEY, JSON.stringify(aiFeatures));
   }
 
+  function setImportEntry(key: ImportEntry, on: boolean) {
+    importEntries = { ...importEntries, [key]: on };
+    if (typeof localStorage !== 'undefined') localStorage.setItem(IMPORT_ENTRIES_KEY, JSON.stringify(importEntries));
+  }
+
   function setCelebrateSound(on: boolean) {
     celebrateSound = on;
     if (typeof localStorage !== 'undefined') localStorage.setItem(CELEBRATE_SOUND_KEY, on ? '1' : '0');
@@ -104,15 +127,19 @@ function createPrefsStore() {
     get navGrouping() { return navGrouping; },
     get navSections() { return navSections; },
     get aiFeatures() { return aiFeatures; },
+    get importEntries() { return importEntries; },
     get celebrateSound() { return celebrateSound; },
     /** True when a given AI feature is switched on by the user. */
     aiOn(key: AiFeature) { return aiFeatures[key]; },
+    /** True when a given AI Import entry point is switched on by the user. */
+    importEntryOn(key: ImportEntry) { return importEntries[key]; },
     init,
     setContextualReflections,
     toggleContextualReflections: () => setContextualReflections(!contextualReflections),
     setNavGrouping,
     setNavSections,
     setAiFeature,
+    setImportEntry,
     setCelebrateSound,
     toggleCelebrateSound: () => setCelebrateSound(!celebrateSound),
   };

@@ -234,6 +234,40 @@ export async function markMutationsSynced(ids: number[]): Promise<void> {
     await d.execute(`UPDATE sync_log SET synced = 1 WHERE id IN (${placeholders})`, ids);
 }
 
+// Dead-letter a mutation the server will never accept (a 4xx payload error).
+// synced=2 removes it from the pending queue (getPendingMutations filters
+// synced=0) without deleting the row, so it can't wedge later mutations — a
+// poison create/update was blocking every subsequent delete forever — while
+// staying inspectable. See sync.svelte.ts pushOutbox().
+export async function quarantineMutation(id: number): Promise<void> {
+    const d = await getDriver();
+    await d.execute(`UPDATE sync_log SET synced = 2 WHERE id = ?`, [id]);
+}
+
+// ── Local delete tombstones ──────────────────────────────────────────────────
+//
+// A locally-deleted row must not be resurrected by a stale server copy re-sent
+// on the next pull (which happens when the delete hasn't reached the server yet
+// — outbox not flushed, offline, or wedged). We record the delete here and the
+// sync engine refuses to re-insert a row that a newer-or-equal tombstone covers.
+
+export async function recordLocalTombstone(entityType: string, entityId: string): Promise<void> {
+    const d = await getDriver();
+    await d.execute(
+        `INSERT INTO sync_tombstones (entity_type, entity_id, deleted_at) VALUES (?, ?, datetime('now'))
+         ON CONFLICT(entity_type, entity_id) DO UPDATE SET deleted_at = datetime('now')`,
+        [entityType, entityId],
+    );
+}
+
+export async function clearLocalTombstone(entityType: string, entityId: string): Promise<void> {
+    const d = await getDriver();
+    await d.execute(
+        `DELETE FROM sync_tombstones WHERE entity_type = ? AND entity_id = ?`,
+        [entityType, entityId],
+    );
+}
+
 // ── Sync cursor (sync_state key/value) ───────────────────────────────────────
 
 export async function getSyncState(key: string): Promise<string | null> {

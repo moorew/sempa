@@ -6,7 +6,7 @@
   import { theme } from '$lib/stores/theme.svelte';
   import type { ThemeName } from '$lib/stores/theme.svelte';
   import { windowChrome } from '$lib/stores/windowChrome.svelte';
-  import { prefs, AI_FEATURE_META } from '$lib/stores/prefs.svelte';
+  import { prefs, AI_FEATURE_META, IMPORT_ENTRY_META } from '$lib/stores/prefs.svelte';
   import { quotes } from '$lib/stores/quotes.svelte';
 
   let newQuoteText = $state('');
@@ -1465,6 +1465,30 @@
                     </div>
                   {/each}
                 </div>
+
+                <!-- Where the Import feature is exposed (only meaningful when the
+                     "Import from URL or text" feature above is on). -->
+                {#if prefs.aiOn('aiImport')}
+                  <div class="mt-4" style="border-top: 1px dashed var(--sempa-border); padding-top: 12px;">
+                    <p class="mb-2 text-[11px] font-medium" style="color: var(--sempa-text-soft);">Import entry points</p>
+                    <div class="flex flex-col gap-3">
+                      {#each IMPORT_ENTRY_META as e (e.key)}
+                        <div class="flex items-start justify-between gap-3">
+                          <div class="min-w-0">
+                            <p class="text-xs" style="color: var(--sempa-text);">{e.label}</p>
+                            <p class="text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">{e.hint}</p>
+                          </div>
+                          <button onclick={() => prefs.setImportEntry(e.key, !prefs.importEntryOn(e.key))}
+                                  role="switch" aria-checked={prefs.importEntryOn(e.key)} aria-label={e.label}
+                                  class="relative shrink-0 rounded-full transition-colors"
+                                  style="width:40px; height:22px; border:none; cursor:pointer; background: {prefs.importEntryOn(e.key) ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
+                            <span class="absolute rounded-full bg-white" style="top:3px; left:{prefs.importEntryOn(e.key) ? '21px' : '3px'}; width:16px; height:16px; transition: left 150ms ease;"></span>
+                          </button>
+                        </div>
+                      {/each}
+                    </div>
+                  </div>
+                {/if}
               </div>
             </div>
           {/if}
