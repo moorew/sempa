@@ -49,8 +49,10 @@
   import { updates } from '$lib/stores/updates.svelte';
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
   import { importModal } from '$lib/stores/importModal.svelte';
+  import { commandPalette } from '$lib/stores/commandPalette.svelte';
   import AiImportModal from '$lib/components/AiImportModal.svelte';
   import AiSetupBanner from '$lib/components/AiSetupBanner.svelte';
+  import CommandPalette from '$lib/components/CommandPalette.svelte';
   import { realtime } from '$lib/stores/realtime.svelte';
   import { celebrate } from '$lib/celebrate';
   import type { Snippet } from 'svelte';
@@ -134,10 +136,11 @@
   function handleKeydown(e: KeyboardEvent) {
     if (isLoginPage) return;
     const tgt = e.target as HTMLElement;
-    // Cmd/Ctrl+K opens Search from anywhere (even while typing in a field).
+    // Cmd/Ctrl+K opens the command palette from anywhere (its own search
+    // fallback preserves the old "type + Enter → search" flow).
     if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
       e.preventDefault();
-      goto('/search');
+      commandPalette.toggle();
       return;
     }
     // Cmd/Ctrl+Shift+I opens AI Import (when enabled + a model is reachable).
@@ -472,8 +475,9 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<!-- AI Import modal — mounted once, opened from anywhere via the importModal store. -->
+<!-- Global overlays — mounted once, opened from anywhere via their stores. -->
 <AiImportModal />
+<CommandPalette />
 
 {#if isLoginPage || isSetupPage || isStandaloneWindow}
   {@render children()}

@@ -126,14 +126,14 @@ export const localApi = {
             const ws = input.week_start ?? (input.planned_date ? computeWeekStart(input.planned_date) : null);
             await execute(
                 `INSERT INTO tasks (id, title, description, planned_date, week_start, status, position,
-                 time_estimate_minutes, weekly_objective_id, parent_task_id, tags,
+                 time_estimate_minutes, weekly_objective_id, parent_task_id, source_url, tags,
                  recurrence_rule, scheduled_start, scheduled_end, created_at, updated_at, shared)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     id, input.title, input.description ?? null, input.planned_date ?? null,
                     ws, input.status ?? 'planned', input.position ?? 0,
                     input.time_estimate_minutes ?? null, input.weekly_objective_id ?? null,
-                    input.parent_task_id ?? null, JSON.stringify(input.tags ?? []),
+                    input.parent_task_id ?? null, input.source_url ?? null, JSON.stringify(input.tags ?? []),
                     input.recurrence_rule ?? null, input.scheduled_start ?? null,
                     input.scheduled_end ?? null, ts, ts, input.shared ? 1 : 0,
                 ],

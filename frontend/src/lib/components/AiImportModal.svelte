@@ -101,12 +101,12 @@
       const plannedDate = placement === 'today' ? today() : undefined;
       const status = placement === 'today' ? 'planned' : 'backlog';
 
-      let description = notes.trim();
-      if (sourceUrl) description = (description ? description + '\n\n' : '') + `Source: ${sourceUrl}`;
+      const description = notes.trim();
 
       const parent = await api.tasks.create({
         title: title.trim(),
         description: description || undefined,
+        source_url: sourceUrl || undefined,
         planned_date: plannedDate,
         status,
         position: 0,

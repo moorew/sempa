@@ -28,6 +28,9 @@
 
   onMount(() => {
     tagStore.load();
+    // Seed from ?q= so the command palette (and shared links) can prefill a query.
+    const seed = new URLSearchParams(location.search).get('q');
+    if (seed) q = seed;
     if (!mobile.value) setTimeout(() => searchInput?.focus(), 40);
   });
 

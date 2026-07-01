@@ -150,6 +150,7 @@ export interface CreateTaskInput {
   time_estimate_minutes?: number;
   weekly_objective_id?: string;
   parent_task_id?: string;
+  source_url?: string | null;
   tags?: string[];
   recurrence_rule?: string;
   scheduled_start?: string;
