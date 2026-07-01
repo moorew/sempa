@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/clevercode/sempa/internal/ai"
 	"github.com/clevercode/sempa/internal/integrations/unfurl"
@@ -26,6 +27,24 @@ import (
 type importStep struct {
 	Title  string `json:"title"`
 	Detail string `json:"detail"`
+}
+
+// UnmarshalJSON makes steps format-tolerant: small models often ignore the
+// {title,detail} shape and return a plain string (the whole step). Accept both —
+// a bare string becomes the detail, and cleanSteps() derives the title.
+func (s *importStep) UnmarshalJSON(b []byte) error {
+	var str string
+	if json.Unmarshal(b, &str) == nil {
+		s.Title, s.Detail = "", str
+		return nil
+	}
+	type raw importStep
+	var r raw
+	if err := json.Unmarshal(b, &r); err != nil {
+		return err
+	}
+	*s = importStep(r)
+	return nil
 }
 
 // importResult is the structured extraction the client turns into a parent task
@@ -98,10 +117,13 @@ Return JSON with exactly these keys:
 "type": one of the four above
 "title": a short, action-oriented task title (e.g. "Smoke a brisket", "Pack for Lisbon"). No trailing punctuation.
 "notes": one short sentence of context, or ""
-"steps": array of ordered steps. Each step is an object {"title","detail"}: "title" is a short imperative label (6 words max, e.g. "Trim the brisket"), "detail" is the full instruction text (or "" if the title already says everything).
+"steps": array of ordered steps. Each step is an object {"title","detail"}: "title" is a SHORT imperative label of 2-5 words, "detail" is the FULL instruction text. Never put the whole instruction in the title.
 "list_name": a short name for the companion list (e.g. "Brisket — groceries", "Lisbon — packing"), or ""
 "items": array of physical things to buy or gather (ingredients, supplies, packing items), each copied with its quantity if given. Empty array if there are none.
 Only use steps and items supported by the content — do not invent any.
+
+Example step:
+{"title":"Make the dry rub","detail":"Mix the paprika, brown sugar, salt and pepper in a bowl until fully combined."}
 
 Content:
 %s`, clip(content, 6000))
@@ -145,24 +167,38 @@ func importResponse(res importResult, sourceURL string) map[string]any {
 	}
 }
 
-// cleanSteps trims, drops empties, caps, and ensures each step has a title
-// (deriving one from the detail if needed). A detail identical to the title is
-// dropped so the description isn't a duplicate of the title.
+// cleanSteps finalises every step into a SHORT title + a full detail. Small
+// models can't be trusted to keep titles short (they routinely dump the whole
+// instruction into the title), so we only keep a model title when it's genuinely
+// short and distinct — otherwise we derive one deterministically. The complete
+// instruction always lands in the detail, so nothing is lost and titles never
+// get hard-truncated mid-word.
 func cleanSteps(in []importStep, max int) []importStep {
 	out := []importStep{}
 	for _, s := range in {
-		title := strings.TrimSpace(s.Title)
-		detail := strings.TrimSpace(s.Detail)
-		if title == "" && detail == "" {
+		title := collapseWS(s.Title)
+		detail := collapseWS(s.Detail)
+		full := detail
+		if full == "" {
+			full = title // model put the whole step in the title
+		}
+		if full == "" {
 			continue
 		}
+		// Keep a model title only if it's already concise and not just the step.
+		if title == "" || wordCount(title) > 6 || strings.EqualFold(title, full) {
+			title = shortTitle(full)
+		} else {
+			title = upperFirst(strings.Trim(title, " .,:;-"))
+		}
 		if title == "" {
-			title = stepTitle(detail)
+			title = "Step"
 		}
+		detail = full
 		if strings.EqualFold(detail, title) {
-			detail = ""
+			detail = "" // short step — don't duplicate it as a description
 		}
-		out = append(out, importStep{Title: clip(title, 120), Detail: detail})
+		out = append(out, importStep{Title: title, Detail: detail})
 		if len(out) >= max {
 			break
 		}
@@ -170,17 +206,51 @@ func cleanSteps(in []importStep, max int) []importStep {
 	return out
 }
 
-// stepTitle derives a short label from a full instruction: the first sentence
-// if it's brief, else the first several words.
-func stepTitle(s string) string {
-	s = strings.TrimSpace(s)
-	if i := strings.IndexAny(s, ".!?"); i > 0 && i < 60 {
-		return strings.TrimSpace(s[:i])
+// trailing filler words we don't want a derived title to end on.
+var titleStopwords = map[string]bool{
+	"the": true, "a": true, "an": true, "in": true, "on": true, "of": true,
+	"to": true, "with": true, "until": true, "for": true, "and": true, "or": true,
+	"into": true, "at": true, "by": true, "then": true, "your": true,
+}
+
+// shortTitle derives a concise imperative label from a full instruction: take
+// the first clause, cap to a handful of words at a WORD boundary (never
+// mid-word), drop trailing filler words and punctuation, capitalise.
+func shortTitle(full string) string {
+	s := collapseWS(full)
+	if s == "" {
+		return ""
 	}
-	if words := strings.Fields(s); len(words) > 9 {
-		return strings.Join(words[:9], " ")
+	if i := strings.IndexAny(s, ".!?;\n"); i > 0 { // first sentence
+		s = strings.TrimSpace(s[:i])
 	}
-	return s
+	if i := strings.IndexByte(s, ','); i > 0 { // first clause (the action)
+		s = strings.TrimSpace(s[:i])
+	}
+	words := strings.Fields(s)
+	const maxWords = 6
+	if len(words) > maxWords {
+		words = words[:maxWords]
+	}
+	for len(words) > 1 && titleStopwords[strings.ToLower(words[len(words)-1])] {
+		words = words[:len(words)-1]
+	}
+	return upperFirst(strings.Trim(strings.Join(words, " "), " .,:;-"))
+}
+
+var wsRe2 = regexp.MustCompile(`\s+`)
+
+func collapseWS(s string) string { return strings.TrimSpace(wsRe2.ReplaceAllString(s, " ")) }
+
+func wordCount(s string) int { return len(strings.Fields(s)) }
+
+func upperFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	return string(r)
 }
 
 // ── schema.org/Recipe (JSON-LD) extraction ───────────────────────────────────
@@ -297,8 +367,9 @@ func jsonLDStrings(v any) []string {
 // jsonLDInstructions normalises recipeInstructions, which appears as: a plain
 // (possibly newline-separated) string; an array of strings; an array of
 // HowToStep objects ({text|name}); or HowToSection objects wrapping
-// itemListElement. Each becomes a step with a derived title + full detail; a
-// HowToStep's `name` (when present) is used as the title.
+// itemListElement. Detail is the full step text; a HowToStep's `name` (a short
+// label authored by the site) is passed through as the title candidate.
+// cleanSteps() finalises titles (deriving/shortening as needed).
 func jsonLDInstructions(v any) []importStep {
 	out := []importStep{}
 	var walk func(any)
@@ -307,7 +378,7 @@ func jsonLDInstructions(v any) []importStep {
 		case string:
 			for _, line := range strings.Split(html.UnescapeString(t), "\n") {
 				if s := strings.TrimSpace(line); s != "" {
-					out = append(out, importStep{Title: stepTitle(s), Detail: s})
+					out = append(out, importStep{Detail: s})
 				}
 			}
 		case []any:
@@ -322,15 +393,11 @@ func jsonLDInstructions(v any) []importStep {
 			text := jsonLDString(t["text"])
 			name := jsonLDString(t["name"])
 			if text != "" {
-				title := name
-				if title == "" {
-					title = stepTitle(text)
-				}
-				out = append(out, importStep{Title: title, Detail: text})
+				out = append(out, importStep{Title: name, Detail: text})
 				return
 			}
 			if name != "" {
-				out = append(out, importStep{Title: stepTitle(name), Detail: name})
+				out = append(out, importStep{Detail: name})
 			}
 		}
 	}
