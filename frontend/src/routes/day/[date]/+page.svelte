@@ -1430,10 +1430,13 @@
   </div>
 {/if}
 
-<!-- ── Undo-delete toast ──────────────────────────────────────────────────── -->
+<!-- ── Undo-delete toast ──────────────────────────────────────────────────────
+     On mobile the toast must clear the fixed bottom tab bar (72px + safe-area)
+     AND the Android gesture-nav zone — otherwise the swipe-up-to-close gesture
+     lands on the Undo button. Desktop keeps the plain bottom-6 inset. -->
 {#if undoTask}
-  <div class="fixed left-1/2 bottom-6 z-[80] -translate-x-1/2 flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm shadow-2xl animate-slide-down"
-       style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border); color: var(--sempa-text); max-width: min(92vw, 28rem);"
+  <div class="fixed left-1/2 z-[80] -translate-x-1/2 flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm shadow-2xl animate-slide-down"
+       style="bottom: {mobile.value ? 'calc(env(safe-area-inset-bottom, 0px) + 88px)' : '1.5rem'}; background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border); color: var(--sempa-text); max-width: min(92vw, 28rem);"
        role="status">
     <span class="min-w-0 flex-1 truncate">
       {undoTask.source === 'jira' ? 'Deleted — returning to the Jira list' : 'Task deleted'}
@@ -1451,8 +1454,8 @@
      Drops (email→task, Jira→task, moves) fail far from the board, where the
      page-level error banner would replace the whole board. This surfaces them. -->
 {#if dropError}
-  <div class="fixed left-1/2 bottom-6 z-[80] -translate-x-1/2 rounded-xl px-4 py-2.5 text-sm shadow-2xl animate-slide-down"
-       style="background: var(--sempa-bg-panel); border: 1px solid #ef4444; color: var(--sempa-text); max-width: min(92vw, 28rem);"
+  <div class="fixed left-1/2 z-[80] -translate-x-1/2 rounded-xl px-4 py-2.5 text-sm shadow-2xl animate-slide-down"
+       style="bottom: {mobile.value ? 'calc(env(safe-area-inset-bottom, 0px) + 88px)' : '1.5rem'}; background: var(--sempa-bg-panel); border: 1px solid #ef4444; color: var(--sempa-text); max-width: min(92vw, 28rem);"
        role="alert">
     <div class="flex items-center gap-2.5">
       <svg class="h-4 w-4 shrink-0 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
