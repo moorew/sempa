@@ -209,6 +209,94 @@ func TestFutureDayDuplicatesHealedAcrossWeek(t *testing.T) {
 	}
 }
 
+// Two identical pristine DONE copies of a day (the exact-same-created_at pair a
+// pre-fix seed race left in history, double-counting a completed day) must
+// collapse to one — but a completed instance is NEVER dropped in favour of a
+// merely-planned sibling.
+func TestDoneDuplicatesHealed(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	origin := makeDailyTemplate(t, s, nil)
+	const date = "2026-06-16"
+
+	mkDone := func() Task {
+		inst, err := s.Create(ctx, CreateTaskParams{
+			ID:                 uuid.New().String(),
+			Title:              "Meditate",
+			Status:             "planned",
+			PlannedDate:        strptr(date),
+			WeekStart:          strptr("2026-06-15"),
+			RecurrenceOriginID: strptr(origin),
+		})
+		if err != nil {
+			t.Fatalf("seed instance: %v", err)
+		}
+		inst.Status = "done"
+		done, err := s.Update(ctx, inst)
+		if err != nil {
+			t.Fatalf("complete instance: %v", err)
+		}
+		return done
+	}
+	mkDone()
+	mkDone()
+	if got := len(instancesOn(t, s, origin, date)); got != 2 {
+		t.Fatalf("setup expected 2 done instances, got %d", got)
+	}
+
+	if err := s.dedupeRecurringInstances(ctx, date); err != nil {
+		t.Fatal(err)
+	}
+	got := instancesOn(t, s, origin, date)
+	if len(got) != 1 {
+		t.Fatalf("expected pristine done duplicate collapsed to 1, got %d", len(got))
+	}
+	if got[0].Status != "done" {
+		t.Fatalf("survivor must stay done, got %q", got[0].Status)
+	}
+}
+
+// A completed pristine instance must outrank an open pristine sibling on the same
+// day: dedup drops the planned copy and keeps the done one, never the reverse.
+func TestDedupeKeepsDoneOverPlanned(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	origin := makeDailyTemplate(t, s, nil)
+	const date = "2026-06-16"
+
+	doneInst, err := s.Create(ctx, CreateTaskParams{
+		ID: uuid.New().String(), Title: "Meditate", Status: "planned",
+		PlannedDate: strptr(date), WeekStart: strptr("2026-06-15"),
+		RecurrenceOriginID: strptr(origin),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	doneInst.Status = "done"
+	if _, err := s.Update(ctx, doneInst); err != nil {
+		t.Fatal(err)
+	}
+	// A stray pristine planned copy on the same day.
+	if _, err := s.Create(ctx, CreateTaskParams{
+		ID: uuid.New().String(), Title: "Meditate", Status: "planned",
+		PlannedDate: strptr(date), WeekStart: strptr("2026-06-15"),
+		RecurrenceOriginID: strptr(origin),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := s.dedupeRecurringInstances(ctx, date); err != nil {
+		t.Fatal(err)
+	}
+	got := instancesOn(t, s, origin, date)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 instance after heal, got %d", len(got))
+	}
+	if got[0].ID != doneInst.ID || got[0].Status != "done" {
+		t.Fatalf("heal must keep the DONE instance, kept %+v", got[0])
+	}
+}
+
 // Editing a template (e.g. renaming it) propagates to future untouched
 // instances via SyncTemplateInstances.
 func TestTemplateEditPropagates(t *testing.T) {

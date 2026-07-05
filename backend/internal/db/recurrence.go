@@ -125,27 +125,50 @@ func (s *TaskStore) dedupeInstancesForDate(ctx context.Context, date string) err
 }
 
 // dedupeRecurringInstances removes redundant pristine duplicates of a recurring
-// template on a day, keeping the most meaningful instance (customised,
-// time-logged, done, or earliest-created). Only bare pristine open instances
-// with no logged time are ever deleted, so nothing the user touched is lost, and
-// a day is never left without an instance (a duplicate is only removed while a
-// sibling on the SAME planned_date survives). Pass a specific `date` to scope the
-// heal to one day, or "" to heal every day at once.
+// template on a day, keeping the single most meaningful instance. Pass a specific
+// `date` to scope the heal to one day, or "" to heal every day at once.
+//
+// Only *pristine* instances (not customised, no logged time) are ever deletion
+// candidates, so nothing the user actually touched — notes, sub-tasks, tracked
+// time — is lost. A candidate is dropped only when a same-day sibling ranks
+// higher, so a day is never left without an instance, and a still-current sole
+// instance is never removed (making this safe on the timezone-agnostic poller).
+//
+// Instances are ranked so the survivor is the most-progressed one, and among
+// equals the earliest-created (then lowest id) wins — fully deterministic, so
+// two seeders/pollers racing agree on which copy to keep:
+//
+//	4  customised OR time logged   (never a candidate — protected outright)
+//	3  done
+//	2  in_progress
+//	1  planned / backlog
+//
+// A done pristine instance therefore survives against a merely-planned sibling
+// (a completed day is never downgraded), while two identical pristine done copies
+// collapse to one — the exact-same-created_at pair a pre-fix seed race left in a
+// user's history, double-counting the completed day.
 //
 // The all-days form is what catches the cross-week duplicate: a race between the
 // horizon poller and concurrent client week-fetches can seed two pristine
 // instances on a FUTURE day, and — because per-day rollover only ever deduped
 // "today" — that pair used to survive across the week boundary until the day
-// finally became today. Deduping every seeded day closes that gap. Because it
-// only deletes a pristine instance shadowed by a same-day sibling, it never
-// removes a still-current sole instance and so is safe on the timezone-agnostic
-// poller.
+// finally became today. Deduping every seeded day closes that gap.
 func (s *TaskStore) dedupeRecurringInstances(ctx context.Context, date string) error {
+	// rank(t) mirrors the doc comment; identical expression for candidate and
+	// sibling so the comparison is symmetric.
+	const rank = `CASE
+		WHEN %[1]s.is_customized = 1
+		  OR (%[1]s.time_actual_minutes IS NOT NULL AND %[1]s.time_actual_minutes > 0) THEN 4
+		WHEN %[1]s.status = 'done'        THEN 3
+		WHEN %[1]s.status = 'in_progress' THEN 2
+		ELSE 1 END`
+	candRank := fmt.Sprintf(rank, "tasks")
+	sibRank := fmt.Sprintf(rank, "o")
 	where := `
 		recurrence_origin_id IS NOT NULL
 		  AND is_customized = 0
-		  AND status IN ('backlog','planned')
 		  AND (time_actual_minutes IS NULL OR time_actual_minutes = 0)
+		  AND status IN ('backlog','planned','done')
 		  AND EXISTS (
 			SELECT 1 FROM tasks o
 			WHERE o.recurrence_origin_id = tasks.recurrence_origin_id
@@ -153,11 +176,9 @@ func (s *TaskStore) dedupeRecurringInstances(ctx context.Context, date string) e
 			  AND o.id <> tasks.id
 			  AND o.status <> 'cancelled'
 			  AND (
-				o.is_customized = 1
-				OR (o.time_actual_minutes IS NOT NULL AND o.time_actual_minutes > 0)
-				OR o.status NOT IN ('backlog','planned')
-				OR o.created_at < tasks.created_at
-				OR (o.created_at = tasks.created_at AND o.id < tasks.id)
+				` + sibRank + ` > ` + candRank + `
+				OR (` + sibRank + ` = ` + candRank + ` AND o.created_at < tasks.created_at)
+				OR (` + sibRank + ` = ` + candRank + ` AND o.created_at = tasks.created_at AND o.id < tasks.id)
 			  )
 		  )`
 	if date != "" {
