@@ -327,7 +327,15 @@ func (s *TaskStore) SeedHorizon(ctx context.Context, today string, weeksAhead in
 			return err
 		}
 	}
-	return nil
+
+	// Global reconcile: collapse any same-day duplicate recurring instances across
+	// ALL dates, not just the seeded horizon. seedWeekInstances only heals the
+	// current + upcoming weeks, so a duplicate a pre-fix race left on a PAST day
+	// (e.g. two identical done copies double-counting a completed day) would never
+	// be reached otherwise. Safe on the timezone-agnostic poller: it only removes
+	// a pristine instance shadowed by a higher-ranked same-day sibling, never a
+	// day's sole instance.
+	return s.dedupeRecurringInstances(ctx, "")
 }
 
 // seedWeekInstances creates a pristine instance for each due day in the week
