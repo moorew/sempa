@@ -3715,7 +3715,7 @@ dependencies = [
 
 [[package]]
 name = "sempa"
-version = "1.23.4"
+version = "1.23.5"
 dependencies = [
  "chrono",
  "reqwest 0.12.28",

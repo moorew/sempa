@@ -161,6 +161,54 @@ func TestSameDayDuplicatesHealed(t *testing.T) {
 	}
 }
 
+// Reproduces the cross-week duplicate bug: a race (poller vs. concurrent client
+// week-fetches) seeds two pristine instances on a FUTURE day. Per-day rollover
+// only ever deduped "today", so the pair used to survive across the week
+// boundary until that day became today. Seeding the horizon must now heal any
+// duplicate on every day it touches, future days included.
+func TestFutureDayDuplicatesHealedAcrossWeek(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	origin := makeDailyTemplate(t, s, nil)
+
+	const today = "2026-06-01"     // Monday
+	const futureDay = "2026-06-10" // Wednesday of the NEXT week
+
+	// Simulate the lost race: two pristine instances land on the same future day
+	// (both passed the non-atomic existence check before either inserted).
+	for i := 0; i < 2; i++ {
+		if _, err := s.Create(ctx, CreateTaskParams{
+			ID:                 uuid.New().String(),
+			Title:              "Meditate",
+			Status:             "planned",
+			PlannedDate:        strptr(futureDay),
+			WeekStart:          strptr("2026-06-08"),
+			RecurrenceOriginID: strptr(origin),
+		}); err != nil {
+			t.Fatalf("seed instance: %v", err)
+		}
+	}
+	if got := len(instancesOn(t, s, origin, futureDay)); got != 2 {
+		t.Fatalf("setup expected 2 instances on %s, got %d", futureDay, got)
+	}
+
+	// The poller path (timezone-agnostic, non-destructive) must heal it.
+	if err := s.SeedHorizon(ctx, today, recurrenceHorizonWeeks); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(instancesOn(t, s, origin, futureDay)); got != 1 {
+		t.Fatalf("expected future-day duplicate healed to 1, got %d", got)
+	}
+
+	// And the client list path must be idempotent on that week too.
+	if err := s.GenerateForWeek(ctx, "2026-06-08", today); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(instancesOn(t, s, origin, futureDay)); got != 1 {
+		t.Fatalf("expected still 1 instance on %s after week-generate, got %d", futureDay, got)
+	}
+}
+
 // Editing a template (e.g. renaming it) propagates to future untouched
 // instances via SyncTemplateInstances.
 func TestTemplateEditPropagates(t *testing.T) {

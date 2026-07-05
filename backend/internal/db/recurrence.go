@@ -119,14 +119,30 @@ func (s *TaskStore) GenerateForDay(ctx context.Context, date, today string) erro
 	return nil
 }
 
-// dedupeInstancesForDate removes redundant pristine duplicates of a recurring
-// template on a single day, keeping the most meaningful instance (customised,
-// time-logged, done, or earliest-created). Only bare pristine open instances
-// with no logged time are ever deleted, so nothing the user touched is lost.
+// dedupeInstancesForDate heals same-day duplicates for a single day.
 func (s *TaskStore) dedupeInstancesForDate(ctx context.Context, date string) error {
-	return s.tombstoneAndDeleteTasks(ctx, `
+	return s.dedupeRecurringInstances(ctx, date)
+}
+
+// dedupeRecurringInstances removes redundant pristine duplicates of a recurring
+// template on a day, keeping the most meaningful instance (customised,
+// time-logged, done, or earliest-created). Only bare pristine open instances
+// with no logged time are ever deleted, so nothing the user touched is lost, and
+// a day is never left without an instance (a duplicate is only removed while a
+// sibling on the SAME planned_date survives). Pass a specific `date` to scope the
+// heal to one day, or "" to heal every day at once.
+//
+// The all-days form is what catches the cross-week duplicate: a race between the
+// horizon poller and concurrent client week-fetches can seed two pristine
+// instances on a FUTURE day, and — because per-day rollover only ever deduped
+// "today" — that pair used to survive across the week boundary until the day
+// finally became today. Deduping every seeded day closes that gap. Because it
+// only deletes a pristine instance shadowed by a same-day sibling, it never
+// removes a still-current sole instance and so is safe on the timezone-agnostic
+// poller.
+func (s *TaskStore) dedupeRecurringInstances(ctx context.Context, date string) error {
+	where := `
 		recurrence_origin_id IS NOT NULL
-		  AND planned_date = ?
 		  AND is_customized = 0
 		  AND status IN ('backlog','planned')
 		  AND (time_actual_minutes IS NULL OR time_actual_minutes = 0)
@@ -143,7 +159,11 @@ func (s *TaskStore) dedupeInstancesForDate(ctx context.Context, date string) err
 				OR o.created_at < tasks.created_at
 				OR (o.created_at = tasks.created_at AND o.id < tasks.id)
 			  )
-		  )`, date)
+		  )`
+	if date != "" {
+		return s.tombstoneAndDeleteTasks(ctx, where+` AND planned_date = ?`, date)
+	}
+	return s.tombstoneAndDeleteTasks(ctx, where)
 }
 
 // tombstoneAndDeleteTasks deletes the tasks matching `where` AND records a sync
@@ -313,6 +333,14 @@ func (s *TaskStore) seedWeekInstances(ctx context.Context, ws time.Time, afterDa
 			if err := s.createInstance(ctx, tmpl, d); err != nil {
 				return err
 			}
+		}
+		// Heal any duplicate a concurrent seeder (another client week-fetch or the
+		// horizon poller) raced us to create on this day. instanceExistsForDate is
+		// a non-atomic check with no unique constraint behind it, so two seeders
+		// can both miss and both insert; deduping here — on every seeded day, not
+		// just today — stops a future-day duplicate from riding across the week.
+		if err := s.dedupeRecurringInstances(ctx, date); err != nil {
+			return err
 		}
 	}
 	return nil
