@@ -31,10 +31,14 @@ The OpenSSF badge above links to Sempa's full [Best Practices assessment](https:
 - **Jira sync** — bi-directional: import assigned issues, mark done in Sempa to close the ticket
 - **Reminders & notifications** — per-task reminders delivered by Web Push, Android, or a webhook, with selectable alert sounds
 - **Lists** — standalone checklists (e.g. groceries) you can drag-reorder, check off, organize with AI, export to Markdown, and link to tasks
-- **Recurring tasks** — daily, weekly, and monthly templates
-- **Local AI assist** — an optional on-server model (Ollama) powers quick-add parsing, task summaries, tag suggestions, subtask breakdown, day planning, time prediction (from your own logged history), list organizing, weekly-review drafts and reflection prompts. **100% local & private — nothing ever leaves your server**, every feature is individually toggleable, and it's off until you turn it on. [See the AI section ↓](#ai-assist--local--private)
+- **AI Import** — turn a URL (a recipe, an article) or pasted text into a task with ordered steps as sub-tasks and a companion checklist of items. Structured recipes are read directly; everything else goes through your local model, always into an editable preview
+- **Recurring tasks** — daily, weekly, and monthly templates, **timezone-aware**: instances, the daily rollover and the morning digest key off your home timezone, task times stay floating when you travel, and a banner offers to adjust when you're away
+- **Sharing (household)** — one server, multiple people: tasks, lists and weekly objectives are private by default with a Private/Shared toggle, so a household can share what it wants and keep the rest to themselves
+- **Mobile gestures** — swipe a task left to reschedule it to tomorrow, long-press the app icon for New task / Plan day / Shutdown quick actions, and Share-to-Sempa to turn a shared link or text into a task from any app
+- **Local AI assist** — an optional on-server model (Ollama) powers quick-add parsing, URL/text import, task summaries, tag suggestions, subtask breakdown, day planning, time prediction (from your own logged history), list organizing, weekly-review drafts and reflection prompts. **100% local & private — nothing ever leaves your server**, every feature is individually toggleable, and it's off until you turn it on. [See the AI section ↓](#ai-assist--local--private)
 - **In-app updates** — notices new releases, shows what's new, and points you to the installer (silent desktop self-update is opt-in)
 - **Six themes** — Terracotta, Forest, Plum, Slate, OLED Black, and Ocean, each in light + dark
+- **Command palette** — `Cmd/Ctrl+K` opens a keyboard-first launcher to jump anywhere and run actions (including AI Import), with a search fallback
 - **Keyboard shortcuts** — `n` new task, `t` today, `j/k` prev/next week, `?` help
 
 📖 **New here? Jump to the [User Guide](#user-guide) for how to use every feature.**
@@ -359,7 +363,9 @@ After signing in, a short setup wizard helps you connect email and calendar (all
 ### Getting around
 
 - **Desktop / web:** a left sidebar with a pinned **Search** pill and a **sectioned nav rail** — by default grouped into Today/This Week, **Rituals** (Plan Day, Shutdown), **Inbox** (Email, Reminders), and **Library** (Backlog, Lists, Journal, Insights). You can change the grouping (Spaces · Plan·Focus·Review · Flat) and section style (Labels · Dividers) in **Settings → Appearance**. The footer holds a utility icon row (Settings, light/dark, desktop Widget) — plus an **update indicator** when a new version is available — the sync status, and an account chip (avatar + email + Sign out). The day view's right panel is a tabbed dock — **Schedule · Inbox · Jira · Goals** — under a mini-calendar.
-- **Mobile:** a bottom tab bar — **Today**, **Week**, **Journal**, **Lists**, and **More**. The **More** sheet is grouped: a quick row (Settings, light/dark, Widget), a **Plan** group (Plan Day, Schedule, Backlog, Search), an **Inbox** group (Email, Reminders, Jira, Shutdown), and your account row. A **+** button creates a task on list screens.
+- **Mobile:** a bottom tab bar — **Today**, **Week**, **Journal**, **Lists**, and **More**. The **More** sheet is grouped: a quick row (Settings, light/dark, Widget, **AI Import**), a **Plan** group (Plan Day, Schedule, Backlog, Search), an **Inbox** group (Email, Reminders, Jira, Shutdown), and your account row. A **+** button creates a task on list screens.
+- **Command palette:** press **`Cmd/Ctrl+K`** anywhere to open a keyboard-first launcher — jump to any screen, run actions (including **Import with AI**), or fall through to search for any query.
+- **Mobile gestures:** **swipe a task left** to reschedule it to tomorrow; **long-press the app icon** for New task / Plan day / Shutdown quick actions; and **Share-to-Sempa** — share a link or text from any app to turn it straight into a task.
 
 ### Tasks
 
@@ -462,6 +468,8 @@ with no server or internet; they sync when you're back online.
 
 Create **daily, weekly, or monthly** templates (managed in **Settings → Recurring Tasks**). Instances are generated automatically; editing one instance customises just that occurrence while the series rolls forward. To change the template itself — its **title, notes, tags, time estimate, or schedule** — hit the **edit** button on it in Settings → Recurring Tasks; changes flow to upcoming occurrences while anything you've already customised or worked on stays put. Each day carries exactly one instance per template.
 
+Recurrence is **timezone-aware**: instances, the daily-board rollover, and the morning digest all key off your **home timezone** (set during install — auto-detected — or in **Settings → Notifications → Timezone**). Task times are **floating**, so they don't shift when you travel; a travelling device follows its own zone and Sempa offers a banner when it notices you're away from home.
+
 ### Calendars & schedule
 
 See calendar events beside your tasks in the **Schedule** tab of the day view's right-hand dock (alongside Inbox, Jira, and Goals):
@@ -517,6 +525,7 @@ Nothing is automatic or destructive — the model **suggests**, you approve.
 
 | Feature | Where | What it does |
 |---------|-------|--------------|
+| **AI Import** | Lists button · `Ctrl/⌘+Shift+I` · command palette · mobile More menu | Turn a **URL** (a recipe, an article) or **pasted text** into a task with ordered steps as sub-tasks plus a companion checklist of items (ingredients, supplies). Structured recipes (schema.org) are read directly without the model; everything else goes through it — always into an **editable preview** (place it today or in the backlog) before saving. The source link is stamped onto the task. Each entry point is individually toggleable. |
 | **Natural-language quick add** | ✦ on a task's title | Type something like *“lunch with Sam thu 1pm 30m #personal”* and it fills in the title, date, time, time-estimate, and tags. |
 | **Suggest tags** | ✦ on the tag editor | Recommends tags for a task — reusing your existing tags when they fit, and proposing a few concise **new** tags when they don't. |
 | **Break into subtasks** | ✦ on a task | Splits a task into a few concrete, ordered subtasks you can keep or edit. |
@@ -587,6 +596,12 @@ The Windows and Linux desktop apps include a floating **Widget** — a compact, 
 
 The desktop and Android apps are **local-first**: they keep a local copy of your data, so the app stays fully usable with no connection. Changes queue and **sync automatically** when the server is reachable again. A sync indicator shows status. Plain web (in a browser, not installed) talks directly to the server.
 
+### Sharing (household)
+
+One Sempa server can hold **more than one person**. Manage people in **Settings → Users** (an admin can add users and reset passwords; each person can change their own password). Google sign-in and the bootstrap env-login both map to a user account.
+
+Everything is **private by default**. Tasks, lists, and weekly objectives each have a **Private / Shared** toggle — flip one to *Shared* and everyone on the server can see and edit it (sharing a task cascades to its sub-tasks; sharing a list cascades to its items). Un-sharing removes it from everyone else again while keeping it yours. Personal surfaces — your daily plan, shutdown journal, and focus sessions — are always owner-only. It's built for a household sharing what it wants and keeping the rest to itself, not for large teams. *(The Shared toggle is an online action, so it's hidden when the app is fully offline.)*
+
 ### Themes & appearance
 
 In **Settings → Appearance** you pick from **six full-interface themes** — **Terracotta** (default), **Forest**, **Plum**, **Slate**, **OLED Black**, and **Ocean** — each with a live preview. Every theme has a light and a dark mode, except **OLED Black**, which is dark-only (the mode toggle hides for it). The same page has a **text-size** slider, the **sidebar grouping** + **section style** controls for the desktop nav rail, and the **contextual reflections** toggle. Your choice is remembered per device and applied before first paint (no flash on load).
@@ -604,7 +619,7 @@ Sempa checks GitHub for newer releases and surfaces them in-app: a subtle indica
 | **Calendars** | Connected calendars, ICS/webcal feeds, show/hide, colours |
 | **Tags** | Create/rename/recolour tags |
 | **Recurring Tasks** | Daily/weekly/monthly templates |
-| **Notifications** | Reminders, delivery channels, sounds, routines |
+| **Notifications** | Reminders, delivery channels, sounds, routines, home timezone |
 | **Backup & Restore** | Schedule, encryption, destinations |
 | **Appearance** | Theme (six options), light/dark mode, text size, sidebar grouping, contextual reflections |
 | **About** | App version, update channel, automatic update checks, "Check for updates" |
@@ -613,6 +628,8 @@ Sempa checks GitHub for newer releases and surfaces them in-app: a subtle indica
 
 | Key | Action |
 |-----|--------|
+| `Cmd/Ctrl+K` | Open the command palette (navigate, run actions, search) |
+| `Ctrl/⌘+Shift+I` | AI Import (URL / text → task) |
 | `n` | New task (day view) |
 | `e` | Edit the hovered task (day view) |
 | `t` | Go to today |

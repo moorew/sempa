@@ -56,9 +56,29 @@ are actually finishable.
 ---
 
 ## AI assist
+- **AI Import — SHIPPED v1.22.0.** `POST /api/v1/ai/import` turns a URL or pasted
+  text into a typed task with ordered steps (→ sub-tasks) plus a companion list of
+  items. Deterministic schema.org/Recipe JSON-LD fast path, SSRF-safe full-body
+  fetch (`unfurl.FetchContent`), LLM fallback for everything else. Editable preview
+  (steps→subtasks, items→list, today/backlog placement). Entry points: Lists
+  button, `Ctrl/⌘+Shift+I`, command palette, mobile More menu — each toggleable;
+  gated on a reachable model. v1.23.2–1.23.3 refined step titles (short title +
+  full detail, server-derived so 1.5–3B models can't dump/truncate).
 - **Suggest tags now proposes new tags** (shipped) — was existing-only; now also
   offers a few concise new tags when nothing fits.
 - Idea: surface AI suggestions inline (chips to accept) rather than auto-applying.
+
+## Navigation & mobile
+- **Command palette — SHIPPED v1.23.0.** `Cmd/Ctrl+K` keyboard-first launcher for
+  navigation + actions (incl. Import with AI), with a search fallback so any query
+  has a home. `source_url` became a first-class create field in the same release.
+- **Share-to-Sempa — SHIPPED v1.18.0.** Android share-target: share a link/text
+  from any app to turn it into a task.
+- **Long-press app-icon quick actions — SHIPPED v1.19.0.** New task / Plan day /
+  Shutdown ritual shortcuts from the launcher icon (desktop desktop-entry actions
+  shipped alongside the Linux app).
+- **Swipe-to-reschedule — SHIPPED v1.20.0.** Swipe a task left on mobile to push
+  it to tomorrow.
 
 ---
 
@@ -113,15 +133,32 @@ container-per-user — federation is the wrong tool for 2 people.)
     (cascades to sub-tasks / items). Un-share records a `revoke` tombstone that
     drops the item from peers but not the owner. SSE stays a global ping →
     scoped refetch. Isolation tests in `db/scoping_test.go`.
-  - **Follow-ups:** Shared toggle for weekly objectives (backend ready, objectives
-    are edited inline so no detail UI yet); offline (local-first) display of the
-    shared flag (not mirrored into the device SQLite schema — the toggle is
-    online-only for now, which is why it's hidden when offline).
+  - **1B-3 objectives Private/Shared — SHIPPED v1.17.0.** The last piece of the
+    sharing model: weekly objectives now carry the same Private/Shared toggle as
+    tasks and lists, completing per-item sharing across all three shareable types.
+  - **Follow-ups:** offline (local-first) display of the shared flag (not mirrored
+    into the device SQLite schema — the toggle is online-only for now, which is why
+    it's hidden when offline).
 - **Phase 2 — sharing.** `shared` flag + Private/Shared toggle on tasks/lists/
   objectives; sync + realtime include shared items for both; cascade to subtasks/
   list-items. Tags global; reminders to owner (v1).
 
 ## Known issues / recently fixed
+- **Timezone-aware recurrence — SHIPPED v1.21.0.** Server home timezone
+  (`SEMPA_TIMEZONE`, editable in Settings → Notifications), floating task times,
+  a non-destructive `SeedHorizon` poller that never deletes a still-current
+  instance at the container's midnight, client device-`?today=` for exact rollover,
+  and a travel-detection banner (device zone vs home zone). See CLAUDE.md gotchas.
+- **Duplicate recurring instances heal everywhere** (fixed v1.23.5–1.23.7) — a
+  non-atomic `instanceExistsForDate` seed race (poller vs parallel client
+  week-fetches) could leave two pristine copies on a day; dedup only ran for
+  "today". Now `dedupeRecurringInstances` runs on every seeded day (per-day) plus a
+  global all-dates pass in `SeedHorizon` each tick, collapsing open **and** done
+  pristine duplicates by an explicit preference rank while never emptying a day
+  (timezone-safe on the poller).
+- **Month calendars start on Monday** (fixed v1.23.8) — the pop-up date picker and
+  mini month calendar were Sunday-first, out of step with the app's Monday-first
+  `weekStart()` convention.
 - **Recurrence deletes now tombstone** (fixed v1.8.1) — raw-SQL recurrence
   deletes bypassed the sync layer, stranding stale instances on local-first
   devices (phantom duplicates). All recurrence deletes now record sync tombstones.

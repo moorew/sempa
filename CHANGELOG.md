@@ -6,6 +6,104 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.23.8] - 2026-07-06
+
+### Fixed
+- **The month calendars now start the week on Monday**, matching the rest of the
+  app. The pop-up date picker and the mini month calendar were drawing their
+  grids Sunday-first, out of step with every other week view.
+
+## [1.23.7] - 2026-07-05
+
+### Fixed
+- **Historical duplicate recurring instances self-heal too.** The duplicate-heal
+  from 1.23.5–1.23.6 only swept the current and upcoming weeks; a duplicate a
+  past scheduling race had left on an older day is now collapsed as well, on
+  every background pass. Only pristine, untouched copies are ever removed — a
+  day's only instance, or one you've edited or logged time against, is never
+  touched.
+
+## [1.23.6] - 2026-07-05
+
+### Fixed
+- **Completed duplicate recurring instances heal, not just open ones.** If a
+  scheduling race had left two identical copies on a day you later completed, both
+  survived and double-counted the day in your history and insights. Pristine
+  duplicates now collapse to one whether they're open or done, while a completed
+  instance is never dropped in favour of a merely-planned one.
+
+## [1.23.5] - 2026-07-05
+
+### Fixed
+- **Duplicate recurring tasks no longer ride across the week boundary.** A daily
+  recurring task could occasionally get two copies on a future day that then
+  persisted into the new week. The duplicate-heal now runs on every day the app
+  materialises ahead of time, so stray copies are removed before you ever reach
+  them — safely, only ever removing an untouched duplicate.
+
+## [1.23.4] - 2026-07-02
+
+### Fixed
+- **The "Undo" toast is reachable on Android.** After deleting a task, the Undo
+  toast sat behind the bottom tab bar and the phone's gesture-navigation zone, so
+  the swipe-up gesture landed on it instead. Undo and drop-error toasts now sit
+  above the tab bar and safe-area inset.
+
+## [1.23.3] - 2026-07-01
+
+### Fixed
+- **AI Import writes tidy sub-task titles.** Imported steps now get a short,
+  clean title with the full instruction kept in the step's detail, instead of a
+  long title that truncated mid-word.
+
+## [1.23.2] - 2026-06-30
+
+### Fixed
+- **Deleting a task now removes its sub-tasks** instead of leaving them behind on
+  the board as orphaned tasks.
+
+### Changed
+- **AI Import splits each step into a short title plus a detail**, so imported
+  sub-tasks read cleanly with the full instruction in the description.
+- **Deleting a list uses the Sempa-styled confirmation dialog** rather than the
+  browser's plain pop-up.
+
+## [1.23.1] - 2026-06-30
+
+### Added
+- **AI Import is reachable on mobile** from the "More" menu's quick row, not just
+  via the keyboard shortcut or the Lists-page button.
+
+## [1.23.0] - 2026-06-30
+
+### Added
+- **Command palette (`Cmd/Ctrl+K`).** A keyboard-first launcher for jumping
+  around Sempa and running actions — including "Import with AI" — with a search
+  fallback so any query has a home.
+- **Source links are a first-class part of a task.** A task created from a URL
+  (including via AI Import) now carries the original link as its own field,
+  rather than tucked into the notes.
+
+## [1.22.0] - 2026-06-30
+
+### Added
+- **AI Import — turn a URL or pasted text into a task.** Point Sempa at a recipe
+  or article, or paste in some text, and the local model extracts a task with
+  ordered steps (as sub-tasks) plus a companion checklist of items (ingredients,
+  supplies) — all in an editable preview before anything is saved. Recipes with
+  structured data are read directly, without the model. Reachable from the Lists
+  page and `Ctrl/⌘+Shift+I`, each entry point toggleable in Settings, and, like
+  every AI feature, it stays entirely on your server and is off until you turn it
+  on.
+
+### Fixed
+- **A deleted task no longer reappears on Android.** A delete made offline could
+  be resurrected by a stale server copy on the next sync; deletes are now guarded
+  by durable local tombstones, and a single failed change can no longer wedge the
+  sync queue behind it.
+- **Archived lists are reachable again** — the "Show archived" toggle now always
+  appears on the Lists page.
+
 ## [1.21.3] - 2026-06-28
 
 ### Fixed
