@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -30,6 +31,43 @@ type Meta struct {
 func isPrivateIP(ip net.IP) bool {
 	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
 		ip.IsLinkLocalMulticast() || ip.IsUnspecified()
+}
+
+// safeDialControl rejects connections to private/internal addresses at dial
+// time. ValidatePublicURL only checks the IP a hostname resolves to *at check
+// time*; the HTTP client re-resolves the name independently when it connects, so
+// a hostname that flips to a private IP between the two (DNS rebinding) would
+// otherwise slip past. Control runs with the ACTUAL address being dialed, after
+// resolution, so the IP we vet is the IP we connect to — closing that gap for
+// the initial request and every redirect hop.
+func safeDialControl(_, address string, _ syscall.RawConn) error {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return fmt.Errorf("invalid dial address %q: %w", address, err)
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return fmt.Errorf("dial address %q is not an IP", host)
+	}
+	if isPrivateIP(ip) {
+		return fmt.Errorf("refusing to connect to private/internal address %s", ip)
+	}
+	return nil
+}
+
+// safeTransport builds an http.Transport whose dialer refuses private IPs at
+// connect time (see safeDialControl). Every outbound fetch in this package uses
+// one so SSRF protection can't be bypassed by DNS rebinding.
+func safeTransport() *http.Transport {
+	d := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second, Control: safeDialControl}
+	return &http.Transport{
+		DialContext:           d.DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          10,
+		IdleConnTimeout:       30 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
 }
 
 // ValidatePublicURL ensures the URL is http(s) and resolves only to public IPs.
@@ -95,7 +133,8 @@ func Fetch(ctx context.Context, rawURL string) (*Meta, int, error) {
 	}
 
 	client := &http.Client{
-		Timeout: 12 * time.Second,
+		Timeout:   12 * time.Second,
+		Transport: safeTransport(),
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 5 {
 				return fmt.Errorf("stopped after 5 redirects")
@@ -144,7 +183,8 @@ func FetchContent(ctx context.Context, rawURL string) (string, int, error) {
 		return "", 0, err
 	}
 	client := &http.Client{
-		Timeout: 15 * time.Second,
+		Timeout:   15 * time.Second,
+		Transport: safeTransport(),
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 5 {
 				return fmt.Errorf("stopped after 5 redirects")

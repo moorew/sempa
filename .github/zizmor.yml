@@ -27,6 +27,16 @@ rules:
       - windows-release.yml
       - linux-release.yml
       - release-finalize.yml
+  impostor-commit:
+    ignore:
+      # dtolnay/rust-toolchain force-pushes its `stable`/`master` branches on
+      # every Rust release, orphaning the previous branch-head commit. The SHA we
+      # pin is a genuine upstream commit (verified in dtolnay/rust-toolchain), but
+      # once it's no longer reachable from a live ref, zizmor's impostor-commit
+      # heuristic flags it. We keep the SHA pin (immutable + reproducible) and
+      # bump it to the current `stable` head periodically. Accepted, documented.
+      - windows-release.yml
+      - linux-release.yml
   dangerous-triggers:
     ignore:
       # release-finalize runs on `workflow_run` after the platform release builds

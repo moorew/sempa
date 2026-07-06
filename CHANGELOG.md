@@ -6,6 +6,17 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.23.9] - 2026-07-06
+
+### Security
+- **Hardened link-preview / AI-Import fetching against DNS rebinding.** The URL
+  fetcher already refused hostnames that resolve to private or internal
+  addresses, but the check and the actual connection re-resolved DNS
+  independently — a narrow window in which a hostname could flip to an internal
+  IP between the two. Fetches now also validate the IP **at connect time** (for
+  the initial request and every redirect), so the address vetted is the address
+  connected to. Self-hosted, single-user impact was low; closed regardless.
+
 ## [1.23.8] - 2026-07-06
 
 ### Fixed
