@@ -28,7 +28,8 @@
   let open = $state(false);
   let rootEl = $state<HTMLElement | undefined>();
 
-  const DOW = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  // Monday-first, matching the app's weekStart() convention everywhere else.
+  const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
   function pad(n: number): string {
     return n < 10 ? `0${n}` : String(n);
@@ -68,7 +69,8 @@
 
   // Calendar grid cells: leading blanks + day numbers
   const cells = $derived.by(() => {
-    const firstDow = new Date(viewYear, viewMonth, 1).getDay();
+    // getDay() is 0=Sun…6=Sat; shift to Monday-first (Mon=0…Sun=6).
+    const firstDow = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7;
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
     const out: (number | null)[] = [];
     for (let i = 0; i < firstDow; i++) out.push(null);

@@ -58,14 +58,16 @@
     if (dir < 0) prev(); else next();
   }
 
-  const DAYS   = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  // Monday-first, matching the app's weekStart() convention everywhere else.
+  const DAYS   = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
   const MONTHS = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December',
   ];
 
   let cells = $derived.by(() => {
-    const first = new Date(viewYear, viewMonth, 1).getDay();
+    // getDay() is 0=Sun…6=Sat; shift to Monday-first (Mon=0…Sun=6).
+    const first = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7;
     const days  = new Date(viewYear, viewMonth + 1, 0).getDate();
     const out: (number | null)[] = Array(first).fill(null);
     for (let d = 1; d <= days; d++) out.push(d);
