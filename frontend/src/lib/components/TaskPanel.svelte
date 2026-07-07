@@ -42,6 +42,18 @@
     }),
   ];
 
+  // Current wall-clock time snapped to the nearest 30-min TIME_SLOTS value
+  // ("HH:MM"). Used to default/scroll the scheduled-time picker to "now" rather
+  // than pinning it to 12:00 AM (midnight), which is the top of the list.
+  function nowSlot30(): string {
+    const d = new Date();
+    let h = d.getHours();
+    const min = d.getMinutes();
+    const m = min < 15 ? 0 : min < 45 ? 30 : 0;
+    if (min >= 45) h = (h + 1) % 24;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
   const TIME_OPTIONS = [
     { label: 'No estimate',  value: null  },
     { label: '15 min',       value: 15    },
@@ -353,20 +365,16 @@
       const res = await api.ai.suggestTags(title.trim(), description, tagStore.definitions.map(t => t.name));
       if (!res.available) { aiNotice('AI is off'); return; }
 
-      // "Smart auto-add": an existing tag is applied only when it clearly applies
-      // — its word appears in the title/notes, or it IS the detected activity.
-      // Everything else uncertain (existing + new + the activity itself) becomes a
-      // tap-to-add suggestion, so the small model can't quietly add junk.
-      const haystack = `${title} ${description}`.toLowerCase();
+      // Auto-apply the EXISTING tags the model chose. The server constrains these
+      // to the user's real tag set (filterAllowed), so this is the useful half of
+      // "Suggest" — it actually puts relevant tags on the task instead of making
+      // you tap each one. Cap at 3 so a chatty model can't over-tag; anything
+      // wrong is one × away. New tags and the detected activity stay as tap-to-add
+      // suggestions, since creating a brand-new tag should be a deliberate choice.
       const bucket = classifyActivity(title, selectedTags);
-      const auto: string[] = [];
+      const auto = (res.tags ?? []).map((t) => t.toLowerCase()).slice(0, 3);
       const suggest: string[] = [];
 
-      for (const t of res.tags ?? []) {
-        const l = t.toLowerCase();
-        if (haystack.includes(l) || l === bucket.key) auto.push(l);
-        else suggest.push(l);
-      }
       if (bucket.key !== 'other') suggest.push(bucket.key);   // ground in the timebox activity
       for (const t of res.new_tags ?? []) suggest.push(t.toLowerCase());
 
@@ -1284,9 +1292,11 @@
           <div class="grid grid-cols-2 gap-2">
             <div class="space-y-1.5">
               <label class="block text-[10.5px] text-gray-400 dark:text-gray-600" for="sched-start">Start</label>
-              <SempaDatePicker id="sched-start" bind:value={scheduledStartDate} placeholder="No date" />
+              <SempaDatePicker id="sched-start" bind:value={scheduledStartDate} placeholder="No date"
+                               onchange={(v) => { if (v && !scheduledStartTime) scheduledStartTime = nowSlot30(); }} />
               {#if scheduledStartDate}
                 <SempaSelect value={scheduledStartTime} options={TIME_SLOTS} placeholder="No time"
+                             scrollToValue={nowSlot30()}
                              onchange={(v) => scheduledStartTime = (v as string) ?? ''} />
               {/if}
             </div>
@@ -1295,6 +1305,7 @@
               <SempaDatePicker id="sched-end" bind:value={scheduledEndDate} placeholder="No date" />
               {#if scheduledEndDate}
                 <SempaSelect value={scheduledEndTime} options={TIME_SLOTS} placeholder="No time"
+                             scrollToValue={scheduledStartTime || nowSlot30()}
                              onchange={(v) => scheduledEndTime = (v as string) ?? ''} />
               {/if}
             </div>

@@ -11,6 +11,7 @@
    */
   import { mobile } from '$lib/stores/mobile.svelte';
   import { Check, ChevronDown } from 'lucide-svelte';
+  import { tick } from 'svelte';
 
   type OptionValue = string | number | null;
   interface Option {
@@ -25,16 +26,21 @@
     placeholder = 'Select…',
     id,
     onchange,
+    scrollToValue,
   }: {
     value: OptionValue;
     options: Option[];
     placeholder?: string;
     id?: string;
     onchange?: (value: OptionValue) => void;
+    // When nothing is selected yet, scroll the open list to roughly this value
+    // (e.g. "now" for a time picker) instead of pinning to the top (midnight).
+    scrollToValue?: OptionValue;
   } = $props();
 
   let open = $state(false);
   let rootEl = $state<HTMLElement | undefined>();
+  let scrollEl = $state<HTMLElement | undefined>();
 
   const selected = $derived(options.find((o) => o.value === value));
   const hasValue = $derived(selected !== undefined && selected.value !== null && selected.value !== '');
@@ -62,6 +68,26 @@
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('pointerdown', onDown, true);
     };
+  });
+
+  // On open, centre the selected option in view (or `scrollToValue` when nothing
+  // is selected yet) so a long list — e.g. a 48-slot time picker — lands on the
+  // relevant row rather than pinned to the top (which reads as "defaults to 12am").
+  $effect(() => {
+    if (!open) return;
+    const target = hasValue ? value : scrollToValue;
+    if (target === undefined || target === null || target === '') return;
+    const idx = options.findIndex((o) => o.value === target);
+    if (idx < 0) return;
+    tick().then(() => {
+      const container = scrollEl;
+      if (!container) return;
+      const el = container.querySelectorAll<HTMLElement>('[role="option"]')[idx];
+      if (!el) return;
+      const cr = container.getBoundingClientRect();
+      const er = el.getBoundingClientRect();
+      container.scrollTop += (er.top - cr.top) - (container.clientHeight - el.clientHeight) / 2;
+    });
   });
 </script>
 
@@ -95,7 +121,7 @@
         <div class="flex justify-center pt-3 pb-2">
           <div class="h-1 w-9 rounded-full" style="background: var(--sempa-border);"></div>
         </div>
-        <div class="overflow-y-auto" style="max-height: 60vh;">
+        <div bind:this={scrollEl} class="overflow-y-auto" style="max-height: 60vh;">
           {#each options as opt, i}
             {@const isSel = opt.value === value}
             <button
@@ -120,6 +146,7 @@
     {:else}
       <!-- Desktop: inline absolute dropdown (below top nav) -->
       <div
+        bind:this={scrollEl}
         class="sempa-select-menu"
         role="listbox"
         aria-label={placeholder}>

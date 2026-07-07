@@ -244,10 +244,11 @@ func (h *integrationHandler) aiSuggestTags(w http.ResponseWriter, r *http.Reques
 		availJSON, _ := json.Marshal(body.Available)
 		availClause = "The user's existing tags (reuse these verbatim — exact spelling/capitalisation — whenever one fits): " + string(availJSON)
 	}
-	prompt := fmt.Sprintf(`Tag this task by what it is about.
+	prompt := fmt.Sprintf(`Tag this task by its topic or the project it belongs to.
 %s
-Prefer reusing an existing tag. If none capture the task well, propose up to 3 NEW tags: each a single lowercase word (or two words), broad enough to reuse across many tasks, never duplicating an existing tag.
-Return JSON: {"tags": [...], "new_tags": [...]} — "tags" copied verbatim from the existing list (empty if none fit), "new_tags" your concise lowercase suggestions (empty if existing tags suffice).
+Choose 1 to 3 existing tags that genuinely describe this task. Skip weak or tangential matches — it is better to return fewer tags (or none) than to add ones that only loosely relate.
+Only when NO existing tag fits, propose up to 2 NEW tags: each a single lowercase word (or two words), broad enough to reuse across many future tasks, never duplicating an existing tag.
+Return JSON: {"tags": [...], "new_tags": [...]} — "tags" copied verbatim from the existing list above (empty if none truly fit), "new_tags" your lowercase suggestions (empty whenever an existing tag already fits).
 Task title: %q
 Task notes: %q`, availClause, body.Title, clip(body.Notes, 800))
 

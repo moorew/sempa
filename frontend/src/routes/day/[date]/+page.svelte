@@ -729,7 +729,7 @@
     const tgt = e.target as HTMLElement;
     if (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.key === 'n' && !panelOpen) { e.preventDefault(); openCreate(todayDate); }
+    if (e.key === 'n' && !panelOpen) { e.preventDefault(); openCreate(date); }
     if (e.key === 'e' && !panelOpen && hoveredTaskId) {
       e.preventDefault();
       const t = tasks.find(t => t.id === hoveredTaskId);
@@ -1177,7 +1177,7 @@
               style="background: {onToday ? 'var(--sempa-accent)' : 'var(--sempa-text-dim)'};"></span>
         Today
       </button>
-      <button onclick={() => openCreate(todayDate)}
+      <button onclick={() => openCreate(date)}
               class="flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[13px] font-[500]
                      tracking-[-0.01em] transition-colors shadow-sm"
               style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);"

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { api } from '$lib/api';
@@ -7,6 +6,7 @@
   import { appendPosition, formatWeekRange, offsetDate, today, weekStart as calcWeekStart } from '$lib/utils';
 
   let ws = $derived($page.params.weekStart ?? calcWeekStart(today()));
+  const thisWeek = calcWeekStart(today());
 
   let step = $state(1);
   let loading = $state(true);
@@ -53,7 +53,16 @@
       loading = false;
     }
   }
-  onMount(load);
+  // Reload whenever the week changes (mount + prev/next navigation, which keeps
+  // this same component mounted and only swaps the [weekStart] route param).
+  $effect(() => { ws; load(); });
+
+  // Jump to another week's planner. `ws` is derived from the URL, so navigating
+  // re-runs the load effect above with the new week's objectives.
+  function goWeek(delta: number) {
+    step = 1;
+    goto(`/week/${offsetDate(ws, delta * 7)}/plan`);
+  }
 
   // ── Objective helpers ─────────────────────────────────────────────────────
 
@@ -170,7 +179,31 @@
         ← Back to week
       </a>
       <h1 class="mt-2 text-xl font-bold" style="color: var(--sempa-text);">Plan your week</h1>
-      <p class="text-sm" style="color: var(--sempa-text-soft);">{formatWeekRange(ws)}</p>
+      <!-- Week switcher — plan any week, not just the current one -->
+      <div class="mt-0.5 flex items-center gap-1.5">
+        <button onclick={() => goWeek(-1)} aria-label="Previous week"
+                class="grid h-6 w-6 place-items-center rounded-md transition-colors"
+                style="color: var(--sempa-text-dim);"
+                onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--sempa-accent-bg)'}
+                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        <p class="text-sm min-w-[9.5rem] text-center" style="color: var(--sempa-text-soft);">{formatWeekRange(ws)}</p>
+        <button onclick={() => goWeek(1)} aria-label="Next week"
+                class="grid h-6 w-6 place-items-center rounded-md transition-colors"
+                style="color: var(--sempa-text-dim);"
+                onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--sempa-accent-bg)'}
+                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        </button>
+        {#if ws !== thisWeek}
+          <button onclick={() => { step = 1; goto(`/week/${thisWeek}/plan`); }}
+                  class="ml-1 rounded-full px-2 py-0.5 text-[11px] transition-colors"
+                  style="background: var(--sempa-accent-bg); color: var(--sempa-text-dim);">
+            This week
+          </button>
+        {/if}
+      </div>
     </div>
     <!-- Step indicator pills -->
     <div class="flex items-center gap-1.5 pt-1">
