@@ -105,7 +105,7 @@
   }
 </script>
 
-<div class="flex h-full min-h-0 w-full flex-col"
+<div class="group flex h-full min-h-0 w-full flex-col"
      oncontextmenu={onColumnContext}
      ondragover={(e) => { e.preventDefault(); insertIdx = calcInsertIdx(e); onDragOver(date); }}
      ondragleave={(e) => {
@@ -237,11 +237,13 @@
       {/if}
     </div>
 
-    <!-- Add task — pinned below the scroll region -->
-    <button onclick={() => onAddClick(date)}
-            class="flex shrink-0 items-center gap-1.5 rounded-b-xl px-3 py-2 text-xs text-gray-400
-                   hover:bg-white/60 hover:text-gray-600 transition-colors
-                   dark:text-gray-600 dark:hover:bg-gray-700/30 dark:hover:text-gray-400">
+    <!-- Add task — a small pill pinned below the cards. Revealed on column hover
+         (or keyboard focus) on hover-capable devices; always shown on touch,
+         where there's no hover to reveal it. Opens a new task on THIS day. -->
+    <button onclick={() => onAddClick(date)} title="Add a task on this day"
+            class="add-pill mx-auto mb-2 mt-1 flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1
+                   text-[11px] font-medium transition-all"
+            style="color: var(--sempa-accent); background: var(--sempa-accent-bg);">
       <Plus size={11} />
       Add task
     </button>
@@ -272,5 +274,26 @@
   @media (prefers-reduced-motion: reduce) {
     .drop-zone { transition: none; }
     .drop-line { animation: none; }
+  }
+
+  /* On hover-capable devices the add-task pill stays out of the way until you
+     hover the column (or tab to it); touch devices have no hover, so it stays
+     visible there. `.group` is the column root's class. */
+  @media (hover: hover) {
+    .add-pill {
+      opacity: 0;
+      transform: translateY(2px);
+    }
+    .group:hover .add-pill,
+    .add-pill:focus-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .add-pill:hover {
+    filter: brightness(0.97);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .add-pill { transition: opacity 120ms ease; transform: none; }
   }
 </style>

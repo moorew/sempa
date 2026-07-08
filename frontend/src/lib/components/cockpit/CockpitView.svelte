@@ -10,8 +10,8 @@
    */
   import { onMount } from 'svelte';
   import { api } from '$lib/api';
-  import { today } from '$lib/utils';
   import { cockpit } from '$lib/stores/cockpit.svelte';
+  import { clock as dayClock } from '$lib/stores/clock.svelte';
   import { realtime } from '$lib/stores/realtime.svelte';
   import type { Task } from '$lib/types';
 
@@ -19,7 +19,9 @@
   let intention = $state<string>('');
   let objectiveTitle = $state<string>('');
   let clock = $state(nowLabel());
-  const date = today();
+  // Reactive so the always-on Dock rolls its "today" over at midnight instead of
+  // showing yesterday until it's restarted. The $effect below reloads on change.
+  const date = $derived(dayClock.today);
 
   const isDone = (t: Task) => t.status === 'done';
   const isLive = (t: Task) => t.status !== 'done' && t.status !== 'cancelled';
@@ -104,6 +106,11 @@
   $effect(() => {
     const ev = realtime.lastEvent;
     if (ev !== lastSeen) { lastSeen = ev; void load(); }
+  });
+  // Reload when the day rolls over at midnight (`date` tracks dayClock.today).
+  let lastDate = date;
+  $effect(() => {
+    if (date !== lastDate) { lastDate = date; void load(); }
   });
 </script>
 

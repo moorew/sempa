@@ -1,16 +1,18 @@
 <script lang="ts">
   import { api } from '$lib/api';
   import type { Task, UpdateTaskInput } from '$lib/types';
-  import { today as getToday, offsetDate, weekStart, formatMinutes } from '$lib/utils';
+  import { offsetDate, weekStart, formatMinutes } from '$lib/utils';
   import { hapticTick } from '$lib/haptics';
+  import { clock } from '$lib/stores/clock.svelte';
   import TimeslotCalendar from '$lib/components/TimeslotCalendar.svelte';
   import TaskPanel from '$lib/components/TaskPanel.svelte';
   import BottomSheet from '$lib/components/BottomSheet.svelte';
   import { ChevronLeft, ChevronRight, CalendarClock, Clock } from 'lucide-svelte';
 
-  const todayDate = getToday();
+  // Reactive so the "Today" label / highlight roll over at midnight.
+  const todayDate = $derived(clock.today);
 
-  let date    = $state(todayDate);
+  let date    = $state(clock.today);
   let tasks   = $state<Task[]>([]);
   let loading = $state(true);
   let error   = $state('');

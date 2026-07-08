@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Task } from '$lib/types';
-  import { formatMinutes, today as getToday, bareUrl, prettyUrl } from '$lib/utils';
+  import { formatMinutes, bareUrl, prettyUrl } from '$lib/utils';
+  import { clock } from '$lib/stores/clock.svelte';
   import { tagStore } from '$lib/stores/tags.svelte';
   import { hapticClick } from '$lib/haptics';
   import { api } from '$lib/api';
@@ -22,7 +23,7 @@
     onHover?: (id: string | null) => void;
   } = $props();
 
-  const todayStr = getToday();
+  const todayStr = $derived(clock.today);
 
   // While this card is the one being dragged, the original is left behind as a
   // faded "lifted" placeholder — the browser carries a snapshot under the cursor,

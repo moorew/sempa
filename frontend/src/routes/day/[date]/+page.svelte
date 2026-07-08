@@ -8,7 +8,8 @@
   import { page } from '$app/stores';
   import { api } from '$lib/api';
   import type { Task, TaskStatus, UpdateTaskInput } from '$lib/types';
-  import { appendPosition, compareTasksForDay, formatMinutes, isToday, offsetDate, today, weekStart } from '$lib/utils';
+  import { appendPosition, compareTasksForDay, formatMinutes, isToday, offsetDate, weekStart } from '$lib/utils';
+  import { clock } from '$lib/stores/clock.svelte';
   import { pomodoro } from '$lib/stores/pomodoro.svelte';
   import { mobile } from '$lib/stores/mobile.svelte';
   import { hapticTick } from '$lib/haptics';
@@ -35,11 +36,13 @@
   import type { DailyPlan } from '$lib/types';
 
   // "date" is used to anchor the week and mark today
-  let date      = $derived($page.params.date ?? today());
+  let date      = $derived($page.params.date ?? clock.today);
   let ws        = $derived(weekStart(date));
-  let todayDate = $derived(today());
+  // Reactive so the "today" highlight, greeting and rollover roll over at
+  // midnight instead of staying frozen on the day the page was opened.
+  let todayDate = $derived(clock.today);
   // Whether the anchored day is today — drives the always-present "Today" jump.
-  const onToday = $derived(isToday(date));
+  const onToday = $derived(date === todayDate);
 
   let tasks   = $state<Task[]>([]);
   let loading = $state(true);

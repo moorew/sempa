@@ -34,6 +34,7 @@
   import { initDeepLinks } from '$lib/tauri/deeplink';
   import { windowChrome } from '$lib/stores/windowChrome.svelte';
   import { cockpit } from '$lib/stores/cockpit.svelte';
+  import { clock } from '$lib/stores/clock.svelte';
   import CockpitView from '$lib/components/cockpit/CockpitView.svelte';
   import { shortcutLabel } from '$lib/platform';
   import { startSync, sync as runSync, syncStore } from '$lib/sync.svelte';
@@ -186,6 +187,7 @@
     quotes.init();
     mobile.init();
     cockpit.init();
+    clock.init();
     viewport.init();
 
     // Warm the celebration engine and apply the saved sound preference. On native

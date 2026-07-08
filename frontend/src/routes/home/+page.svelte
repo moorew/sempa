@@ -3,14 +3,16 @@
   import { goto } from '$app/navigation';
   import { api } from '$lib/api';
   import type { Objective, Task, WeekReview } from '$lib/types';
-  import { today, weekStart, compareTasksForDay } from '$lib/utils';
+  import { weekStart, compareTasksForDay } from '$lib/utils';
   import { mobile } from '$lib/stores/mobile.svelte';
   import { realtime } from '$lib/stores/realtime.svelte';
+  import { clock } from '$lib/stores/clock.svelte';
   import { tagStore } from '$lib/stores/tags.svelte';
   import DailyQuote from '$lib/components/DailyQuote.svelte';
 
-  const todayDate = today();
-  const thisWeek  = weekStart(todayDate);
+  // Reactive so the greeting/date and today's task list roll over at midnight.
+  const todayDate = $derived(clock.today);
+  const thisWeek  = $derived(weekStart(todayDate));
 
   let todayTasks  = $state<Task[]>([]);
   let objectives  = $state<Objective[]>([]);
@@ -94,6 +96,12 @@
     const ev = realtime.lastEvent;
     if (!ev) return;
     if (ev.type === 'task:change' || ev.type === 'objective:change') void loadData();
+  });
+
+  // Reload when the day rolls over at midnight so an open page tracks the new day.
+  let lastDay = todayDate;
+  $effect(() => {
+    if (todayDate !== lastDay) { lastDay = todayDate; void loadData(); }
   });
 
   onMount(async () => {

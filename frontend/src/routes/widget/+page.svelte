@@ -15,8 +15,11 @@
   let newTitle   = $state('');
   let adding     = $state(false);
 
-  const todayDate = today();
-  const ws        = weekStart(todayDate);
+  // The widget runs in its own window and re-polls every 30s (see onMount); we
+  // recompute the day on each poll so it rolls over at midnight instead of
+  // staying pinned to the day the widget was opened.
+  let todayDate = $state(today());
+  const ws      = $derived(weekStart(todayDate));
 
   // Top-level, non-cancelled tasks for today, scheduled blocks first.
   const todayTasks = $derived(
@@ -43,6 +46,7 @@
   });
 
   async function loadAll() {
+    todayDate = today();   // roll over if the widget has crossed midnight
     await Promise.all([loadTasks(), loadObjectives(), loadUpNext()]);
   }
 

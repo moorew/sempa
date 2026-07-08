@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { today } from '$lib/utils';
+  import { clock } from '$lib/stores/clock.svelte';
 
   let {
     date,
@@ -18,7 +18,7 @@
     dragActive?: boolean;
   } = $props();
 
-  const todayStr = today();
+  const todayStr = $derived(clock.today);
   let viewYear  = $state(new Date().getFullYear());
   let viewMonth = $state(new Date().getMonth()); // 0-indexed
 
