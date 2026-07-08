@@ -209,6 +209,18 @@
         {/if}
       </div>
 
+      <!-- Add task — a small pill that flows directly under the last card (and
+           scrolls with the list), so it's never pinned to the screen's bottom
+           edge. Revealed on column hover / keyboard focus on hover-capable
+           devices; always shown on touch. Opens a new task on THIS day. -->
+      <button onclick={() => onAddClick(date)} title="Add a task on this day"
+              class="add-pill mb-2 ml-2 mt-0.5 flex w-fit shrink-0 items-center gap-1 rounded-full px-2.5 py-1
+                     text-[11px] font-medium transition-all"
+              style="color: var(--sempa-accent); background: var(--sempa-accent-bg);">
+        <Plus size={11} />
+        Add task
+      </button>
+
       <!-- Completed tasks (collapsed by default) -->
       {#if done.length > 0}
         <div class="border-t border-gray-100/80 px-2 pb-1 pt-0.5 dark:border-gray-700/30">
@@ -236,17 +248,6 @@
         </div>
       {/if}
     </div>
-
-    <!-- Add task — a small pill pinned below the cards. Revealed on column hover
-         (or keyboard focus) on hover-capable devices; always shown on touch,
-         where there's no hover to reveal it. Opens a new task on THIS day. -->
-    <button onclick={() => onAddClick(date)} title="Add a task on this day"
-            class="add-pill mx-auto mb-2 mt-1 flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1
-                   text-[11px] font-medium transition-all"
-            style="color: var(--sempa-accent); background: var(--sempa-accent-bg);">
-      <Plus size={11} />
-      Add task
-    </button>
   </div>
 </div>
 
