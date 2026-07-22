@@ -28,7 +28,9 @@ func newRateLimiter(max int, window time.Duration) *rateLimiter {
 }
 
 func clientIP(r *http.Request) string {
-	// chi's RealIP middleware already normalizes RemoteAddr from X-Forwarded-For.
+	// RemoteAddr is already resolved by the realIP middleware, which only honours
+	// forwarding headers from trusted proxy peers (see realip.go) — so this is the
+	// real client for direct connections and spoof-proof for the throttles.
 	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
 		return host
 	}

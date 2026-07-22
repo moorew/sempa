@@ -22,7 +22,10 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
+	// Trusted-proxy-aware client-IP resolution — only honours X-Forwarded-For /
+	// X-Real-IP from configured (or default private/loopback) proxy peers so a
+	// direct client can't spoof its IP past the throttles. (AURA-SEC-004)
+	r.Use(realIP(cfg.TrustedProxies))
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	allowOrigin := func(_ *http.Request, origin string) bool {
@@ -231,7 +234,12 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 				r.Delete("/{id}", attachments.delete)
 			})
 
+			// Backup is a whole-instance operation: a download bundles every
+			// user's data (and, by mode, integration secrets) and restore replaces
+			// all global data. Admin-only, never reachable by a regular member or a
+			// paired device. (AURA-SEC-001)
 			r.Route("/backup", func(r chi.Router) {
+				r.Use(auth.requireAdmin)
 				r.Get("/settings", backups.getSettings)
 				r.Put("/settings", backups.updateSettings)
 				r.Get("/runs", backups.listRuns)

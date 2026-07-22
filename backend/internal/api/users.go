@@ -27,6 +27,24 @@ func (h *authHandler) isAdmin(r *http.Request) bool {
 	return ok && u.IsAdmin
 }
 
+// requireAdmin gates a route group to admin users. It must run inside the
+// requireAuth group (it relies on the session context requireAuth attaches).
+// When no auth is configured the instance is single-user, so there is nothing to
+// gate and the request passes through. (AURA-SEC-001)
+func (h *authHandler) requireAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !h.authEnabled() {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if !h.isAdmin(r) {
+			respondError(w, http.StatusForbidden, "admin only")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // listUsers — admin only.
 func (h *authHandler) listUsers(w http.ResponseWriter, r *http.Request) {
 	if !h.isAdmin(r) {

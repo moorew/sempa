@@ -40,6 +40,13 @@ type Config struct {
 	// Webhook token for Cloudflare Email Routing → POST /api/v1/tasks/from-email
 	EmailForwardToken string
 
+	// TrustedProxies is the set of CIDR ranges (or bare IPs) whose
+	// X-Forwarded-For / X-Real-IP headers are trusted when resolving the client
+	// IP for throttling. When empty, only loopback and private/ULA/CGNAT peers
+	// are trusted (a reverse proxy on the same host/network) — a directly
+	// connected public client can never spoof its IP to evade throttles.
+	TrustedProxies []string
+
 	// Background inbox polling interval (e.g. "1m"); empty disables
 	InboxPollInterval string
 
@@ -78,6 +85,7 @@ func Load() Config {
 		AuthPassword:         env("SEMPA_PASSWORD", ""),
 		AllowedEmails:        splitEmails(env("SEMPA_ALLOWED_EMAILS", "")),
 		EmailForwardToken:    env("EMAIL_FORWARD_TOKEN", ""),
+		TrustedProxies:       splitCSV(env("SEMPA_TRUSTED_PROXIES", "")),
 		InboxPollInterval:    env("INBOX_POLL_INTERVAL", "1m"),
 		CalendarPollInterval: env("CALENDAR_POLL_INTERVAL", "15m"),
 		OllamaBaseURL:        env("OLLAMA_BASE_URL", ""),
@@ -103,6 +111,22 @@ func splitEmails(s string) []string {
 	for _, p := range parts {
 		if v := strings.TrimSpace(p); v != "" {
 			out = append(out, strings.ToLower(v))
+		}
+	}
+	return out
+}
+
+// splitCSV splits a comma-separated list into trimmed, non-empty values,
+// preserving case (used for CIDRs/IPs where lower-casing is unnecessary).
+func splitCSV(s string) []string {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if v := strings.TrimSpace(p); v != "" {
+			out = append(out, v)
 		}
 	}
 	return out

@@ -305,7 +305,8 @@ func FetchImage(ctx context.Context, rawURL string) ([]byte, string, error) {
 		return nil, "", err
 	}
 	client := &http.Client{
-		Timeout: 12 * time.Second,
+		Timeout:   12 * time.Second,
+		Transport: safeTransport(), // SSRF guard at connect time — closes the DNS-rebinding gap (AURA-SEC-003)
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 5 {
 				return fmt.Errorf("stopped after 5 redirects")

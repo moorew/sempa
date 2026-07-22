@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -56,6 +57,51 @@ func validateURL(rawURL string) error {
 	return nil
 }
 
+// safeDialControl rejects connections to private/internal addresses at dial
+// time. validateURL only vets the IP a hostname resolves to at check time; the
+// HTTP client re-resolves the name when it connects, so a hostname that flips to
+// a private IP between the two (DNS rebinding) would otherwise slip past. Control
+// runs with the ACTUAL address being dialed, so the IP we vet is the IP we
+// connect to — for the initial request and every redirect hop. (AURA-SEC-003)
+func safeDialControl(_, address string, _ syscall.RawConn) error {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return fmt.Errorf("invalid dial address %q: %w", address, err)
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return fmt.Errorf("dial address %q is not an IP", host)
+	}
+	if isPrivateIP(ip) {
+		return fmt.Errorf("refusing to connect to private/internal address %s", ip)
+	}
+	return nil
+}
+
+// safeClient builds an http.Client whose dialer refuses private IPs at connect
+// time and re-validates every redirect target, so SSRF protection can't be
+// bypassed by DNS rebinding or a redirect to an internal host.
+func safeClient(timeout time.Duration) *http.Client {
+	d := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second, Control: safeDialControl}
+	return &http.Client{
+		Timeout: timeout,
+		Transport: &http.Transport{
+			DialContext:           d.DialContext,
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          10,
+			IdleConnTimeout:       30 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 5 {
+				return fmt.Errorf("stopped after 5 redirects")
+			}
+			return validateURL(req.URL.String())
+		},
+	}
+}
+
 // Fetch downloads and parses an ICS URL, returning all events.
 // It validates the URL to prevent SSRF against private networks.
 func Fetch(rawURL string) ([]Event, error) {
@@ -63,8 +109,8 @@ func Fetch(rawURL string) ([]Event, error) {
 		return nil, fmt.Errorf("ical: %w", err)
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Get(rawURL) //nolint:gosec
+	client := safeClient(30 * time.Second)
+	resp, err := client.Get(rawURL) //nolint:gosec // URL validated + guarded transport (safeClient) rejects private IPs at connect time
 	if err != nil {
 		return nil, fmt.Errorf("ical fetch %q: %w", rawURL, err)
 	}

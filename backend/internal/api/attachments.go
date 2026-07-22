@@ -145,12 +145,21 @@ func (h *attachmentHandler) download(w http.ResponseWriter, r *http.Request) {
 	}
 	defer f.Close()
 
+	// The stored MIME type is ultimately attacker-controlled (it derives from the
+	// uploader's Content-Type / filename). Never let the browser sniff it, and only
+	// render a strict allowlist of inert types inline — active/scriptable content
+	// (HTML, SVG, XML, JS, unknown) is forced to download so it can't execute under
+	// the app origin. (AURA-SEC-002)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Content-Type", att.MimeType)
 	w.Header().Set("Content-Length", strconv.FormatInt(att.SizeBytes, 10))
-	// inline so images/PDFs preview in the browser; quote the filename for the rest.
-	disposition := "inline"
-	if !isInlineMime(att.MimeType) {
-		disposition = "attachment"
+	disposition := "attachment"
+	if isSafeInlineMime(att.MimeType) {
+		disposition = "inline"
+	} else {
+		// Belt-and-suspenders: sandbox the response into a unique opaque origin
+		// with scripts disabled, in case a browser ignores the disposition.
+		w.Header().Set("Content-Security-Policy", "sandbox")
 	}
 	w.Header().Set("Content-Disposition", disposition+`; filename="`+strings.ReplaceAll(att.Filename, `"`, "")+`"`)
 	w.Header().Set("Cache-Control", "private, max-age=86400")
@@ -216,10 +225,27 @@ func detectMime(header *multipart.FileHeader, filename string) string {
 	return "application/octet-stream"
 }
 
-func isInlineMime(m string) bool {
-	return strings.HasPrefix(m, "image/") ||
-		strings.HasPrefix(m, "video/") ||
-		strings.HasPrefix(m, "audio/") ||
-		m == "application/pdf" ||
-		strings.HasPrefix(m, "text/")
+// isSafeInlineMime reports whether a stored MIME type is inert enough to render
+// inline in the browser. Deliberately an allowlist: active/scriptable types
+// (text/html, image/svg+xml, XML, JavaScript, unknown) are excluded so they
+// download instead of executing under the app origin. Note SVG is NOT here — it
+// can carry <script>. (AURA-SEC-002)
+func isSafeInlineMime(m string) bool {
+	m = strings.ToLower(strings.TrimSpace(m))
+	if i := strings.IndexByte(m, ';'); i >= 0 { // drop "; charset=…" etc.
+		m = strings.TrimSpace(m[:i])
+	}
+	switch m {
+	case "image/png", "image/jpeg", "image/gif", "image/webp", "image/bmp",
+		"image/x-icon", "image/vnd.microsoft.icon", "image/tiff",
+		"application/pdf",
+		"text/plain", "text/csv", "text/markdown":
+		return true
+	}
+	// Non-SVG raster/vector-free image subtypes and time-based media are safe to
+	// preview; svg+xml is explicitly excluded above by not matching the prefix.
+	if strings.HasPrefix(m, "video/") || strings.HasPrefix(m, "audio/") {
+		return true
+	}
+	return false
 }
