@@ -3,12 +3,21 @@
   import { timeTracking } from '$lib/stores/timeTracking.svelte';
   import { timeCapture } from '$lib/stores/timeCapture.svelte';
   import { pomodoro } from '$lib/stores/pomodoro.svelte';
-  import { ACTIVITY_BUCKETS } from '$lib/activityBuckets';
+  import { ACTIVITY_BUCKETS, bucketByKey } from '$lib/activityBuckets';
+  import { timeProfile, LEARN_MIN_SAMPLES } from '$lib/stores/timeProfile.svelte';
+  import { formatMinutes } from '$lib/utils';
   import { Clock, Play, Gauge } from 'lucide-svelte';
 
   // Visiting settings clears any "paused after repeated skips" state, so toggling
   // here always takes effect immediately.
-  onMount(() => timeCapture.resume());
+  onMount(() => {
+    timeCapture.resume();
+    void timeProfile.load();
+  });
+
+  // Split so the settled buckets read as an achievement and the rest as progress.
+  const learnedBuckets  = $derived(timeProfile.all.filter((b) => b.learned));
+  const learningBuckets = $derived(timeProfile.all.filter((b) => !b.learned));
 
   // Pomodoro durations (mirror of the widget's settings, editable here too).
   let workMins = $state(pomodoro.workMins);
@@ -78,6 +87,69 @@
           timeTracking.toggleSkipQuick,
         )}
       {/if}
+    </div>
+
+    <!-- What Sempa has learned -->
+    {@render sectionLabel('Learned times')}
+    <div class="rounded-xl px-4 py-3.5"
+         style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+      <p class="text-xs leading-relaxed" style="color: var(--sempa-text-dim);">
+        After you’ve logged a kind of task {LEARN_MIN_SAMPLES} times and the durations agree,
+        Sempa stops asking and fills the time in for you. Kinds of work that vary a
+        lot keep asking — an average of 10 minutes and 4 hours isn’t worth guessing.
+      </p>
+
+      {#if learnedBuckets.length === 0 && learningBuckets.length === 0}
+        <p class="mt-3 text-xs" style="color: var(--sempa-text-dim);">
+          Nothing logged yet. Answer a few completion prompts and they’ll show up here.
+        </p>
+      {/if}
+
+      {#each learnedBuckets as b (b.key)}
+        {@const meta = bucketByKey(b.key)}
+        <div class="mt-3 flex items-center gap-3">
+          <span class="text-base leading-none">{meta.emoji}</span>
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm" style="color: var(--sempa-text);">
+              {meta.label} · <strong>{formatMinutes(b.median)}</strong>
+            </p>
+            <p class="text-[11px]" style="color: var(--sempa-text-dim);">
+              Learned from {b.samples} logged {b.samples === 1 ? 'task' : 'tasks'}
+            </p>
+          </div>
+          <button onclick={() => timeProfile.forget(b.key)}
+                  class="shrink-0 rounded-md px-2 py-1 text-xs font-medium transition-colors"
+                  style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
+            Ask again
+          </button>
+        </div>
+      {/each}
+
+      {#each learningBuckets as b (b.key)}
+        {@const meta = bucketByKey(b.key)}
+        <div class="mt-3 flex items-center gap-3">
+          <span class="text-base leading-none opacity-50">{meta.emoji}</span>
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm" style="color: var(--sempa-text-soft);">{meta.label}</p>
+            <p class="text-[11px]" style="color: var(--sempa-text-dim);">
+              {#if timeProfile.isForgotten(b.key)}
+                Re-teaching — will stop asking once it’s consistent again
+              {:else if b.samples < LEARN_MIN_SAMPLES}
+                Still learning · {b.samples} of {LEARN_MIN_SAMPLES}
+              {:else}
+                Too variable to predict · still asking
+              {/if}
+            </p>
+          </div>
+          {#if timeProfile.isForgotten(b.key)}
+            <button onclick={() => timeProfile.relearn(b.key)}
+                    class="shrink-0 rounded-md px-2 py-1 text-xs font-medium transition-colors"
+                    style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
+              Undo
+            </button>
+          {/if}
+        </div>
+      {/each}
     </div>
 
     <!-- Day capacity -->

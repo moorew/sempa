@@ -1,0 +1,12 @@
+-- A stable, machine-readable reason for the last backup failure.
+--
+-- `last_error` holds a human message, which the UI can't branch on without
+-- brittle string matching. The one case that needs branching is an expired
+-- Google refresh token: it can only be resolved by the user reconnecting, and
+-- until they do, every nightly backup fails silently. `last_error_code` lets
+-- /backup/health report that as a distinct, actionable state ('reauth_required')
+-- without re-probing Google on every request.
+--
+-- Server-only table: backup_settings is never synced to local-first clients, so
+-- this needs no mirror in schema.ts / db.rs / sync.svelte.ts.
+ALTER TABLE backup_settings ADD COLUMN last_error_code TEXT;

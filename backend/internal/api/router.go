@@ -189,6 +189,8 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 
 			// Planned-vs-actual time profile (per-tag + global multipliers).
 			r.Get("/insights/time", tasks.timeInsights)
+			// Raw logged durations for the client-side activity-bucket learning profile.
+			r.Get("/insights/durations", tasks.durationSamples)
 
 			// User & credential management (admin-gated inside the handlers;
 			// self password change is open to any authed user).
@@ -242,6 +244,8 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 				r.Use(auth.requireAdmin)
 				r.Get("/settings", backups.getSettings)
 				r.Put("/settings", backups.updateSettings)
+				// Cheap DB-only health read the in-app banner polls (see backups.health).
+				r.Get("/health", backups.health)
 				r.Get("/runs", backups.listRuns)
 				r.Get("/download", backups.download)
 				r.Post("/restore", backups.restore)

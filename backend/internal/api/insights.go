@@ -67,6 +67,28 @@ func (h *taskHandler) timeInsights(w http.ResponseWriter, r *http.Request) {
 	respond(w, http.StatusOK, ins)
 }
 
+// durationSamplesCap bounds the learning pool. Generous on purpose: the client
+// buckets these into ~11 activity kinds, so a small cap would leave most buckets
+// below the learning threshold forever.
+const durationSamplesCap = 500
+
+// durationSamples feeds the client-side time-learning profile: raw
+// "this task took N minutes" rows that the client groups by activity bucket to
+// decide when it has learned a kind of work well enough to stop asking.
+//
+// The bucketing stays on the client because classifyActivity() is a TypeScript
+// keyword classifier (lib/activityBuckets.ts) shared with the completion prompt.
+// Re-implementing it in Go would mean two classifiers drifting apart, so the
+// server just hands over the samples.
+func (h *taskHandler) durationSamples(w http.ResponseWriter, r *http.Request) {
+	samples, err := h.store.CompletedDurationSamples(r.Context(), durationSamplesCap, ownerID(r))
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to load duration samples")
+		return
+	}
+	respond(w, http.StatusOK, samples)
+}
+
 // computeTimeInsights derives multipliers from completed-task samples. We use
 // the MEDIAN of per-task ratios (actual/estimate) rather than the mean so a
 // single runaway task doesn't dominate the profile.

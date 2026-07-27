@@ -1339,7 +1339,8 @@
             </span>
           </div>
           <p class="mt-1 text-[10.5px] text-gray-400 dark:text-gray-600">
-            Updated automatically by pomodoro sessions
+            Filled in by pomodoro sessions, or from what Sempa has learned about
+            this kind of task. Correcting it here teaches your time profile.
           </p>
         </div>
       {/if}

@@ -96,6 +96,10 @@ func (h *backupHandler) driveCallback(w http.ResponseWriter, r *http.Request) {
 		h.driveOAuthDone(w, returnPrefix, false, "Could not save the connection. Please try again.")
 		return
 	}
+	// A fresh token clears the reason the last run failed, so retire that stale
+	// result — otherwise the "backups need reconnecting" banner keeps nagging
+	// after the user has already done exactly what it asked.
+	_ = h.store.ClearLastResult(r.Context())
 	h.driveOAuthDone(w, returnPrefix, true, "")
 }
 

@@ -3,10 +3,12 @@ package backup
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/clevercode/sempa/internal/db"
+	"github.com/clevercode/sempa/internal/integrations/gmail"
 	"github.com/google/uuid"
 )
 
@@ -54,11 +56,20 @@ func (s *Service) Run(ctx context.Context, trigger string, driveToken DriveToken
 		}
 		_ = s.store.InsertRun(ctx, run)
 		var errMsg *string
+		errCode := ""
 		if runErr != nil {
 			es := runErr.Error()
 			errMsg = &es
+			// Classify so the UI can act. An expired/revoked Google token is the one
+			// failure only the user can clear, and until they do every nightly run
+			// fails the same way — worth surfacing as a distinct, promptable state
+			// rather than string-matching the message downstream.
+			errCode = db.BackupErrOther
+			if errors.Is(runErr, gmail.ErrReauthRequired) {
+				errCode = db.BackupErrReauthRequired
+			}
 		}
-		_ = s.store.RecordResult(ctx, status, errMsg)
+		_ = s.store.RecordResult(ctx, status, errMsg, errCode)
 		return run, runErr
 	}
 

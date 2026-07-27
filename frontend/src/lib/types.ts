@@ -102,6 +102,15 @@ export interface TimeInsights {
   recent?: { title: string; estimate_minutes: number; actual_minutes: number; tags: string[] }[];
 }
 
+// One completed task's logged duration. No estimate: this answers "how long does
+// this KIND of work take?" rather than "how far off are my estimates?", so tasks
+// that were never estimated still count.
+export interface DurationSample {
+  title: string;
+  minutes: number;
+  tags: string[];
+}
+
 // A user account (multi-user). The password hash is never sent to the client.
 export interface AppUser {
   id: string;
@@ -334,6 +343,18 @@ export interface BackupSettings {
   last_status: string | null;
   last_error: string | null;
   updated_at: string;
+}
+
+// Cheap health summary of the last backup attempt. `needs_reconnect` means the
+// destination's OAuth token expired — every future run will fail until the user
+// reconnects, which is why it's worth an in-app banner.
+export interface BackupHealth {
+  enabled: boolean;
+  ok: boolean;
+  last_run_at: string | null;
+  last_status: 'success' | 'error' | null;
+  last_error: string | null;
+  needs_reconnect: boolean;
 }
 
 export interface BackupRun {

@@ -3,6 +3,8 @@ import { isTauri } from './tauri/bridge';
 import type {
   Attachment,
   BackupRun,
+  BackupHealth,
+  DurationSample,
   BackupSettingsResponse,
   CreateObjectiveInput,
   CreateTaskInput,
@@ -378,6 +380,8 @@ const httpApi = {
       passphrase?: string;
     }) => req<BackupSettingsResponse>('/api/v1/backup/settings', { method: 'PUT', body: body(payload) }),
     runs: (limit = 20) => req<BackupRun[]>(`/api/v1/backup/runs?limit=${limit}`),
+    // Cheap DB-only health read (no Google round-trip), safe to poll app-wide.
+    health: () => req<BackupHealth>('/api/v1/backup/health'),
     run: () => req<{ run: BackupRun; error?: string }>('/api/v1/backup/run', { method: 'POST' }),
     test: (id: string) =>
       req<{ ok: boolean; existing_backups?: number; error?: string }>('/api/v1/backup/test', {
@@ -463,6 +467,9 @@ const httpApi = {
     // Planned-vs-actual time profile. Server-only (not in LOCAL_CORE), so callers
     // must tolerate failure on pure-offline clients with no server configured.
     time: () => req<TimeInsights>('/api/v1/insights/time'),
+    // Raw logged durations (no estimate required) for the activity-bucket
+    // learning profile — see stores/timeProfile.svelte.ts.
+    durations: () => req<DurationSample[]>('/api/v1/insights/durations'),
   },
 
   // Lists — local-first (in LOCAL_CORE): reads/writes the local DB on Tauri/

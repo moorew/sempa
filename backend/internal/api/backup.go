@@ -48,6 +48,32 @@ func (h *backupHandler) getSettings(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// health is the cheap, pollable answer to "are my backups actually working?".
+//
+// Deliberately a pure DB read of the last recorded outcome — unlike driveStatus,
+// which probes Google on every call and so can't be polled app-wide. A failing
+// backup previously showed up only in the server log and on the Settings → Backup
+// page, so it could stay broken for days unnoticed; this is what the in-app
+// banner watches.
+func (h *backupHandler) health(w http.ResponseWriter, r *http.Request) {
+	settings, err := h.store.Get(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to load backup settings")
+		return
+	}
+	failing := settings.LastStatus != nil && *settings.LastStatus == "error"
+	needsReconnect := failing && settings.LastErrorCode != nil &&
+		*settings.LastErrorCode == db.BackupErrReauthRequired
+	respond(w, http.StatusOK, map[string]any{
+		"enabled":         settings.Enabled,
+		"ok":              !failing,
+		"last_run_at":     settings.LastRunAt,
+		"last_status":     settings.LastStatus,
+		"last_error":      settings.LastError,
+		"needs_reconnect": needsReconnect,
+	})
+}
+
 type updateBackupRequest struct {
 	Enabled      bool    `json:"enabled"`
 	ScheduleHour int     `json:"schedule_hour"`

@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { page } from '$app/stores';
   import { api } from '$lib/api';
+  import { backupHealth } from '$lib/stores/backupHealth.svelte';
   import { isTauri, openExternal } from '$lib/tauri/bridge';
   import type { BackupDestination, BackupRun, BackupSettings, BackupDestinationType } from '$lib/types';
 
@@ -94,6 +95,9 @@
       const s = await api.backup.driveStatus();
       driveConnected = s.connected;
       driveNeedsReconnect = !!s.needs_reconnect;
+      // Reconnecting here is what dismisses the app-wide backup banner, so pull
+      // the health summary back in step rather than waiting out its poll.
+      void backupHealth.refresh();
     } catch { /* ignore */ }
   }
 

@@ -17,8 +17,21 @@ type BackupSettings struct {
 	LastRunAt     *string `json:"last_run_at"`
 	LastStatus    *string `json:"last_status"`
 	LastError     *string `json:"last_error"`
+	// LastErrorCode is a stable machine-readable reason (see BackupErr* consts) so
+	// the UI can branch without string-matching LastError's human message.
+	LastErrorCode *string `json:"last_error_code"`
 	UpdatedAt     string  `json:"updated_at"`
 }
+
+// Stable reason codes for BackupSettings.LastErrorCode.
+const (
+	// BackupErrReauthRequired: the destination's OAuth token is expired or revoked
+	// and only the user can fix it by reconnecting. Every scheduled run will keep
+	// failing until they do, so this is the one failure worth interrupting them for.
+	BackupErrReauthRequired = "reauth_required"
+	// BackupErrOther: failed for some other reason (network, disk, credentials).
+	BackupErrOther = "error"
+)
 
 type BackupRun struct {
 	ID           string  `json:"id"`
@@ -40,13 +53,13 @@ func (s *BackupStore) Get(ctx context.Context) (BackupSettings, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT enabled, schedule_hour, retention, security_mode,
 		       COALESCE(passphrase, ''), destinations,
-		       last_run_at, last_status, last_error, updated_at
+		       last_run_at, last_status, last_error, last_error_code, updated_at
 		FROM backup_settings WHERE id = 1`)
 	var b BackupSettings
 	var enabled int64
-	var lastRun, lastStatus, lastErr sql.NullString
+	var lastRun, lastStatus, lastErr, lastErrCode sql.NullString
 	if err := row.Scan(&enabled, &b.ScheduleHour, &b.Retention, &b.SecurityMode,
-		&b.Passphrase, &b.Destinations, &lastRun, &lastStatus, &lastErr, &b.UpdatedAt); err != nil {
+		&b.Passphrase, &b.Destinations, &lastRun, &lastStatus, &lastErr, &lastErrCode, &b.UpdatedAt); err != nil {
 		return BackupSettings{}, err
 	}
 	b.Enabled = enabled == 1
@@ -54,6 +67,7 @@ func (s *BackupStore) Get(ctx context.Context) (BackupSettings, error) {
 	b.LastRunAt = nullStr(lastRun)
 	b.LastStatus = nullStr(lastStatus)
 	b.LastError = nullStr(lastErr)
+	b.LastErrorCode = nullStr(lastErrCode)
 	return b, nil
 }
 
@@ -83,11 +97,33 @@ func (s *BackupStore) UpdateSettings(ctx context.Context, enabled bool, schedule
 	return err
 }
 
-func (s *BackupStore) RecordResult(ctx context.Context, status string, errMsg *string) error {
+// RecordResult stamps the outcome of a run. errCode is a stable BackupErr* reason
+// (empty for a success) that /backup/health branches on — see BackupErrReauthRequired.
+func (s *BackupStore) RecordResult(ctx context.Context, status string, errMsg *string, errCode string) error {
+	var code *string
+	if errCode != "" {
+		code = &errCode
+	}
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE backup_settings
-		SET last_run_at=datetime('now'), last_status=?, last_error=?
-		WHERE id = 1`, status, errMsg)
+		SET last_run_at=datetime('now'), last_status=?, last_error=?, last_error_code=?
+		WHERE id = 1`, status, errMsg, code)
+	return err
+}
+
+// ClearLastResult resets the last-run summary to "unknown, awaiting the next run",
+// keeping last_run_at so the settings page can still say when it last ran.
+//
+// Called when the user reconnects a destination whose token had expired. The
+// previous failure is now stale — the blocker is gone — but we genuinely don't
+// know the new state until a run happens, and claiming success would be a lie.
+// Leaving it as 'error' instead would nag through a banner the user already acted
+// on. Run history in backup_runs is untouched.
+func (s *BackupStore) ClearLastResult(ctx context.Context) error {
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE backup_settings
+		SET last_status=NULL, last_error=NULL, last_error_code=NULL
+		WHERE id = 1`)
 	return err
 }
 

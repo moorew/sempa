@@ -262,5 +262,6 @@ the same area.
 - Contributing: `CONTRIBUTING.md`
 - Security policy: `SECURITY.md`
 - Jira integration: `docs/JIRA.md`
+- Backups + the Google Drive 7-day expiry: `docs/BACKUP.md`
 - Desktop updater status/steps: `docs/UPDATER.md`
 - **Maintainer ops/security runbook: private `sempa-ops` repo → `BUILDERS.md`**

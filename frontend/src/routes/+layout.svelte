@@ -8,6 +8,7 @@
   import { theme } from '$lib/stores/theme.svelte';
   import { prefs } from '$lib/stores/prefs.svelte';
   import { timeTracking } from '$lib/stores/timeTracking.svelte';
+  import { timeProfile } from '$lib/stores/timeProfile.svelte';
   import { initFocusNotification } from '$lib/focusTimerNotification';
   import { initShareTarget } from '$lib/shareTarget';
   import { initMobileDeepLinks } from '$lib/deeplinkMobile';
@@ -23,6 +24,7 @@
   import RoutineBanner from '$lib/components/RoutineBanner.svelte';
   import ReminderBanner from '$lib/components/ReminderBanner.svelte';
   import TimezoneBanner from '$lib/components/TimezoneBanner.svelte';
+  import BackupBanner from '$lib/components/BackupBanner.svelte';
   import { timezone } from '$lib/stores/timezone.svelte';
   import { reminderAlerts } from '$lib/stores/reminderAlerts.svelte';
   import { initDesktopReminderPopup, syncDesktopPopup } from '$lib/desktopReminderPopup';
@@ -41,6 +43,7 @@
   import PomodoroTimer from '$lib/components/PomodoroTimer.svelte';
   import SessionConfirm from '$lib/components/SessionConfirm.svelte';
   import TaskTimeModal from '$lib/components/TaskTimeModal.svelte';
+  import TimeAutoLogToast from '$lib/components/TimeAutoLogToast.svelte';
   import TimeTrackingWalkthrough from '$lib/components/TimeTrackingWalkthrough.svelte';
   import BottomSheet from '$lib/components/BottomSheet.svelte';
   import TitleBar from '$lib/components/TitleBar.svelte';
@@ -50,6 +53,7 @@
   import { updates } from '$lib/stores/updates.svelte';
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
   import { jiraStatus } from '$lib/stores/jiraStatus.svelte';
+  import { backupHealth } from '$lib/stores/backupHealth.svelte';
   import { importModal } from '$lib/stores/importModal.svelte';
   import { commandPalette } from '$lib/stores/commandPalette.svelte';
   import AiImportModal from '$lib/components/AiImportModal.svelte';
@@ -99,6 +103,7 @@
   let hasBanners = $derived(
     reminderAlerts.alerts.length > 0 || routines.weeklyPlanDue || routines.shutdownDue
       || timezone.mismatch
+      || (backupHealth.failing && !backupHealth.dismissed)
   );
   let shortcutsOpen      = $state(false);
   let userEmail          = $state<string | undefined>(undefined);
@@ -207,6 +212,13 @@
 
     // Same idea for Jira: hide its tab/tile/command entirely unless connected.
     void jiraStatus.load();
+
+    // Watch for silently-failing backups (403s harmlessly for non-admin users).
+    backupHealth.start();
+
+    // Learned per-activity durations, so the completion prompt can stop asking
+    // about kinds of work it already knows.
+    void timeProfile.load();
 
     // Desktop floating reminder card (Tauri only; self-guards). Binds the popup
     // window's action listeners once, in the main window.
@@ -682,6 +694,7 @@
         <ReminderBanner />
         <RoutineBanner />
         <TimezoneBanner />
+        <BackupBanner />
         <AiSetupBanner />
       </div>
     {/if}
@@ -856,6 +869,11 @@
 {#if !isStandaloneWindow}
   <TaskTimeModal />
   <TimeTrackingWalkthrough />
+  <!-- Auto-logged-time toast: bottom-centre, above the mobile tab bar. -->
+  <div class="pointer-events-none fixed inset-x-0 z-[75] flex justify-center px-4"
+       style="bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);">
+    <TimeAutoLogToast />
+  </div>
 {/if}
 
 <!-- ── In-app update toast + floating sync status (main window only) ─────── -->

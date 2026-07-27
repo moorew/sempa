@@ -14,6 +14,7 @@ import { prefs } from '$lib/stores/prefs.svelte';
 import { aiStatus } from '$lib/stores/aiStatus.svelte';
 import { timeTracking } from '$lib/stores/timeTracking.svelte';
 import { classifyActivity } from '$lib/activityBuckets';
+import { timeProfile } from '$lib/stores/timeProfile.svelte';
 
 interface CaptureItem {
   taskId: string;
@@ -31,6 +32,8 @@ class TimeCapture {
   pending = $state<CaptureItem | null>(null);
   // A better, AI-grounded suggestion that arrives asynchronously (non-blocking).
   aiSuggestion = $state<number | null>(null);
+  // Set when a learned bucket was logged without asking — drives the undo toast.
+  autoLogged = $state<(CaptureItem & { minutes: number }) | null>(null);
 
   #queue: CaptureItem[] = [];
   #recent: number[] = [];
@@ -49,12 +52,6 @@ class TimeCapture {
     const est = task.time_estimate_minutes ?? 0;
     if (timeTracking.skipQuick && est > 0 && est <= 5) return;
 
-    // Burst back-off: if you're rapid-firing completions, stay out of the way.
-    const now = Date.now();
-    this.#recent = this.#recent.filter((t) => now - t < BATCH_WINDOW_MS);
-    if (this.#recent.length >= BATCH_LIMIT) return;
-    this.#recent.push(now);
-
     const bucket = classifyActivity(task.title, task.tags ?? []);
     const item: CaptureItem = {
       taskId: task.id,
@@ -63,8 +60,53 @@ class TimeCapture {
       bucketKey: bucket.key,
       defaultMinutes: est > 0 ? est : timeTracking.defaultMinutesFor(bucket.key),
     };
+
+    // Graduation: once this kind of work has been taught enough times AND the
+    // durations are consistent, stop asking. Log the learned figure and say so,
+    // rather than interrupting to ask a question we can already answer.
+    const learned = timeProfile.learnedMinutes(bucket.key);
+    if (learned !== null) {
+      void this.#autoLog(item, learned);
+      return;
+    }
+
+    // Burst back-off: if you're rapid-firing completions, stay out of the way.
+    const now = Date.now();
+    this.#recent = this.#recent.filter((t) => now - t < BATCH_WINDOW_MS);
+    if (this.#recent.length >= BATCH_LIMIT) return;
+    this.#recent.push(now);
+
     if (this.pending) this.#queue.push(item);
     else this.#open(item);
+  }
+
+  /**
+   * Write the learned duration without a prompt, and surface it.
+   *
+   * Not silent on purpose: time appearing on tasks you never confirmed is hard to
+   * notice and harder to trust. The toast is non-blocking (needs no action) but
+   * makes the guess visible and one tap correctable — and a correction feeds a
+   * fresh sample, so the profile keeps adjusting instead of freezing at whatever
+   * it first learned.
+   */
+  async #autoLog(item: CaptureItem, minutes: number) {
+    this.autoLogged = { ...item, minutes };
+    try {
+      await api.tasks.update(item.taskId, { time_actual_minutes: minutes });
+      void import('$lib/stores/timeInsights.svelte').then((m) => m.timeInsights.refresh());
+      timeProfile.scheduleRefresh();
+    } catch { /* queues via the sync outbox when offline */ }
+  }
+
+  /** Dismiss the auto-log toast. */
+  clearAutoLogged() { this.autoLogged = null; }
+
+  /** "Change" on the toast: reopen the normal prompt, pre-filled with the guess. */
+  correctAutoLogged() {
+    const a = this.autoLogged;
+    if (!a) return;
+    this.autoLogged = null;
+    this.#open({ ...a, defaultMinutes: a.minutes });
   }
 
   #open(item: CaptureItem) {
@@ -96,6 +138,9 @@ class TimeCapture {
     try {
       await api.tasks.update(p.taskId, { time_actual_minutes: mins });
       void import('$lib/stores/timeInsights.svelte').then((m) => m.timeInsights.refresh());
+      // Every confirmed number is a teaching signal — refresh so the bucket can
+      // graduate (or, after a correction, revise what it thought it knew).
+      timeProfile.scheduleRefresh();
     } catch { /* queues via sync outbox offline */ }
   }
 
