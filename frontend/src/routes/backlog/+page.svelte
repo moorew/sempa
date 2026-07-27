@@ -8,6 +8,7 @@
   import { Plus, Search } from 'lucide-svelte';
   import { mobile } from '$lib/stores/mobile.svelte';
   import { realtime } from '$lib/stores/realtime.svelte';
+  import { jiraStatus } from '$lib/stores/jiraStatus.svelte';
 
   let tasks   = $state<Task[]>([]);
   let loading = $state(true);
@@ -20,6 +21,18 @@
   let search   = $state('');
   let filter   = $state<'all' | 'jira' | 'personal'>('all');
   let sortNewest = $state(false); // default: oldest first
+
+  // The Jira chip is pointless without the integration; "All" still shows any
+  // historical Jira-sourced tasks. Derived (not an effect) so a stale `filter`
+  // can't wedge the page — see activeFilter below.
+  const filterChips = $derived([
+    { k: 'all', l: 'All' },
+    ...(jiraStatus.connected ? [{ k: 'jira', l: 'Jira' }] : []),
+    { k: 'personal', l: 'Personal' },
+  ]);
+  const activeFilter = $derived(
+    filter === 'jira' && !jiraStatus.connected ? 'all' : filter,
+  );
 
   onMount(load);
 
@@ -114,8 +127,8 @@
     const q = search.trim().toLowerCase();
     return tasks.filter(t => {
       if (q && !t.title.toLowerCase().includes(q)) return false;
-      if (filter === 'jira') return t.source === 'jira';
-      if (filter === 'personal') return groupKey(t) === 'personal';
+      if (activeFilter === 'jira') return t.source === 'jira';
+      if (activeFilter === 'personal') return groupKey(t) === 'personal';
       return true;
     });
   });
@@ -164,8 +177,8 @@
 
       <!-- Filter chips -->
       <div class="flex items-center gap-1">
-        {#each [{ k: 'all', l: 'All' }, { k: 'jira', l: 'Jira' }, { k: 'personal', l: 'Personal' }] as chip}
-          {@const active = filter === chip.k}
+        {#each filterChips as chip}
+          {@const active = activeFilter === chip.k}
           <button onclick={() => filter = chip.k as typeof filter}
                   class="rounded-lg transition-colors"
                   style="font-size: 12px; padding: 4px 10px;

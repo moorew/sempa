@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '$lib/api';
+  import { jiraStatus } from '$lib/stores/jiraStatus.svelte';
 
   let host      = $state('');
   let email     = $state('');
@@ -36,6 +37,8 @@
     try {
       await api.integrations.jira.save({ host, email, api_token: apiToken, jql: jql || undefined });
       connected = true;
+      // Reveal the Jira tab / command / chip app-wide without a reload.
+      await jiraStatus.refresh();
     } catch (e) {
       saveError = (e as Error).message;
     } finally {
@@ -76,6 +79,7 @@
     if (!confirm('Disconnect Jira? Imported tasks will be kept.')) return;
     await api.integrations.jira.delete();
     connected = false;
+    await jiraStatus.refresh();
     host = email = apiToken = jql = '';
   }
 </script>

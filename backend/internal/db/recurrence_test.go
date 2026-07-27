@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -415,5 +416,171 @@ func TestWeekGenerationFindsInstanceByWeekStart(t *testing.T) {
 	}
 	if found.RoughlyAt == nil || *found.RoughlyAt != "07:30" {
 		t.Fatalf("expected roughly_at 07:30 copied to instance, got %v", found.RoughlyAt)
+	}
+}
+
+// countOrphanedInstances returns how many tasks look like recurring instances
+// that lost their template link — no rule of their own, no origin, but dated.
+// This is the exact corruption a hard DELETE of a template used to cause via the
+// `recurrence_origin_id ... ON DELETE SET NULL` foreign key.
+func countOrphanedInstances(t *testing.T, s *TaskStore, title string) int {
+	t.Helper()
+	var n int
+	if err := s.db.QueryRow(
+		`SELECT count(*) FROM tasks
+		 WHERE title = ? AND recurrence_rule IS NULL AND recurrence_origin_id IS NULL
+		   AND planned_date IS NOT NULL`, title).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+// TestHardDeletingTemplateOrphansInstances pins the failure mode this whole
+// design exists to prevent. It asserts the FK really does detach instances, so if
+// anyone ever "simplifies" RetireTemplate back into a DELETE, the reason is on
+// the record rather than rediscovered in production.
+func TestHardDeletingTemplateOrphansInstances(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	origin := makeDailyTemplate(t, s, nil)
+	if err := s.SeedHorizon(ctx, "2026-06-01", 1); err != nil {
+		t.Fatal(err)
+	}
+	if countOrphanedInstances(t, s, "Meditate") != 0 {
+		t.Fatal("precondition: instances should start out linked to their template")
+	}
+
+	if err := s.Delete(ctx, origin); err != nil {
+		t.Fatal(err)
+	}
+	if got := countOrphanedInstances(t, s, "Meditate"); got == 0 {
+		t.Fatal("expected the ON DELETE SET NULL FK to orphan instances — if this " +
+			"now passes, the schema changed and RetireTemplate's rationale needs revisiting")
+	}
+}
+
+func TestRetireTemplateStopsGenerationWithoutOrphaning(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	origin := makeDailyTemplate(t, s, nil)
+	const today = "2026-06-01"
+
+	if err := s.SeedHorizon(ctx, today, 1); err != nil {
+		t.Fatal(err)
+	}
+	seeded, err := s.ListByRecurrenceOrigin(ctx, origin, SystemScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(seeded) == 0 {
+		t.Fatal("expected the horizon to seed instances")
+	}
+
+	// Mark one instance done so it counts as history that must be preserved.
+	done := seeded[0]
+	done.Status = "done"
+	if _, err := s.Update(ctx, done); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := s.RetireTemplate(ctx, origin); err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. Nothing was orphaned — the whole point.
+	if got := countOrphanedInstances(t, s, "Meditate"); got != 0 {
+		t.Fatalf("retire orphaned %d instances; expected 0", got)
+	}
+
+	// 2. The done instance survives, still linked to its template.
+	kept, err := s.Get(ctx, done.ID, SystemScope)
+	if err != nil {
+		t.Fatalf("done instance should survive retirement: %v", err)
+	}
+	if kept.RecurrenceOriginID == nil || *kept.RecurrenceOriginID != origin {
+		t.Fatalf("done instance lost its template link: %v", kept.RecurrenceOriginID)
+	}
+
+	// 3. Open pristine instances are gone, and tombstoned so offline clients drop them.
+	for _, inst := range seeded {
+		if inst.ID == done.ID {
+			continue
+		}
+		if _, err := s.Get(ctx, inst.ID, SystemScope); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("pristine instance %s should have been removed, got %v", inst.ID, err)
+		}
+		var n int
+		if err := s.db.QueryRowContext(ctx,
+			`SELECT count(*) FROM sync_tombstones WHERE entity_type='task' AND entity_id=?`,
+			inst.ID).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		if n != 1 {
+			t.Fatalf("expected a tombstone for removed instance %s, found %d", inst.ID, n)
+		}
+	}
+
+	// 4. The template is hidden from the generators and from Settings → Recurring.
+	tmpls, err := s.ListRecurringTemplates(ctx, SystemScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tm := range tmpls {
+		if tm.ID == origin {
+			t.Fatal("a retired template must not be listed as a template")
+		}
+	}
+
+	// 5. Generation really has stopped — a later horizon seeds nothing new.
+	if err := s.SeedHorizon(ctx, "2026-06-08", 1); err != nil {
+		t.Fatal(err)
+	}
+	after, err := s.ListByRecurrenceOrigin(ctx, origin, SystemScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(after) != 1 {
+		t.Fatalf("retired template still generating: expected only the kept done instance, got %d", len(after))
+	}
+}
+
+func TestRetiredTemplateHiddenFromSearch(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	origin := makeDailyTemplate(t, s, nil)
+
+	found, err := s.Search(ctx, "meditate", nil, false, 50, SystemScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(found) == 0 {
+		t.Fatal("precondition: an active template should be findable")
+	}
+
+	if err := s.RetireTemplate(ctx, origin); err != nil {
+		t.Fatal(err)
+	}
+	found, err = s.Search(ctx, "meditate", nil, false, 50, SystemScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, task := range found {
+		if task.ID == origin {
+			t.Fatal("a retired template must not surface in search")
+		}
+	}
+}
+
+func TestRetireTemplateRejectsNonTemplates(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	plain, err := s.Create(ctx, CreateTaskParams{
+		ID: uuid.New().String(), Title: "Not recurring", Status: "backlog",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RetireTemplate(ctx, plain.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound retiring a non-template, got %v", err)
 	}
 }

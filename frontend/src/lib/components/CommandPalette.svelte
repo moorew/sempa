@@ -12,6 +12,7 @@
   import { importModal } from '$lib/stores/importModal.svelte';
   import { prefs } from '$lib/stores/prefs.svelte';
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
+  import { jiraStatus } from '$lib/stores/jiraStatus.svelte';
   import { theme } from '$lib/stores/theme.svelte';
   import { today, weekStart } from '$lib/utils';
   import { goto } from '$app/navigation';
@@ -64,10 +65,17 @@
       { id: 'journal',  label: 'Journal',         icon: BookOpen,      keywords: 'intentions reflections', run: () => go('/journal') },
       { id: 'reminders', label: 'Reminders',      icon: Bell,          keywords: 'notifications', run: () => go('/reminders') },
       { id: 'email',    label: 'Email',           icon: Mail,          keywords: 'inbox gmail fastmail', run: () => go('/email') },
-      { id: 'jira',     label: 'Jira',            icon: SquareKanban,  keywords: 'issues', run: () => go('/jira') },
       { id: 'settings', label: 'Settings',        icon: Settings,      keywords: 'preferences config account', run: () => go('/settings/accounts') },
       { id: 'theme',    label: 'Toggle dark mode', icon: SunMoon,      keywords: 'light dark appearance', run: () => theme.toggle() },
     );
+
+    // Jira is optional — only offer it once the integration is actually connected.
+    if (jiraStatus.connected) {
+      list.push({
+        id: 'jira', label: 'Jira', icon: SquareKanban, keywords: 'issues',
+        run: () => go('/jira'),
+      });
+    }
     return list;
   });
 

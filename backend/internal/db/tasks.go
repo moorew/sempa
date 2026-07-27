@@ -177,7 +177,8 @@ func (s *TaskStore) ListScheduled(ctx context.Context, ownerID string) ([]Task, 
 		`SELECT `+taskCols+` FROM tasks
 		 WHERE scheduled_start IS NOT NULL AND scheduled_start != ''
 		   AND scheduled_end   IS NOT NULL AND scheduled_end   != ''
-		   AND archived_at IS NULL`+scope+`
+		   AND archived_at IS NULL
+		   AND status != 'cancelled'`+scope+`
 		 ORDER BY scheduled_start`, sargs...)
 	if err != nil {
 		return nil, err
@@ -186,12 +187,19 @@ func (s *TaskStore) ListScheduled(ctx context.Context, ownerID string) ([]Task, 
 	return collectTasks(rows)
 }
 
-// ListRecurringTemplates returns all tasks that are recurring templates.
+// ListRecurringTemplates returns all *active* recurring templates.
+//
+// The 'cancelled' filter is load-bearing, not cosmetic: this one query feeds both
+// the Settings → Recurring list AND the instance generators (ensureInstancesForDate,
+// seedWeekInstances), so excluding retired templates here is what actually stops a
+// deleted series from generating. See RetireTemplate for why templates are retired
+// rather than deleted.
 func (s *TaskStore) ListRecurringTemplates(ctx context.Context, ownerID string) ([]Task, error) {
 	scope, sargs := visScope(ownerID)
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT `+taskCols+` FROM tasks
-		 WHERE recurrence_rule IS NOT NULL AND recurrence_origin_id IS NULL`+scope+`
+		 WHERE recurrence_rule IS NOT NULL AND recurrence_origin_id IS NULL
+		   AND status != 'cancelled'`+scope+`
 		 ORDER BY title`, sargs...)
 	if err != nil {
 		return nil, err

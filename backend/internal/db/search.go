@@ -28,9 +28,12 @@ func buildTagFilter(tags []string, matchAll bool) (string, []any) {
 }
 
 // Search returns tasks matching a free-text query (title/description) and/or a
-// set of tags. Empty q + empty tags returns nothing. Excludes sub-tasks.
+// set of tags. Empty q + empty tags returns nothing. Excludes sub-tasks and
+// cancelled rows — 'cancelled' is the app's marker for "this is gone" (see
+// RetireTemplate), and without the filter a retired recurring template would keep
+// surfacing here labelled "Backlog" long after the user deleted it.
 func (s *TaskStore) Search(ctx context.Context, q string, tags []string, matchAll bool, limit int, ownerID string) ([]Task, error) {
-	where := []string{"parent_task_id IS NULL"}
+	where := []string{"parent_task_id IS NULL", "status != 'cancelled'"}
 	var args []any
 
 	if q != "" {

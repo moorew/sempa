@@ -24,6 +24,7 @@
   import { tagStore } from '$lib/stores/tags.svelte';
   import TagFilterBar from '$lib/components/TagFilterBar.svelte';
   import JiraPanel from '$lib/components/JiraPanel.svelte';
+  import { jiraStatus } from '$lib/stores/jiraStatus.svelte';
   import MobileTaskCard from '$lib/components/MobileTaskCard.svelte';
   import MobileTaskView from '$lib/components/MobileTaskView.svelte';
   import { syncWidgetData } from '$lib/widget-bridge';
@@ -57,7 +58,24 @@
   let draggingId    = $state<string | null>(null);
   let dragOverDate  = $state<string | null>(null);
   let emailPanel    = $state<EmailPanel | undefined>(undefined);
-  let rightPanel    = $state<'schedule' | 'mail' | 'jira' | 'objectives'>('schedule');
+  type RightPanel = 'schedule' | 'mail' | 'jira' | 'objectives';
+  let rightPanel    = $state<RightPanel>('schedule');
+
+  // The Jira tab only exists when Jira is actually connected — an unconfigured
+  // integration shouldn't take up a quarter of the tab bar. If it disappears
+  // while it's the active tab (user disconnects in settings), fall back rather
+  // than leaving the pane blank.
+  const rightPanelTabs = $derived<{ id: RightPanel; label: string }[]>([
+    { id: 'schedule',   label: 'Schedule' },
+    { id: 'mail',       label: 'Inbox' },
+    ...(jiraStatus.connected ? [{ id: 'jira' as const, label: 'Jira' }] : []),
+    { id: 'objectives', label: 'Goals' },
+  ]);
+  // Derived, not an $effect that reassigns rightPanel — an effect that reads and
+  // writes the same $state is the read-modify-write loop that wedges the whole app.
+  const activePanel = $derived<RightPanel>(
+    rightPanel === 'jira' && !jiraStatus.connected ? 'schedule' : rightPanel,
+  );
 
   let panelOpen   = $state(false);
   let panelTask   = $state<Task | null>(null);
@@ -1316,14 +1334,9 @@
 
     <!-- Tab bar -->
     <div class="flex shrink-0 items-stretch" style="border-bottom: 1px solid var(--sempa-border);">
-      {#each [
-        { id: 'schedule',   label: 'Schedule' },
-        { id: 'mail',       label: 'Inbox' },
-        { id: 'jira',       label: 'Jira' },
-        { id: 'objectives', label: 'Goals' },
-      ] as panel}
-        {@const active = rightPanel === panel.id}
-        <button onclick={() => rightPanel = panel.id as typeof rightPanel}
+      {#each rightPanelTabs as panel}
+        {@const active = activePanel === panel.id}
+        <button onclick={() => rightPanel = panel.id}
                 title={panel.label}
                 class="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10.5px] font-medium transition-colors"
                 style={active
@@ -1350,9 +1363,9 @@
          already mount/unmount per tab via the if/else, so keying changes only
          the entrance, not data-loading behaviour. -->
     <div class="flex-1 overflow-hidden">
-      {#key rightPanel}
+      {#key activePanel}
         <div class="h-full animate-pane-in">
-          {#if rightPanel === 'schedule'}
+          {#if activePanel === 'schedule'}
             <TimeslotCalendar
               date={date}
               tasks={tasks}
@@ -1361,9 +1374,9 @@
               onOpenTask={(id) => { const t = tasks.find(t => t.id === id); if (t) openEdit(t); }}
               onEventConverted={(t) => { tasks = [...tasks, t]; }}
             />
-          {:else if rightPanel === 'mail'}
+          {:else if activePanel === 'mail'}
             <EmailPanel bind:this={emailPanel} onTaskCreated={(t) => { tasks = [...tasks, t]; }} />
-          {:else if rightPanel === 'jira'}
+          {:else if activePanel === 'jira'}
             <JiraPanel
               onTaskDragStart={(id) => { draggingId = id; }}
               onTasksReloaded={reloadLoaded}

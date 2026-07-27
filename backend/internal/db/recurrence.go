@@ -399,6 +399,56 @@ func (s *TaskStore) createInstance(ctx context.Context, tmpl Task, t time.Time) 
 	return err
 }
 
+// RetireTemplate ends a recurring series WITHOUT deleting the template row.
+//
+// Why not just DELETE it: `recurrence_origin_id` is declared
+// `REFERENCES tasks(id) ON DELETE SET NULL`, so removing the template row makes
+// SQLite silently NULL the origin on every instance ever generated. That is
+// catastrophic and completely invisible:
+//
+//   - Generation stops (ListRecurringTemplates has nothing to seed from), so the
+//     series quietly disappears once the last pre-seeded instance rolls past.
+//   - Every rollover and dedup query keys on `recurrence_origin_id IS NOT NULL`,
+//     so the detached instances become permanently unmanageable — any duplicate
+//     pair already on a day freezes there forever.
+//   - No tombstones are written for the detached rows, so nothing propagates and
+//     nothing can be recovered.
+//
+// This is not hypothetical: it is exactly how a user's daily template was lost,
+// taking ~40 instances with it, from a single stray DELETE.
+//
+// Retiring instead flips the template to 'cancelled' and keeps the row. The FK
+// never fires, instances keep their link (so rollover/dedup keep working on
+// history), generation stops because ListRecurringTemplates filters cancelled,
+// and the series stays recoverable. Open, untouched instances are removed with
+// proper tombstones so no ghost cards are left on the board.
+//
+// Deliberately a store method called from the delete handler, NOT an update: a
+// template PATCH triggers SyncTemplateInstances, which would delete and instantly
+// regenerate the whole horizon.
+func (s *TaskStore) RetireTemplate(ctx context.Context, id string) error {
+	// Drop the open, untouched instances — they're just placeholders for days the
+	// user no longer wants. Customised / in-progress / time-logged / done ones are
+	// the user's actual work and stay as history, still linked to the template.
+	if err := s.tombstoneAndDeleteTasks(ctx, `
+		recurrence_origin_id = ?
+		  AND is_customized = 0
+		  AND status IN ('backlog','planned')
+		  AND (time_actual_minutes IS NULL OR time_actual_minutes = 0)`, id); err != nil {
+		return err
+	}
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE tasks SET status = 'cancelled', updated_at = datetime('now')
+		 WHERE id = ? AND recurrence_rule IS NOT NULL AND recurrence_origin_id IS NULL`, id)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // SyncTemplateInstances propagates a template's current content to its future,
 // untouched instances. Pristine (non-customised, open, no logged time) instances
 // from `today` onward are deleted and regenerated under the template's current

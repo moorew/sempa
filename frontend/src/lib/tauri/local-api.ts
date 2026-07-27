@@ -58,14 +58,22 @@ export const localApi = {
         },
         listByWeek: async (ws: string): Promise<Task[]> => {
             const rows = await query<Record<string, unknown>[]>(
-                `SELECT * FROM tasks WHERE week_start = ? OR (planned_date >= ? AND planned_date < date(?, '+7 days')) ORDER BY position ASC`,
+                `SELECT * FROM tasks
+                 WHERE (week_start = ? OR (planned_date >= ? AND planned_date < date(?, '+7 days')))
+                   AND status != 'cancelled'
+                 ORDER BY position ASC`,
                 [ws, ws, ws],
             );
             return rows.map(parseTaskRow);
         },
+        // `recurrence_rule IS NULL` mirrors the server's ListBacklog: recurring
+        // templates are undated and would otherwise sit in the backlog on
+        // Tauri/Capacitor but not on web.
         listBacklog: async (): Promise<Task[]> => {
             const rows = await query<Record<string, unknown>[]>(
-                `SELECT * FROM tasks WHERE status = 'backlog' ORDER BY position ASC`,
+                `SELECT * FROM tasks
+                 WHERE status = 'backlog' AND recurrence_rule IS NULL
+                 ORDER BY position ASC`,
             );
             return rows.map(parseTaskRow);
         },
@@ -78,7 +86,7 @@ export const localApi = {
         },
         listBySource: async (source: string): Promise<Task[]> => {
             const rows = await query<Record<string, unknown>[]>(
-                `SELECT * FROM tasks WHERE source = ? ORDER BY position ASC`,
+                `SELECT * FROM tasks WHERE source = ? AND status != 'cancelled' ORDER BY position ASC`,
                 [source],
             );
             return rows.map(parseTaskRow);
@@ -171,6 +179,17 @@ export const localApi = {
             return localApi.tasks.get(id);
         },
         delete: async (id: string): Promise<void> => {
+            // A recurring template reaches this path too (the edit panel's delete
+            // button), and it must never be hard-deleted — the
+            // recurrence_origin_id FK is ON DELETE SET NULL, so removing the row
+            // silently detaches every instance of the series. Retire instead,
+            // exactly as the server does.
+            const tmpl = await query<{ id: string }[]>(
+                `SELECT id FROM tasks
+                 WHERE id = ? AND recurrence_rule IS NOT NULL AND recurrence_origin_id IS NULL`,
+                [id]);
+            if (tmpl.length > 0) return localApi.recurring.delete(id);
+
             // Cascade to sub-tasks (mirrors the server): the parent_task_id FK is
             // ON DELETE SET NULL, so without this a deleted parent orphans its
             // children into top-level tasks that resurface on the board.
@@ -484,13 +503,26 @@ export const localApi = {
     recurring: {
         list: async (): Promise<Task[]> => {
             const rows = await query<Record<string, unknown>[]>(
-                `SELECT * FROM tasks WHERE recurrence_rule IS NOT NULL ORDER BY title ASC`,
+                `SELECT * FROM tasks
+                 WHERE recurrence_rule IS NOT NULL AND recurrence_origin_id IS NULL
+                   AND status != 'cancelled'
+                 ORDER BY title ASC`,
             );
             return rows.map(parseTaskRow);
         },
+        // Retire, don't delete — the local schema carries the same
+        // `recurrence_origin_id ... ON DELETE SET NULL` foreign key as the server, so
+        // a local DELETE would silently detach every instance of the series on this
+        // device. Mirrors the server's RetireTemplate; the queued 'delete' mutation
+        // replays as DELETE /tasks/{id}, which the server also turns into a retire.
+        //
+        // No local tombstone: the row is kept, and a tombstone would block the
+        // server's retired copy from ever syncing back down.
         delete: async (id: string): Promise<void> => {
-            await execute(`DELETE FROM tasks WHERE id = ?`, [id]);
-            await recordLocalTombstone('task', id);
+            await execute(
+                `UPDATE tasks SET status = 'cancelled', updated_at = ? WHERE id = ?`,
+                [new Date().toISOString(), id],
+            );
             await logMutation('tasks', id, 'delete', {});
             flushSoon();
         },

@@ -499,6 +499,29 @@ func (h *taskHandler) delete(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusNotFound, "task not found")
 		return
 	}
+	// Deleting a recurring TEMPLATE is a series-wide operation, not a row delete.
+	// Hard-deleting the row would make the ON DELETE SET NULL foreign key silently
+	// detach every instance it ever generated — killing generation, freezing any
+	// duplicates in place, and leaving nothing to recover from. Retire it instead;
+	// see db.RetireTemplate for the full account.
+	//
+	// No tombstone here on purpose: the row still exists. Clients learn it was
+	// retired from the normal sync delta (status flips to 'cancelled'); a tombstone
+	// would tell them to drop it locally and make the series unrecoverable again.
+	if existing.RecurrenceRule != nil && *existing.RecurrenceRule != "" && existing.RecurrenceOriginID == nil {
+		if err := h.store.RetireTemplate(r.Context(), id); err != nil {
+			if errors.Is(err, db.ErrNotFound) {
+				respondError(w, http.StatusNotFound, "task not found")
+				return
+			}
+			respondError(w, http.StatusInternalServerError, "failed to delete recurring task")
+			return
+		}
+		h.hub.Broadcast("task:change", map[string]string{"entity": "task"})
+		respond(w, http.StatusNoContent, nil)
+		return
+	}
+
 	// Cascade to sub-tasks: the parent_task_id FK is ON DELETE SET NULL, so
 	// without this a deleted parent would orphan its sub-tasks into top-level
 	// tasks (they'd resurface on the board). Fetch children BEFORE deleting the

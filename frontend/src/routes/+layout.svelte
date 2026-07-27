@@ -49,6 +49,7 @@
   import UpdateToast from '$lib/components/UpdateToast.svelte';
   import { updates } from '$lib/stores/updates.svelte';
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
+  import { jiraStatus } from '$lib/stores/jiraStatus.svelte';
   import { importModal } from '$lib/stores/importModal.svelte';
   import { commandPalette } from '$lib/stores/commandPalette.svelte';
   import AiImportModal from '$lib/components/AiImportModal.svelte';
@@ -203,6 +204,9 @@
     // Learn whether the local AI model is reachable so AI-assist buttons only
     // appear when they'll actually work.
     void aiStatus.load();
+
+    // Same idea for Jira: hide its tab/tile/command entirely unless connected.
+    void jiraStatus.load();
 
     // Desktop floating reminder card (Tauri only; self-guards). Binds the popup
     // window's action listeners once, in the main window.
@@ -799,7 +803,7 @@
       <div class="grid grid-cols-2 gap-2">
         {@render sheetTile('/email', 'Email', Mail)}
         {@render sheetTile('/reminders', 'Reminders', Bell)}
-        {@render sheetTile('/jira', 'Jira', SquareKanban)}
+        {#if jiraStatus.connected}{@render sheetTile('/jira', 'Jira', SquareKanban)}{/if}
         {@render sheetTile(`/shutdown/${todayDate}`, 'Shutdown', Moon)}
       </div>
 

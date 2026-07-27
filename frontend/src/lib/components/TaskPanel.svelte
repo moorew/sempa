@@ -9,6 +9,7 @@
   import LinkPreview from './LinkPreview.svelte';
   import RichText from './RichText.svelte';
   import JiraTaskSection from './JiraTaskSection.svelte';
+  import { jiraStatus } from '$lib/stores/jiraStatus.svelte';
   import { Pencil } from 'lucide-svelte';
   import SempaSelect from '$lib/components/ui/SempaSelect.svelte';
   import SempaDatePicker from '$lib/components/ui/SempaDatePicker.svelte';
@@ -787,7 +788,7 @@
       </div>
 
       <!-- Jira issue: live status + transitions + link -->
-      {#if task?.source === 'jira'}
+      {#if task?.source === 'jira' && jiraStatus.connected}
         <div class="py-4" style="border-bottom: 1px solid var(--sempa-border);">
           <JiraTaskSection {task} />
         </div>
@@ -1044,7 +1045,7 @@
       </div>
 
       <!-- Jira issue: live status + transitions + link -->
-      {#if isEdit && task?.source === 'jira'}
+      {#if isEdit && task?.source === 'jira' && jiraStatus.connected}
         <JiraTaskSection {task} />
       {/if}
 
