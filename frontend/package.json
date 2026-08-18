@@ -1,6 +1,6 @@
 {
   "name": "sempa-frontend",
-  "version": "1.25.0",
+  "version": "1.25.1",
   "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
@@ -62,9 +62,9 @@
       "cookie": "^0.7.0"
     },
     "jsdom": {
-      "undici": "^7.28.0"
+      "undici": "^7.29.0"
     },
     "postcss": "^8.5.23",
-    "brace-expansion": "^5.0.8"
+    "brace-expansion": "^5.0.9"
   }
 }
