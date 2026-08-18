@@ -48,9 +48,10 @@ updates:
       # glib < 0.20 (RUSTSEC-2024-0429) is a transitive, Linux-only dep of Tauri's
       # gtk-rs 0.18 stack (via gio-sys/gdk). Tauri 2.x caps it at 0.18.5, so the
       # 0.20.0 fix is unreachable and the security-update job fails on every run.
-      # We don't ship a Linux desktop build, so this code isn't in our artifacts.
-      # Revisit when Tauri moves to gtk-rs 0.20. Same applies to the rest of the
-      # capped gtk stack.
+      # (We DO ship Linux desktop builds now — AppImage/deb/rpm/Flatpak — so this
+      # code IS in those artifacts; the ignore is here because the fix is
+      # unreachable, not because the code is absent.) Revisit when Tauri moves to
+      # gtk-rs 0.20. Same applies to the rest of the capped gtk stack.
       - dependency-name: "glib"
       - dependency-name: "gdk"
       - dependency-name: "gdk-sys"
@@ -72,6 +73,15 @@ updates:
     # has time to be yanked before it reaches us (supply-chain hygiene).
     cooldown:
       default-days: 7
+    groups:
+      # One PR for ALL action bumps, majors included — deliberately unfiltered,
+      # unlike the other ecosystems. Actions from the same repo must move in
+      # lockstep: github/codeql-action/init and .../analyze arrived as separate
+      # PRs and each failed on its own with "Loaded a configuration file for
+      # version X, but running version Y", because neither could pass without
+      # the other. Grouping is what makes them mergeable.
+      actions:
+        patterns: ["*"]
 
   # Base image in the Dockerfile
   - package-ecosystem: docker
