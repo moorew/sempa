@@ -1,6 +1,6 @@
 [package]
 name = "sempa"
-version = "1.25.0"
+version = "1.25.2"
 edition = "2021"
 description = "sempa — calm, local-first task management"
 

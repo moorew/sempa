@@ -6,6 +6,143 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.25.2] - 2026-08-18
+
+### Security
+- **Patched six Go standard-library advisories.** The release image now builds
+  the server on Go 1.26.6 (was 1.26.4) and `go.mod` pins 1.25.13 (was 1.25.12),
+  covering GO-2026-6218 (`net/url`), GO-2026-6090 (`crypto/tls`), GO-2026-6089
+  (`net/http`), GO-2026-6088 (`encoding/xml`), GO-2026-5972 (`encoding/asn1`)
+  and GO-2026-5026 (IDNA Punycode). All six were reachable from code Sempa
+  actually calls — TLS on every outbound integration, XML in the CalDAV client,
+  ASN.1 in the FCM service-account key parse. Self-hosted, single-user impact
+  was low; patched regardless.
+
+## [1.25.1] - 2026-08-18
+
+### Security
+- **Patched build-time dependency advisories:** undici 7.29.0 (five advisories,
+  one high), brace-expansion 5.0.9 (high), plus @sveltejs/kit 2.70.2 and nanoid
+  3.3.18. All of these live in dev/build tooling — none ships in the server
+  binary or the web bundle.
+
+## [1.25.0] - 2026-07-27
+
+### Added
+- **The "how long did that take?" prompt now learns and stops asking.** It had
+  back-off heuristics but no memory, so teaching it that email takes ~12 minutes
+  changed nothing about the next prompt. Buckets now *graduate*: once a kind of
+  work has 5+ logged samples **and** those durations agree, the prompt stops and
+  the learned median is filled in automatically. The consistency gate matters as
+  much as the count — "deep work" spanning 10 minutes to 4 hours keeps asking,
+  because there a median is a number rather than a prediction. Auto-logging
+  isn't silent: a toast says what was logged and offers one-tap **Change**, and
+  correcting it writes a fresh sample so a wrong guess improves the next one.
+  Settings → Time tracking shows what's been learned, what's still learning, and
+  what's too variable, with per-bucket "Ask again".
+- **Failing backups now surface in the app.** Google Drive backups had been
+  failing silently since 2026-07-26 with nothing but a server log line to show
+  for it. A backup that has quietly stopped is the worst kind, so failures are
+  now visible in-app with a prompt to reconnect.
+
+### Security
+- Bumped quinn-proto to 0.11.15 (GHSA-4w2j-m93h-cj5j).
+
+## [1.24.6] - 2026-07-27
+
+### Fixed
+- **Deleting a recurring template no longer orphans its series.** The delete
+  hard-removed the row, and `recurrence_origin_id ... ON DELETE SET NULL` then
+  silently detached every instance the series had ever generated. Nothing
+  surfaced the damage: generation stopped, so the task vanished once the last
+  pre-seeded instance rolled past, and because every rollover/dedup query keys
+  on `recurrence_origin_id IS NOT NULL`, the detached rows became permanently
+  unmanageable — stale copies stuck in the past, duplicate pairs frozen on a day
+  forever. Templates are now *retired* (status flips to `cancelled`, the row
+  stays), so the foreign key never fires and instances keep their link. Open,
+  untouched instances are removed with proper tombstones; done or customised
+  ones stay as history.
+- **Jira surfaces are hidden when the integration isn't connected.** The
+  day-board tab, mobile tile, command-palette entry, backlog filter chip and
+  TaskPanel section previously rendered a "Failed to load the Jira issue" error
+  block for disconnected users. Settings → Integrations and the onboarding card
+  stay visible — they're how you connect.
+- Recurring templates no longer show up in the Backlog on Tauri/Capacitor (they
+  never did on web), and the local-first week/source listings gained the
+  cancelled filter their siblings already had.
+
+## [1.24.5] - 2026-07-22
+
+### Security
+- **Whole-instance backup and restore are now admin-only.** A backup download
+  bundles every user's data (and, depending on mode, integration secrets) and a
+  restore replaces all global data — both were reachable by any authenticated
+  non-admin. Single-user installs with auth disabled pass through unchanged.
+- **Hardened attachment downloads.** Responses now set
+  `X-Content-Type-Options: nosniff`, serve only a strict allowlist of inert
+  types inline (SVG/HTML/XML/JS and unknown types force a download), and
+  sandbox non-inline responses via CSP — so an uploaded `text/html` can no
+  longer execute under the app origin.
+- **Closed the last SSRF gaps.** Link-preview image fetching now uses the
+  guarded transport it was bypassing, and the iCal fetcher gained the same
+  connect-time private-IP guard and redirect re-validation.
+- **Client IPs can no longer be spoofed past the login throttles.** Replaced
+  chi's unconditional `RealIP` with a trusted-proxy-aware version that only
+  honours `X-Forwarded-For`/`X-Real-IP` from configured or default
+  private/loopback peers. New `SEMPA_TRUSTED_PROXIES` setting.
+- Bumped the tar override to ^7.5.19 (CVE-2026-59873, CVE-2026-59874).
+
+## [1.24.4] - 2026-07-22
+
+### Security
+- Patched `crypto/tls` (GO-2026-5856) via the Go toolchain, plus serde_with and
+  brace-expansion dependency advisories.
+
+## [1.24.3] - 2026-07-08
+
+### Fixed
+- The day board's add-task pill now flows under the last card instead of
+  pinning to the column's bottom edge.
+
+## [1.24.2] - 2026-07-08
+
+### Fixed
+- **"Today" rolls over at midnight.** Any surface left open across the day
+  boundary kept showing yesterday — worst on the always-on Dock cockpit, which
+  never restarts, so it would insist it was Tuesday on a Wednesday. A new
+  reactive clock store ticks the date over at the boundary (30s heartbeat plus
+  visibility/focus for backgrounded windows) and is wired into every long-lived
+  surface: day board, Dock cockpit, home, schedule, widget, MiniCalendar and
+  overdue styling.
+
+### Changed
+- The per-day "Add task" button is now a compact accent pill that reveals on
+  column hover or keyboard focus, and stays visible on touch devices.
+
+## [1.24.1] - 2026-07-07
+
+### Fixed
+- Pinned vite to ~8.0.16 — 8.1.0 is a broken release that fails a clean install
+  and breaks the production build.
+
+## [1.24.0] - 2026-07-07
+
+### Added
+- **Plan objectives for any week.** The plan wizard gained a prev/next week
+  switcher and a "This week" reset. No backend limitation ever existed — the
+  restriction was purely navigational.
+
+### Changed
+- The day board's header "New task" button and the `n` shortcut now file the
+  task on the day you're *viewing* rather than always today, matching what the
+  per-column add buttons already did.
+- The scheduled-time picker seeds to the current 30-minute slot when you pick a
+  date (rather than 12:00 AM), and open selects scroll to the selected option
+  instead of pinning to the top.
+- Suggested tags that already exist in your tag set are applied automatically,
+  capped at three, instead of being demoted to tap-to-add. The backend prompt
+  was tightened to pick 1–3 genuine matches and avoid over-tagging.
+
 ## [1.23.9] - 2026-07-06
 
 ### Security

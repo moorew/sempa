@@ -3875,7 +3875,7 @@ dependencies = [
 
 [[package]]
 name = "sempa"
-version = "1.25.0"
+version = "1.25.2"
 dependencies = [
  "chrono",
  "gtk",

@@ -1,6 +1,6 @@
 module github.com/clevercode/sempa
 
-go 1.25.12
+go 1.25.13
 
 require (
 	github.com/emersion/go-imap/v2 v2.0.0-beta.8
