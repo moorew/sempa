@@ -17,7 +17,7 @@ RUN npm run build
 # Also native (--platform=$BUILDPLATFORM): the Go toolchain runs un-emulated and
 # CROSS-compiles to the requested arch via GOARCH=$TARGETARCH. CGO is off and the
 # SQLite driver is pure Go (modernc.org/sqlite), so cross-compilation is clean.
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine@sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83 AS backend-builder
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine@sha256:4c9fe60190a2a3350ddc51de80d0224b8a6698d12bdfc999fee45ea9d6c46dbc AS backend-builder
 ARG TARGETOS
 ARG TARGETARCH
 WORKDIR /app
