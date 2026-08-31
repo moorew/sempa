@@ -99,6 +99,12 @@ type sessionEntry struct {
 	// today/week task + plan reads and task add/toggle, nothing sensitive — so a
 	// lost/stolen device token can't take over the account. See deviceAllowed.
 	Scope string
+	// Renewed is when this session was last minted or slid forward. In-memory
+	// only (not persisted): after a restart it's reset to load time, which just
+	// delays the next renewal by up to sessionRenewInterval. Tracked explicitly
+	// rather than derived from Expires so a session minted with a non-default
+	// TTL is never silently promoted to a full sessionTTL.
+	Renewed time.Time
 }
 
 type sessionStore struct {
@@ -118,6 +124,21 @@ func newSessionStore(database *sql.DB) *sessionStore {
 }
 
 const sessionTimeFmt = time.RFC3339
+
+// sessionTTL is the lifetime of a normal login session, and also the amount a
+// session is extended by each time it renews (see get).
+const sessionTTL = 30 * 24 * time.Hour
+
+// sessionRenewInterval throttles sliding renewal: an actively-used session is
+// extended back to a full sessionTTL at most once per interval. Without this,
+// every authenticated request would issue a DB write.
+//
+// Why sliding renewal exists at all: sessions used to hard-expire at exactly
+// sessionTTL with no way to refresh, and reap() then DELETEd the row. A client
+// that had been syncing happily for 30 days would start getting 401s forever,
+// with no signal to re-authenticate — it just retried the dead token every 30s.
+// A client in regular use should never be logged out.
+const sessionRenewInterval = 24 * time.Hour
 
 func (s *sessionStore) loadFromDB() {
 	if s.db == nil {
@@ -144,7 +165,7 @@ func (s *sessionStore) loadFromDB() {
 		if scope == "" {
 			scope = "full"
 		}
-		s.entries[id] = sessionEntry{Email: email, UserID: userID, Expires: t, Scope: scope}
+		s.entries[id] = sessionEntry{Email: email, UserID: userID, Expires: t, Scope: scope, Renewed: time.Now()}
 	}
 }
 
@@ -160,7 +181,7 @@ func (s *sessionStore) createScoped(ttl time.Duration, email, userID, scope stri
 	id := hex.EncodeToString(b)
 	expires := time.Now().Add(ttl)
 	s.mu.Lock()
-	s.entries[id] = sessionEntry{Email: email, UserID: userID, Expires: expires, Scope: scope}
+	s.entries[id] = sessionEntry{Email: email, UserID: userID, Expires: expires, Scope: scope, Renewed: time.Now()}
 	s.mu.Unlock()
 	if s.db != nil {
 		_, _ = s.db.Exec(
@@ -170,12 +191,31 @@ func (s *sessionStore) createScoped(ttl time.Duration, email, userID, scope stri
 	return id
 }
 
+// get returns the session for id, and slides its expiry forward when it's in
+// active use. Only "full" sessions renew — a "device" (Dock) token has a
+// deliberately short TTL so a lost device stops working, and must still expire.
 func (s *sessionStore) get(id string) (sessionEntry, bool) {
+	now := time.Now()
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	e, ok := s.entries[id]
-	if !ok || time.Now().After(e.Expires) {
+	if !ok || now.After(e.Expires) {
+		s.mu.Unlock()
 		return sessionEntry{}, false
+	}
+	var renewed time.Time
+	if e.Scope == "full" && now.Sub(e.Renewed) >= sessionRenewInterval {
+		renewed = now.Add(sessionTTL)
+		e.Expires = renewed
+		e.Renewed = now
+		s.entries[id] = e
+	}
+	s.mu.Unlock()
+
+	// Persist outside the lock — this runs at most once per sessionRenewInterval
+	// per session, so it stays off the hot path for normal requests.
+	if !renewed.IsZero() && s.db != nil {
+		_, _ = s.db.Exec(`UPDATE sessions SET expires_at = ? WHERE id = ?`,
+			renewed.UTC().Format(sessionTimeFmt), id)
 	}
 	return e, true
 }
@@ -451,7 +491,7 @@ func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 	}
 	h.throttle.reset(key)
 
-	id := h.sessions.create(30*24*time.Hour, email, userID)
+	id := h.sessions.create(sessionTTL, email, userID)
 	h.setSessionCookie(w, id)
 	respond(w, http.StatusOK, map[string]any{"status": "ok", "token": id})
 }
@@ -778,7 +818,7 @@ func (h *authHandler) googleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := h.sessions.create(30*24*time.Hour, user.Email, user.ID)
+	id := h.sessions.create(sessionTTL, user.Email, user.ID)
 
 	if stateVal.AppReturnPrefix != "" {
 		// Native client (Android custom scheme, Tauri WebView, or Capacitor WebView):

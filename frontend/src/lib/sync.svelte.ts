@@ -49,6 +49,11 @@ export interface SyncState {
     pending: number;
     lastSyncedAt: string | null;
     lastError: string | null;
+    // The server is reachable but rejecting our credentials (401/403) — the
+    // session lapsed or was revoked. Distinct from `lastError` because it needs
+    // a *different* remedy: no amount of retrying fixes it, the user has to sign
+    // in again. Retries continue regardless so queued edits are never dropped.
+    needsAuth: boolean;
 }
 
 function createSyncStore() {
@@ -57,6 +62,7 @@ function createSyncStore() {
     let pending = $state(0);
     let lastSyncedAt = $state<string | null>(null);
     let lastError = $state<string | null>(null);
+    let needsAuth = $state(false);
     // Bumped whenever a pull writes ≥1 row to the local DB. The UI reads the
     // local DB once on mount, so without a reactive signal a freshly-pulled
     // dataset would stay invisible until a manual reload. Pages/layout watch
@@ -69,6 +75,7 @@ function createSyncStore() {
         get pending() { return pending; },
         get lastSyncedAt() { return lastSyncedAt; },
         get lastError() { return lastError; },
+        get needsAuth() { return needsAuth; },
         get revision() { return revision; },
         _set(p: Partial<SyncState>) {
             if (p.online !== undefined) online = p.online;
@@ -76,6 +83,7 @@ function createSyncStore() {
             if (p.pending !== undefined) pending = p.pending;
             if (p.lastSyncedAt !== undefined) lastSyncedAt = p.lastSyncedAt;
             if (p.lastError !== undefined) lastError = p.lastError;
+            if (p.needsAuth !== undefined) needsAuth = p.needsAuth;
         },
         _bumpRevision() { revision += 1; },
     };
@@ -93,11 +101,29 @@ function authHeader(): Record<string, string> {
 async function serverFetch(path: string, init?: RequestInit): Promise<Response> {
     const base = getServerUrl();
     const token = isTauri() ? getTauriToken() : getNativeToken();
-    return fetch(`${base}${path}`, {
+    const res = await fetch(`${base}${path}`, {
         ...init,
         headers: { 'Content-Type': 'application/json', ...authHeader(), ...(init?.headers ?? {}) },
         credentials: token ? 'omit' : 'include',
     });
+    noteAuthOutcome(path, res);
+    return res;
+}
+
+// Central place every authenticated call passes through, so a lapsed session is
+// noticed wherever it first bites (push or pull) instead of only at one caller.
+//
+// /health is deliberately excluded: it's unauthenticated and answers 200 even
+// when we're signed out — that's exactly why a dead session looked "online, but
+// erroring" rather than "signed out" (reachable() only ever probed /health).
+function noteAuthOutcome(path: string, res: Response): void {
+    if (path.startsWith('/api/v1/health')) return;
+    const failed = res.status === 401 || res.status === 403;
+    if (failed) {
+        if (!syncStore.needsAuth) syncStore._set({ needsAuth: true });
+    } else if (res.ok && syncStore.needsAuth) {
+        syncStore._set({ needsAuth: false });
+    }
 }
 
 // ── Server change payload (mirror of db.SyncChanges) ─────────────────────────
@@ -314,6 +340,9 @@ function orderTasksByDependency(tasks: Record<string, unknown>[]): Record<string
 async function pullChanges(): Promise<void> {
     const since = (await getSyncState(CURSOR_KEY)) ?? '';
     const res = await serverFetch(`/api/v1/sync/changes?since=${encodeURIComponent(since)}`);
+    if (res.status === 401 || res.status === 403) {
+        throw new Error('Your session has expired. Sign in again to resume syncing — nothing queued is lost.');
+    }
     if (!res.ok) throw new Error(`pull failed: ${res.status}`);
     const changes: ServerChanges = await res.json();
 

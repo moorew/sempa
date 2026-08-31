@@ -14,7 +14,8 @@
   import { overlay } from '$lib/stores/overlay.svelte';
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { RefreshCw, Cloud, CloudOff, CloudUpload, CloudAlert } from 'lucide-svelte';
+  import { RefreshCw, Cloud, CloudOff, CloudUpload, CloudAlert, LogIn } from 'lucide-svelte';
+  import { goto } from '$app/navigation';
 
   let nowMs = $state(Date.now());
   let hovered = $state(false);
@@ -37,6 +38,10 @@
 
   const syncState = $derived(
     syncStore.syncing ? 'syncing'
+    // Ranked above 'error': a lapsed session surfaces as a sync error too, but
+    // retrying can't fix it. Showing the generic red "Sync error" is what left a
+    // signed-out client looping silently instead of asking for a sign-in.
+    : syncStore.needsAuth ? 'signedout'
     : syncStore.lastError ? 'error'
     : !syncStore.online ? 'offline'
     : syncStore.pending > 0 ? 'pending'
@@ -45,6 +50,7 @@
 
   const label = $derived(
     syncState === 'syncing' ? 'Syncing…'
+    : syncState === 'signedout' ? 'Signed out — tap to sign in'
     : syncState === 'error' ? 'Sync error — tap'
     : syncState === 'offline' ? (syncStore.pending > 0 ? `Offline · ${syncStore.pending} pending` : 'Offline')
     : syncState === 'pending' ? `${syncStore.pending} to sync`
@@ -52,7 +58,7 @@
   );
 
   const color = $derived(
-    syncState === 'error' ? '#dc2626'
+    syncState === 'signedout' || syncState === 'error' ? '#dc2626'
     : syncState === 'offline' ? 'var(--sempa-text-dim)'
     : syncState === 'pending' ? 'var(--sempa-accent)'
     : 'var(--sempa-text-soft)',
@@ -61,7 +67,8 @@
   // Non-synced states keep the label visible (they need attention). The "synced"
   // resting state hides it — except for a short flash right after a sync.
   const persistent = $derived(
-    syncState === 'syncing' || syncState === 'pending' || syncState === 'error' || syncState === 'offline',
+    syncState === 'syncing' || syncState === 'pending' || syncState === 'error'
+      || syncState === 'offline' || syncState === 'signedout',
   );
   const showLabel = $derived(hovered || persistent || flash);
 
@@ -83,7 +90,9 @@
   });
 
   function onClick() {
-    if (syncStore.lastError) {
+    if (syncStore.needsAuth) {
+      void goto('/login');
+    } else if (syncStore.lastError) {
       alert(`Sync error:\n\n${syncStore.lastError}`);
     } else {
       runSync();
@@ -107,7 +116,9 @@
       onfocus={() => (hovered = true)}
       onblur={() => (hovered = false)}
       disabled={syncStore.syncing}
-      title={syncState === 'error'
+      title={syncState === 'signedout'
+        ? 'Your session expired. Sign in again to resume syncing — local changes are safe and will upload once you do.'
+        : syncState === 'error'
         ? (syncStore.lastError ?? 'Sync error')
         : syncState === 'offline'
         ? 'No connection to your sempa server. Changes are saved locally and will sync when you reconnect.'
@@ -117,6 +128,8 @@
       <span class="flex h-4 w-4 items-center justify-center" class:spin={syncStore.syncing}>
         {#if syncState === 'syncing'}
           <RefreshCw size={15} strokeWidth={1.75} />
+        {:else if syncState === 'signedout'}
+          <LogIn size={15} strokeWidth={1.75} />
         {:else if syncState === 'error'}
           <CloudAlert size={15} strokeWidth={1.75} />
         {:else if syncState === 'offline'}

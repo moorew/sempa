@@ -6,6 +6,24 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.25.3] - 2026-08-31
+
+### Fixed
+- **Sessions no longer expire out from under a client in daily use.** Login
+  sessions had a hard 30-day lifetime with no way to refresh: once it lapsed the
+  server deleted the row, and the client — which has no re-auth path — simply
+  retried the dead token every 30 seconds, forever. A session now slides its
+  expiry forward while it's being used (at most one renewal a day, so it costs
+  nothing on the hot path). Paired-device tokens for the Dock are deliberately
+  excluded and still expire on their short schedule, so a lost device stops
+  working.
+- **A signed-out client now says so.** A lapsed session showed up as a generic
+  red "Sync error", because the reachability probe only checks the unauthenticated
+  `/health` endpoint — which answers fine when you're signed out. The sync
+  indicator now distinguishes the case: it reads "Signed out — tap to sign in"
+  and takes you to the login screen. Queued offline edits are kept, not dropped,
+  and upload once you sign back in.
+
 ## [1.25.2] - 2026-08-18
 
 ### Security
