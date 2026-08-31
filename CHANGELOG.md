@@ -6,6 +6,17 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.25.4] - 2026-08-31
+
+### Fixed
+- **Re-pinned vite to 8.0.x, which unbreaks a cache-cold production build.**
+  vite 8.1+ pairs with a rolldown that rejects one of vite's own plugins
+  (`value "builtin:vite-wasm-fallback" does not match any variant of enum
+  BindingBuiltinPluginName`), aborting `vite build`. It was pinned for this
+  reason in 1.24.1; the grouped dependency update in #108 lifted the pin back to
+  8.2.1. Dependabot is now configured to leave vite alone, so it can't be raised
+  again without a deliberate change. No user-visible behaviour change.
+
 ## [1.25.3] - 2026-08-31
 
 ### Fixed

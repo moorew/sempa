@@ -29,6 +29,19 @@ updates:
       npm-deps:
         patterns: ["*"]
         update-types: [minor, patch]
+    ignore:
+      # vite must stay on 8.0.x. 8.1+ pairs with a rolldown that rejects vite's
+      # own plugin ("value `builtin:vite-wasm-fallback` does not match any
+      # variant of enum `BindingBuiltinPluginName`"), killing `vite build`.
+      # It only breaks on a FRESH `npm ci` — Docker and CI — so a stale local
+      # node_modules builds fine and `npm run check` stays green, which is what
+      # makes it slip through review. This has bitten twice: pinned in v1.24.1,
+      # then swept back up by the npm-deps group in #108, breaking every release
+      # build. Before unpinning, verify with `docker compose build`.
+      - dependency-name: vite
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-major
 
   # Tauri (Rust) desktop shell
   - package-ecosystem: cargo

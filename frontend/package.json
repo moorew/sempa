@@ -1,6 +1,6 @@
 {
   "name": "sempa-frontend",
-  "version": "1.25.3",
+  "version": "1.25.4",
   "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
@@ -30,7 +30,7 @@
     "svelte-check": "^4.7.5",
     "tailwindcss": "^4.0.0",
     "typescript": "^6.0.3",
-    "vite": "~8.2.1",
+    "vite": "~8.0.16",
     "vitest": "^4.1.8"
   },
   "dependencies": {
