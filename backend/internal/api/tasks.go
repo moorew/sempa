@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -161,6 +162,17 @@ func (h *taskHandler) create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	owner := ownerID(r)
+
+	// Idempotent replay: an offline client whose create already landed (or was
+	// restored server-side) must not hit a PK conflict, which 500s and wedges its
+	// outbox forever. Hand back the existing row so the outbox drains.
+	if req.ID != "" {
+		if existing, gerr := h.store.Get(r.Context(), req.ID, owner); gerr == nil {
+			respond(w, http.StatusOK, existing)
+			return
+		}
+	}
+
 	// A sub-task is exactly as visible as its parent: inherit the parent's shared
 	// state (and ignore any client-supplied value to keep them in lockstep).
 	shared := req.Shared
@@ -192,6 +204,7 @@ func (h *taskHandler) create(w http.ResponseWriter, r *http.Request) {
 		Shared:              shared,
 	})
 	if err != nil {
+		slog.Error("create task failed", "id", req.ID, "err", err)
 		respondError(w, http.StatusInternalServerError, "failed to create task")
 		return
 	}
