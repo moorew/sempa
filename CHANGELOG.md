@@ -6,6 +6,20 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.25.6] - 2026-10-06
+
+### Security
+- **Patched vulnerable dependencies.** Capacitor 8.5.2 (critical advisory),
+  plus fixed versions of `@xmldom/xmldom`, `devalue`, `undici`,
+  `brace-expansion`, `uuid` and `source-map-js`, and Go's
+  `golang.org/x/crypto` 0.57. Open Dependabot alerts are now zero.
+
+### Changed
+- **Dependency refresh.** Tauri 2.12 with matching plugin versions on the
+  desktop shell, Go 1.26 (from 1.25, which is out of upstream support),
+  Docker base images golang 1.27-alpine and alpine 3.24.2, and vitest 5 and
+  jsdom 30 for the test suite. No user-visible behaviour change.
+
 ## [1.25.4] - 2026-08-31
 
 ### Fixed
