@@ -76,7 +76,7 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
       - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0  # v1.8+ needs Go 1.26; go.mod is 1.25 + GOTOOLCHAIN=local
       - name: Run govulncheck
         working-directory: backend
         run: govulncheck ./...

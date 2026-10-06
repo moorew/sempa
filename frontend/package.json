@@ -23,7 +23,7 @@
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2",
-    "@vitest/ui": "^4.1.10",
+    "@vitest/ui": "^4.1.11",
     "esbuild": "^0.28.2",
     "jsdom": "^29.1.1",
     "svelte": "^5.56.8",
@@ -31,16 +31,16 @@
     "tailwindcss": "^4.0.0",
     "typescript": "^6.0.3",
     "vite": "~8.0.16",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.11"
   },
   "dependencies": {
     "@capacitor-community/sqlite": "^8.1.1",
-    "@capacitor/android": "^8.5.0",
+    "@capacitor/android": "^8.5.1",
     "@capacitor/app": "^8.1.1",
     "@capacitor/browser": "^8.0.4",
-    "@capacitor/cli": "^8.5.0",
+    "@capacitor/cli": "^8.5.1",
     "@capacitor/core": "^8.4.1",
-    "@capacitor/ios": "^8.5.0",
+    "@capacitor/ios": "^8.5.1",
     "@capacitor/local-notifications": "^8.2.1",
     "@capacitor/splash-screen": "^8.0.2",
     "@tauri-apps/api": "^2",
@@ -52,19 +52,22 @@
     "lucide-svelte": "^1.0.1"
   },
   "comments": {
-    "overrides": "Force patched versions of vulnerable transitive deps (all in dev/build-time tooling — Capacitor CLI, xcode project tooling, jsdom's undici under vitest, vite's postcss — none ship in the server or web bundle). Scoped to the offending parent where possible so tools needing newer majors are untouched. postcss and brace-expansion are unscoped because the vulnerable copy is nested several levels deep (vite > postcss; @capacitor/cli > rimraf > glob > minimatch > brace-expansion) and both are backwards-compatible patch bumps."
+    "overrides": "Force patched versions of vulnerable transitive deps (all in dev/build-time tooling \u2014 Capacitor CLI, xcode project tooling, jsdom's undici under vitest, vite's postcss \u2014 none ship in the server or web bundle). Scoped to the offending parent where possible so tools needing newer majors are untouched. postcss, brace-expansion and devalue are unscoped because the vulnerable copy is nested several levels deep (vite > postcss; @capacitor/cli > rimraf > glob > minimatch > brace-expansion) and devalue is shared by svelte + @sveltejs/kit; all are backwards-compatible patch/minor bumps."
   },
   "overrides": {
     "@capacitor/cli": {
-      "tar": "^7.5.19"
+      "tar": "^7.5.19",
+      "@xmldom/xmldom": "^0.9.12",
+      "uuid": "^11.1.1"
     },
     "@sveltejs/kit": {
       "cookie": "^0.7.0"
     },
     "jsdom": {
-      "undici": "^7.29.0"
+      "undici": "^7.30.0"
     },
     "postcss": "^8.5.23",
-    "brace-expansion": "^5.0.9"
+    "brace-expansion": "^5.0.12",
+    "devalue": "^5.9.4"
   }
 }
