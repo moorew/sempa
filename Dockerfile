@@ -17,7 +17,7 @@ RUN npm run build
 # Also native (--platform=$BUILDPLATFORM): the Go toolchain runs un-emulated and
 # CROSS-compiles to the requested arch via GOARCH=$TARGETARCH. CGO is off and the
 # SQLite driver is pure Go (modernc.org/sqlite), so cross-compilation is clean.
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine@sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83 AS backend-builder
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine@sha256:4c9fe60190a2a3350ddc51de80d0224b8a6698d12bdfc999fee45ea9d6c46dbc AS backend-builder
 ARG TARGETOS
 ARG TARGETARCH
 WORKDIR /app
@@ -29,7 +29,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w
 # ── Stage 3: Final image ─────────────────────────────────────────────────────
 # Pinned base (not :latest) so rebuilds are reproducible; Dependabot's docker
 # updates bump it. wget (busybox, already in alpine) backs the health check.
-FROM alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
+FROM alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
 RUN apk --no-cache add ca-certificates tzdata \
     && addgroup -S sempa && adduser -S -G sempa -u 10001 sempa
 WORKDIR /app
