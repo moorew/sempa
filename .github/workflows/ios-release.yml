@@ -22,7 +22,7 @@ permissions:
 jobs:
   build:
     name: Build iOS
-    runs-on: macos-14
+    runs-on: macos-15  # macos-14 images retire 2026-11-02 (brownouts cancel jobs before then)
 
     steps:
       - name: Checkout
