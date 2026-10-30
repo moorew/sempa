@@ -6,6 +6,24 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.27.1] - 2026-10-30
+
+### Changed
+- **More colour, as in the 1.27 concept.** The refresh had leaned too
+  monochrome; this brings back the pops of colour:
+  - Task cards show their **first tag as a soft tinted chip** with its name
+    (any further tags stay as dots), on desktop and Android.
+  - **Android Today** gets a row of **project tiles** in each project's own
+    colour, with open count, progress and due date.
+  - The **task details sheet** lays out date, start, estimate, time logged and
+    project as tiles with tinted icons; the desktop task view tints each detail
+    by kind (date, time, estimate, logged, project, objective).
+  - The **task editor** marks each field with a small tinted icon.
+  - The **schedule** shows a warm "Now" chip, and the roll-over banner stays
+    warm amber in every theme.
+  - Each **list** gets its own soft colour (its project's, or a stable pick from
+    a calm palette).
+
 ## [1.27.0] - 2026-10-30
 
 ### Changed

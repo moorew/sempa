@@ -34,6 +34,8 @@
   import ReflectionCard from '$lib/components/ReflectionCard.svelte';
   import IntentionQuoteCard from '$lib/components/IntentionQuoteCard.svelte';
   import { celebrate } from '$lib/celebrate';
+  import { projectStore } from '$lib/stores/projects.svelte';
+  import { projectProgress, relativeDue, type ProjectProgress } from '$lib/projectProgress';
   import type { DailyPlan } from '$lib/types';
 
   // "date" is used to anchor the week and mark today
@@ -405,6 +407,26 @@
   let deskHeaderH = $state(57);
   // Whether the desktop summary row carries the intention card.
   const showIntention = $derived(prefs.contextualReflections && !!(dayIntention?.trim() || dayReflection?.trim() || isToday(date)));
+
+  // Phone Today: a row of open-project tiles (1.27.1). Progress comes from each
+  // project's own task list, fetched once per project (best-effort, read-only),
+  // the same way the projects index computes it.
+  let projectProg = $state<Record<string, ProjectProgress>>({});
+  const phoneProjects = $derived(projectStore.open.slice(0, 6));
+  let projProgLoaded = new Set<string>();
+  $effect(() => {
+    if (!mobile.value) return;
+    const list = phoneProjects;
+    untrack(() => {
+      for (const p of list) {
+        if (projProgLoaded.has(p.id)) continue;
+        projProgLoaded.add(p.id);
+        api.projects.tasks(p.id)
+          .then((ts) => { projectProg = { ...projectProg, [p.id]: projectProgress(ts ?? [], p.target_date, todayDate) }; })
+          .catch(() => {});
+      }
+    });
+  });
 
   // Time-of-day greeting for the header eyebrow (1.27). Re-evaluates with the
   // clock store so a page left open across midnight doesn't go stale.
@@ -1043,6 +1065,42 @@
     </div>
   {/if}
 
+  <!-- Open projects — soft colour tiles in each project's own colour -->
+  {#if phoneProjects.length}
+    <div class="mb-3">
+      <div class="flex items-baseline justify-between px-5 pb-2">
+        <h2 class="text-[16px] font-extrabold tracking-[-0.02em]" style="color: var(--sempa-text);">Projects</h2>
+        <a href="/projects" class="text-[13px] font-bold" style="color: var(--sempa-accent-ink);">See all</a>
+      </div>
+      <div class="no-scrollbar flex gap-2.5 overflow-x-auto px-4 pb-1" style="-webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;">
+        {#each phoneProjects as p (p.id)}
+          {@const prog = projectProg[p.id]}
+          <a href="/projects/{p.id}"
+             class="tint relative flex h-[112px] w-[156px] shrink-0 flex-col justify-between overflow-hidden rounded-[24px] px-4 py-3.5"
+             style="--tint: {p.color};">
+            <svg width="88" height="88" viewBox="0 0 100 100" fill="none" aria-hidden="true"
+                 class="pointer-events-none absolute -bottom-6 -right-3" style="opacity: .2;">
+              <path d="M22,40 a28,28 0 0 0 56,0" stroke="currentColor" stroke-width="9" stroke-linecap="round"/>
+              <circle cx="50" cy="35" r="7.5" fill="currentColor"/>
+            </svg>
+            <div class="min-w-0">
+              <p class="truncate text-[15px] font-extrabold tracking-[-0.01em]">{p.title || 'Untitled project'}</p>
+              <p class="truncate text-[12px] font-semibold opacity-85">
+                {prog ? `${prog.total - prog.done} open · ${prog.pct}% done` : ' '}
+              </p>
+              {#if p.target_date}
+                <p class="truncate text-[11.5px] font-medium opacity-75">{relativeDue(p.target_date, todayDate)}</p>
+              {/if}
+            </div>
+            <div class="h-1.5 w-[58%] overflow-hidden rounded-full" style="background: color-mix(in srgb, currentColor 18%, transparent);">
+              <div class="h-full rounded-full" style="width: {prog?.pct ?? 0}%; background: {p.color}; transition: width 400ms ease;"></div>
+            </div>
+          </a>
+        {/each}
+      </div>
+    </div>
+  {/if}
+
   <!-- Contextual intention (mobile) -->
   {#if prefs.contextualReflections}
     <div class="px-4 mb-3">
@@ -1052,14 +1110,14 @@
 
   <!-- Rollover banner (mobile) -->
   {#if rolloverTasks.length > 0 && !rolloverDismissed && isToday(date)}
-    <div class="mx-4 mb-3 flex items-center gap-3 rounded-[20px] px-4 py-3 animate-slide-down"
-         style="background: var(--cal-amber-bg); color: var(--cal-amber-fg);">
+    <div class="tint mx-4 mb-3 flex items-center gap-3 rounded-[20px] px-4 py-3 animate-slide-down"
+         style="--tint: #d3a24a;">
       <p class="flex-1 text-[13px] font-semibold">
         <strong>{rolloverTasks.length}</strong> from yesterday
       </p>
       <button onclick={rolloverAll}
               class="h-9 rounded-full px-4 text-[12.5px] font-bold"
-              style="background: var(--sempa-bg-panel); color: var(--cal-amber-fg); box-shadow: var(--sempa-shadow-1);">
+              style="background: var(--sempa-bg-panel); color: color-mix(in srgb, #d3a24a var(--sempa-tint-fg), var(--sempa-text)); box-shadow: var(--sempa-shadow-1);">
         Roll over
       </button>
       <button onclick={() => rolloverDismissed = true} aria-label="Dismiss"
@@ -1314,8 +1372,8 @@
 
     <!-- Rollover banner -->
     {#if rolloverTasks.length > 0 && !rolloverDismissed}
-      <div class="mb-4 flex shrink-0 items-center gap-3 rounded-[20px] px-4 py-3 animate-slide-down"
-           style="background: var(--cal-amber-bg); color: var(--cal-amber-fg);">
+      <div class="tint mb-4 flex shrink-0 items-center gap-3 rounded-[20px] px-4 py-3 animate-slide-down"
+           style="--tint: #d3a24a;">
         <svg class="h-[18px] w-[18px] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
@@ -1325,7 +1383,7 @@
         </p>
         <button onclick={rolloverAll}
                 class="h-9 shrink-0 rounded-full px-4 text-[12.5px] font-bold transition-colors"
-                style="background: var(--sempa-bg-panel); color: var(--cal-amber-fg); box-shadow: var(--sempa-shadow-1);">
+                style="background: var(--sempa-bg-panel); color: color-mix(in srgb, #d3a24a var(--sempa-tint-fg), var(--sempa-text)); box-shadow: var(--sempa-shadow-1);">
           Roll over
         </button>
         <button onclick={() => rolloverDismissed = true} aria-label="Dismiss"

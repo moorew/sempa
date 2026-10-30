@@ -763,49 +763,54 @@
         </h1>
       </div>
 
-      <!-- Meta chips -->
+      <!-- Meta chips (1.27.1): each kind of detail carries its own soft tint —
+           date clay, time sage, estimate sky, logged honey, project in its own
+           colour, objective sage — so the view isn't a row of grey pills. -->
       <div class="flex flex-wrap gap-2 py-4" style="border-bottom: 1px solid var(--sempa-border);">
         {#if task.status === 'in_progress'}
-          <span class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold" style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">● In progress</span>
+          <span class="inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-bold" style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);"><span class="h-1.5 w-1.5 rounded-full" style="background: var(--sempa-accent);"></span>In progress</span>
         {/if}
         {#if task.planned_date}
-          <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs" style="background: var(--sempa-bg-main); border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
-            <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          <span class="tint inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-semibold" style="--tint: #d27a4c;">
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
             {fmtDate(task.planned_date)}
           </span>
         {/if}
         {#if task.scheduled_start}
-          <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs" style="background: var(--sempa-bg-main); border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
-            <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 7v5l3 3"/></svg>
+          <span class="tint inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-semibold" style="--tint: #5f9a6c;">
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 7v5l3 3"/></svg>
             {fmtTime(task.scheduled_start)}{task.scheduled_end ? ` – ${fmtTime(task.scheduled_end)}` : ''}
           </span>
         {/if}
         {#if task.remind_at}
-          <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs"
+          <span class="inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-semibold {reminderFired ? '' : 'tint'}"
                 style={reminderFired
-                  ? 'background: var(--sempa-bg-main); border: 1px solid var(--sempa-border); color: var(--sempa-text-dim);'
-                  : 'background: var(--sempa-accent-bg); color: var(--sempa-accent);'}>
-            <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  ? 'background: var(--sempa-fill); color: var(--sempa-text-soft);'
+                  : '--tint: #d3a24a;'}>
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             {fmtRemind(task.remind_at)}{reminderFired ? ' · rang' : ''}
           </span>
         {/if}
         {#if task.time_estimate_minutes}
-          <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-mono" style="background: var(--sempa-bg-main); border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">~{formatMinutes(task.time_estimate_minutes)}</span>
+          <span class="tint inline-flex h-7 items-center rounded-full px-3 text-xs font-mono font-semibold" style="--tint: #5d8ccc;">~{formatMinutes(task.time_estimate_minutes)}</span>
         {/if}
         {#if task.time_actual_minutes}
-          <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-mono" style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">{formatMinutes(task.time_actual_minutes)} logged</span>
+          <span class="tint inline-flex h-7 items-center rounded-full px-3 text-xs font-mono font-semibold" style="--tint: #d3a24a;">{formatMinutes(task.time_actual_minutes)} logged</span>
         {/if}
         {#if task.recurrence_rule || task.recurrence_origin_id}
-          <span class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs" style="background: var(--sempa-bg-main); border: 1px solid var(--sempa-border); color: var(--sempa-text-dim);">↺ Recurring</span>
+          <span class="inline-flex h-7 items-center gap-1 rounded-full px-3 text-xs font-semibold" style="background: var(--sempa-fill); color: var(--sempa-text-soft);">↺ Recurring</span>
         {/if}
         {#if proj}
-          <a href={`/projects/${proj.id}`} class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs hover:underline"
-             style="background: var(--sempa-bg-main); border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
-            <span class="h-2 w-2 rounded-full" style="background: {proj.color};"></span>{proj.title || 'Untitled project'}
+          <a href={`/projects/${proj.id}`} class="tint inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-bold hover:underline"
+             style="--tint: {proj.color};">
+            <span class="h-2 w-2 rounded-[3px]" style="background: {proj.color};"></span>{proj.title || 'Untitled project'}
           </a>
         {/if}
         {#if objTitle}
-          <span class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs" style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">🎯 {objTitle}</span>
+          <span class="tint inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-bold" style="--tint: #5f9a6c;">
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            {objTitle}
+          </span>
         {/if}
         {#each (task.tags ?? []) as tag}
           <span class="tint inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-bold" style="--tint: {tagStore.colorFor(tag)};"><span class="h-[7px] w-[7px] rounded-full" style="background: {tagStore.colorFor(tag)};"></span>{tag}</span>
@@ -1096,14 +1101,14 @@
       <!-- Date + Estimate -->
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="mb-1.5 block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-date">
+          <label class="mb-1.5 flex items-center gap-2 text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-date"><span class="tint inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[8px]" style="--tint: #d27a4c;" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/></svg></span>
             Due date
           </label>
           <SempaDatePicker id="task-date" bind:value={plannedDate}
                            disabled={!!recurrenceRule} placeholder="No date" />
         </div>
         <div>
-          <label class="mb-1.5 block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-estimate">
+          <label class="mb-1.5 flex items-center gap-2 text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-estimate"><span class="tint inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[8px]" style="--tint: #5d8ccc;" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2"/></svg></span>
             Time estimate
           </label>
           <SempaSelect id="task-estimate" bind:value={estimateMinutes}
@@ -1156,7 +1161,7 @@
 
       <!-- Reminder (remind_at) — styled pickers, no native Android selectors -->
       <div>
-        <label class="mb-1.5 block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-remind-date">
+        <label class="mb-1.5 flex items-center gap-2 text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-remind-date"><span class="tint inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[8px]" style="--tint: #d3a24a;" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>
           Remind me
         </label>
         <div class="flex items-center gap-2">
@@ -1208,7 +1213,7 @@
       <!-- Project (sub-tasks always follow their parent's, so hide it for them) -->
       {#if !task?.parent_task_id && (projectStore.projects.length > 0 || selectedProjectId)}
         <div>
-          <label class="mb-1.5 block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-project">
+          <label class="mb-1.5 flex items-center gap-2 text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-project"><span class="tint inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[8px]" style="--tint: #9a7cc8;" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></span>
             Project
           </label>
           <SempaSelect id="task-project" bind:value={selectedProjectId}
@@ -1219,7 +1224,7 @@
       <!-- Weekly objective -->
       {#if weekObjectives.length > 0}
         <div>
-          <label class="mb-1.5 block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-objective">
+          <label class="mb-1.5 flex items-center gap-2 text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-objective"><span class="tint inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[8px]" style="--tint: #5f9a6c;" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg></span>
             Weekly objective
           </label>
           <SempaSelect id="task-objective" bind:value={selectedObjectiveId}
@@ -1231,7 +1236,7 @@
       <!-- Tags -->
       <div>
         <div class="mb-1.5 flex items-center justify-between gap-2">
-          <label class="block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]">Tags</label>
+          <label class="flex items-center gap-2 text-[12.5px] font-semibold text-[var(--sempa-text-soft)]"><span class="tint inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[8px]" style="--tint: #d27a4c;" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4zM7.5 7.5h.01"/></svg></span>Tags</label>
           <div class="flex items-center gap-2">
             {#if aiTagNotice}
               <span class="text-[11px]" style="color: var(--sempa-text-dim);">{aiTagNotice}</span>
@@ -1355,7 +1360,7 @@
       <!-- Log actual time (edit mode only) -->
       {#if isEdit}
         <div>
-          <label class="mb-1.5 block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-actual">
+          <label class="mb-1.5 flex items-center gap-2 text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-actual"><span class="tint inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[8px]" style="--tint: #d3a24a;" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14l4-4M3.34 19a10 10 0 1 1 17.32 0"/></svg></span>
             Actual time logged
           </label>
           <div class="flex items-center gap-2">
@@ -1465,7 +1470,7 @@
       <!-- Recurrence — in create mode, and when editing a recurring template. -->
       {#if !isEdit || isTemplate}
         <div>
-          <label class="mb-1.5 block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-recurrence">
+          <label class="mb-1.5 flex items-center gap-2 text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-recurrence"><span class="tint inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[8px]" style="--tint: #5f9a6c;" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3"/></svg></span>
             Repeat
           </label>
           <SempaSelect id="task-recurrence" bind:value={recurrenceRule}

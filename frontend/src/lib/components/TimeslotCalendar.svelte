@@ -434,30 +434,35 @@
 <div class="flex h-full flex-col overflow-hidden">
   <div class="shrink-0 px-4 pb-2 pt-1">
     <div class="flex items-center justify-between gap-2">
-      <p class="text-[15px] font-extrabold tracking-[-0.02em]" style="color: var(--sempa-text);"
-         title="Drag tasks here to place them on the timeline">
-        Schedule
-      </p>
+      <div class="flex min-w-0 items-center gap-2">
+        <p class="text-[15px] font-extrabold tracking-[-0.02em]" style="color: var(--sempa-text);"
+           title="Drag tasks here to place them on the timeline">
+          Schedule
+        </p>
+        {#if nowPx !== null}
+          <span class="tint chip shrink-0" style="--tint: #d3a24a; font-weight: 700;">
+            <span class="h-1.5 w-1.5 rounded-full" style="background: var(--sempa-amber);"></span>Now {nowLabel}
+          </span>
+        {/if}
+      </div>
       <div class="flex shrink-0 items-center gap-1">
         {#if eventCalendars.length > 0}
           <button onclick={() => showFilter = !showFilter}
-                  class="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[11.5px] font-semibold transition-colors"
+                  class="flex h-8 w-8 items-center justify-center rounded-full transition-colors"
                   style="background: var(--sempa-fill); color: var(--sempa-text-soft); {showFilter ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);' : ''}"
-                  title="Show or hide calendars">
-            <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  title="Show or hide calendars" aria-label="Show or hide calendars" aria-expanded={showFilter}>
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/>
             </svg>
-            Calendars
           </button>
         {/if}
         <a href="/settings/calendars"
-           class="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[11.5px] font-semibold transition-colors"
+           class="flex h-8 w-8 items-center justify-center rounded-full transition-colors"
            style="background: var(--sempa-fill); color: var(--sempa-text-soft);"
-           title="Calendar settings">
-          <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+           title="Calendar settings" aria-label="Calendar settings">
+          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
-          Settings
         </a>
       </div>
     </div>
