@@ -24,8 +24,12 @@ type SyncChanges struct {
 	WeekReviews []WeekReview    `json:"week_reviews"`
 	Lists       []List          `json:"lists"`
 	ListItems   []ListItem      `json:"list_items"`
-	Deletions   []Tombstone     `json:"deletions"`
-	Cursor      string          `json:"cursor"`
+	// Projects (migration 028). Apply statuses → projects before anything that
+	// references a project.
+	ProjectStatuses []ProjectStatus `json:"project_statuses"`
+	Projects        []Project       `json:"projects"`
+	Deletions       []Tombstone     `json:"deletions"`
+	Cursor          string          `json:"cursor"`
 }
 
 // SyncStore powers the pull side of offline sync and records deletions.
@@ -88,14 +92,16 @@ func (s *SyncStore) ClearTombstone(ctx context.Context, entityType, entityID str
 // id-keyed last-write-wins upsert and by the live SSE channel.
 func (s *SyncStore) Changes(ctx context.Context, since, ownerID string) (SyncChanges, error) {
 	out := SyncChanges{
-		Tasks:       []Task{},
-		Objectives:  []Objective{},
-		Plans:       []DailyPlan{},
-		Tags:        []TagDefinition{},
-		WeekReviews: []WeekReview{},
-		Lists:       []List{},
-		ListItems:   []ListItem{},
-		Deletions:   []Tombstone{},
+		Tasks:           []Task{},
+		Objectives:      []Objective{},
+		Plans:           []DailyPlan{},
+		Tags:            []TagDefinition{},
+		WeekReviews:     []WeekReview{},
+		Lists:           []List{},
+		ListItems:       []ListItem{},
+		ProjectStatuses: []ProjectStatus{},
+		Projects:        []Project{},
+		Deletions:       []Tombstone{},
 	}
 
 	// Capture the server clock up front; it becomes the next cursor.
@@ -233,6 +239,40 @@ func (s *SyncStore) Changes(ctx context.Context, since, ownerID string) (SyncCha
 				return out, err
 			}
 			out.ListItems = append(out.ListItems, it)
+		}
+		rows.Close()
+	}
+
+	// Project statuses (global — no scope, like tags)
+	psf, psa := build("", nil)
+	if rows, err := s.db.QueryContext(ctx,
+		`SELECT `+projectStatusCols+` FROM project_statuses`+psf+` ORDER BY updated_at`, psa...); err != nil {
+		return out, err
+	} else {
+		for rows.Next() {
+			st, err := scanProjectStatus(rows)
+			if err != nil {
+				rows.Close()
+				return out, err
+			}
+			out.ProjectStatuses = append(out.ProjectStatuses, st)
+		}
+		rows.Close()
+	}
+
+	// Projects (shareable)
+	prf, pra := build(vsFrag, vsArgs)
+	if rows, err := s.db.QueryContext(ctx,
+		`SELECT `+projectCols+` FROM projects`+prf+` ORDER BY updated_at`, pra...); err != nil {
+		return out, err
+	} else {
+		for rows.Next() {
+			p, err := scanProject(rows)
+			if err != nil {
+				rows.Close()
+				return out, err
+			}
+			out.Projects = append(out.Projects, p)
 		}
 		rows.Close()
 	}

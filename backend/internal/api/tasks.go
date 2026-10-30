@@ -46,6 +46,7 @@ type createTaskRequest struct {
 	RecurrenceRule      *string  `json:"recurrence_rule"`
 	RoughlyAt           *string  `json:"roughly_at"`
 	Shared              bool     `json:"shared"`
+	ProjectID           *string  `json:"project_id"`
 }
 
 type updateTaskRequest struct {
@@ -67,6 +68,7 @@ type updateTaskRequest struct {
 	RemindAt            *string  `json:"remind_at"`
 	RecurrenceRule      *string  `json:"recurrence_rule"` // editing a recurring template's schedule
 	Shared              *bool    `json:"shared"`          // Private/Shared toggle
+	ProjectID           *string  `json:"project_id"`      // "" unlinks; an id links; omitted = unchanged
 }
 
 func (h *taskHandler) list(w http.ResponseWriter, r *http.Request) {
@@ -175,10 +177,13 @@ func (h *taskHandler) create(w http.ResponseWriter, r *http.Request) {
 
 	// A sub-task is exactly as visible as its parent: inherit the parent's shared
 	// state (and ignore any client-supplied value to keep them in lockstep).
+	// Likewise it lives in its parent's project.
 	shared := req.Shared
+	projectID := emptyToNil(req.ProjectID)
 	if req.ParentTaskID != nil && *req.ParentTaskID != "" {
 		if parent, perr := h.store.Get(r.Context(), *req.ParentTaskID, owner); perr == nil {
 			shared = parent.Shared
+			projectID = parent.ProjectID
 		}
 	}
 
@@ -202,6 +207,7 @@ func (h *taskHandler) create(w http.ResponseWriter, r *http.Request) {
 		RoughlyAt:           req.RoughlyAt,
 		OwnerID:             owner,
 		Shared:              shared,
+		ProjectID:           projectID,
 	})
 	if err != nil {
 		slog.Error("create task failed", "id", req.ID, "err", err)
@@ -270,6 +276,12 @@ func (h *taskHandler) update(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Shared != nil {
 		task.Shared = *req.Shared
+	}
+	projectChanged := false
+	if req.ProjectID != nil {
+		next := emptyToNil(req.ProjectID)
+		projectChanged = !sameStr(task.ProjectID, next)
+		task.ProjectID = next
 	}
 
 	// Track whether meaningful content changed on a recurring instance
@@ -377,6 +389,11 @@ func (h *taskHandler) update(w http.ResponseWriter, r *http.Request) {
 				_ = h.sync.RecordRevocation(r.Context(), "task", sid, owner)
 			}
 		}
+	}
+
+	// A task's sub-tasks and recurring instances follow it between projects.
+	if projectChanged {
+		_ = h.store.SetDescendantsProject(r.Context(), updated.ID, updated.ProjectID)
 	}
 
 	// Propagate template edits (title, tags, estimate, schedule) to future

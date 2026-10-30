@@ -65,11 +65,13 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 
 	syncStore := db.NewSyncStore(database)
 	objectiveStore := db.NewObjectiveStore(database)
+	projectStore := db.NewProjectStore(database)
 	attachments := &attachmentHandler{
 		store:      db.NewAttachmentStore(database),
 		blobs:      blobs,
 		tasks:      db.NewTaskStore(database),
 		objectives: objectiveStore,
+		projects:   projectStore,
 		hub:        hub,
 	}
 
@@ -86,6 +88,7 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 	}
 	objectives := &objectiveHandler{store: objectiveStore, hub: hub, attach: attachments, sync: syncStore}
 	lists := &listHandler{store: listStore, hub: hub, sync: syncStore}
+	projects := &projectHandler{store: projectStore, hub: hub, sync: syncStore, attach: attachments}
 
 	backupSvc := backup.NewService(database, cfg.DBPath, blobs.Dir())
 	backups := &backupHandler{
@@ -216,6 +219,25 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 			r.Route("/list-items", func(r chi.Router) {
 				r.Patch("/{id}", lists.updateItem)
 				r.Delete("/{id}", lists.deleteItem)
+			})
+
+			// Projects — long-lived containers for tasks, objectives and lists.
+			r.Route("/projects", func(r chi.Router) {
+				r.Get("/", projects.list)
+				r.Post("/", projects.create)
+				r.Get("/{id}", projects.get)
+				r.Patch("/{id}", projects.update)
+				r.Delete("/{id}", projects.delete)
+				r.Get("/{id}/attachments", attachments.list("project"))
+				r.Post("/{id}/attachments", attachments.upload("project"))
+			})
+			// User-customisable project statuses (Settings → Projects).
+			r.Route("/project-statuses", func(r chi.Router) {
+				r.Get("/", projects.statuses)
+				r.Post("/", projects.createStatus)
+				r.Post("/reorder", projects.reorderStatuses)
+				r.Patch("/{id}", projects.updateStatus)
+				r.Delete("/{id}", projects.deleteStatus)
 			})
 
 			r.Route("/tasks", func(r chi.Router) {
