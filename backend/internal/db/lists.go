@@ -126,8 +126,8 @@ func (s *ListStore) Get(ctx context.Context, id, ownerID string) (List, error) {
 }
 
 type CreateListParams struct {
-	ID      string
-	Name    string
+	ID        string
+	Name      string
 	TaskID    *string
 	ProjectID *string
 	OwnerID   string

@@ -48,8 +48,8 @@ func (h *listHandler) get(w http.ResponseWriter, r *http.Request) {
 
 func (h *listHandler) create(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		ID     string  `json:"id"`
-		Name   string  `json:"name"`
+		ID        string  `json:"id"`
+		Name      string  `json:"name"`
 		TaskID    *string `json:"task_id"`
 		ProjectID *string `json:"project_id"`
 		Shared    bool    `json:"shared"`
