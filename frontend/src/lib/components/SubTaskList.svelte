@@ -17,7 +17,8 @@
 
   async function load() {
     loading = true;
-    try { subtasks = await api.tasks.listByParent(parentId); }
+    // ?? []: an older server encodes "no sub-tasks" as null.
+    try { subtasks = (await api.tasks.listByParent(parentId)) ?? []; }
     catch { /* ignore */ }
     finally { loading = false; }
   }

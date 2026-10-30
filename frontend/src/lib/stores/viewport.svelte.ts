@@ -60,7 +60,11 @@ class ViewportStore {
     // keyboardHeight/height stale and sheets stuck at half size. Blurring an
     // input (or focusing one) closes/opens the keyboard; re-measure a couple of
     // times as the animation settles so the values always recover.
-    const recheck = () => { update(); setTimeout(update, 150); setTimeout(update, 400); };
+    //
+    // The first measure is a microtask, not synchronous: removing a focused
+    // element (e.g. closing a dialog) fires focusout *during* Svelte's DOM
+    // teardown, and writing $state there throws state_unsafe_mutation.
+    const recheck = () => { queueMicrotask(update); setTimeout(update, 150); setTimeout(update, 400); };
     window.addEventListener('focusout', recheck);
     window.addEventListener('focusin', recheck);
 

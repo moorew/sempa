@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,8 +13,20 @@ func respond(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if v != nil {
-		_ = json.NewEncoder(w).Encode(v)
+		_ = json.NewEncoder(w).Encode(emptyIfNilSlice(v))
 	}
+}
+
+// emptyIfNilSlice turns a nil slice into an empty one so it encodes as [] rather
+// than null. Several stores return a nil slice for "no rows", and a client doing
+// `rows.length` / `rows.filter` on null crashes — on web that took down the whole
+// task panel (SubTaskList on a task with no sub-tasks).
+func emptyIfNilSlice(v any) any {
+	rv := reflect.ValueOf(v)
+	if rv.Kind() == reflect.Slice && rv.IsNil() {
+		return reflect.MakeSlice(rv.Type(), 0, 0).Interface()
+	}
+	return v
 }
 
 func respondError(w http.ResponseWriter, status int, msg string) {
