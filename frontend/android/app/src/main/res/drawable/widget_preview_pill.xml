@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Terracotta pill used for the mock "Pause"/"Done" buttons in widget previews. -->
+<!-- Soft accent pill (fully rounded) for the "Pause"/"Done" buttons and task rows
+     in the Focus widget and widget previews. Tinted to accent-bg at runtime. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="#EDE5DD" />
-    <corners android:radius="10dp" />
+    <solid android:color="#F6E5D9" />
+    <corners android:radius="999dp" />
 </shape>

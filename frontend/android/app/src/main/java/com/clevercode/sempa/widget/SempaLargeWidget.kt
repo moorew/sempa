@@ -72,7 +72,7 @@ private fun LargeWidgetContent(
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .cornerRadius(20.dp)
+            .cornerRadius(24.dp)
             .background(SempaWidgetTheme.surface)
             .padding(16.dp)
             .clickable(actionStartActivity<MainActivity>()),
@@ -116,7 +116,7 @@ private fun LargeWidgetContent(
             Row(
                 modifier = GlanceModifier
                     .fillMaxWidth()
-                    .cornerRadius(12.dp)
+                    .cornerRadius(18.dp)
                     .background(SempaWidgetTheme.surfaceVariant)
                     .padding(horizontal = 8.dp, vertical = 10.dp),
             ) {
@@ -194,8 +194,8 @@ private fun LargeWidgetContent(
             Box(
                 modifier = GlanceModifier
                     .fillMaxWidth()
-                    .height(3.dp)
-                    .cornerRadius(2.dp)
+                    .height(6.dp)
+                    .cornerRadius(3.dp)
                     .background(SempaWidgetTheme.outline),
             ) {
                 if (pct > 0) {
@@ -203,7 +203,7 @@ private fun LargeWidgetContent(
                         modifier = GlanceModifier
                             .fillMaxHeight()
                             .width((pct * 2.8).dp)
-                            .cornerRadius(2.dp)
+                            .cornerRadius(3.dp)
                             .background(SempaWidgetTheme.primary),
                     ) {}
                 }

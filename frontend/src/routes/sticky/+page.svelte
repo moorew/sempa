@@ -47,8 +47,10 @@
 
 <svelte:head>
   <style>
-    body {
-      background: transparent !important;
+    /* Opaque window (transparent:false in Rust): paint the note colour behind
+       everything so no window backing can show at the edges. */
+    html, body {
+      background: var(--sempa-accent-bg) !important;
       overflow: hidden;
       margin: 0;
       padding: 0;
@@ -82,14 +84,15 @@
 </div>
 
 <style>
+  /* A sticky note is a soft accent block that fills its window edge-to-edge
+     (the OS rounds the window); controls are round, the body is the note. */
   .sticky-note {
     display: flex;
     flex-direction: column;
     width: 100%;
     height: 100vh;
     background: var(--sempa-accent-bg);
-    border: 1px solid var(--sempa-border);
-    border-radius: 8px;
+    border-radius: 0;
     overflow: hidden;
     font-family: 'Plus Jakarta Sans', sans-serif;
   }
@@ -98,7 +101,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 4px 6px;
+    padding: 6px 6px 2px;
     cursor: grab;
     flex-shrink: 0;
   }
@@ -107,18 +110,19 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     border: none;
-    border-radius: 4px;
+    border-radius: 999px;
     background: transparent;
     color: var(--sempa-text-soft);
     cursor: pointer;
-    transition: background 120ms;
+    transition: background 120ms, color 120ms;
   }
 
   .sticky-btn:hover {
-    background: rgba(0, 0, 0, 0.08);
+    background: color-mix(in srgb, var(--sempa-accent) 14%, transparent);
+    color: var(--sempa-text);
   }
 
   .sticky-btn:active {
@@ -126,29 +130,34 @@
   }
 
   .sticky-btn.pinned {
-    color: var(--sempa-accent);
+    background: var(--sempa-bg-panel);
+    box-shadow: var(--sempa-shadow-1);
+    color: var(--sempa-accent-ink);
   }
 
   .sticky-btn.close:hover {
-    background: rgba(200, 50, 50, 0.15);
+    background: color-mix(in srgb, #c53030 16%, transparent);
     color: #c53030;
   }
 
   .sticky-content {
     flex: 1;
-    padding: 8px 10px;
+    padding: 6px 14px 14px;
     border: none;
     background: transparent;
     color: var(--sempa-text);
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: 500;
     font-family: 'Plus Jakarta Sans', sans-serif;
     line-height: 1.6;
     resize: none;
     outline: none;
   }
+  /* The note is the field; no global input focus ring around the whole window. */
+  .sticky-content:focus-visible { box-shadow: none; }
 
   .sticky-content::placeholder {
-    color: var(--sempa-text-dim);
+    color: color-mix(in srgb, var(--sempa-accent-ink) 55%, var(--sempa-text-dim));
   }
 
   .sticky-resize {

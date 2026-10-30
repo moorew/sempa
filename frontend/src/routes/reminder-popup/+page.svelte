@@ -88,8 +88,7 @@
     <div class="card">
       <!-- Body = click to open the task -->
       <button class="open" onclick={() => act('open', c.taskId)} title="Open task">
-        <span class="bar"></span>
-        <span class="icon"><Bell size={15} strokeWidth={2} /></span>
+        <span class="icon"><Bell size={16} strokeWidth={2.25} /></span>
         <span class="text">
           <span class="label">Reminder</span>
           <span class="title">{c.title}</span>
@@ -98,7 +97,7 @@
       </button>
 
       <div class="actions">
-        <button class="act-btn" onclick={() => act('done', c.taskId)} title="Mark done" aria-label="Mark done">
+        <button class="act-btn act-done" onclick={() => act('done', c.taskId)} title="Mark done" aria-label="Mark done">
           <Check size={15} strokeWidth={2.25} />
         </button>
         <button class="act-btn" onclick={() => act('dismiss', c.taskId)} title="Dismiss" aria-label="Dismiss">
@@ -110,10 +109,12 @@
 </div>
 
 <style>
-  /* Opaque dark background painted immediately so there's never a white/grey
-     flash before the panel renders, and never a bare window region. */
+  /* Opaque background painted immediately so there's never a white/grey flash
+     before the panel renders, and never a bare window region. Follows the
+     active theme (the window shares the main app's localStorage, so app.html
+     sets data-theme + .dark before first paint). */
   :global(html), :global(body) {
-    background: #1c1612 !important;
+    background: var(--sempa-bg-panel) !important;
     margin: 0;
     overflow: hidden;
   }
@@ -123,7 +124,7 @@
      rounds the window corners for us, and painting every pixel means no grey. */
   .popup-root {
     width: 100vw;
-    background: #1c1612;
+    background: var(--sempa-bg-panel);
     overflow: hidden;
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   }
@@ -136,81 +137,74 @@
     align-items: stretch;
   }
   .card:not(:last-child) {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    border-bottom: 1px solid var(--sempa-border);
   }
 
   .open {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     flex: 1 1 auto;
     min-width: 0;
-    padding: 11px 4px 11px 0;
+    padding: 12px 4px 12px 14px;
     background: none;
     border: none;
     cursor: pointer;
     text-align: left;
     transition: background 120ms ease;
   }
-  .open:hover { background: rgba(255, 255, 255, 0.04); }
+  .open:hover { background: var(--sempa-fill); }
 
-  .bar {
-    width: 4px;
-    align-self: stretch;
-    margin-right: 8px;
-    background: #cc6e3a; /* terracotta accent */
-    flex: 0 0 auto;
-  }
-
+  /* Soft accent block instead of a thin stripe. */
   .icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
-    border-radius: 8px;
-    background: rgba(204, 110, 58, 0.16);
-    color: #e08a54;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: var(--sempa-accent-bg);
+    color: var(--sempa-accent-ink);
     flex: 0 0 auto;
   }
 
-  .text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+  .text { display: flex; flex-direction: column; gap: 1px; min-width: 0; line-height: 1.25; }
   .label {
-    font-size: 9.5px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #e08a54;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--sempa-accent-ink);
   }
   .title {
-    font-size: 13.5px;
-    font-weight: 600;
-    color: #f4efe9;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--sempa-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .sub { font-size: 11px; color: rgba(244, 239, 233, 0.55); }
+  .sub { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; color: var(--sempa-text-dim); }
 
   .actions {
     display: flex;
     align-items: center;
-    gap: 2px;
-    padding: 0 8px 0 4px;
+    gap: 6px;
+    padding: 0 12px 0 6px;
     flex: 0 0 auto;
   }
   .act-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
     border: none;
-    background: none;
-    color: rgba(244, 239, 233, 0.55);
+    background: var(--sempa-fill);
+    color: var(--sempa-text-soft);
     cursor: pointer;
     transition: background 120ms ease, color 120ms ease;
   }
-  .act-btn:hover { background: rgba(255, 255, 255, 0.08); color: #f4efe9; }
+  .act-btn:hover { background: var(--sempa-track); color: var(--sempa-text); }
+  .act-done:hover { background: var(--sempa-success-bg); color: var(--sempa-success); }
 </style>

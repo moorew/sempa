@@ -48,7 +48,7 @@ private fun MediumWidgetContent(total: Int, done: Int, tasks: List<Pair<String, 
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .cornerRadius(20.dp)
+            .cornerRadius(24.dp)
             .background(SempaWidgetTheme.surface)
             .padding(16.dp)
             .clickable(actionStartActivity<MainActivity>()),
@@ -100,8 +100,8 @@ private fun MediumWidgetContent(total: Int, done: Int, tasks: List<Pair<String, 
             Box(
                 modifier = GlanceModifier
                     .fillMaxWidth()
-                    .height(3.dp)
-                    .cornerRadius(2.dp)
+                    .height(6.dp)
+                    .cornerRadius(3.dp)
                     .background(SempaWidgetTheme.outline),
             ) {
                 if (pct > 0) {
@@ -109,7 +109,7 @@ private fun MediumWidgetContent(total: Int, done: Int, tasks: List<Pair<String, 
                         modifier = GlanceModifier
                             .fillMaxHeight()
                             .width((pct * 2.8).dp)
-                            .cornerRadius(2.dp)
+                            .cornerRadius(3.dp)
                             .background(SempaWidgetTheme.primary),
                     ) {}
                 }
@@ -167,9 +167,9 @@ private fun MediumWidgetContent(total: Int, done: Int, tasks: List<Pair<String, 
                 modifier = GlanceModifier
                     .fillMaxWidth()
                     .padding(top = 4.dp)
-                    .cornerRadius(10.dp)
+                    .cornerRadius(18.dp)
                     .background(SempaWidgetTheme.accentBg)
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
                     .clickable(actionStartActivity<MainActivity>()),
                 verticalAlignment = Alignment.Vertical.CenterVertically,
             ) {

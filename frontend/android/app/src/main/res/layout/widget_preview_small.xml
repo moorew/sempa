@@ -12,7 +12,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Today"
-        android:textColor="#B0A498"
+        android:textColor="#8A7B6E"
         android:textSize="12sp" />
 
     <TextView
@@ -28,6 +28,6 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
         android:text="tasks done"
-        android:textColor="#B0A498"
+        android:textColor="#8A7B6E"
         android:textSize="11sp" />
 </LinearLayout>
