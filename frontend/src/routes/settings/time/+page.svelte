@@ -34,45 +34,37 @@
 
 <svelte:head><title>Time tracking — Sempa</title></svelte:head>
 
-<div class="mx-auto flex h-full max-w-xl flex-col" style="padding-top: env(safe-area-inset-top, 0px);">
+<div class="mx-auto flex h-full max-w-[640px] flex-col" style="padding-top: env(safe-area-inset-top, 0px);">
   <!-- Header -->
-  <div class="flex items-center gap-3 px-5 py-4" style="border-bottom: 1px solid var(--sempa-border);">
-    <a href="/settings/accounts"
-       class="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm transition-colors"
-       style="color: var(--sempa-accent);">
-      <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" d="M19 12H5m7-7-7 7 7 7"/>
+  <div class="px-5 pt-6 pb-2 sm:px-8 sm:pt-8">
+    <a href="/settings/accounts" class="set-back">
+      <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="m15 18-6-6 6-6"/>
       </svg>
       Settings
     </a>
-    <h1 class="text-base font-semibold" style="color: var(--sempa-text);">Time tracking</h1>
+    <h1 class="set-title type-page">Time tracking</h1>
   </div>
 
-  <div class="flex-1 overflow-y-auto px-5 py-6 pb-20">
+  <div class="flex-1 overflow-y-auto px-5 pt-4 pb-20 sm:px-8">
     {#snippet sectionLabel(text: string)}
-      <p class="mb-3 mt-7 first:mt-0" style="font-family:monospace; font-size: 12px; font-weight:700;
-         color:var(--sempa-text-dim)">{text}</p>
+      <h2 class="set-heading">{text}</h2>
     {/snippet}
 
     {#snippet toggleRow(label: string, desc: string, value: boolean, onChange: () => void)}
-      <button onclick={onChange}
-        class="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-colors"
-        style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
-        <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium" style="color: var(--sempa-text);">{label}</p>
-          <p class="mt-0.5 text-xs" style="color: var(--sempa-text-dim);">{desc}</p>
-        </div>
-        <span class="relative h-6 w-10 shrink-0 rounded-full transition-colors"
-          style="background: {value ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
-          <span class="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all"
-            style="left: {value ? '1.25rem' : '0.125rem'};"></span>
+      <button onclick={onChange} role="switch" aria-checked={value}
+        class="set-row set-row-link">
+        <span class="set-row-main">
+          <span class="set-label block">{label}</span>
+          <span class="set-desc block">{desc}</span>
         </span>
+        <span class="set-switch" data-on={value}></span>
       </button>
     {/snippet}
 
     <!-- Completion capture -->
     {@render sectionLabel('Completion capture')}
-    <div class="flex flex-col gap-2">
+    <div class="set-group">
       {@render toggleRow(
         'Ask how long a task took',
         'When you complete a task without the focus timer, pop a quick prompt to log the time. This builds your planned-vs-actual profile.',
@@ -91,35 +83,35 @@
 
     <!-- What Sempa has learned -->
     {@render sectionLabel('Learned times')}
-    <div class="rounded-xl px-4 py-3.5"
-         style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
-      <p class="text-xs leading-relaxed" style="color: var(--sempa-text-dim);">
-        After you’ve logged a kind of task {LEARN_MIN_SAMPLES} times and the durations agree,
-        Sempa stops asking and fills the time in for you. Kinds of work that vary a
-        lot keep asking — an average of 10 minutes and 4 hours isn’t worth guessing.
-      </p>
-
-      {#if learnedBuckets.length === 0 && learningBuckets.length === 0}
-        <p class="mt-3 text-xs" style="color: var(--sempa-text-dim);">
-          Nothing logged yet. Answer a few completion prompts and they’ll show up here.
+    <div class="set-group">
+      <div class="set-block">
+        <p class="set-desc" style="margin-top: 0;">
+          After you’ve logged a kind of task {LEARN_MIN_SAMPLES} times and the durations agree,
+          Sempa stops asking and fills the time in for you. Kinds of work that vary a
+          lot keep asking — an average of 10 minutes and 4 hours isn’t worth guessing.
         </p>
-      {/if}
+
+        {#if learnedBuckets.length === 0 && learningBuckets.length === 0}
+          <p class="set-meta mt-3">
+            Nothing logged yet. Answer a few completion prompts and they’ll show up here.
+          </p>
+        {/if}
+      </div>
 
       {#each learnedBuckets as b (b.key)}
         {@const meta = bucketByKey(b.key)}
-        <div class="mt-3 flex items-center gap-3">
+        <div class="set-row set-row-compact">
           <span class="text-base leading-none">{meta.emoji}</span>
-          <div class="min-w-0 flex-1">
-            <p class="truncate text-sm" style="color: var(--sempa-text);">
-              {meta.label} · <strong>{formatMinutes(b.median)}</strong>
+          <div class="set-row-main">
+            <p class="set-label truncate">
+              {meta.label} · <span class="font-mono" style="font-size: 13px;">{formatMinutes(b.median)}</span>
             </p>
-            <p class="text-[11px]" style="color: var(--sempa-text-dim);">
+            <p class="set-desc">
               Learned from {b.samples} logged {b.samples === 1 ? 'task' : 'tasks'}
             </p>
           </div>
           <button onclick={() => timeProfile.forget(b.key)}
-                  class="shrink-0 rounded-md px-2 py-1 text-xs font-medium transition-colors"
-                  style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
+                  class="set-btn-quiet set-btn-sm">
             Ask again
           </button>
         </div>
@@ -127,11 +119,11 @@
 
       {#each learningBuckets as b (b.key)}
         {@const meta = bucketByKey(b.key)}
-        <div class="mt-3 flex items-center gap-3">
+        <div class="set-row set-row-compact">
           <span class="text-base leading-none opacity-50">{meta.emoji}</span>
-          <div class="min-w-0 flex-1">
-            <p class="truncate text-sm" style="color: var(--sempa-text-soft);">{meta.label}</p>
-            <p class="text-[11px]" style="color: var(--sempa-text-dim);">
+          <div class="set-row-main">
+            <p class="set-label truncate" style="color: var(--sempa-text-soft);">{meta.label}</p>
+            <p class="set-desc">
               {#if timeProfile.isForgotten(b.key)}
                 Re-teaching — will stop asking once it’s consistent again
               {:else if b.samples < LEARN_MIN_SAMPLES}
@@ -143,8 +135,7 @@
           </div>
           {#if timeProfile.isForgotten(b.key)}
             <button onclick={() => timeProfile.relearn(b.key)}
-                    class="shrink-0 rounded-md px-2 py-1 text-xs font-medium transition-colors"
-                    style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
+                    class="set-btn-quiet set-btn-sm">
               Undo
             </button>
           {/if}
@@ -154,7 +145,7 @@
 
     <!-- Day capacity -->
     {@render sectionLabel('Day capacity')}
-    <div class="flex flex-col gap-2">
+    <div class="set-group">
       {@render toggleRow(
         'Warn when a day is overloaded',
         'A subtle hint appears when a day’s planned time runs over your limit — when you set a task’s time, and on the day view. No pop-ups.',
@@ -162,17 +153,16 @@
         timeTracking.toggleCapacityEnabled,
       )}
       {#if timeTracking.capacityEnabled}
-        <div class="flex items-center justify-between rounded-xl px-4 py-3.5"
-          style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
-          <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium" style="color: var(--sempa-text);">Hours per day</p>
-            <p class="mt-0.5 text-xs" style="color: var(--sempa-text-dim);">How much focused work fits in a realistic day.</p>
+        <div class="set-row">
+          <div class="set-row-main">
+            <p class="set-label">Hours per day</p>
+            <p class="set-desc">How much focused work fits in a realistic day.</p>
           </div>
           <input type="number" min="0.5" max="24" step="0.5"
             value={(timeTracking.capacityMinutes / 60).toString()}
             onchange={(e) => timeTracking.setCapacityMinutes(Math.round((+(e.currentTarget as HTMLInputElement).value || 6) * 60))}
-            class="w-16 rounded px-2 py-1 text-right text-sm"
-            style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
+            aria-label="Hours per day"
+            class="set-input set-input-num" />
         </div>
         {@render toggleRow(
           'Judge by realistic time',
@@ -185,72 +175,68 @@
 
     <!-- Default times per activity -->
     {@render sectionLabel('Default times by activity')}
-    <p class="-mt-1 mb-3 text-xs" style="color: var(--sempa-text-dim);">
+    <p class="set-desc -mt-1 mb-3 px-1.5">
       Sempa auto-detects the kind of work from a task’s title and pre-fills these
       durations. Adjust any that don’t match how you work.
     </p>
-    <div class="overflow-hidden rounded-xl" style="border: 1px solid var(--sempa-border);">
-      {#each ACTIVITY_BUCKETS.filter(b => b.key !== 'other') as b, i}
-        <div class="flex items-center gap-3 px-4 py-2.5"
-          style="background: var(--sempa-bg-panel); {i > 0 ? 'border-top: 1px solid var(--sempa-border);' : ''}">
-          <span class="text-lg">{b.emoji}</span>
-          <span class="flex-1 text-sm" style="color: var(--sempa-text);">{b.label}</span>
+    <div class="set-group">
+      {#each ACTIVITY_BUCKETS.filter(b => b.key !== 'other') as b}
+        <div class="set-row set-row-compact">
+          <span class="text-lg leading-none">{b.emoji}</span>
+          <span class="set-row-main set-label">{b.label}</span>
           <input type="number" min="1" max="480" value={timeTracking.defaultMinutesFor(b.key)}
             onchange={(e) => timeTracking.setBucketMinutes(b.key, Math.max(1, Math.min(480, +(e.currentTarget as HTMLInputElement).value || b.defaultMinutes)))}
-            class="w-16 rounded px-2 py-1 text-right text-sm"
-            style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
-          <span class="text-xs" style="color: var(--sempa-text-dim);">min</span>
+            aria-label="{b.label} minutes"
+            class="set-input set-input-num" />
+          <span class="set-meta w-7">min</span>
         </div>
       {/each}
     </div>
 
     <!-- Pomodoro durations -->
     {@render sectionLabel('Focus timer')}
-    <div class="flex flex-col gap-3 rounded-xl px-4 py-4"
-      style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
-      <label class="flex items-center justify-between text-sm" style="color: var(--sempa-text-soft);">
-        Focus length
+    <div class="set-group">
+      <label class="set-row set-row-compact">
+        <span class="set-row-main set-label">Focus length</span>
         <input type="number" min="1" max="120" bind:value={workMins} onchange={savePomo}
-          class="w-16 rounded px-2 py-1 text-right text-sm"
-          style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
+          class="set-input set-input-num" />
+        <span class="set-meta w-7">min</span>
       </label>
-      <label class="flex items-center justify-between text-sm" style="color: var(--sempa-text-soft);">
-        Short break
+      <label class="set-row set-row-compact">
+        <span class="set-row-main set-label">Short break</span>
         <input type="number" min="1" max="60" bind:value={shortMins} onchange={savePomo}
-          class="w-16 rounded px-2 py-1 text-right text-sm"
-          style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
+          class="set-input set-input-num" />
+        <span class="set-meta w-7">min</span>
       </label>
-      <label class="flex items-center justify-between text-sm" style="color: var(--sempa-text-soft);">
-        Long break
+      <label class="set-row set-row-compact">
+        <span class="set-row-main set-label">Long break</span>
         <input type="number" min="1" max="60" bind:value={longMins} onchange={savePomo}
-          class="w-16 rounded px-2 py-1 text-right text-sm"
-          style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
+          class="set-input set-input-num" />
+        <span class="set-meta w-7">min</span>
       </label>
     </div>
 
     <!-- Insights + walkthrough -->
     {@render sectionLabel('Help')}
-    <a href="/insights"
-      class="mb-2 flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-colors"
-      style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
-      <Gauge size={18} style="color: var(--sempa-accent);" />
-      <div class="flex-1">
-        <p class="text-sm font-medium" style="color: var(--sempa-text);">View your time insights</p>
-        <p class="mt-0.5 text-xs" style="color: var(--sempa-text-dim);">See your planned-vs-actual patterns by activity and tag.</p>
-      </div>
-      <svg class="h-4 w-4" style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
-      </svg>
-    </a>
-    <button onclick={() => timeTracking.openWalkthrough()}
-      class="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-colors"
-      style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
-      <Clock size={18} style="color: var(--sempa-accent);" />
-      <div class="flex-1">
-        <p class="text-sm font-medium" style="color: var(--sempa-text);">Replay the intro</p>
-        <p class="mt-0.5 text-xs" style="color: var(--sempa-text-dim);">Watch the time-tracking walkthrough again.</p>
-      </div>
-      <Play size={16} style="color: var(--sempa-text-dim);" />
-    </button>
+    <div class="set-group">
+      <a href="/insights" class="set-row set-row-link">
+        <span class="set-icon"><Gauge size={18} /></span>
+        <span class="set-row-main">
+          <span class="set-label block">View your time insights</span>
+          <span class="set-desc block">See your planned-vs-actual patterns by activity and tag.</span>
+        </span>
+        <svg class="set-chevron h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
+        </svg>
+      </a>
+      <button onclick={() => timeTracking.openWalkthrough()} class="set-row set-row-link">
+        <span class="set-icon"><Clock size={18} /></span>
+        <span class="set-row-main">
+          <span class="set-label block">Replay the intro</span>
+          <span class="set-desc block">Watch the time-tracking walkthrough again.</span>
+        </span>
+        <span class="set-chevron"><Play size={16} /></span>
+      </button>
+    </div>
   </div>
 </div>

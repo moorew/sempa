@@ -100,15 +100,15 @@
     onclick={() => (open = !open)}
     aria-haspopup="listbox"
     aria-expanded={open}
-    class="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm outline-none transition-colors"
-    style="background: var(--sempa-bg-nav); border: 1px solid var(--sempa-border);
-           color: {hasValue ? 'var(--sempa-text)' : 'var(--sempa-text-dim)'};">
+    class="sempa-select-trigger flex w-full items-center justify-between gap-2 px-3.5 text-sm outline-none"
+    data-open={open}
+    style="color: {hasValue ? 'var(--sempa-text)' : 'var(--sempa-text-dim)'};">
     <span class="flex min-w-0 items-center gap-2 truncate">
       {#if selected?.icon}<span class="shrink-0">{selected.icon}</span>{/if}{#if selected?.color}<span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background: {selected.color};"></span>{/if}
-      <span class="truncate">{selected ? selected.label : placeholder}</span>
+      <span class="truncate" style="font-weight: {hasValue ? 600 : 500};">{selected ? selected.label : placeholder}</span>
     </span>
     <span class="shrink-0 transition-transform" style="transform: rotate({open ? 180 : 0}deg); color: var(--sempa-text-dim);">
-      <ChevronDown size={16} strokeWidth={2} />
+      <ChevronDown size={16} strokeWidth={2.2} />
     </span>
   </button>
 
@@ -120,23 +120,28 @@
       <div class="sempa-select-sheet" role="listbox" aria-label={placeholder}>
         <!-- Drag handle pill -->
         <div class="flex justify-center pt-3 pb-2">
-          <div class="h-1 w-9 rounded-full" style="background: var(--sempa-border);"></div>
+          <div class="h-1.5 w-10 rounded-full" style="background: var(--sempa-track);"></div>
         </div>
-        <div bind:this={scrollEl} class="overflow-y-auto" style="max-height: 60vh;">
-          {#each options as opt, i}
+        <div bind:this={scrollEl} class="overflow-y-auto px-2" style="max-height: 60vh;">
+          {#each options as opt}
             {@const isSel = opt.value === value}
             <button
               type="button"
               role="option"
               aria-selected={isSel}
               onclick={() => choose(opt)}
-              class="flex w-full items-center gap-3 px-5 text-left text-[15px]"
-              style="min-height: 52px; color: {isSel ? 'var(--sempa-accent)' : 'var(--sempa-text)'};
-                     {i > 0 ? 'border-top: 1px solid var(--sempa-border);' : ''}">
+              class="sempa-select-row flex w-full items-center gap-3 px-4 text-left text-[15px]"
+              style="min-height: 52px; border-radius: 14px;
+                     color: {isSel ? 'var(--sempa-accent-ink)' : 'var(--sempa-text)'};
+                     font-weight: {isSel ? 700 : 500};
+                     {isSel ? 'background: var(--sempa-accent-bg);' : ''}">
               {#if isSel}
-                <span class="shrink-0" style="color: var(--sempa-accent);"><Check size={20} strokeWidth={2.5} /></span>
+                <span class="flex shrink-0 items-center justify-center rounded-full"
+                      style="width: 22px; height: 22px; background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);">
+                  <Check size={14} strokeWidth={3} />
+                </span>
               {:else}
-                <span class="shrink-0 rounded-full" style="width: 20px; height: 20px; border: 2px solid var(--sempa-border);"></span>
+                <span class="shrink-0 rounded-full" style="width: 22px; height: 22px; border: 2px solid var(--sempa-track);"></span>
               {/if}
               {#if opt.icon}<span class="shrink-0">{opt.icon}</span>{/if}{#if opt.color}<span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background: {opt.color};"></span>{/if}
               <span class="truncate">{opt.label}</span>
@@ -158,8 +163,9 @@
             role="option"
             aria-selected={isSel}
             onclick={() => choose(opt)}
-            class="sempa-select-row flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
-            style="color: {isSel ? 'var(--sempa-accent)' : 'var(--sempa-text)'};">
+            class="sempa-select-row flex w-full items-center gap-2 px-2.5 py-2 text-left text-sm"
+            style="color: {isSel ? 'var(--sempa-accent-ink)' : 'var(--sempa-text)'}; font-weight: {isSel ? 700 : 500};
+                   {isSel ? 'background: var(--sempa-accent-bg);' : ''}">
             <span class="flex h-4 w-4 shrink-0 items-center justify-center" style="color: var(--sempa-accent);">
               {#if isSel}<Check size={15} strokeWidth={2.5} />{/if}
             </span>
@@ -173,26 +179,49 @@
 </div>
 
 <style>
-  /* Desktop inline dropdown — absolute, BELOW the top nav (z-dropdown < z-top-nav). */
+  /* Trigger — a filled field (radius 14) with the accent focus ring. */
+  .sempa-select-trigger {
+    min-height: 40px;
+    border-radius: 14px;
+    background: var(--sempa-fill);
+    border: 1px solid var(--sempa-border);
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+  }
+  .sempa-select-trigger:hover { border-color: color-mix(in srgb, var(--sempa-accent) 35%, var(--sempa-border)); }
+  .sempa-select-trigger[data-open="true"],
+  .sempa-select-trigger:focus-visible {
+    outline: none;
+    border-color: var(--sempa-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--sempa-accent) 18%, transparent);
+  }
+  @media (pointer: coarse) { .sempa-select-trigger { min-height: 44px; } }
+
+  /* Desktop inline dropdown — absolute, BELOW the top nav (z-dropdown < z-top-nav).
+     A raised popover: radius 16, shadow-2, rows inset with their own rounding. */
   .sempa-select-menu {
     position: absolute;
-    top: calc(100% + 4px);
+    top: calc(100% + 6px);
     left: 0;
     right: 0;
+    min-width: 160px;
     z-index: var(--z-dropdown, 30);
     max-height: 16rem;
     overflow-y: auto;
-    border-radius: 0.5rem;
-    border: 1px solid var(--sempa-border);
-    background: var(--sempa-bg-nav);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    padding: 6px;
+    border-radius: 16px;
+    background: var(--sempa-bg-panel);
+    box-shadow: var(--sempa-shadow-2);
     animation: sempa-fade-in 140ms ease both;
   }
   .sempa-select-row {
+    border-radius: 10px;
     transition: background-color 120ms ease;
   }
   .sempa-select-row:hover {
-    background: color-mix(in srgb, var(--sempa-accent) 12%, transparent);
+    background: var(--sempa-fill);
+  }
+  .sempa-select-row[aria-selected="true"]:hover {
+    background: var(--sempa-accent-bg);
   }
 
   /* Mobile bottom sheet — intentionally above everything (z-sheet). */
@@ -200,7 +229,7 @@
     position: fixed;
     inset: 0;
     z-index: var(--z-scrim, 89);
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.4);
     animation: sempa-fade-in 160ms ease both;
   }
   .sempa-select-sheet {
@@ -209,9 +238,9 @@
     right: 0;
     bottom: 0;
     z-index: var(--z-sheet, 90);
-    border-radius: 20px 20px 0 0;
+    border-radius: 28px 28px 0 0;
     background: var(--sempa-bg-panel);
-    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--sempa-shadow-2);
     padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
     animation: sempa-sheet-up 280ms ease-out both;
   }
