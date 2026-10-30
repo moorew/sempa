@@ -242,14 +242,22 @@
               style="width: 8px; height: 8px; border-radius: 2px; background: {project.color};"></span>
       {/if}
       {#if (task.tags ?? []).length}
-        <!-- Tags as colour dots only — scan the list by colour without label
-             clutter. Full names live in the task detail view. Title shows the
-             names on hover/long-press for accessibility. -->
-        <span class="inline-flex items-center" style="gap: 3px; margin-right: 2px;" title={(task.tags ?? []).join(', ')}>
-          {#each task.tags ?? [] as tag}
-            <span class="shrink-0 rounded-full" style="width: 8px; height: 8px; background-color: {tagStore.colorFor(tag)};"></span>
-          {/each}
+        <!-- 1.27.1: the first tag is a soft tinted chip with its name (the colour
+             pop the refresh needed); any further tags stay as dots so busy cards
+             don't fill with labels. Title lists every tag for hover/long-press. -->
+        {@const first = (task.tags ?? [])[0]}
+        <span class="tint chip min-w-0" style="--tint: {tagStore.colorFor(first)}; max-width: 9.5rem;"
+              title={(task.tags ?? []).join(', ')}>
+          <span class="shrink-0 rounded-full" style="width: 6px; height: 6px; background: {tagStore.colorFor(first)};"></span>
+          <span class="truncate">{first}</span>
         </span>
+        {#if (task.tags ?? []).length > 1}
+          <span class="inline-flex items-center" style="gap: 3px; margin-right: 2px;" title={(task.tags ?? []).slice(1).join(', ')}>
+            {#each (task.tags ?? []).slice(1) as tag}
+              <span class="shrink-0 rounded-full" style="width: 7px; height: 7px; background-color: {tagStore.colorFor(tag)};"></span>
+            {/each}
+          </span>
+        {/if}
       {/if}
       {#if hasReminder}
         <span class="chip"

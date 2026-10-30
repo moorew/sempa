@@ -8,6 +8,19 @@
   import { importModal } from '$lib/stores/importModal.svelte';
   import { confirmDialog } from '$lib/stores/confirmDialog.svelte';
   import { ListChecks, Plus, Archive, ArchiveRestore, Trash2, Sparkles } from 'lucide-svelte';
+  import { projectStore } from '$lib/stores/projects.svelte';
+
+  // 1.27.1: each list gets its own soft colour — its project's colour when it
+  // belongs to one, otherwise a stable pick from a calm palette (hashed from the
+  // id, so a list keeps its colour across sessions and devices).
+  const LIST_HUES = ['#d27a4c', '#5d8ccc', '#5f9a6c', '#9a7cc8', '#d3a24a', '#c76a86'];
+  function listHue(l: { id: string; project_id?: string | null }): string {
+    const pc = projectStore.get(l.project_id)?.color;
+    if (pc) return pc;
+    let h = 0;
+    for (let i = 0; i < l.id.length; i++) h = (h * 31 + l.id.charCodeAt(i)) >>> 0;
+    return LIST_HUES[h % LIST_HUES.length];
+  }
 
   const showImport = $derived(
     prefs.aiOn('aiImport') && prefs.importEntryOn('button') && aiStatus.reachable,
@@ -152,8 +165,8 @@
     style="border-radius: 22px; {isArchived ? 'opacity:0.65;' : ''}">
     <div class="flex items-start gap-3">
       <a href={`/lists/${l.id}`} class="flex min-w-0 flex-1 items-center gap-3">
-        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px]"
-              style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
+        <span class="tint flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px]"
+              style="--tint: {listHue(l)};">
           <ListChecks size={18} />
         </span>
         <span class="min-w-0">
@@ -180,7 +193,7 @@
     </div>
     {#if c && c.total > 0}
       <div class="day-bar-track">
-        <div class="day-bar-fill" style="width: {Math.round((c.done / c.total) * 100)}%; background: var(--sempa-accent);"></div>
+        <div class="day-bar-fill" style="width: {Math.round((c.done / c.total) * 100)}%; background: {listHue(l)};"></div>
       </div>
     {/if}
   </div>

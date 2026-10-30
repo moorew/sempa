@@ -256,13 +256,21 @@
                   style="width: 8px; height: 8px; border-radius: 2px; background: {project.color};"></span>
           {/if}
           {#if (task.tags ?? []).length}
-            <!-- Tags as colour dots only (matches TaskCard) — names live in the
-                 task detail view; title shows them on long-press. -->
-            <span class="inline-flex items-center gap-1" title={(task.tags ?? []).join(', ')}>
-              {#each task.tags ?? [] as tag}
-                <span class="shrink-0 rounded-full" style="width: 7px; height: 7px; background-color: {tagStore.colorFor(tag)};"></span>
-              {/each}
+            <!-- First tag as a tinted chip with its name (matches TaskCard); any
+                 further tags stay as dots. Title lists them all on long-press. -->
+            {@const first = (task.tags ?? [])[0]}
+            <span class="tint chip min-w-0" style="--tint: {tagStore.colorFor(first)}; max-width: 10rem;"
+                  title={(task.tags ?? []).join(', ')}>
+              <span class="shrink-0 rounded-full" style="width: 6px; height: 6px; background: {tagStore.colorFor(first)};"></span>
+              <span class="truncate">{first}</span>
             </span>
+            {#if (task.tags ?? []).length > 1}
+              <span class="inline-flex items-center gap-1" title={(task.tags ?? []).slice(1).join(', ')}>
+                {#each (task.tags ?? []).slice(1) as tag}
+                  <span class="shrink-0 rounded-full" style="width: 7px; height: 7px; background-color: {tagStore.colorFor(tag)};"></span>
+                {/each}
+              </span>
+            {/if}
           {/if}
           {#if task.time_estimate_minutes}
             <span class="chip chip-time">

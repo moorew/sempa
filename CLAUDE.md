@@ -146,8 +146,10 @@ CI overrides — are in the private `sempa-ops` guide.)
 - **Notification channels (Android)** are immutable once created — bump the
   channel id (`rem_<sound>_v2`) to change sound/importance, and keep the id in
   sync across `localReminders.ts`, `push.ts`, and backend `fcm.go`.
-- **Tags in list cards** render as colour **dots only** (names via tooltip);
-  full chips only in the detail/edit views. Don't reintroduce labels in cards.
+- **Tags in list cards** (since 1.27.1): the **first tag** is a soft tinted chip
+  with its name (`.tint .chip`); any further tags render as colour **dots**, and
+  the chip's tooltip lists them all. Full chips for every tag only in the
+  detail/edit views. Don't add more labels to cards than that.
 
 ## Hard-won gotchas
 

@@ -8,6 +8,7 @@
   import { viewport } from '$lib/stores/viewport.svelte';
   import SubTaskList from './SubTaskList.svelte';
   import RichText from './RichText.svelte';
+  import { projectStore } from '$lib/stores/projects.svelte';
 
   let {
     open,
@@ -29,6 +30,7 @@
 
   const isDone     = $derived(task?.status === 'done');
   const isRunning  = $derived(!!task && pomodoro.taskId === task.id);
+  const project    = $derived(task ? projectStore.get(task.project_id) : undefined);
 
   const sourceLabel: Record<string, string> = {
     gmail: 'Gmail', fastmail: 'Mail', jira: 'Jira', google_calendar: 'Calendar',
@@ -176,6 +178,39 @@
         </h2>
       </div>
 
+      <!-- Meta tiles (1.27.1): date, time, estimate, logged and project, each with
+           a soft tinted icon tile — the sheet's colour, as in the concept. -->
+      {#if task.planned_date || task.scheduled_start || task.time_estimate_minutes || task.time_actual_minutes || project}
+        <div class="grid grid-cols-2 gap-2.5 pt-3">
+          {#snippet metaTile(label: string, value: string, tint: string, icon: string)}
+            <div class="flex min-w-0 items-center gap-3 rounded-[20px] p-3" style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
+              <span class="tint flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[14px]" style="--tint: {tint};">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={icon}/></svg>
+              </span>
+              <span class="flex min-w-0 flex-col">
+                <span class="text-[11.5px] font-semibold" style="color: var(--sempa-text-soft);">{label}</span>
+                <span class="truncate text-[14.5px] font-extrabold tracking-[-0.01em]" style="color: var(--sempa-text);">{value}</span>
+              </span>
+            </div>
+          {/snippet}
+          {#if task.planned_date}
+            {@render metaTile('Date', formatDate(task.planned_date), '#d27a4c', 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z')}
+          {/if}
+          {#if task.scheduled_start}
+            {@render metaTile('Starts', formatScheduled(task.scheduled_start), '#5f9a6c', 'M5 12h14M12 5l7 7-7 7')}
+          {/if}
+          {#if task.time_estimate_minutes}
+            {@render metaTile('Estimate', formatMinutes(task.time_estimate_minutes), '#5d8ccc', 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2')}
+          {/if}
+          {#if task.time_actual_minutes}
+            {@render metaTile('Logged', formatMinutes(task.time_actual_minutes), '#d3a24a', 'M12 14l4-4M3.34 19a10 10 0 1 1 17.32 0')}
+          {/if}
+          {#if project}
+            {@render metaTile('Project', project.title || 'Untitled project', project.color, 'M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z')}
+          {/if}
+        </div>
+      {/if}
+
       <!-- Meta chips row -->
       <div class="flex flex-wrap gap-2 py-4">
         <!-- Status -->
@@ -188,44 +223,6 @@
           <span class="inline-flex h-8 items-center gap-1 rounded-full px-3.5 text-xs font-bold"
                 style="background: var(--sempa-success-bg); color: var(--sempa-success);">
             ✓ Done
-          </span>
-        {/if}
-
-        <!-- Date -->
-        {#if task.planned_date}
-          <span class="inline-flex items-center gap-1.5 rounded-full px-3.5 h-8 text-xs font-semibold"
-                style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-soft);">
-            <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
-            </svg>
-            {formatDate(task.planned_date)}
-          </span>
-        {/if}
-
-        <!-- Scheduled time -->
-        {#if task.scheduled_start}
-          <span class="inline-flex items-center gap-1.5 rounded-full px-3.5 h-8 text-xs font-semibold"
-                style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-soft);">
-            <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 7v5l3 3"/>
-            </svg>
-            {formatScheduled(task.scheduled_start)}{task.scheduled_end ? ` – ${formatScheduled(task.scheduled_end)}` : ''}
-          </span>
-        {/if}
-
-        <!-- Time estimate -->
-        {#if task.time_estimate_minutes}
-          <span class="inline-flex items-center gap-1.5 rounded-full px-3.5 h-8 text-xs font-mono"
-                style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-soft);">
-            ~{formatMinutes(task.time_estimate_minutes)}
-          </span>
-        {/if}
-
-        <!-- Actual time logged -->
-        {#if task.time_actual_minutes}
-          <span class="inline-flex items-center gap-1.5 rounded-full px-3.5 h-8 text-xs font-mono"
-                style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
-            {formatMinutes(task.time_actual_minutes)} logged
           </span>
         {/if}
 
