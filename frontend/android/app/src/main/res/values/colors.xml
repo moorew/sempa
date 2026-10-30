@@ -3,12 +3,14 @@
     <color name="colorPrimary">#B3592E</color>
     <color name="colorPrimaryDark">#7A2E15</color>
     <color name="colorAccent">#B3592E</color>
-    <color name="sempa_surface">#FAF8F4</color>
-    <color name="sempa_surface_dark">#181310</color>
+    <!-- 1.27 terracotta tokens (mirror frontend/src/themes.css). "surface" is the
+         paper canvas; "panel" is the raised card that sits on it. -->
+    <color name="sempa_surface">#F5EFE7</color>
+    <color name="sempa_surface_dark">#14100D</color>
     <color name="sempa_on_surface">#2B221B</color>
-    <color name="sempa_on_surface_dark">#F0ECE4</color>
-    <color name="sempa_panel">#F0ECE3</color>
-    <color name="sempa_panel_dark">#1D1510</color>
-    <color name="sempa_border">#E2DCD3</color>
-    <color name="sempa_border_dark">#2E2016</color>
+    <color name="sempa_on_surface_dark">#F4EDE5</color>
+    <color name="sempa_panel">#FFFFFF</color>
+    <color name="sempa_panel_dark">#221B16</color>
+    <color name="sempa_border">#E6DDD1</color>
+    <color name="sempa_border_dark">#33281F</color>
 </resources>

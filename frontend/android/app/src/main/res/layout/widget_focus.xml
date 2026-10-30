@@ -10,7 +10,7 @@
     android:orientation="vertical"
     android:gravity="center_vertical"
     android:background="@drawable/widget_card_bg"
-    android:padding="14dp">
+    android:padding="16dp">
 
     <!-- ACTIVE: live timer -->
     <LinearLayout
@@ -119,25 +119,25 @@
         <TextView android:id="@+id/focus_task_0"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="6dp" android:background="@drawable/widget_preview_pill"
-            android:paddingLeft="10dp" android:paddingRight="10dp" android:paddingTop="7dp" android:paddingBottom="7dp"
+            android:paddingLeft="14dp" android:paddingRight="14dp" android:paddingTop="8dp" android:paddingBottom="8dp"
             android:maxLines="1" android:ellipsize="end" android:visibility="gone"
             android:textColor="#2B221B" android:textSize="13sp" />
         <TextView android:id="@+id/focus_task_1"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="5dp" android:background="@drawable/widget_preview_pill"
-            android:paddingLeft="10dp" android:paddingRight="10dp" android:paddingTop="7dp" android:paddingBottom="7dp"
+            android:paddingLeft="14dp" android:paddingRight="14dp" android:paddingTop="8dp" android:paddingBottom="8dp"
             android:maxLines="1" android:ellipsize="end" android:visibility="gone"
             android:textColor="#2B221B" android:textSize="13sp" />
         <TextView android:id="@+id/focus_task_2"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="5dp" android:background="@drawable/widget_preview_pill"
-            android:paddingLeft="10dp" android:paddingRight="10dp" android:paddingTop="7dp" android:paddingBottom="7dp"
+            android:paddingLeft="14dp" android:paddingRight="14dp" android:paddingTop="8dp" android:paddingBottom="8dp"
             android:maxLines="1" android:ellipsize="end" android:visibility="gone"
             android:textColor="#2B221B" android:textSize="13sp" />
         <TextView android:id="@+id/focus_task_3"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="5dp" android:background="@drawable/widget_preview_pill"
-            android:paddingLeft="10dp" android:paddingRight="10dp" android:paddingTop="7dp" android:paddingBottom="7dp"
+            android:paddingLeft="14dp" android:paddingRight="14dp" android:paddingTop="8dp" android:paddingBottom="8dp"
             android:maxLines="1" android:ellipsize="end" android:visibility="gone"
             android:textColor="#2B221B" android:textSize="13sp" />
     </LinearLayout>
@@ -174,7 +174,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:text="Tap to plan today"
-            android:textColor="#B0A498"
+            android:textColor="#8A7B6E"
             android:textSize="12sp" />
     </LinearLayout>
 </LinearLayout>

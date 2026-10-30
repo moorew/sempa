@@ -42,7 +42,7 @@ private fun SmallWidgetContent(total: Int, done: Int) {
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .cornerRadius(20.dp)
+            .cornerRadius(24.dp)
             .background(SempaWidgetTheme.surface)
             .padding(16.dp)
             .clickable(actionStartActivity<MainActivity>()),
@@ -100,8 +100,8 @@ private fun SmallWidgetContent(total: Int, done: Int) {
             Box(
                 modifier = GlanceModifier
                     .fillMaxWidth()
-                    .height(4.dp)
-                    .cornerRadius(2.dp)
+                    .height(6.dp)
+                    .cornerRadius(3.dp)
                     .background(SempaWidgetTheme.outline),
             ) {
                 if (pct > 0) {
@@ -109,7 +109,7 @@ private fun SmallWidgetContent(total: Int, done: Int) {
                         modifier = GlanceModifier
                             .fillMaxHeight()
                             .width((pct * 1.2).dp) // approximate scaling
-                            .cornerRadius(2.dp)
+                            .cornerRadius(3.dp)
                             .background(SempaWidgetTheme.primary),
                     ) {}
                 }

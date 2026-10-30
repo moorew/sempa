@@ -148,7 +148,7 @@
       <span></span><span></span><span></span>
     </span>
     <div class="widget-header-right">
-      <span class="widget-progress" data-tauri-drag-region>{progress}%</span>
+      <span class="widget-progress chip chip-time" data-tauri-drag-region>{progress}%</span>
       <button class="widget-close" onclick={closeWidget}
               title="Hide widget (re-open from the tray)" aria-label="Hide widget">
         <X size={12} strokeWidth={2.5} />
@@ -164,14 +164,14 @@
   <!-- Up Next -->
   {#if upNext}
     <div class="up-next" data-tauri-drag-region>
-      <span class="up-next-label" data-tauri-drag-region>Up Next · {upNext.when}</span>
+      <span class="up-next-label" data-tauri-drag-region>Up next <span class="up-next-when">{upNext.when}</span></span>
       <span class="up-next-title" data-tauri-drag-region>{upNext.title}</span>
     </div>
   {/if}
 
   <!-- Toggle -->
-  <div class="toggle">
-    <button class="toggle-btn" class:active={tab === 'today'} onclick={() => tab = 'today'}>Today’s Tasks</button>
+  <div class="toggle segmented">
+    <button class="toggle-btn" class:active={tab === 'today'} onclick={() => tab = 'today'}>Today’s tasks</button>
     <button class="toggle-btn" class:active={tab === 'objectives'} onclick={() => tab = 'objectives'}>Objectives</button>
   </div>
 
@@ -183,7 +183,8 @@
       {:else}
         {#each todayTasks as task (task.id)}
           <div class="row" class:done={task.status === 'done'} class:active={task.status === 'in_progress'}>
-            <button class="checkbox" class:checked={task.status === 'done'}
+            <button class="checkbox check-ring" class:checked={task.status === 'done'}
+                    data-state={task.status === 'done' ? 'done' : task.status === 'in_progress' ? 'active' : undefined}
                     onclick={() => toggleTask(task)}
                     aria-label={task.status === 'done' ? 'Mark incomplete' : 'Mark complete'}>
               {#if task.status === 'done'}<Check size={11} strokeWidth={3} />{/if}
@@ -201,7 +202,8 @@
       {:else}
         {#each openObjectives as obj (obj.id)}
           <div class="row" class:done={obj.status === 'completed'}>
-            <button class="checkbox" class:checked={obj.status === 'completed'}
+            <button class="checkbox check-ring" class:checked={obj.status === 'completed'}
+                    data-state={obj.status === 'completed' ? 'done' : undefined}
                     onclick={() => toggleObjective(obj)}
                     aria-label={obj.status === 'completed' ? 'Mark incomplete' : 'Mark complete'}>
               {#if obj.status === 'completed'}<Check size={11} strokeWidth={3} />{/if}
@@ -220,7 +222,7 @@
       <input bind:value={newTitle} placeholder="Add a task…" aria-label="Add a task"
              autocomplete="off" spellcheck="false" />
       {#if newTitle.trim()}
-        <button type="submit" class="quick-add-go" disabled={adding}>{adding ? '…' : 'Add'}</button>
+        <button type="submit" class="quick-add-go btn-primary" disabled={adding}>{adding ? '…' : 'Add'}</button>
       {/if}
     </form>
   {:else}
@@ -229,6 +231,8 @@
 </div>
 
 <style>
+  /* 1.27 "cards on paper": the window paints the paper canvas edge-to-edge and
+     everything on it is a raised card or a pill. */
   .widget {
     display: flex;
     flex-direction: column;
@@ -242,7 +246,7 @@
        pixel removes that entirely; the OS rounds the window itself (Win11 DWM),
        so the widget still reads as a soft tile without the grey ring. */
     border-radius: 0;
-    background: var(--sempa-bg-panel);
+    background: var(--sempa-bg-main);
     font-family: 'Plus Jakarta Sans', sans-serif;
     color: var(--sempa-text);
     overflow: hidden;
@@ -253,14 +257,13 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    height: 38px;
-    margin: 0 -12px 8px;
-    padding: 0 12px;
+    height: 40px;
+    margin: 0 -12px 4px;
+    padding: 0 10px 0 14px;
     cursor: grab;
-    border-bottom: 1px solid var(--sempa-border);
   }
   .widget-header:active { cursor: grabbing; }
-  .widget-logo { font-size: 13px; font-weight: 600; letter-spacing: -0.02em; color: var(--sempa-accent); }
+  .widget-logo { font-size: 14px; font-weight: 800; letter-spacing: -0.03em; color: var(--sempa-accent-ink); }
 
   /* Centered grip dots signalling the bar is draggable. */
   .drag-grip {
@@ -272,88 +275,92 @@
     height: 100%;
   }
   .drag-grip span {
-    width: 3px; height: 3px; border-radius: 50%;
-    background: var(--sempa-text-dim); opacity: 0.5;
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--sempa-text-dim); opacity: 0.45;
   }
-  .widget-progress { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--sempa-text-soft); }
+  .widget-progress { background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-soft); font-weight: 600; }
   .widget-header-right { display: flex; align-items: center; gap: 6px; }
 
   .widget-close {
     display: flex; align-items: center; justify-content: center;
-    width: 18px; height: 18px; border: none; border-radius: 6px;
+    width: 24px; height: 24px; border: none; border-radius: 999px;
     background: none; color: var(--sempa-text-dim); cursor: pointer;
     transition: background 120ms ease, color 120ms ease;
   }
-  .widget-close:hover { background: rgba(0,0,0,0.06); color: var(--sempa-text); }
+  .widget-close:hover { background: color-mix(in srgb, var(--sempa-text) 8%, transparent); color: var(--sempa-text); }
 
-  .widget-bar { height: 4px; border-radius: 2px; background: var(--sempa-border); margin-bottom: 10px; overflow: hidden; flex-shrink: 0; }
-  .widget-bar-fill { height: 100%; border-radius: 2px; background: var(--sempa-accent); transition: width 500ms ease-out; }
+  .widget-bar { height: 6px; border-radius: 999px; background: var(--sempa-track); margin: 0 2px 12px; overflow: hidden; flex-shrink: 0; }
+  .widget-bar-fill { height: 100%; border-radius: 999px; background: var(--sempa-accent); transition: width 500ms ease-out; }
 
+  /* Up next: a soft accent block (colour as a block, not an outline). */
   .up-next {
-    display: flex; flex-direction: column; gap: 1px;
-    padding: 7px 9px; margin-bottom: 10px;
-    border-radius: 8px;
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 10px 14px; margin-bottom: 12px;
+    border-radius: 18px;
     background: var(--sempa-accent-bg);
-    border: 1px solid color-mix(in srgb, var(--sempa-accent) 30%, transparent);
     flex-shrink: 0;
   }
-  .up-next-label { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--sempa-accent); }
-  .up-next-title { font-size: 12.5px; font-weight: 600; color: var(--sempa-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .up-next-label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--sempa-accent-ink); }
+  .up-next-when { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; }
+  .up-next-title { font-size: 13.5px; font-weight: 700; letter-spacing: -0.01em; color: var(--sempa-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  .toggle { display: flex; gap: 4px; margin-bottom: 8px; flex-shrink: 0; }
+  /* Segmented pill (look comes from .segmented; the active side lifts). */
+  .toggle { margin-bottom: 10px; flex-shrink: 0; background: var(--sempa-track); }
   .toggle-btn {
-    flex: 1; padding: 5px 0; font-size: 11px; font-weight: 600;
-    border: 1px solid var(--sempa-border); border-radius: 7px;
-    background: transparent; color: var(--sempa-text-dim); cursor: pointer;
-    transition: all 120ms ease;
+    padding: 6px 0; font-size: 12px; font-weight: 600;
+    color: var(--sempa-text-soft); cursor: pointer;
+    transition: background-color 120ms ease, color 120ms ease;
   }
-  .toggle-btn.active { background: var(--sempa-accent-bg); color: var(--sempa-accent); border-color: color-mix(in srgb, var(--sempa-accent) 35%, transparent); }
+  .toggle-btn.active { font-weight: 700; color: var(--sempa-text); background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); }
 
-  .list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding-right: 2px; }
+  .list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 2px 2px 4px; margin: 0 -2px; }
   .list::-webkit-scrollbar { width: 5px; }
   .list::-webkit-scrollbar-thumb { background: var(--sempa-border); border-radius: 3px; }
 
-  .empty { font-size: 11.5px; color: var(--sempa-text-dim); text-align: center; padding: 16px 0; }
+  .empty { font-size: 12px; color: var(--sempa-text-dim); text-align: center; padding: 18px 0; }
 
+  /* Each row is a small raised card on the paper. */
   .row {
-    display: flex; align-items: flex-start; gap: 8px;
-    padding: 7px 9px; border-radius: 7px;
-    background: var(--sempa-bg-main); border: 1px solid var(--sempa-border);
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 9px 12px; border-radius: 14px;
+    background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);
+    flex-shrink: 0;
   }
-  .row.active { border-color: var(--sempa-accent); background: var(--sempa-accent-bg); }
-  .row.done { opacity: 0.55; }
-  .row.done .row-title { text-decoration: line-through; }
+  /* The task in progress gets the brand "now" treatment: a soft amber block. */
+  .row.active { background: var(--cal-amber-bg); }
+  .row.done { background: transparent; box-shadow: none; }
+  .row.done .row-title { text-decoration: line-through; color: var(--sempa-text-dim); }
+  .row.done .row-time { color: var(--sempa-text-dim); }
 
   .checkbox {
-    flex-shrink: 0; margin-top: 1px;
-    display: flex; align-items: center; justify-content: center;
-    width: 16px; height: 16px; border-radius: 5px;
-    border: 1.5px solid var(--sempa-text-dim);
-    background: transparent; color: #fff; cursor: pointer;
-    transition: background 120ms ease, border-color 120ms ease;
+    margin-top: -1px;
+    width: 20px; height: 20px; padding: 0;
+    cursor: pointer;
   }
-  .checkbox.checked { background: var(--sempa-accent); border-color: var(--sempa-accent); }
+  .row.active .checkbox { border-color: var(--sempa-amber); }
 
   /* Wrap instead of truncating — full task text is visible. */
-  .row-title { font-size: 12px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
-  .row-time { font-weight: 700; color: var(--sempa-accent); margin-right: 4px; }
+  .row-title { font-size: 12.5px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+  .row-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--sempa-accent-ink); margin-right: 5px; }
+  .row.active .row-time { color: var(--cal-amber-fg); }
 
+  /* Quick add: a raised pill field with an inline primary pill. */
   .quick-add {
-    display: flex; align-items: center; gap: 6px;
-    margin-top: 8px; padding: 7px 9px; flex-shrink: 0;
-    border-radius: 8px; border: 1px solid var(--sempa-border);
-    background: var(--sempa-bg-main); color: var(--sempa-text-dim);
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 10px; padding: 0 5px 0 14px; height: 40px; flex-shrink: 0; box-sizing: border-box;
+    border-radius: 999px;
+    background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-dim);
   }
+  .quick-add:focus-within { box-shadow: var(--sempa-shadow-1), 0 0 0 2px color-mix(in srgb, var(--sempa-accent) 35%, transparent); }
   .quick-add input {
-    flex: 1; border: none; background: transparent; outline: none;
-    font-family: inherit; font-size: 12px; color: var(--sempa-text);
+    flex: 1; min-width: 0; border: none; background: transparent; outline: none;
+    font-family: inherit; font-size: 12.5px; color: var(--sempa-text);
   }
+  /* The pill's own focus ring replaces the global input ring. */
+  .quick-add input:focus-visible { box-shadow: none; }
   .quick-add input::placeholder { color: var(--sempa-text-dim); }
-  .quick-add-go {
-    flex-shrink: 0; padding: 3px 10px; border: none; border-radius: 6px;
-    background: var(--sempa-accent); color: #fff; font-size: 11px; font-weight: 600; cursor: pointer;
-  }
+  .quick-add-go { flex-shrink: 0; height: 30px; padding: 0 14px; font-size: 12px; }
   .quick-add-go:disabled { opacity: 0.6; }
 
-  .widget-footer { margin-top: 8px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--sempa-text-dim); text-align: center; flex-shrink: 0; }
+  .widget-footer { margin-top: 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--sempa-text-dim); text-align: center; flex-shrink: 0; }
 </style>
