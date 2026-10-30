@@ -70,74 +70,80 @@
 
 <svelte:head><title>Project statuses — Sempa</title></svelte:head>
 
-<div class="mx-auto max-w-xl px-6 py-8">
-  <a href="/settings/accounts#settings-tasks"
-     class="mb-6 inline-flex items-center gap-1.5 text-sm" style="color: var(--sempa-text-soft);">
-    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path stroke-linecap="round" d="m15 18-6-6 6-6"/>
+<div class="mx-auto max-w-[640px] px-5 pt-6 pb-16 sm:px-8 sm:pt-8">
+  <a href="/settings/accounts#settings-tasks" class="set-back">
+    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="m15 18-6-6 6-6"/>
     </svg>
     Settings
   </a>
 
-  <h1 class="mb-1 text-xl font-semibold" style="color: var(--sempa-text);">Project statuses</h1>
-  <p class="mb-6 text-sm" style="color: var(--sempa-text-soft);">
+  <h1 class="set-title type-page">Project statuses</h1>
+  <p class="set-lede mb-6">
     Name, colour and order the stages your projects move through. Each status belongs to a
     <em>category</em>, which decides how Sempa treats it — <strong>Active</strong> projects show up in
     weekly planning, and <strong>Done</strong> / <strong>Archived</strong> ones are tucked away.
   </p>
 
-  <div class="mb-6 flex flex-col gap-2">
+  <div class="set-group mb-4">
     {#each statuses as st, i (st.id)}
-      <div class="relative flex items-center gap-2 rounded-xl px-3 py-2.5"
-           style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
+      <div class="set-row set-row-compact relative gap-2" style="padding-left: 12px; padding-right: 10px;">
         <button onclick={() => (colorFor = colorFor === st.id ? null : st.id)} aria-label="Status colour"
-          class="h-4 w-4 shrink-0 rounded-full" style="background: {st.color};"></button>
+          class="tint flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style="--tint: {st.color};">
+          <span class="h-3.5 w-3.5 rounded-full" style="background: {st.color};"></span>
+        </button>
         {#if colorFor === st.id}
-          <div class="absolute left-2 top-11 z-20 flex gap-1.5 rounded-xl p-2 shadow-lg"
-               style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
+          <div class="surface-raised absolute left-2 top-[52px] z-20 flex gap-1.5 p-2.5" style="border-radius: 18px;">
             {#each PROJECT_COLORS as c}
               <button aria-label={`Colour ${c}`} onclick={() => { colorFor = null; update(st, { color: c }); }}
-                class="h-6 w-6 rounded-full" style="background: {c};"></button>
+                class="h-7 w-7 rounded-full" style="background: {c};"></button>
             {/each}
           </div>
         {/if}
         <input value={st.name}
           onblur={(e) => { const v = (e.currentTarget as HTMLInputElement).value.trim(); if (v && v !== st.name) update(st, { name: v }); }}
           onkeydown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }}
-          class="min-w-0 flex-1 bg-transparent text-sm outline-none" style="color: var(--sempa-text);" />
-        <div class="w-32 shrink-0">
+          aria-label="Status name"
+          class="min-w-0 flex-1 rounded-lg bg-transparent px-1.5 py-1 text-sm font-semibold outline-none focus:bg-[var(--sempa-fill)]" style="color: var(--sempa-text);" />
+        <div class="w-36 shrink-0">
           <SempaSelect value={st.category} options={categoryOptions}
             onchange={(v) => { if (typeof v === 'string' && v !== st.category) update(st, { category: v as ProjectCategory }); }} />
         </div>
-        <button onclick={() => move(i, -1)} disabled={i === 0} aria-label="Move up"
-          class="rounded p-1 disabled:opacity-25" style="color: var(--sempa-text-dim);"><ChevronUp size={15} /></button>
-        <button onclick={() => move(i, 1)} disabled={i === statuses.length - 1} aria-label="Move down"
-          class="rounded p-1 disabled:opacity-25" style="color: var(--sempa-text-dim);"><ChevronDown size={15} /></button>
-        <button onclick={() => remove(st)} disabled={statuses.length <= 1} aria-label="Delete status"
-          class="rounded p-1 disabled:opacity-25" style="color: var(--sempa-text-dim);"><Trash2 size={15} /></button>
+        <div class="flex shrink-0 items-center">
+          <button onclick={() => move(i, -1)} disabled={i === 0} aria-label="Move up"
+            class="set-icon-btn"><ChevronUp size={16} /></button>
+          <button onclick={() => move(i, 1)} disabled={i === statuses.length - 1} aria-label="Move down"
+            class="set-icon-btn"><ChevronDown size={16} /></button>
+          <button onclick={() => remove(st)} disabled={statuses.length <= 1} aria-label="Delete status"
+            class="set-icon-btn danger"><Trash2 size={15} /></button>
+        </div>
       </div>
     {/each}
   </div>
 
-  <form class="flex items-center gap-2" onsubmit={(e) => { e.preventDefault(); create(); }}>
-    <input bind:value={newName} placeholder="New status (e.g. Blocked)…"
-      class="min-w-0 flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
-      style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text);" />
-    <div class="w-32 shrink-0">
-      <SempaSelect bind:value={newCategory} options={categoryOptions} />
+  <form class="set-group" onsubmit={(e) => { e.preventDefault(); create(); }}>
+    <div class="set-row set-row-wrap gap-2" style="padding-left: 12px; padding-right: 12px;">
+      <input bind:value={newName} placeholder="New status (e.g. Blocked)…" aria-label="New status name"
+        class="set-input min-w-[160px] flex-1" />
+      <div class="w-36 shrink-0">
+        <SempaSelect bind:value={newCategory} options={categoryOptions} />
+      </div>
+      <button type="submit" disabled={!newName.trim()}
+        class="btn-primary set-btn">
+        <Plus size={16} /> Add
+      </button>
     </div>
-    <button type="submit" disabled={!newName.trim()}
-      class="flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
-      style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
-      <Plus size={16} /> Add
-    </button>
   </form>
-  {#if error}<p class="mt-3 text-xs" style="color: var(--sempa-danger, #c0392b);">{error}</p>{/if}
+  {#if error}<p class="set-error mt-3 px-1.5">{error}</p>{/if}
 
-  <div class="mt-8 rounded-xl px-4 py-3 text-xs" style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-soft);">
-    <p class="mb-1 font-semibold" style="color: var(--sempa-text);">Categories</p>
+  <h2 class="set-heading">Categories</h2>
+  <div class="set-group">
     {#each PROJECT_CATEGORIES as c}
-      <p><strong>{c.label}</strong> — {c.hint}</p>
+      <div class="set-row set-row-compact">
+        <p class="set-row-main text-[13px]" style="color: var(--sempa-text-soft);">
+          <span class="font-bold" style="color: var(--sempa-text);">{c.label}</span> — {c.hint}
+        </p>
+      </div>
     {/each}
   </div>
 </div>
