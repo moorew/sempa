@@ -98,8 +98,8 @@
   {:else}
     <div class="flex flex-col gap-2">
       {#each templates as tmpl (tmpl.id)}
-        <div class="rounded-xl border px-4 py-3"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <div class="rounded-xl px-4 py-3"
+             style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           <div class="flex items-center gap-3">
             <span class="text-lg leading-none" style="color: var(--sempa-accent);">↺</span>
             <div class="flex-1 min-w-0">

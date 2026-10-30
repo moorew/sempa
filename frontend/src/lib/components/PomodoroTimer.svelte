@@ -37,11 +37,11 @@
 
 <div
   class="fixed bottom-20 right-4 z-50 w-[15.5rem] rounded-2xl p-4 shadow-2xl sm:bottom-6 sm:right-6"
-  style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border); color: var(--sempa-text);"
+  style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text);"
 >
   <!-- Header row -->
   <div class="mb-1 flex items-center justify-between">
-    <span class="text-xs font-semibold uppercase tracking-wider" style="color: {accentColor};">
+    <span class="text-xs font-semibold" style="color: {accentColor};">
       {pomodoro.phaseLabel}
     </span>
     <div class="flex items-center gap-0.5" style="color: var(--sempa-text-dim);">
@@ -80,7 +80,7 @@
   {#if settingsOpen}
     <!-- Settings panel -->
     <div class="mb-1 rounded-xl p-3" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg);">
-      <p class="mb-2 text-[10.5px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">
+      <p class="mb-2 text-[12px] font-semibold" style="color: var(--sempa-text-dim);">
         Durations (min)
       </p>
       <div class="flex flex-col gap-2">
@@ -105,8 +105,8 @@
       </div>
       <div class="mt-2.5 flex gap-2">
         <button onclick={applySettings}
-          class="flex-1 rounded-lg py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
-          style="background: var(--sempa-accent);">Apply</button>
+          class="flex-1 rounded-full py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+          style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">Apply</button>
         <button onclick={() => (settingsOpen = false)}
           class="flex-1 rounded-lg py-1.5 text-xs transition-opacity hover:opacity-80"
           style="background: var(--sempa-bg); color: var(--sempa-text-soft);">Cancel</button>

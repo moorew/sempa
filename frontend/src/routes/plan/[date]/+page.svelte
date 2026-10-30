@@ -196,7 +196,7 @@
       <div class="flex items-center gap-2">
         <div class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold"
              style={i + 1 <= step
-               ? 'background: var(--sempa-accent); color: var(--sempa-btn-fg);'
+               ? 'background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);'
                : 'background: transparent; border: 1.5px solid var(--sempa-text-dim); color: var(--sempa-text-dim);'}>
           {#if i + 1 < step}
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
@@ -220,7 +220,7 @@
     {#if step === 1}
       {#key step}
       <div class="animate-fade-in"
-           style="border-radius:16px; border: 1px solid var(--sempa-border);
+           style="border-radius:22px; box-shadow: var(--sempa-shadow-1);
                   background: var(--sempa-bg-panel); padding:28px 28px 24px;">
         <div>
         <p class="mb-1 text-2xl">🌅</p>
@@ -231,7 +231,7 @@
 
         {#if yesterdayReflection}
           <div class="mb-5 rounded-xl px-4 py-3" style="background: var(--sempa-bg-main); border: 1px solid var(--sempa-border);">
-            <p class="text-[10.5px] font-semibold uppercase tracking-wider mb-1" style="color: var(--sempa-text-dim);">Yesterday you noted</p>
+            <p class="text-[12px] font-semibold mb-1" style="color: var(--sempa-text-dim);">Yesterday you noted</p>
             <p class="text-sm italic" style="color: var(--sempa-text-soft);">"{yesterdayReflection}"</p>
           </div>
         {/if}
@@ -245,14 +245,14 @@
           rows="3"
           placeholder="e.g. 'Ship the auth feature and prep for standup'"
           style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main);
-                 border-radius:12px; padding:16px; resize:none; width:100%; min-height:100px;
+                 border-radius:18px; padding:16px; resize:none; width:100%; min-height:100px;
                  font-size:15px; color:var(--sempa-text); line-height:1.6; outline:none;"
         ></textarea>
 
         <div class="mt-4 flex justify-end">
           <button
             onclick={goToStep2}
-            style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
+            style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
                    padding:10px 20px; font-size:14px; font-weight:500; border:none; cursor:pointer;
                    display:inline-flex; align-items:center; gap:8px;"
             onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
@@ -272,7 +272,7 @@
     {:else if step === 2}
       {#key step}
       <div class="animate-fade-in"
-           style="border-radius:16px; border: 1px solid var(--sempa-border);
+           style="border-radius:22px; box-shadow: var(--sempa-shadow-1);
                   background: var(--sempa-bg-panel); padding:28px 28px 24px;">
         <div>
         <p class="mb-1 text-2xl">↩️</p>
@@ -289,10 +289,10 @@
               {@const isSel = selected.has(task.id)}
               <div class="flex items-center gap-3 transition-colors"
                    style="display:flex; align-items:center; gap:12px; padding:10px 14px;
-                          border-radius:10px; margin-bottom:6px;
+                          border-radius:14px; margin-bottom:6px;
                           {isSel
                             ? 'border: 1px solid color-mix(in srgb, var(--sempa-accent) 40%, transparent); background: color-mix(in srgb, var(--sempa-accent) 8%, transparent);'
-                            : 'border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);'}">
+                            : 'box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);'}">
                 <button type="button" role="checkbox" aria-checked={isSel}
                         onclick={() => toggleSelect(task.id)}
                         class="mt-0.5 h-5 w-5 shrink-0 rounded-md border-2 flex items-center justify-center transition-colors"
@@ -332,7 +332,7 @@
             onclick={goToStep3}
             disabled={saving}
             class="disabled:opacity-50"
-            style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
+            style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
                    padding:10px 20px; font-size:14px; font-weight:500; border:none; cursor:pointer;
                    display:inline-flex; align-items:center; gap:8px;"
             onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
@@ -352,7 +352,7 @@
     {:else}
       {#key step}
       <div class="animate-fade-in"
-           style="border-radius:16px; border: 1px solid var(--sempa-border);
+           style="border-radius:22px; box-shadow: var(--sempa-shadow-1);
                   background: var(--sempa-bg-panel); padding:28px 28px 24px;">
         <div>
         <p class="mb-1 text-2xl">✅</p>
@@ -414,7 +414,7 @@
             onclick={startFocusing}
             disabled={saving}
             class="disabled:opacity-50"
-            style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
+            style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
                    padding:10px 20px; font-size:14px; font-weight:500; border:none; cursor:pointer;
                    display:inline-flex; align-items:center; gap:8px;"
             onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}

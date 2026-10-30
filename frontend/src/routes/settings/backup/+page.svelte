@@ -310,7 +310,7 @@
     <p class="text-sm" style="color: var(--sempa-text-dim);">Loading…</p>
   {:else}
     <!-- Status -->
-    <section class="mb-6 rounded-xl border px-5 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+    <section class="mb-6 rounded-xl px-5 py-4" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
       <div class="flex items-center justify-between gap-3">
         <div>
           <p class="text-sm font-semibold" style="color: var(--sempa-text);">Last backup</p>
@@ -331,8 +331,8 @@
             Download now
           </button>
           <button onclick={runNow} disabled={runningNow}
-                  class="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-50"
-                  style="background: var(--sempa-accent);">
+                  class="rounded-full px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-50"
+                  style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
             {runningNow ? 'Running…' : 'Back up now'}
           </button>
         </div>
@@ -340,7 +340,7 @@
     </section>
 
     <!-- Schedule -->
-    <section class="mb-6 rounded-xl border px-5 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+    <section class="mb-6 rounded-xl px-5 py-4" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
       <label class="flex items-center justify-between">
         <span class="text-sm font-semibold" style="color: var(--sempa-text);">Automatic daily backup</span>
         <input type="checkbox" bind:checked={enabled} class="h-4 w-4 accent-[var(--sempa-accent)]" />
@@ -365,7 +365,7 @@
     </section>
 
     <!-- Security -->
-    <section class="mb-6 rounded-xl border px-5 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+    <section class="mb-6 rounded-xl px-5 py-4" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
       <p class="mb-3 text-sm font-semibold" style="color: var(--sempa-text);">Security</p>
       <div class="space-y-2">
         {#each [
@@ -396,7 +396,7 @@
     </section>
 
     <!-- Destinations -->
-    <section class="mb-6 rounded-xl border px-5 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+    <section class="mb-6 rounded-xl px-5 py-4" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
       <p class="mb-1 text-sm font-semibold" style="color: var(--sempa-text);">Destinations</p>
       <p class="mb-3 text-xs" style="color: var(--sempa-text-soft);">Where automatic backups are sent. Manual downloads always work without one.</p>
 
@@ -404,7 +404,7 @@
         {#each destinations as dest (dest.id)}
           <div class="rounded-lg border p-3" style="border-color: var(--sempa-border);">
             <div class="mb-2 flex items-center justify-between gap-2">
-              <span class="rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide"
+              <span class="rounded-md px-1.5 py-0.5 text-[12px] font-semibold"
                     style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">{destTypeLabel[dest.type]}</span>
               <div class="flex items-center gap-2">
                 <label class="flex items-center gap-1.5 text-xs" style="color: var(--sempa-text-soft);">
@@ -549,7 +549,7 @@
 
     <!-- History -->
     {#if runs.length}
-      <section class="rounded-xl border px-5 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+      <section class="rounded-xl px-5 py-4" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <p class="mb-3 text-sm font-semibold" style="color: var(--sempa-text);">Recent backups</p>
         <div class="space-y-1.5">
           {#each runs as run}
@@ -577,8 +577,8 @@
         <span class="mr-auto text-sm" style="color: #dc2626;">{error}</span>
       {/if}
       <button onclick={save} disabled={saving}
-              class="rounded-lg px-5 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
-              style="background: var(--sempa-accent);">
+              class="rounded-full px-5 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
+              style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
         {saving ? 'Saving…' : 'Save settings'}
       </button>
     </div>

@@ -68,8 +68,8 @@
           and end each day with intention.
         </p>
 
-        <div class="mb-8 space-y-3 rounded-xl border p-5 text-left"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <div class="mb-8 space-y-3 rounded-xl p-5 text-left"
+             style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           {#each [
             ['📅', 'Daily Kanban', 'Plan what you\'re working on each day with a simple board.'],
             ['📬', 'Email → Tasks', 'Import starred emails from Gmail or Fastmail directly as tasks.'],
@@ -87,8 +87,8 @@
         </div>
 
         <button onclick={() => step = 2}
-                class="w-full rounded-xl py-3 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[.98]"
-                style="background: var(--sempa-accent);">
+                class="w-full rounded-full py-3 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[.98]"
+                style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
           Get started →
         </button>
       </div>
@@ -110,8 +110,8 @@
           <div class="space-y-3">
 
             <!-- Gmail -->
-            <div class="flex items-center gap-4 rounded-xl border p-4"
-                 style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+            <div class="flex items-center gap-4 rounded-xl p-4"
+                 style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
               <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 dark:bg-red-950">
                 <svg class="h-5 w-5 text-red-500" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/>
@@ -125,16 +125,16 @@
                 <span class="text-xs font-medium text-green-600 dark:text-green-400">Connected ✓</span>
               {:else}
                 <a href={api.integrations.gmail.authUrl(false)}
-                   class="rounded-lg px-3 py-1.5 text-xs font-medium text-white"
-                   style="background: var(--sempa-accent);">
+                   class="rounded-full px-3 py-1.5 text-xs font-medium text-white"
+                   style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
                   Connect
                 </a>
               {/if}
             </div>
 
             <!-- Fastmail -->
-            <div class="flex items-center gap-4 rounded-xl border p-4"
-                 style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+            <div class="flex items-center gap-4 rounded-xl p-4"
+                 style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
               <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
                    style="background: var(--sempa-accent-bg);">
                 <svg class="h-5 w-5" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -157,8 +157,8 @@
             </div>
 
             <!-- Jira -->
-            <div class="flex items-center gap-4 rounded-xl border p-4"
-                 style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+            <div class="flex items-center gap-4 rounded-xl p-4"
+                 style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
               <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
                    style="background: var(--sempa-accent-bg);">
                 <svg class="h-5 w-5" style="color: var(--sempa-accent);" viewBox="0 0 24 24" fill="currentColor">
@@ -190,8 +190,8 @@
             ← Back
           </button>
           <button onclick={() => step = 3}
-                  class="flex-1 rounded-xl py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90"
-                  style="background: var(--sempa-accent);">
+                  class="flex-1 rounded-full py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90"
+                  style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
             Continue →
           </button>
         </div>
@@ -212,8 +212,8 @@
           Here are a few things to try first.
         </p>
 
-        <div class="mb-8 space-y-2 rounded-xl border p-5 text-left"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <div class="mb-8 space-y-2 rounded-xl p-5 text-left"
+             style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           {#each [
             ['n', 'Press  to create a new task on the Today view'],
             ['?', 'Press  to see all keyboard shortcuts'],
@@ -229,8 +229,8 @@
         </div>
 
         <button onclick={finish}
-                class="w-full rounded-xl py-3 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[.98]"
-                style="background: var(--sempa-accent);">
+                class="w-full rounded-full py-3 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[.98]"
+                style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
           Start planning →
         </button>
 

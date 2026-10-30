@@ -56,10 +56,10 @@
   <div class="fixed inset-0 z-[70] flex items-end justify-center p-4 sm:items-center"
     style="background: rgba(0,0,0,0.5);" role="dialog" aria-modal="true">
     <div class="w-full max-w-md rounded-2xl p-6 shadow-2xl"
-      style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border); color: var(--sempa-text);">
+      style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text);">
 
       <div class="mb-3 flex items-start justify-between">
-        <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--sempa-accent);">
+        <span class="text-xs font-semibold" style="color: var(--sempa-accent);">
           Time tracking
         </span>
         <button onclick={finish} aria-label="Dismiss"
@@ -92,8 +92,8 @@
               style="color: var(--sempa-text-dim);">Skip</button>
           {/if}
           <button onclick={next}
-            class="rounded-xl px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style="background: var(--sempa-accent);">
+            class="rounded-full px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
             {isLast ? 'Got it' : 'Next'}
           </button>
         </div>

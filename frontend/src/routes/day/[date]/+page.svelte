@@ -1051,8 +1051,8 @@
         </div>
         <p class="text-sm" style="color: var(--sempa-text-dim);">No tasks for this day</p>
         <button onclick={() => openCreate(date)}
-                class="rounded-[9px] px-4 py-2 text-[13px] font-medium"
-                style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);">
+                class="rounded-[12px] px-4 py-2 text-[13px] font-medium"
+                style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);">
           Add task
         </button>
       </div>
@@ -1080,7 +1080,7 @@
       <!-- Completed tasks -->
       {#if mobileDone.length > 0}
         <div class="mt-4 pt-3" style="border-top: 1px solid var(--sempa-border);">
-          <p class="mb-2 text-[11px] font-medium uppercase tracking-wider" style="color: var(--sempa-text-dim);">
+          <p class="mb-2 text-[12px] font-medium" style="color: var(--sempa-text-dim);">
             {mobileDone.length} completed
           </p>
           <div class="flex flex-col gap-1.5">
@@ -1190,7 +1190,7 @@
               style="border: 1px solid {onToday ? 'var(--sempa-accent)' : 'var(--sempa-border)'};
                      color: {onToday ? 'var(--sempa-accent)' : 'var(--sempa-text-soft)'};
                      background: {onToday ? 'var(--sempa-accent-bg)' : 'transparent'};
-                     border-radius: 9px; padding: 6px 12px;
+                     border-radius: 12px; padding: 6px 12px;
                      font-size: 12px; cursor: pointer; transition: all 150ms ease;"
               onmouseenter={(e) => { if (!onToday) (e.currentTarget as HTMLElement).style.background = 'var(--sempa-accent-bg)'; }}
               onmouseleave={(e) => { if (!onToday) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
@@ -1199,9 +1199,9 @@
         Today
       </button>
       <button onclick={() => openCreate(date)}
-              class="flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[13px] font-[500]
+              class="flex items-center gap-1.5 rounded-[12px] px-3 py-1.5 text-[13px] font-[500]
                      tracking-[-0.01em] transition-colors shadow-sm"
-              style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);"
+              style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);"
               onmouseenter={(e)=>(e.currentTarget as HTMLElement).style.opacity='0.88'}
               onmouseleave={(e)=>(e.currentTarget as HTMLElement).style.opacity='1'}>
         <Plus size={13} strokeWidth={2.5} />
@@ -1411,7 +1411,7 @@
        onclick={cancelTrash}>
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
     <div class="w-full max-w-sm mx-4 rounded-2xl p-6 shadow-2xl animate-scale-in"
-         style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);"
+         style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);"
          onclick={(e) => e.stopPropagation()}>
       <!-- Icon -->
       <div class="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full"
@@ -1428,14 +1428,14 @@
       <!-- Actions -->
       <div class="flex items-center gap-2">
         <button onclick={cancelTrash}
-                class="flex-1 rounded-[9px] px-3 py-2 text-[13px] font-medium transition-colors"
+                class="flex-1 rounded-[12px] px-3 py-2 text-[13px] font-medium transition-colors"
                 style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft); background: transparent;"
                 onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--sempa-accent-bg)'}
                 onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
           Cancel
         </button>
         <button onclick={confirmTrash}
-                class="flex-1 rounded-[9px] px-3 py-2 text-[13px] font-medium transition-colors shadow-sm"
+                class="flex-1 rounded-[12px] px-3 py-2 text-[13px] font-medium transition-colors shadow-sm"
                 style="background: #ef4444; color: white;"
                 onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
                 onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>
@@ -1452,7 +1452,7 @@
      lands on the Undo button. Desktop keeps the plain bottom-6 inset. -->
 {#if undoTask}
   <div class="fixed left-1/2 z-[80] -translate-x-1/2 flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm shadow-2xl animate-slide-down"
-       style="bottom: {mobile.value ? 'calc(env(safe-area-inset-bottom, 0px) + 88px)' : '1.5rem'}; background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border); color: var(--sempa-text); max-width: min(92vw, 28rem);"
+       style="bottom: {mobile.value ? 'calc(env(safe-area-inset-bottom, 0px) + 88px)' : '1.5rem'}; background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text); max-width: min(92vw, 28rem);"
        role="status">
     <span class="min-w-0 flex-1 truncate">
       {undoTask.source === 'jira' ? 'Deleted — returning to the Jira list' : 'Task deleted'}

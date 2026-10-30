@@ -230,10 +230,10 @@
         <button onclick={() => step = s.n}
                 class="transition-colors"
                 style={step === s.n
-                  ? 'background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:9999px; padding:4px 14px; font-size:12px; font-weight:500;'
+                  ? 'background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px; padding:4px 14px; font-size:12px; font-weight:500;'
                   : step > s.n
-                    ? 'background: var(--sempa-success-soft); color: var(--sempa-success); border-radius:9999px; padding:4px 14px; font-size:12px; font-weight:500;'
-                    : 'background: var(--sempa-accent-bg); color: var(--sempa-text-dim); border-radius:9999px; padding:4px 14px; font-size:12px;'}>
+                    ? 'background: var(--sempa-success-soft); color: var(--sempa-success); border-radius: 999px; padding:4px 14px; font-size:12px; font-weight:500;'
+                    : 'background: var(--sempa-accent-bg); color: var(--sempa-text-dim); border-radius: 999px; padding:4px 14px; font-size:12px;'}>
           {s.n < step ? '✓ ' : ''}{s.label}
         </button>
       {/each}
@@ -256,7 +256,7 @@
       <div class="space-y-2">
         {#each objectives as obj, i (obj.id)}
           <div class="flex items-center gap-2 rounded-xl px-3 py-2"
-               style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+               style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
             <span class="select-none" style="color: var(--sempa-text-dim);">🎯</span>
             <input
               bind:value={draftTitles[i]}
@@ -307,8 +307,8 @@
 
       <!-- Active projects — reference only, to inform this week's objectives. -->
       {#if activeProjects.length > 0}
-        <div class="rounded-xl px-4 py-3" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
-          <p class="mb-2 text-[10.5px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Active projects</p>
+        <div class="rounded-xl px-4 py-3" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
+          <p class="mb-2 text-[12px] font-semibold" style="color: var(--sempa-text-dim);">Active projects</p>
           <div class="flex flex-col gap-1.5">
             {#each activeProjects as p (p.id)}
               {@const linked = objectives.filter(o => o.project_id === p.id).length}
@@ -332,7 +332,7 @@
       <div class="pt-2 flex justify-end">
         <button onclick={() => step = 2} disabled={objectives.length === 0}
                 class="disabled:opacity-40 transition-colors"
-                style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
+                style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
                        padding:10px 24px; font-size:14px; font-weight:500; border:none; cursor:pointer;"
                 onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
                 onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>
@@ -353,7 +353,7 @@
         {@const linked = objectiveTasks(obj.id)}
         {@const done   = doneTasks(obj.id)}
         {@const p = pct(obj.id)}
-        <div style="border-radius:12px; border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+        <div style="border-radius:18px; box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           <!-- Objective header -->
           <div class="flex items-center gap-3 px-4 py-3" style="border-bottom: 1px solid var(--sempa-border);">
             <div class="flex-1">
@@ -440,12 +440,12 @@
         <button onclick={() => step = 1}
                 class="transition-colors"
                 style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);
-                       background: transparent; border-radius: 9px; padding: 7px 14px; font-size: 14px;">
+                       background: transparent; border-radius: 12px; padding: 7px 14px; font-size: 14px;">
           ← Back
         </button>
         <button onclick={() => step = 3}
                 class="transition-colors"
-                style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
+                style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
                        padding:10px 24px; font-size:14px; font-weight:500; border:none; cursor:pointer;"
                 onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
                 onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>
@@ -464,12 +464,12 @@
       <!-- Markdown preview -->
       <div class="relative">
         <pre class="text-xs leading-relaxed"
-             style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);
-                    border-radius:12px; padding:16px; overflow-x:auto; color: var(--sempa-text);">{generateMarkdown()}</pre>
+             style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);
+                    border-radius:18px; padding:16px; overflow-x:auto; color: var(--sempa-text);">{generateMarkdown()}</pre>
         <button onclick={copyMarkdown}
                 class="absolute right-3 top-3 flex items-center gap-1.5 font-medium transition-colors"
-                style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);
-                       background: var(--sempa-bg-panel); border-radius: 9px; padding: 7px 14px; font-size: 12px;">
+                style="box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-soft);
+                       background: var(--sempa-bg-panel); border-radius: 12px; padding: 7px 14px; font-size: 12px;">
           {#if copied}
             <svg class="h-3.5 w-3.5 text-green-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
@@ -488,12 +488,12 @@
         <button onclick={() => step = 2}
                 class="transition-colors"
                 style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);
-                       background: transparent; border-radius: 9px; padding: 7px 14px; font-size: 14px;">
+                       background: transparent; border-radius: 12px; padding: 7px 14px; font-size: 14px;">
           ← Back
         </button>
         <button onclick={() => goto(`/week/${ws}`)}
                 class="transition-colors"
-                style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
+                style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
                        padding:10px 24px; font-size:14px; font-weight:500; border:none; cursor:pointer;"
                 onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
                 onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>

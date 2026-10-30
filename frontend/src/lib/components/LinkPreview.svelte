@@ -64,7 +64,7 @@
         <!-- No usable hero image → favicon / monogram tile so the card still
              reads as a designed link card rather than bare text. -->
         <div class="flex h-11 w-11 shrink-0 items-center justify-center self-center overflow-hidden rounded-lg"
-             style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);">
+             style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
           {#if data.favicon_url && !favFailed}
             <img src={api.unfurlImageUrl(data.favicon_url)} alt="" class="h-5 w-5"
                  onerror={() => (favFailed = true)} />
@@ -94,7 +94,7 @@
          visible and tappable. -->
     <div class="flex items-center gap-2 px-3 py-2.5">
       <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold"
-            style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border); color: var(--sempa-accent);">{monogram}</span>
+            style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-accent);">{monogram}</span>
       <span class="truncate text-[13px]" style="color: var(--sempa-accent);">{fallbackLabel}</span>
     </div>
   {/await}

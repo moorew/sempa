@@ -32,7 +32,7 @@
        oncontextmenu={(e) => { e.preventDefault(); contextMenu.close(); }}></div>
   <div class="fixed z-[96] w-52 overflow-hidden rounded-lg py-1 shadow-2xl animate-scale-in"
        style="left:{clampX(m.x)}px; top:{clampY(m.y, m.items.length)}px;
-              background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);">
+              background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
     {#each m.items as item}
       {#if item === 'separator'}
         <div class="my-1 h-px" style="background: var(--sempa-border);"></div>

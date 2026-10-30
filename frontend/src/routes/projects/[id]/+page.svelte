@@ -209,7 +209,7 @@
           style="background: {project.color};"></button>
         {#if colorOpen}
           <div class="absolute left-0 top-8 z-20 flex gap-1.5 rounded-xl p-2 shadow-lg"
-               style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);">
+               style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
             {#each PROJECT_COLORS as c}
               <button aria-label={`Colour ${c}`} onclick={() => { colorOpen = false; patch({ color: c }); }}
                 class="h-6 w-6 rounded-full transition-transform hover:scale-110"
@@ -226,24 +226,24 @@
       <!-- Status + dates -->
       <div class="mb-4 grid gap-3 sm:grid-cols-3">
         <div>
-          <label class="mb-1 block text-[11px] font-medium uppercase tracking-wider" style="color: var(--sempa-text-dim);" for="proj-status">Status</label>
+          <label class="mb-1 block text-[12px] font-medium" style="color: var(--sempa-text-dim);" for="proj-status">Status</label>
           <SempaSelect id="proj-status" value={project.status_id} options={statusOptions}
             onchange={(v) => { if (typeof v === 'string') patch({ status_id: v }); }} />
         </div>
         <div>
-          <label class="mb-1 block text-[11px] font-medium uppercase tracking-wider" style="color: var(--sempa-text-dim);" for="proj-start">Start</label>
+          <label class="mb-1 block text-[12px] font-medium" style="color: var(--sempa-text-dim);" for="proj-start">Start</label>
           <SempaDatePicker id="proj-start" value={project.start_date ?? ''} placeholder="No start date"
             onchange={(v) => patch({ start_date: v })} />
         </div>
         <div>
-          <label class="mb-1 block text-[11px] font-medium uppercase tracking-wider" style="color: var(--sempa-text-dim);" for="proj-target">Target</label>
+          <label class="mb-1 block text-[12px] font-medium" style="color: var(--sempa-text-dim);" for="proj-target">Target</label>
           <SempaDatePicker id="proj-target" value={project.target_date ?? ''} placeholder="No target date"
             onchange={(v) => patch({ target_date: v })} />
         </div>
       </div>
 
       <!-- Progress -->
-      <div class="mb-5 rounded-xl px-4 py-3" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+      <div class="mb-5 rounded-xl px-4 py-3" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[12.5px]" style="color: var(--sempa-text-soft);">
           <span class="font-semibold" style="color: var(--sempa-text);">{progress.pct}%</span>
           <span>{progress.done} of {progress.total} tasks done</span>
@@ -263,7 +263,7 @@
       <!-- Description -->
       <section class="mb-6">
         <div class="mb-1.5 flex items-center justify-between">
-          <h2 class="text-[11px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Description</h2>
+          <h2 class="text-[12px] font-semibold" style="color: var(--sempa-text-dim);">Description</h2>
           {#if !editingDesc}
             <button onclick={() => { descDraft = project?.description ?? ''; editingDesc = true; }}
               class="flex items-center gap-1 text-xs transition-opacity hover:opacity-70" style="color: var(--sempa-accent);">
@@ -286,8 +286,8 @@
 
       <!-- Sharing (multi-user household only) -->
       {#if household.multiUser}
-        <div class="mb-6 flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <div class="mb-6 flex items-center justify-between gap-3 rounded-lg px-3 py-2.5"
+             style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           <div class="min-w-0">
             <p class="text-[13px] font-medium" style="color: var(--sempa-text);">{project.shared ? 'Shared' : 'Private'}</p>
             <p class="text-[11.5px]" style="color: var(--sempa-text-soft);">
@@ -306,7 +306,7 @@
 
       <!-- This week -->
       <section class="mb-6">
-        <h2 class="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">
+        <h2 class="mb-2 flex items-center gap-1.5 text-[12px] font-semibold" style="color: var(--sempa-text-dim);">
           <Target size={13} /> This week’s objective
         </h2>
         {#each thisWeekObjectives as o (o.id)}
@@ -318,19 +318,19 @@
             class="flex-1 rounded-lg px-3 py-2 text-sm outline-none"
             style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text);" />
           <button type="submit" disabled={!newObjective.trim()} aria-label="Add objective"
-            class="rounded-lg px-3 text-white disabled:opacity-40" style="background: var(--sempa-accent);"><Plus size={16} /></button>
+            class="rounded-full px-3 text-white disabled:opacity-40" style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);"><Plus size={16} /></button>
         </form>
       </section>
 
       <!-- Tasks -->
       <section class="mb-6">
-        <h2 class="mb-2 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Tasks</h2>
+        <h2 class="mb-2 text-[12px] font-semibold" style="color: var(--sempa-text-dim);">Tasks</h2>
         <form class="mb-3 flex gap-2" onsubmit={(e) => { e.preventDefault(); addTask(); }}>
           <input bind:value={newTask} placeholder="Add a task to this project…"
             class="flex-1 rounded-lg px-3 py-2 text-sm outline-none"
             style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text);" />
           <button type="submit" disabled={!newTask.trim()} aria-label="Add task"
-            class="rounded-lg px-3 text-white disabled:opacity-40" style="background: var(--sempa-accent);"><Plus size={16} /></button>
+            class="rounded-full px-3 text-white disabled:opacity-40" style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);"><Plus size={16} /></button>
         </form>
 
         {#if tasks.length === 0}
@@ -355,12 +355,12 @@
 
       <!-- Lists -->
       <section class="mb-6">
-        <h2 class="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">
+        <h2 class="mb-2 flex items-center gap-1.5 text-[12px] font-semibold" style="color: var(--sempa-text-dim);">
           <ListChecks size={13} /> Lists
         </h2>
         <div class="flex flex-col gap-1">
           {#each lists as l (l.id)}
-            <div class="flex items-center gap-2 rounded-lg px-3 py-2" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+            <div class="flex items-center gap-2 rounded-lg px-3 py-2" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
               <a href={`/lists/${l.id}`} class="min-w-0 flex-1 truncate text-sm hover:underline" style="color: var(--sempa-text);">{l.name || 'Untitled list'}</a>
               <button onclick={() => unlinkList(l)} aria-label="Remove from project" title="Remove from project"
                 class="transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);"><X size={14} /></button>
@@ -373,7 +373,7 @@
               class="flex-1 rounded-lg px-3 py-2 text-sm outline-none"
               style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text);" />
             <button type="submit" disabled={!newList.trim()} aria-label="Create list"
-              class="rounded-lg px-3 text-white disabled:opacity-40" style="background: var(--sempa-accent);"><Plus size={16} /></button>
+              class="rounded-full px-3 text-white disabled:opacity-40" style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);"><Plus size={16} /></button>
           </form>
           {#if linkableLists.length > 0}
             <div class="flex min-w-[14rem] flex-1 items-center gap-2">
@@ -391,7 +391,7 @@
       <!-- Objective history -->
       {#if objectiveWeeks.some(([ws]) => ws !== thisWeek)}
         <section class="mb-6">
-          <h2 class="mb-2 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Weekly objectives</h2>
+          <h2 class="mb-2 text-[12px] font-semibold" style="color: var(--sempa-text-dim);">Weekly objectives</h2>
           {#each objectiveWeeks.filter(([ws]) => ws !== thisWeek) as [ws, objs] (ws)}
             <p class="mb-1 mt-3 px-1 text-[11px] font-medium" style="color: var(--sempa-text-soft);">
               <a href={`/week/${ws}`} class="hover:underline">{weekLabel(ws)}</a>
@@ -403,7 +403,7 @@
 
       <!-- Files -->
       <section class="mb-6">
-        <h2 class="mb-2 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Files</h2>
+        <h2 class="mb-2 text-[12px] font-semibold" style="color: var(--sempa-text-dim);">Files</h2>
         <AttachmentList ownerType="project" ownerId={project.id} />
       </section>
     {/if}
@@ -419,7 +419,7 @@
 {#snippet taskRow(t: Task)}
   {@const isDone = t.status === 'done'}
   <div class="flex items-center gap-2.5 rounded-lg px-3 py-2"
-       style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); {isDone ? 'opacity: 0.6;' : ''}">
+       style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel); {isDone ? 'opacity: 0.6;' : ''}">
     <button onclick={() => toggleDone(t)} aria-label={isDone ? 'Mark not done' : 'Mark done'}
       class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border transition-colors"
       style="border-color: {isDone ? 'var(--sempa-success)' : 'var(--sempa-border)'}; background: {isDone ? 'var(--sempa-success)' : 'transparent'};">
@@ -439,7 +439,7 @@
 
 {#snippet objectiveRow(o: Objective)}
   <div class="mb-1 flex items-center gap-2 rounded-lg px-3 py-2"
-       style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); {o.status !== 'active' ? 'opacity: 0.65;' : ''}">
+       style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel); {o.status !== 'active' ? 'opacity: 0.65;' : ''}">
     <span>🎯</span>
     <span class="min-w-0 flex-1 truncate text-sm {o.status === 'completed' ? 'line-through' : ''}" style="color: var(--sempa-text);">{o.title}</span>
     <span class="shrink-0 text-[11px]" style="color: var(--sempa-text-dim);">

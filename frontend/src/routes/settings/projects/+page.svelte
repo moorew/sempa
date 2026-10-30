@@ -89,12 +89,12 @@
   <div class="mb-6 flex flex-col gap-2">
     {#each statuses as st, i (st.id)}
       <div class="relative flex items-center gap-2 rounded-xl px-3 py-2.5"
-           style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+           style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <button onclick={() => (colorFor = colorFor === st.id ? null : st.id)} aria-label="Status colour"
           class="h-4 w-4 shrink-0 rounded-full" style="background: {st.color};"></button>
         {#if colorFor === st.id}
           <div class="absolute left-2 top-11 z-20 flex gap-1.5 rounded-xl p-2 shadow-lg"
-               style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);">
+               style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
             {#each PROJECT_COLORS as c}
               <button aria-label={`Colour ${c}`} onclick={() => { colorFor = null; update(st, { color: c }); }}
                 class="h-6 w-6 rounded-full" style="background: {c};"></button>
@@ -127,14 +127,14 @@
       <SempaSelect bind:value={newCategory} options={categoryOptions} />
     </div>
     <button type="submit" disabled={!newName.trim()}
-      class="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
-      style="background: var(--sempa-accent);">
+      class="flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+      style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
       <Plus size={16} /> Add
     </button>
   </form>
   {#if error}<p class="mt-3 text-xs" style="color: var(--sempa-danger, #c0392b);">{error}</p>{/if}
 
-  <div class="mt-8 rounded-xl px-4 py-3 text-xs" style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
+  <div class="mt-8 rounded-xl px-4 py-3 text-xs" style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-soft);">
     <p class="mb-1 font-semibold" style="color: var(--sempa-text);">Categories</p>
     {#each PROJECT_CATEGORIES as c}
       <p><strong>{c.label}</strong> — {c.hint}</p>

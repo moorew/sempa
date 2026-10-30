@@ -86,23 +86,23 @@
           {@const reflection = entry.plan.reflection?.trim()}
           <a href="/day/{entry.date}"
              class="block rounded-2xl px-5 py-4 transition-opacity active:opacity-70"
-             style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);">
+             style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
             <div class="mb-2 flex items-center justify-between gap-2">
-              <p class="text-xs font-semibold uppercase tracking-wider"
+              <p class="text-xs font-semibold"
                  style="color: var(--sempa-text-dim);">
                 {formatDate(entry.date)}{isToday(entry.date) ? ' · Today' : ''}
               </p>
             </div>
             {#if intention}
               <div class="mb-2">
-                <p class="text-[10.5px] font-semibold uppercase tracking-wider"
+                <p class="text-[12px] font-semibold"
                    style="color: var(--sempa-accent);">Intention</p>
                 <p class="mt-0.5 text-sm leading-relaxed" style="color: var(--sempa-text);">{intention}</p>
               </div>
             {/if}
             {#if reflection}
               <div>
-                <p class="text-[10.5px] font-semibold uppercase tracking-wider"
+                <p class="text-[12px] font-semibold"
                    style="color: var(--sempa-text-soft);">Reflection</p>
                 <p class="mt-0.5 whitespace-pre-line text-sm leading-relaxed" style="color: var(--sempa-text);">{reflection}</p>
               </div>
@@ -119,13 +119,13 @@
               <svg class="h-4 w-4 shrink-0" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2"/>
               </svg>
-              <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--sempa-accent);">
+              <p class="text-xs font-semibold" style="color: var(--sempa-accent);">
                 Week review · {formatWeekRange(entry.date)}
               </p>
             </div>
             {#if wins.length}
               <div class="mb-2">
-                <p class="text-[10.5px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-soft);">Wins</p>
+                <p class="text-[12px] font-semibold" style="color: var(--sempa-text-soft);">Wins</p>
                 <ul class="mt-0.5 list-disc pl-5 text-sm leading-relaxed" style="color: var(--sempa-text);">
                   {#each wins as w}<li>{w}</li>{/each}
                 </ul>
@@ -133,7 +133,7 @@
             {/if}
             {#if challenges.length}
               <div class="mb-2">
-                <p class="text-[10.5px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-soft);">Challenges</p>
+                <p class="text-[12px] font-semibold" style="color: var(--sempa-text-soft);">Challenges</p>
                 <ul class="mt-0.5 list-disc pl-5 text-sm leading-relaxed" style="color: var(--sempa-text);">
                   {#each challenges as c}<li>{c}</li>{/each}
                 </ul>
@@ -141,7 +141,7 @@
             {/if}
             {#if nextFocus}
               <div>
-                <p class="text-[10.5px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-soft);">Next focus</p>
+                <p class="text-[12px] font-semibold" style="color: var(--sempa-text-soft);">Next focus</p>
                 <p class="mt-0.5 whitespace-pre-line text-sm leading-relaxed" style="color: var(--sempa-text);">{nextFocus}</p>
               </div>
             {/if}

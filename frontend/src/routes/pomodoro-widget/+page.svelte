@@ -105,8 +105,8 @@
 
     <div class="mt-auto flex flex-col gap-1.5">
       <button onclick={() => pomodoro.confirmSession(confirmMinutes)}
-        class="rounded-lg py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-        style="background: var(--sempa-accent);">
+        class="rounded-full py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+        style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
         Log {confirmMinutes} min{pc.markDone ? ' & mark done' : ''}
       </button>
       <div class="flex gap-1.5">
@@ -125,7 +125,7 @@
   {:else if pomodoro.taskId}
     <!-- ── Active: countdown + controls ───────────────────────────────────── -->
     <div class="mb-1 flex items-center justify-between">
-      <span data-tauri-drag-region class="text-[11px] font-semibold uppercase tracking-wider" style="color: {accentColor};">
+      <span data-tauri-drag-region class="text-[12px] font-semibold" style="color: {accentColor};">
         {pomodoro.phaseLabel}
       </span>
       <button onclick={() => pomodoro.requestStop()}
@@ -182,7 +182,7 @@
   {:else}
     <!-- ── Idle: pick a task to focus ─────────────────────────────────────── -->
     <div class="mb-2 flex items-center justify-between">
-      <span data-tauri-drag-region class="text-[11px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">
+      <span data-tauri-drag-region class="text-[12px] font-semibold" style="color: var(--sempa-text-dim);">
         Focus on…
       </span>
       <button onclick={() => loadTasks()}

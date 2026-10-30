@@ -1,152 +1,205 @@
 /* ════════════════════════════════════════════════════════════════════════
-   SEMPA — THEME TOKEN SYSTEM
+   SEMPA — THEME TOKEN SYSTEM  (1.27 visual refresh)
    ─────────────────────────────────────────────────────────────────────────
-   Six full-interface themes, each with light + dark token sets, built on the
-   EXISTING --sempa-* semantic tokens and --a* accent scale. Nothing about how
-   components consume colour changes — they already read these vars — so a
-   theme propagates to every screen automatically.
+   Six full-interface themes, each with light + dark token sets. Components
+   read these vars, so a theme propagates to every screen automatically.
 
-   Selection model (replaces the old accent-only JS override):
+   Selection model:
      <html data-theme="terracotta">              → light
      <html data-theme="terracotta" class="dark">  → dark
 
-   • Each [data-theme] block sets the LIGHT palette.
-   • Each [data-theme].dark block sets the DARK palette.
-   • OLED is dark-only: its light block intentionally mirrors a deep dark
-     palette and the Appearance UI hides the light/dark toggle for it.
+   • Each [data-theme] block sets the LIGHT palette; [data-theme].dark the DARK.
+   • OLED is dark-only: its single block serves both, and the Appearance UI
+     hides the light/dark toggle for it.
 
-   Brand intent: calm, ordered, focused, warm. Accents stay muted and earthy;
-   backgrounds are low-chroma so long sessions stay restful. Text holds ≥4.5:1
-   on its background in every theme (WCAG AA body); accent-on-surface pairings
-   are checked for AA on the large/semibold text that uses them.
+   1.27 surface model — "cards on paper":
+   • --sempa-bg-main / -nav / --sempa-bg  the canvas everything sits on
+   • --sempa-bg-panel / --card-bg         raised surfaces (cards, panels, sheets)
+   • --sempa-fill                         inset fills on a surface (chips, tracks)
+   • --sempa-shadow-1 / -2 / -accent      elevation replaces hairline borders.
+     Light shadows are tinted with the theme's own ink; dark lifts surfaces
+     with lightness plus a faint top highlight; OLED (where shadows vanish on
+     true black) lifts with a hair of grey and a 1px edge.
+   • --sempa-accent-ink                   accent-coloured TEXT that holds AA on
+     --sempa-accent-bg and on surfaces (--sempa-accent stays the fill colour).
+   • --sempa-tint-bg / -fg                mix ratios for tag/calendar blocks:
+     a tag's own colour mixed into the surface (bg) and into the text (fg),
+     so custom tag colours get a readable tint in every theme. See .tint.
+
+   Brand intent: calm, ordered, focused, warm. Text holds ≥4.5:1 on its
+   surface in every theme; --sempa-text-dim holds ≥3.5:1 (it carries meta
+   text, which 1.26's dim tier did not clear).
    ════════════════════════════════════════════════════════════════════════ */
+
 
 /* ═══════════════════════════════════════════════════════════════════════
    1 · TERRACOTTA  — signature default (warm clay on cream)
    ═══════════════════════════════════════════════════════════════════════ */
 :root,
 [data-theme="terracotta"] {
-  --sempa-bg-rail:#d8d2c6; --sempa-bg-nav:#f0ece3; --sempa-bg-main:#faf8f4; --sempa-bg-panel:#f0ece3;
-  --sempa-border:#e2dcd3; --sempa-text:#2b221b; --sempa-text-soft:#7a6a5e; --sempa-text-dim:#b0a498;
-  --sempa-accent:#b3592e; --sempa-accent-bg:#ede5dd; --sempa-amber:#da9f62;
-  --sempa-today-bg:#b3592e; --sempa-today-fg:#f7f3eb; --sempa-btn-bg:#b3592e; --sempa-btn-fg:#f7f3eb;
-  --sempa-success:#4d8a5a; --sempa-success-soft:rgba(77,138,90,.12); --sempa-success-bg:#f0f7f1;
-  --card-bg:#ffffff; --card-border:#e6ded2;
-  --cal-terracotta-fg:#b3592e; --cal-terracotta-bg:#fdf4ef; --cal-stone-fg:#7a6a5e; --cal-stone-bg:#f0ece3;
-  --cal-sage-fg:#4d8a5a; --cal-sage-bg:#e8f0ea; --cal-amber-fg:#9a7340; --cal-amber-bg:#faf3e8;
+  --sempa-bg-rail:#e4dbcd; --sempa-bg-nav:#f5efe7; --sempa-bg-main:#f5efe7; --sempa-bg-panel:#ffffff;
+  --sempa-bg:#f5efe7; --sempa-fill:#f6f0e8; --sempa-track:#ebe2d6;
+  --sempa-border:#e6ddd1; --sempa-text:#2b221b; --sempa-text-soft:#6f5f53; --sempa-text-dim:#8a7b6e;
+  --sempa-accent:#b3592e; --sempa-accent-bg:#f6e5d9; --sempa-accent-ink:#8f411d; --sempa-amber:#da9f62;
+  --sempa-today-bg:#b3592e; --sempa-today-fg:#fffaf5; --sempa-btn-bg:#b3592e; --sempa-btn-fg:#fffaf5; --sempa-on-accent:#fffaf5;
+  --sempa-success:#4a8656; --sempa-success-soft:color-mix(in srgb, #4a8656 12%, transparent); --sempa-success-bg:#e8f2ea;
+  --card-bg:#ffffff; --card-border:#e6ddd1;
+  --sempa-shadow-1:0 1px 2px rgba(60,40,20,.05), 0 8px 24px -14px rgba(60,40,20,.22);
+  --sempa-shadow-2:0 2px 6px rgba(60,40,20,.06), 0 24px 48px -18px rgba(60,40,20,.30);
+  --sempa-shadow-accent:0 10px 22px -10px color-mix(in srgb, var(--sempa-btn-bg) 70%, transparent);
+  --sempa-tint-bg:15%; --sempa-tint-fg:62%;
+  --cal-terracotta-fg:#8a3c1a; --cal-terracotta-bg:#f8e4d7; --cal-stone-fg:#6f5f53; --cal-stone-bg:#f1ebe2;
+  --cal-sage-fg:#2f5c3a; --cal-sage-bg:#e3efe4; --cal-amber-fg:#745214; --cal-amber-bg:#f7ecd3;
   --a50:#fdf4ef; --a100:#f9e4d5; --a200:#f2c9ab; --a400:#d97b4a; --a500:#b3592e;
   --a600:#963e1f; --a700:#7a2e15; --a900:#451508; --a950:#2a0b03;
 }
 :root.dark,
 [data-theme="terracotta"].dark {
-  --sempa-bg-rail:#130e09; --sempa-bg-nav:#1d1510; --sempa-bg-main:#181310; --sempa-bg-panel:#1d1510;
-  --sempa-border:#2e2016; --sempa-text:#f0ece4; --sempa-text-soft:#b8a89a; --sempa-text-dim:#7a6a5e;
-  --sempa-accent:#cc6e3a; --sempa-accent-bg:#2d1d12; --sempa-amber:#da9f62;
-  --sempa-today-bg:#cc6e3a; --sempa-today-fg:#f7f3eb; --sempa-btn-bg:#cc6e3a; --sempa-btn-fg:#f7f3eb;
-  --sempa-success:#5e9e6b; --sempa-success-soft:rgba(94,158,107,.12); --sempa-success-bg:#1a2a1e;
-  --card-bg:#1f1813; --card-border:#2e2016;
-  --cal-terracotta-fg:#cc6e3a; --cal-terracotta-bg:#2d1d12; --cal-stone-fg:#b8a89a; --cal-stone-bg:#1d1510;
-  --cal-sage-fg:#5e9e6b; --cal-sage-bg:#1a2a1e; --cal-amber-fg:#da9f62; --cal-amber-bg:#2a2010;
-  /* --a* accent ramp is mode-independent — inherits from the light block above so
-     primary buttons (bg-[var(--a500/600)] text-white) stay legible in dark. */
+  --sempa-bg-rail:#0f0b08; --sempa-bg-nav:#14100d; --sempa-bg-main:#14100d; --sempa-bg-panel:#221b16;
+  --sempa-bg:#14100d; --sempa-fill:#2b231d; --sempa-track:#3a2f26;
+  --sempa-border:#33281f; --sempa-text:#f4ede5; --sempa-text-soft:#bcab9c; --sempa-text-dim:#958476;
+  --sempa-accent:#e0814f; --sempa-accent-bg:#3a2519; --sempa-accent-ink:#f3a57d; --sempa-amber:#e6a65a;
+  --sempa-today-bg:#b3592e; --sempa-today-fg:#fffaf5; --sempa-btn-bg:#b3592e; --sempa-btn-fg:#fffaf5; --sempa-on-accent:#fffaf5;
+  --sempa-success:#6db27a; --sempa-success-soft:color-mix(in srgb, #6db27a 14%, transparent); --sempa-success-bg:#1d2e22;
+  --card-bg:#221b16; --card-border:#33281f;
+  --sempa-shadow-1:inset 0 1px 0 rgba(255,255,255,.035), 0 1px 2px rgba(0,0,0,.35), 0 10px 26px -14px rgba(0,0,0,.75);
+  --sempa-shadow-2:inset 0 1px 0 rgba(255,255,255,.05), 0 24px 48px -16px rgba(0,0,0,.85);
+  --sempa-shadow-accent:0 10px 24px -12px color-mix(in srgb, var(--sempa-btn-bg) 65%, transparent);
+  --sempa-tint-bg:24%; --sempa-tint-fg:58%;
+  --cal-terracotta-fg:#f3a57d; --cal-terracotta-bg:#3a2519; --cal-stone-fg:#bcab9c; --cal-stone-bg:#2b231d;
+  --cal-sage-fg:#a3d3ad; --cal-sage-bg:#22342a; --cal-amber-fg:#ecc985; --cal-amber-bg:#362c19;
+  /* --a* accent ramp is mode-independent — inherits from the light block. */
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
    2 · FOREST  — calm pine green on warm paper
    ═══════════════════════════════════════════════════════════════════════ */
 [data-theme="forest"] {
-  --sempa-bg-rail:#cdd4c8; --sempa-bg-nav:#eef1ea; --sempa-bg-main:#f6f8f3; --sempa-bg-panel:#eef1ea;
-  --sempa-border:#dde2d6; --sempa-text:#1e261c; --sempa-text-soft:#5d6b58; --sempa-text-dim:#9aa794;
-  --sempa-accent:#3f6f47; --sempa-accent-bg:#e4ece1; --sempa-amber:#b88a4a;
-  --sempa-today-bg:#3f6f47; --sempa-today-fg:#f3f7ef; --sempa-btn-bg:#3f6f47; --sempa-btn-fg:#f3f7ef;
-  --sempa-success:#3f7549; --sempa-success-soft:rgba(63,117,73,.12); --sempa-success-bg:#e8f1e9;
-  --card-bg:#ffffff; --card-border:#e0e6da;
-  --cal-terracotta-fg:#4f8a78; --cal-terracotta-bg:#e6f0ec; --cal-stone-fg:#5d6b58; --cal-stone-bg:#eef1ea;
-  --cal-sage-fg:#3f7549; --cal-sage-bg:#e4ece1; --cal-amber-fg:#9a7a45; --cal-amber-bg:#f4f1e6;
+  --sempa-bg-rail:#d9dfd3; --sempa-bg-nav:#edf1e8; --sempa-bg-main:#edf1e8; --sempa-bg-panel:#ffffff;
+  --sempa-bg:#edf1e8; --sempa-fill:#f1f4ed; --sempa-track:#e2e8db;
+  --sempa-border:#dde4d6; --sempa-text:#1e261c; --sempa-text-soft:#56644f; --sempa-text-dim:#77856f;
+  --sempa-accent:#3f6f47; --sempa-accent-bg:#e1ece0; --sempa-accent-ink:#2d5434; --sempa-amber:#b88a4a;
+  --sempa-today-bg:#3f6f47; --sempa-today-fg:#f3f7ef; --sempa-btn-bg:#3f6f47; --sempa-btn-fg:#f3f7ef; --sempa-on-accent:#f3f7ef;
+  --sempa-success:#3f7549; --sempa-success-soft:color-mix(in srgb, #3f7549 12%, transparent); --sempa-success-bg:#e6f0e7;
+  --card-bg:#ffffff; --card-border:#dde4d6;
+  --sempa-shadow-1:0 1px 2px rgba(30,45,28,.05), 0 8px 24px -14px rgba(30,45,28,.22);
+  --sempa-shadow-2:0 2px 6px rgba(30,45,28,.06), 0 24px 48px -18px rgba(30,45,28,.30);
+  --sempa-shadow-accent:0 10px 22px -10px color-mix(in srgb, var(--sempa-btn-bg) 70%, transparent);
+  --sempa-tint-bg:15%; --sempa-tint-fg:62%;
+  --cal-terracotta-fg:#2f6b5c; --cal-terracotta-bg:#e0efea; --cal-stone-fg:#56644f; --cal-stone-bg:#eef1ea;
+  --cal-sage-fg:#2f5c37; --cal-sage-bg:#e1ece0; --cal-amber-fg:#6e5420; --cal-amber-bg:#f3eedd;
   --a50:#eef4ec; --a100:#d8e6d6; --a200:#b3cdb0; --a400:#5a9163; --a500:#3f6f47;
   --a600:#335c3a; --a700:#28492e; --a900:#16291a; --a950:#0d1a10;
 }
 [data-theme="forest"].dark {
-  --sempa-bg-rail:#0a0f0b; --sempa-bg-nav:#121a14; --sempa-bg-main:#0f1410; --sempa-bg-panel:#121a14;
-  --sempa-border:#243026; --sempa-text:#e9efe6; --sempa-text-soft:#a3b39d; --sempa-text-dim:#6c7d66;
-  --sempa-accent:#6aa877; --sempa-accent-bg:#1a261c; --sempa-amber:#c79a5e;
-  --sempa-today-bg:#6aa877; --sempa-today-fg:#0f160f; --sempa-btn-bg:#5a9c6b; --sempa-btn-fg:#0d130c;
-  --sempa-success:#6aa877; --sempa-success-soft:rgba(106,168,119,.14); --sempa-success-bg:#16261a;
-  --card-bg:#141d16; --card-border:#243026;
-  --cal-terracotta-fg:#6fae9a; --cal-terracotta-bg:#16261f; --cal-stone-fg:#a3b39d; --cal-stone-bg:#121a14;
-  --cal-sage-fg:#6aa877; --cal-sage-bg:#16261a; --cal-amber-fg:#c79a5e; --cal-amber-bg:#241f12;
-  /* --a* inherits from the light Forest block (mode-independent). */
+  --sempa-bg-rail:#090d0a; --sempa-bg-nav:#0e130f; --sempa-bg-main:#0e130f; --sempa-bg-panel:#182019;
+  --sempa-bg:#0e130f; --sempa-fill:#1f2920; --sempa-track:#303c31;
+  --sempa-border:#283329; --sempa-text:#e9efe6; --sempa-text-soft:#a3b39d; --sempa-text-dim:#82937c;
+  --sempa-accent:#7ab887; --sempa-accent-bg:#1d2c20; --sempa-accent-ink:#a6d7b0; --sempa-amber:#c79a5e;
+  --sempa-today-bg:#6aa877; --sempa-today-fg:#0d130c; --sempa-btn-bg:#6aa877; --sempa-btn-fg:#0d130c; --sempa-on-accent:#0d130c;
+  --sempa-success:#6aa877; --sempa-success-soft:color-mix(in srgb, #6aa877 14%, transparent); --sempa-success-bg:#16261a;
+  --card-bg:#182019; --card-border:#283329;
+  --sempa-shadow-1:inset 0 1px 0 rgba(255,255,255,.035), 0 1px 2px rgba(0,0,0,.35), 0 10px 26px -14px rgba(0,0,0,.75);
+  --sempa-shadow-2:inset 0 1px 0 rgba(255,255,255,.05), 0 24px 48px -16px rgba(0,0,0,.85);
+  --sempa-shadow-accent:0 10px 24px -12px color-mix(in srgb, var(--sempa-btn-bg) 65%, transparent);
+  --sempa-tint-bg:24%; --sempa-tint-fg:58%;
+  --cal-terracotta-fg:#8fcbb9; --cal-terracotta-bg:#17282a; --cal-stone-fg:#a3b39d; --cal-stone-bg:#1f2920;
+  --cal-sage-fg:#a6d7b0; --cal-sage-bg:#1d2c20; --cal-amber-fg:#e0c08a; --cal-amber-bg:#2a2516;
+  /* --a* accent ramp is mode-independent — inherits from the light block. */
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
    3 · PLUM  — rich aubergine, contemplative
    ═══════════════════════════════════════════════════════════════════════ */
 [data-theme="plum"] {
-  --sempa-bg-rail:#d6cdda; --sempa-bg-nav:#f1ecf4; --sempa-bg-main:#f8f5fa; --sempa-bg-panel:#f1ecf4;
-  --sempa-border:#e4dce8; --sempa-text:#241a2b; --sempa-text-soft:#6b5d75; --sempa-text-dim:#a89aae;
-  --sempa-accent:#7a4a9e; --sempa-accent-bg:#ece2f1; --sempa-amber:#b07ab0;
-  --sempa-today-bg:#7a4a9e; --sempa-today-fg:#f5eef8; --sempa-btn-bg:#7a4a9e; --sempa-btn-fg:#f5eef8;
-  --sempa-success:#4d8a5a; --sempa-success-soft:rgba(77,138,90,.12); --sempa-success-bg:#edf4ee;
-  --card-bg:#ffffff; --card-border:#e7dfeb;
-  --cal-terracotta-fg:#a8567a; --cal-terracotta-bg:#f7eef3; --cal-stone-fg:#6b5d75; --cal-stone-bg:#f1ecf4;
-  --cal-sage-fg:#4d8a5a; --cal-sage-bg:#ebf2ec; --cal-amber-fg:#946b9e; --cal-amber-bg:#f3edf6;
+  --sempa-bg-rail:#ddd4e2; --sempa-bg-nav:#f2edf5; --sempa-bg-main:#f2edf5; --sempa-bg-panel:#ffffff;
+  --sempa-bg:#f2edf5; --sempa-fill:#f5f1f8; --sempa-track:#e8e0ee;
+  --sempa-border:#e5dcea; --sempa-text:#241a2b; --sempa-text-soft:#65576f; --sempa-text-dim:#877a92;
+  --sempa-accent:#7a4a9e; --sempa-accent-bg:#efe5f5; --sempa-accent-ink:#5f3580; --sempa-amber:#b07ab0;
+  --sempa-today-bg:#7a4a9e; --sempa-today-fg:#f5eef8; --sempa-btn-bg:#7a4a9e; --sempa-btn-fg:#f5eef8; --sempa-on-accent:#f5eef8;
+  --sempa-success:#4d8a5a; --sempa-success-soft:color-mix(in srgb, #4d8a5a 12%, transparent); --sempa-success-bg:#eaf3ec;
+  --card-bg:#ffffff; --card-border:#e5dcea;
+  --sempa-shadow-1:0 1px 2px rgba(45,25,60,.05), 0 8px 24px -14px rgba(45,25,60,.22);
+  --sempa-shadow-2:0 2px 6px rgba(45,25,60,.06), 0 24px 48px -18px rgba(45,25,60,.30);
+  --sempa-shadow-accent:0 10px 22px -10px color-mix(in srgb, var(--sempa-btn-bg) 70%, transparent);
+  --sempa-tint-bg:15%; --sempa-tint-fg:62%;
+  --cal-terracotta-fg:#8f3f63; --cal-terracotta-bg:#f6e6ee; --cal-stone-fg:#65576f; --cal-stone-bg:#f1ecf4;
+  --cal-sage-fg:#356b41; --cal-sage-bg:#e5f0e7; --cal-amber-fg:#7a4f86; --cal-amber-bg:#f1e9f5;
   --a50:#f5eef9; --a100:#ebddf2; --a200:#d6bce4; --a400:#9a6cc8; --a500:#7a4a9e;
   --a600:#653c84; --a700:#502f69; --a900:#2f1b3e; --a950:#1e1128;
 }
 [data-theme="plum"].dark {
-  --sempa-bg-rail:#0d0912; --sempa-bg-nav:#181020; --sempa-bg-main:#130d1a; --sempa-bg-panel:#181020;
-  --sempa-border:#2c2138; --sempa-text:#ece5f2; --sempa-text-soft:#b0a3bb; --sempa-text-dim:#736684;
-  --sempa-accent:#a87ccc; --sempa-accent-bg:#241730; --sempa-amber:#c08fc0;
-  --sempa-today-bg:#a87ccc; --sempa-today-fg:#140c1c; --sempa-btn-bg:#9a6cc8; --sempa-btn-fg:#120a18;
-  --sempa-success:#5e9e6b; --sempa-success-soft:rgba(94,158,107,.13); --sempa-success-bg:#15241a;
-  --card-bg:#1b1326; --card-border:#2c2138;
-  --cal-terracotta-fg:#c87a9e; --cal-terracotta-bg:#2a1620; --cal-stone-fg:#b0a3bb; --cal-stone-bg:#181020;
-  --cal-sage-fg:#5e9e6b; --cal-sage-bg:#15241a; --cal-amber-fg:#c08fc0; --cal-amber-bg:#241730;
-  /* --a* inherits from the light Plum block (mode-independent). */
+  --sempa-bg-rail:#0b0710; --sempa-bg-nav:#110c17; --sempa-bg-main:#110c17; --sempa-bg-panel:#1d1528;
+  --sempa-bg:#110c17; --sempa-fill:#251c32; --sempa-track:#372b49;
+  --sempa-border:#2f2440; --sempa-text:#ece5f2; --sempa-text-soft:#b0a3bb; --sempa-text-dim:#8e809e;
+  --sempa-accent:#b88ed9; --sempa-accent-bg:#2a1d3a; --sempa-accent-ink:#d3b8ec; --sempa-amber:#c08fc0;
+  --sempa-today-bg:#a87ccc; --sempa-today-fg:#140c1c; --sempa-btn-bg:#a87ccc; --sempa-btn-fg:#140c1c; --sempa-on-accent:#140c1c;
+  --sempa-success:#5e9e6b; --sempa-success-soft:color-mix(in srgb, #5e9e6b 14%, transparent); --sempa-success-bg:#15241a;
+  --card-bg:#1d1528; --card-border:#2f2440;
+  --sempa-shadow-1:inset 0 1px 0 rgba(255,255,255,.035), 0 1px 2px rgba(0,0,0,.35), 0 10px 26px -14px rgba(0,0,0,.75);
+  --sempa-shadow-2:inset 0 1px 0 rgba(255,255,255,.05), 0 24px 48px -16px rgba(0,0,0,.85);
+  --sempa-shadow-accent:0 10px 24px -12px color-mix(in srgb, var(--sempa-btn-bg) 65%, transparent);
+  --sempa-tint-bg:24%; --sempa-tint-fg:58%;
+  --cal-terracotta-fg:#e4a4c2; --cal-terracotta-bg:#33182a; --cal-stone-fg:#b0a3bb; --cal-stone-bg:#251c32;
+  --cal-sage-fg:#9fd0aa; --cal-sage-bg:#17281d; --cal-amber-fg:#d6aee0; --cal-amber-bg:#2a1d3a;
+  /* --a* accent ramp is mode-independent — inherits from the light block. */
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
    4 · SLATE  — quiet graphite greys, near-neutral
    ═══════════════════════════════════════════════════════════════════════ */
 [data-theme="slate"] {
-  --sempa-bg-rail:#d4d8dd; --sempa-bg-nav:#eef0f2; --sempa-bg-main:#f6f7f9; --sempa-bg-panel:#eef0f2;
-  --sempa-border:#e0e3e7; --sempa-text:#1d2227; --sempa-text-soft:#5b6570; --sempa-text-dim:#9aa3ad;
-  --sempa-accent:#4a5a6b; --sempa-accent-bg:#e3e7ec; --sempa-amber:#8a94a0;
-  --sempa-today-bg:#4a5a6b; --sempa-today-fg:#f3f5f7; --sempa-btn-bg:#4a5a6b; --sempa-btn-fg:#f3f5f7;
-  --sempa-success:#3f7549; --sempa-success-soft:rgba(63,117,73,.12); --sempa-success-bg:#eaf2ec;
-  --card-bg:#ffffff; --card-border:#e4e7eb;
-  --cal-terracotta-fg:#8a6a9c; --cal-terracotta-bg:#efeaf3; --cal-stone-fg:#5b6570; --cal-stone-bg:#eef0f2;
-  --cal-sage-fg:#3f7549; --cal-sage-bg:#eaf2ec; --cal-amber-fg:#7a8290; --cal-amber-bg:#eef0f3;
+  --sempa-bg-rail:#d9dde2; --sempa-bg-nav:#eef0f3; --sempa-bg-main:#eef0f3; --sempa-bg-panel:#ffffff;
+  --sempa-bg:#eef0f3; --sempa-fill:#f2f4f6; --sempa-track:#e3e7ec;
+  --sempa-border:#e0e4e9; --sempa-text:#1d2227; --sempa-text-soft:#56616c; --sempa-text-dim:#78828d;
+  --sempa-accent:#4a5a6b; --sempa-accent-bg:#e5e9ee; --sempa-accent-ink:#364452; --sempa-amber:#8a94a0;
+  --sempa-today-bg:#4a5a6b; --sempa-today-fg:#f3f5f7; --sempa-btn-bg:#4a5a6b; --sempa-btn-fg:#f3f5f7; --sempa-on-accent:#f3f5f7;
+  --sempa-success:#3f7549; --sempa-success-soft:color-mix(in srgb, #3f7549 12%, transparent); --sempa-success-bg:#e8f1ea;
+  --card-bg:#ffffff; --card-border:#e0e4e9;
+  --sempa-shadow-1:0 1px 2px rgba(25,32,42,.05), 0 8px 24px -14px rgba(25,32,42,.22);
+  --sempa-shadow-2:0 2px 6px rgba(25,32,42,.06), 0 24px 48px -18px rgba(25,32,42,.30);
+  --sempa-shadow-accent:0 10px 22px -10px color-mix(in srgb, var(--sempa-btn-bg) 70%, transparent);
+  --sempa-tint-bg:15%; --sempa-tint-fg:62%;
+  --cal-terracotta-fg:#6f4f83; --cal-terracotta-bg:#efe8f4; --cal-stone-fg:#56616c; --cal-stone-bg:#eef0f2;
+  --cal-sage-fg:#2f6340; --cal-sage-bg:#e4efe7; --cal-amber-fg:#5b6573; --cal-amber-bg:#eceff3;
   --a50:#f1f3f5; --a100:#e0e4e8; --a200:#c3cad1; --a400:#6b7886; --a500:#4a5a6b;
   --a600:#3b4856; --a700:#2e3942; --a900:#1a2128; --a950:#11161b;
 }
 [data-theme="slate"].dark {
-  --sempa-bg-rail:#0c0e11; --sempa-bg-nav:#15181d; --sempa-bg-main:#101317; --sempa-bg-panel:#15181d;
-  --sempa-border:#262b32; --sempa-text:#e8ebef; --sempa-text-soft:#a0a9b3; --sempa-text-dim:#6a747e;
-  --sempa-accent:#9aa7b5; --sempa-accent-bg:#1e242b; --sempa-amber:#9aa3ad;
-  --sempa-today-bg:#9aa7b5; --sempa-today-fg:#11151a; --sempa-btn-bg:#7e8b99; --sempa-btn-fg:#0f1318;
-  --sempa-success:#5e9e6b; --sempa-success-soft:rgba(94,158,107,.13); --sempa-success-bg:#16241a;
-  --card-bg:#171b20; --card-border:#262b32;
-  --cal-terracotta-fg:#ad94c4; --cal-terracotta-bg:#241d2e; --cal-stone-fg:#a0a9b3; --cal-stone-bg:#15181d;
-  --cal-sage-fg:#5e9e6b; --cal-sage-bg:#16241a; --cal-amber-fg:#b3bcc6; --cal-amber-bg:#1e242b;
-  /* --a* inherits from the light Slate block (mode-independent). */
+  --sempa-bg-rail:#14161a; --sempa-bg-nav:#1b1e24; --sempa-bg-main:#1b1e24; --sempa-bg-panel:#262a32;
+  --sempa-bg:#1b1e24; --sempa-fill:#2e333c; --sempa-track:#3c434e;
+  --sempa-border:#353b45; --sempa-text:#eceef2; --sempa-text-soft:#a7afba; --sempa-text-dim:#88919d;
+  --sempa-accent:#aab7c5; --sempa-accent-bg:#313844; --sempa-accent-ink:#cdd6e0; --sempa-amber:#d4a463;
+  --sempa-today-bg:#9aa7b5; --sempa-today-fg:#11151a; --sempa-btn-bg:#9aa7b5; --sempa-btn-fg:#11151a; --sempa-on-accent:#11151a;
+  --sempa-success:#6aae79; --sempa-success-soft:color-mix(in srgb, #6aae79 14%, transparent); --sempa-success-bg:#1f2d25;
+  --card-bg:#262a32; --card-border:#353b45;
+  --sempa-shadow-1:inset 0 1px 0 rgba(255,255,255,.035), 0 1px 2px rgba(0,0,0,.35), 0 10px 26px -14px rgba(0,0,0,.75);
+  --sempa-shadow-2:inset 0 1px 0 rgba(255,255,255,.05), 0 24px 48px -16px rgba(0,0,0,.85);
+  --sempa-shadow-accent:0 10px 24px -12px color-mix(in srgb, var(--sempa-btn-bg) 65%, transparent);
+  --sempa-tint-bg:24%; --sempa-tint-fg:58%;
+  --cal-terracotta-fg:#c7b0dc; --cal-terracotta-bg:#352d44; --cal-stone-fg:#a7afba; --cal-stone-bg:#2e333c;
+  --cal-sage-fg:#9fd0aa; --cal-sage-bg:#22332a; --cal-amber-fg:#c6ced8; --cal-amber-bg:#313844;
+  /* --a* accent ramp is mode-independent — inherits from the light block. */
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
    5 · OLED  — true black, power-saving (DARK ONLY)
-   Keeps the warm terracotta accent so brand identity survives on black.
-   Appearance UI hides the light/dark toggle when OLED is active.
    ═══════════════════════════════════════════════════════════════════════ */
 [data-theme="oled"],
 [data-theme="oled"].dark {
-  --sempa-bg-rail:#000000; --sempa-bg-nav:#000000; --sempa-bg-main:#000000; --sempa-bg-panel:#0b0b0b;
-  --sempa-border:#1f1f1f; --sempa-text:#f2f0ed; --sempa-text-soft:#a8a29b; --sempa-text-dim:#6b6661;
-  --sempa-accent:#e08246; --sempa-accent-bg:#1a1208; --sempa-amber:#da9f62;
-  --sempa-today-bg:#e08246; --sempa-today-fg:#0a0600; --sempa-btn-bg:#e08246; --sempa-btn-fg:#0a0600;
-  --sempa-success:#5fae6e; --sempa-success-soft:rgba(95,174,110,.14); --sempa-success-bg:#0a1810;
-  --card-bg:#0c0c0c; --card-border:#1f1f1f;
-  --cal-terracotta-fg:#e08246; --cal-terracotta-bg:#170f07; --cal-stone-fg:#a8a29b; --cal-stone-bg:#0b0b0b;
-  --cal-sage-fg:#5fae6e; --cal-sage-bg:#0a1810; --cal-amber-fg:#da9f62; --cal-amber-bg:#161106;
+  --sempa-bg-rail:#000000; --sempa-bg-nav:#000000; --sempa-bg-main:#000000; --sempa-bg-panel:#0e0e0e;
+  --sempa-bg:#000000; --sempa-fill:#171717; --sempa-track:#2a2a2a;
+  --sempa-border:#222222; --sempa-text:#f2f0ed; --sempa-text-soft:#a8a29b; --sempa-text-dim:#857f78;
+  --sempa-accent:#e08246; --sempa-accent-bg:#1f150c; --sempa-accent-ink:#f0a273; --sempa-amber:#da9f62;
+  --sempa-today-bg:#e08246; --sempa-today-fg:#0a0600; --sempa-btn-bg:#e08246; --sempa-btn-fg:#0a0600; --sempa-on-accent:#0a0600;
+  --sempa-success:#5fae6e; --sempa-success-soft:color-mix(in srgb, #5fae6e 14%, transparent); --sempa-success-bg:#0a1810;
+  --card-bg:#0e0e0e; --card-border:#222222;
+  --sempa-shadow-1:0 0 0 1px #1d1d1d;
+  --sempa-shadow-2:0 0 0 1px #262626, 0 24px 48px -12px rgba(0,0,0,.9);
+  --sempa-shadow-accent:none;
+  --sempa-tint-bg:24%; --sempa-tint-fg:58%;
+  --cal-terracotta-fg:#f0a273; --cal-terracotta-bg:#1f150c; --cal-stone-fg:#a8a29b; --cal-stone-bg:#171717;
+  --cal-sage-fg:#8fd09c; --cal-sage-bg:#0c1a10; --cal-amber-fg:#e8c07e; --cal-amber-bg:#1c160a;
   --a50:#1a1208; --a100:#2a0b03; --a200:#7a2e15; --a400:#cc6e3a; --a500:#e08246;
   --a600:#e89464; --a700:#f2c9ab; --a900:#f9e4d5; --a950:#fdf4ef;
 }
@@ -155,25 +208,35 @@
    6 · OCEAN  — deep marine blue, cool but soft
    ═══════════════════════════════════════════════════════════════════════ */
 [data-theme="ocean"] {
-  --sempa-bg-rail:#c9d4dd; --sempa-bg-nav:#e9eef3; --sempa-bg-main:#f4f7fa; --sempa-bg-panel:#e9eef3;
-  --sempa-border:#dae1e8; --sempa-text:#152230; --sempa-text-soft:#566876; --sempa-text-dim:#92a1b0;
-  --sempa-accent:#2f6499; --sempa-accent-bg:#dfe8f1; --sempa-amber:#5b94c2;
-  --sempa-today-bg:#2f6499; --sempa-today-fg:#eef4f9; --sempa-btn-bg:#2f6499; --sempa-btn-fg:#eef4f9;
-  --sempa-success:#3f7549; --sempa-success-soft:rgba(63,117,73,.12); --sempa-success-bg:#e8f1ec;
-  --card-bg:#ffffff; --card-border:#e1e7ed;
-  --cal-terracotta-fg:#3f8f8a; --cal-terracotta-bg:#e3f1f0; --cal-stone-fg:#566876; --cal-stone-bg:#e9eef3;
-  --cal-sage-fg:#3f7549; --cal-sage-bg:#e8f1ec; --cal-amber-fg:#5b7d99; --cal-amber-bg:#eaf0f5;
+  --sempa-bg-rail:#d5dee6; --sempa-bg-nav:#ecf1f6; --sempa-bg-main:#ecf1f6; --sempa-bg-panel:#ffffff;
+  --sempa-bg:#ecf1f6; --sempa-fill:#f1f5f9; --sempa-track:#dfe6ee;
+  --sempa-border:#dbe3eb; --sempa-text:#152230; --sempa-text-soft:#4f6170; --sempa-text-dim:#728494;
+  --sempa-accent:#2f6499; --sempa-accent-bg:#e2ebf4; --sempa-accent-ink:#23507d; --sempa-amber:#5b94c2;
+  --sempa-today-bg:#2f6499; --sempa-today-fg:#eef4f9; --sempa-btn-bg:#2f6499; --sempa-btn-fg:#eef4f9; --sempa-on-accent:#eef4f9;
+  --sempa-success:#3f7549; --sempa-success-soft:color-mix(in srgb, #3f7549 12%, transparent); --sempa-success-bg:#e7f0eb;
+  --card-bg:#ffffff; --card-border:#dbe3eb;
+  --sempa-shadow-1:0 1px 2px rgba(20,40,65,.05), 0 8px 24px -14px rgba(20,40,65,.22);
+  --sempa-shadow-2:0 2px 6px rgba(20,40,65,.06), 0 24px 48px -18px rgba(20,40,65,.30);
+  --sempa-shadow-accent:0 10px 22px -10px color-mix(in srgb, var(--sempa-btn-bg) 70%, transparent);
+  --sempa-tint-bg:15%; --sempa-tint-fg:62%;
+  --cal-terracotta-fg:#22706b; --cal-terracotta-bg:#dff0ef; --cal-stone-fg:#4f6170; --cal-stone-bg:#e9eef3;
+  --cal-sage-fg:#2f6340; --cal-sage-bg:#e4efe7; --cal-amber-fg:#3f6584; --cal-amber-bg:#e5edf4;
   --a50:#eef4fa; --a100:#d8e6f2; --a200:#b0cce4; --a400:#4f86c6; --a500:#2f6499;
   --a600:#26527e; --a700:#1e4163; --a900:#12283c; --a950:#0b1a28;
 }
 [data-theme="ocean"].dark {
-  --sempa-bg-rail:#070c14; --sempa-bg-nav:#0f1726; --sempa-bg-main:#0c121e; --sempa-bg-panel:#0f1726;
-  --sempa-border:#1f2c40; --sempa-text:#e6edf4; --sempa-text-soft:#9bacbf; --sempa-text-dim:#647689;
-  --sempa-accent:#6aa0d6; --sempa-accent-bg:#142133; --sempa-amber:#7ba6cf;
-  --sempa-today-bg:#6aa0d6; --sempa-today-fg:#0a121d; --sempa-btn-bg:#5a90c8; --sempa-btn-fg:#08101a;
-  --sempa-success:#5e9e6b; --sempa-success-soft:rgba(94,158,107,.13); --sempa-success-bg:#13241a;
-  --card-bg:#111a2a; --card-border:#1f2c40;
-  --cal-terracotta-fg:#5fb0aa; --cal-terracotta-bg:#13282a; --cal-stone-fg:#9bacbf; --cal-stone-bg:#0f1726;
-  --cal-sage-fg:#5e9e6b; --cal-sage-bg:#13241a; --cal-amber-fg:#7ba6cf; --cal-amber-bg:#142133;
-  /* --a* inherits from the light Ocean block (mode-independent). */
+  --sempa-bg-rail:#060a12; --sempa-bg-nav:#0a101a; --sempa-bg-main:#0a101a; --sempa-bg-panel:#131d2c;
+  --sempa-bg:#0a101a; --sempa-fill:#1a2536; --sempa-track:#2a3a55;
+  --sempa-border:#22314a; --sempa-text:#e6edf4; --sempa-text-soft:#9bacbf; --sempa-text-dim:#7a8ca2;
+  --sempa-accent:#76abe0; --sempa-accent-bg:#172538; --sempa-accent-ink:#a8cbee; --sempa-amber:#7ba6cf;
+  --sempa-today-bg:#5a90c8; --sempa-today-fg:#08101a; --sempa-btn-bg:#5a90c8; --sempa-btn-fg:#08101a; --sempa-on-accent:#08101a;
+  --sempa-success:#5e9e6b; --sempa-success-soft:color-mix(in srgb, #5e9e6b 14%, transparent); --sempa-success-bg:#13241a;
+  --card-bg:#131d2c; --card-border:#22314a;
+  --sempa-shadow-1:inset 0 1px 0 rgba(255,255,255,.035), 0 1px 2px rgba(0,0,0,.35), 0 10px 26px -14px rgba(0,0,0,.75);
+  --sempa-shadow-2:inset 0 1px 0 rgba(255,255,255,.05), 0 24px 48px -16px rgba(0,0,0,.85);
+  --sempa-shadow-accent:0 10px 24px -12px color-mix(in srgb, var(--sempa-btn-bg) 65%, transparent);
+  --sempa-tint-bg:24%; --sempa-tint-fg:58%;
+  --cal-terracotta-fg:#86d0c9; --cal-terracotta-bg:#122a2c; --cal-stone-fg:#9bacbf; --cal-stone-bg:#1a2536;
+  --cal-sage-fg:#9fd0aa; --cal-sage-bg:#14261c; --cal-amber-fg:#a8c6e6; --cal-amber-bg:#172538;
+  /* --a* accent ramp is mode-independent — inherits from the light block. */
 }

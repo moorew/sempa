@@ -14,7 +14,7 @@
 
 {#if updates.available && updates.info}
   <div class="fixed bottom-5 right-5 z-[70] w-80 max-w-[calc(100vw-2.5rem)] overflow-hidden rounded-2xl shadow-2xl"
-       style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);"
+       style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);"
        role="status" aria-live="polite">
     <div class="flex items-start gap-3 p-4">
       <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
@@ -33,8 +33,8 @@
 
         <div class="mt-3 flex items-center gap-2">
           <button onclick={() => openExternal(updates.info!.downloadUrl)}
-             class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
-             style="background: var(--sempa-accent);">
+             class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-white"
+             style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
             <Download size={13} strokeWidth={2} /> Download
           </button>
           {#if updates.info.notes}

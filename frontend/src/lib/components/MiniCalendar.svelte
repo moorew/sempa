@@ -87,7 +87,7 @@
 </script>
 
 <div class="select-none px-4 py-3"
-     style={dragActive && onDateDrop ? 'box-shadow: inset 0 0 0 1.5px var(--sempa-accent); border-radius: 12px;' : ''}>
+     style={dragActive && onDateDrop ? 'box-shadow: inset 0 0 0 1.5px var(--sempa-accent); border-radius: 18px;' : ''}>
   {#if dragActive && onDateDrop}
     <div class="mb-2 flex items-center justify-center gap-1.5 rounded-md py-1 text-[10.5px] font-medium"
          style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
@@ -153,7 +153,7 @@
                   class="flex h-6 w-6 items-center justify-center rounded-full text-[11px] transition-colors
                          {!isToday && !isSel && !isDragOver ? 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800' : ''}"
                   style={isDragOver
-                    ? 'background:var(--sempa-accent);color:var(--sempa-btn-fg);font-weight:700;box-shadow:0 0 0 2px var(--sempa-accent-bg);'
+                    ? 'background: var(--sempa-btn-bg);color:var(--sempa-btn-fg);font-weight:700;box-shadow:0 0 0 2px var(--sempa-accent-bg);'
                     : isToday && isSel
                     ? 'background:var(--sempa-today-bg);color:var(--sempa-today-fg);font-weight:700;'
                     : isToday

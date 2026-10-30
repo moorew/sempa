@@ -50,14 +50,14 @@
 
   <div class="flex-1 overflow-y-auto px-5 py-6 pb-20">
     {#snippet sectionLabel(text: string)}
-      <p class="mb-3 mt-7 first:mt-0" style="font-family:monospace; font-size:10.5px; font-weight:700;
-         letter-spacing:0.12em; text-transform:uppercase; color:var(--sempa-text-dim)">{text}</p>
+      <p class="mb-3 mt-7 first:mt-0" style="font-family:monospace; font-size: 12px; font-weight:700;
+         color:var(--sempa-text-dim)">{text}</p>
     {/snippet}
 
     {#snippet toggleRow(label: string, desc: string, value: boolean, onChange: () => void)}
       <button onclick={onChange}
         class="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-colors"
-        style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+        style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <div class="min-w-0 flex-1">
           <p class="text-sm font-medium" style="color: var(--sempa-text);">{label}</p>
           <p class="mt-0.5 text-xs" style="color: var(--sempa-text-dim);">{desc}</p>
@@ -92,7 +92,7 @@
     <!-- What Sempa has learned -->
     {@render sectionLabel('Learned times')}
     <div class="rounded-xl px-4 py-3.5"
-         style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+         style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
       <p class="text-xs leading-relaxed" style="color: var(--sempa-text-dim);">
         After you’ve logged a kind of task {LEARN_MIN_SAMPLES} times and the durations agree,
         Sempa stops asking and fills the time in for you. Kinds of work that vary a
@@ -163,7 +163,7 @@
       )}
       {#if timeTracking.capacityEnabled}
         <div class="flex items-center justify-between rounded-xl px-4 py-3.5"
-          style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+          style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           <div class="min-w-0 flex-1">
             <p class="text-sm font-medium" style="color: var(--sempa-text);">Hours per day</p>
             <p class="mt-0.5 text-xs" style="color: var(--sempa-text-dim);">How much focused work fits in a realistic day.</p>
@@ -207,7 +207,7 @@
     <!-- Pomodoro durations -->
     {@render sectionLabel('Focus timer')}
     <div class="flex flex-col gap-3 rounded-xl px-4 py-4"
-      style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+      style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
       <label class="flex items-center justify-between text-sm" style="color: var(--sempa-text-soft);">
         Focus length
         <input type="number" min="1" max="120" bind:value={workMins} onchange={savePomo}
@@ -232,7 +232,7 @@
     {@render sectionLabel('Help')}
     <a href="/insights"
       class="mb-2 flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-colors"
-      style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+      style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
       <Gauge size={18} style="color: var(--sempa-accent);" />
       <div class="flex-1">
         <p class="text-sm font-medium" style="color: var(--sempa-text);">View your time insights</p>
@@ -244,7 +244,7 @@
     </a>
     <button onclick={() => timeTracking.openWalkthrough()}
       class="flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-colors"
-      style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+      style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
       <Clock size={18} style="color: var(--sempa-accent);" />
       <div class="flex-1">
         <p class="text-sm font-medium" style="color: var(--sempa-text);">Replay the intro</p>

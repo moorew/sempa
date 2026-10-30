@@ -420,7 +420,7 @@
 <div class="flex h-full flex-col overflow-hidden">
   <div class="shrink-0 px-4 py-2 border-b border-gray-100 dark:border-gray-800/60">
     <div class="flex items-center justify-between gap-2">
-      <p class="text-[10.5px] font-medium uppercase tracking-wider text-gray-400 dark:text-gray-600"
+      <p class="text-[12px] font-medium text-gray-400 dark:text-gray-600"
          title="Drag tasks here to place them on the timeline">
         Schedule
       </p>
@@ -590,7 +590,7 @@
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div class="fixed inset-0 z-[70]" onclick={closeOverlays} oncontextmenu={(e) => { e.preventDefault(); closeOverlays(); }}></div>
   <div class="fixed z-[71] w-60 rounded-xl p-3 shadow-2xl animate-scale-in"
-       style="left:{popover.x}px; top:{popover.y}px; background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);">
+       style="left:{popover.x}px; top:{popover.y}px; background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
     {#if popoverEvent}
       <p class="text-[13px] font-semibold leading-snug" style="color: var(--sempa-text);">{popoverEvent.summary}</p>
       <p class="mt-1 text-[11.5px]" style="color: var(--sempa-text-soft);">{eventTimeLabel(popoverEvent)}</p>
@@ -598,13 +598,13 @@
         <p class="mt-0.5 truncate text-[11px]" style="color: var(--sempa-text-dim);" title={popoverEvent.location}>📍 {popoverEvent.location}</p>
       {/if}
       {#if popoverEvent.calendar}
-        <p class="mt-0.5 text-[10.5px] uppercase tracking-wide" style="color: var(--sempa-text-dim);">{popoverEvent.calendar}</p>
+        <p class="mt-0.5 text-[12px] font-semibold" style="color: var(--sempa-text-dim);">{popoverEvent.calendar}</p>
       {/if}
       <div class="mt-2.5 flex flex-col gap-1.5">
         {#if popoverEvent.url}
           <button onclick={() => openExternal(popoverEvent!.url!)}
-                  class="flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90"
-                  style="background: var(--sempa-accent);">
+                  class="flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90"
+                  style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
             </svg>
@@ -630,8 +630,8 @@
       <div class="mt-2.5 flex flex-col gap-1.5">
         {#if onOpenTask}
           <button onclick={() => openTaskFromOverlay(popoverTask!.id)}
-                  class="flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90"
-                  style="background: var(--sempa-accent);">
+                  class="flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90"
+                  style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
             Open task
           </button>
         {/if}
@@ -650,7 +650,7 @@
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div class="fixed inset-0 z-[70]" onclick={closeOverlays} oncontextmenu={(e) => { e.preventDefault(); closeOverlays(); }}></div>
   <div class="fixed z-[71] w-48 overflow-hidden rounded-lg py-1 shadow-2xl animate-scale-in"
-       style="left:{ctxMenu.x}px; top:{ctxMenu.y}px; background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);">
+       style="left:{ctxMenu.x}px; top:{ctxMenu.y}px; background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
     {#if ctxEvent}
       {#if ctxEvent.url}
         <button onclick={() => { const u = ctxEvent!.url!; closeOverlays(); openExternal(u); }} class="menu-item">Open in browser</button>

@@ -119,11 +119,11 @@
   onmouseenter={() => onHover?.(task.id)}
   onmouseleave={() => onHover?.(null)}
   oncontextmenu={onContextMenu}
-  class="group relative flex flex-col gap-2 rounded-[10px] shadow-sm cursor-grab
+  class="group relative flex flex-col gap-2 rounded-[14px] shadow-sm cursor-grab
          active:cursor-grabbing active:scale-[0.98] active:shadow-none
          transition-all duration-150 hover:shadow-md min-h-[44px]
          {dragging ? 'is-dragging' : ''}"
-  style="padding: 9px 10px; background: var(--card-bg); border: 1px solid var(--card-border);"
+  style="padding: 9px 10px; background: var(--card-bg); box-shadow: var(--sempa-shadow-1);"
 >
   <div class="flex items-start gap-2">
     <!-- Quick-complete — 44×44 tap target on mobile, compact on desktop so the

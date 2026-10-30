@@ -76,8 +76,8 @@
         class="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
         style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text);" />
       <button type="submit" disabled={!newTitle.trim()}
-        class="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-        style="background: var(--sempa-accent);">
+        class="flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+        style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
         <Plus size={16} /> Add
       </button>
     </form>
@@ -95,7 +95,7 @@
     {:else}
       {#each groups as g (g.status.id)}
         <div class="mb-6">
-          <p class="mb-2 flex items-center gap-2 px-1 text-[10.5px] font-semibold uppercase tracking-wider"
+          <p class="mb-2 flex items-center gap-2 px-1 text-[12px] font-semibold"
              style="color: var(--sempa-text-dim);">
             <span class="h-2 w-2 rounded-full" style="background: {g.status.color};"></span>{g.status.name}
           </p>
@@ -104,7 +104,7 @@
               {@const prog = projectProgress(tasksByProject[p.id] ?? [], p.target_date, todayStr)}
               <a href={`/projects/${p.id}`}
                  class="block rounded-xl px-4 py-3 transition-shadow hover:shadow-sm"
-                 style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); border-left: 4px solid {p.color};">
+                 style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel); border-left: 4px solid {p.color};">
                 <p class="truncate text-sm font-semibold" style="color: var(--sempa-text);">{p.title || 'Untitled project'}</p>
                 <div class="mt-1 flex items-center gap-2 text-[11.5px]" style="color: var(--sempa-text-dim);">
                   <span>{prog.done}/{prog.total} tasks</span>

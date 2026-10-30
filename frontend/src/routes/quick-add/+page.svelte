@@ -45,7 +45,7 @@
 <div
   data-tauri-drag-region
   style="height:100vh; display:flex; flex-direction:column; gap:10px; padding:16px 18px;
-         background: var(--sempa-bg-panel); border:1px solid var(--sempa-border); border-radius:14px;
+         background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); border-radius:20px;
          box-sizing:border-box; overflow:hidden; user-select:none;">
   <div style="display:flex; align-items:center; gap:8px; color: var(--sempa-accent);">
     <svg width="20" height="20" viewBox="0 0 100 100" fill="none" aria-hidden="true">
@@ -53,8 +53,7 @@
             stroke-linecap="round" stroke-linejoin="round"/>
       <circle cx="50" cy="35" r="7.5" fill="currentColor"/>
     </svg>
-    <span style="font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:.14em;
-                 text-transform:uppercase; color: var(--sempa-text-dim);">Quick add</span>
+    <span style="font-size: 12px;                  color: var(--sempa-text-dim);">Quick add</span>
     <span style="margin-left:auto; font-family:'JetBrains Mono', monospace; font-size:11px;
                  color: var(--sempa-text-dim);">Enter ↵ · Esc</span>
   </div>
@@ -65,7 +64,7 @@
     type="text"
     placeholder="Add a task to today…"
     disabled={busy}
-    style="width:100%; box-sizing:border-box; padding:12px 14px; border-radius:10px;
+    style="width:100%; box-sizing:border-box; padding:12px 14px; border-radius:14px;
            background: var(--sempa-bg-main); border:1px solid var(--sempa-border);
            color: var(--sempa-text); font-size:16px; font-family:'Plus Jakarta Sans', sans-serif;
            outline:none; user-select:text;"

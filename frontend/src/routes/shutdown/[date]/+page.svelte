@@ -117,7 +117,7 @@
       <div class="flex items-center gap-2">
         <div class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold"
              style={i + 1 <= step
-               ? 'background: var(--sempa-accent); color: var(--sempa-btn-fg);'
+               ? 'background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);'
                : 'background: transparent; border: 1.5px solid var(--sempa-text-dim); color: var(--sempa-text-dim);'}>
           {#if i + 1 < step}
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
@@ -141,7 +141,7 @@
     {#if step === 1}
       {#key step}
       <div class="animate-fade-in"
-           style="border-radius:16px; border: 1px solid var(--sempa-border);
+           style="border-radius:22px; box-shadow: var(--sempa-shadow-1);
                   background: var(--sempa-bg-panel); padding:28px 28px 24px;">
         <div>
         <Moon size={28} style="color:var(--sempa-accent);margin-bottom:8px"/>
@@ -156,7 +156,7 @@
         {#if doneTasks.length > 0}
           <div class="mb-4 flex flex-col gap-1.5">
             {#each doneTasks as t (t.id)}
-              <div style="display:flex; align-items:center; gap:10px; border-radius:9px;
+              <div style="display:flex; align-items:center; gap:10px; border-radius:12px;
                           background: var(--sempa-accent-bg); padding:9px 12px; margin-bottom:6px;">
                 <svg class="h-3.5 w-3.5 shrink-0" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
@@ -193,7 +193,7 @@
         <div class="flex justify-end">
           <button
             onclick={() => step = 2}
-            style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
+            style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
                    padding:10px 20px; font-size:14px; font-weight:500; border:none; cursor:pointer;
                    display:inline-flex; align-items:center; gap:8px;"
             onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
@@ -213,7 +213,7 @@
     {:else if step === 2}
       {#key step}
       <div class="animate-fade-in"
-           style="border-radius:16px; border: 1px solid var(--sempa-border);
+           style="border-radius:22px; box-shadow: var(--sempa-shadow-1);
                   background: var(--sempa-bg-panel); padding:28px 28px 24px;">
         <div>
         <Star size={28} style="color:var(--sempa-amber);margin-bottom:8px"/>
@@ -235,7 +235,7 @@
                 placeholder="e.g. Fixed the auth bug faster than expected"
                 class="flex-1 outline-none"
                 style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main);
-                       border-radius:9px; padding:9px 13px; font-size:14px; color:var(--sempa-text);"
+                       border-radius:12px; padding:9px 13px; font-size:14px; color:var(--sempa-text);"
               />
             </div>
           {/each}
@@ -251,7 +251,7 @@
           </button>
           <button
             onclick={() => step = 3}
-            style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
+            style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
                    padding:10px 20px; font-size:14px; font-weight:500; border:none; cursor:pointer;
                    display:inline-flex; align-items:center; gap:8px;"
             onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
@@ -271,7 +271,7 @@
     {:else}
       {#key step}
       <div class="animate-fade-in"
-           style="border-radius:16px; border: 1px solid var(--sempa-border);
+           style="border-radius:22px; box-shadow: var(--sempa-shadow-1);
                   background: var(--sempa-bg-panel); padding:28px 28px 24px;">
         <div>
         <MessageSquare size={28} style="color:var(--sempa-text-soft);margin-bottom:8px"/>
@@ -285,7 +285,7 @@
           onfocus={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'}
           onblur={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'}
           style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main);
-                 border-radius:12px; padding:14px; resize:none; width:100%;
+                 border-radius:18px; padding:14px; resize:none; width:100%;
                  font-size:14px; color: var(--sempa-text); outline:none;"
         ></textarea>
 
@@ -305,7 +305,7 @@
                 {#each aiPrompts as p}
                   <button onclick={() => usePrompt(p)}
                           class="rounded-lg px-3 py-2 text-left text-xs transition-colors"
-                          style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft); background: var(--sempa-bg-panel);">
+                          style="box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-soft); background: var(--sempa-bg-panel);">
                     {p}
                   </button>
                 {/each}
@@ -324,7 +324,7 @@
             onclick={finish}
             disabled={saving}
             class="disabled:opacity-50"
-            style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
+            style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
                    padding:10px 20px; font-size:14px; font-weight:500; border:none; cursor:pointer;
                    display:inline-flex; align-items:center; gap:8px;"
             onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}

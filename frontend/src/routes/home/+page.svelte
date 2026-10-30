@@ -120,7 +120,7 @@
   <!-- Greeting header -->
   <div class="flex items-start justify-between px-5 pt-5 pb-4">
     <div>
-      <p class="text-[11px] font-mono font-semibold uppercase tracking-widest mb-1"
+      <p class="text-[12px] font-semibold mb-1"
          style="color: var(--sempa-text-dim);">{formatDate(todayDate)}</p>
       <h1 class="text-2xl font-bold" style="color: var(--sempa-text);">{greetingPrefix()}</h1>
     </div>
@@ -149,7 +149,7 @@
     <!-- Today card -->
     <a href="/day/{todayDate}"
        class="flex items-center gap-5 rounded-2xl px-5 py-5 transition-opacity active:opacity-70"
-       style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);">
+       style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
 
       <!-- Progress ring -->
       <div class="shrink-0">
@@ -199,13 +199,13 @@
     <!-- Today's tasks -->
     {#if openToday.length > 0}
       <div>
-        <p class="mb-2 px-1 text-[10.5px] font-bold uppercase tracking-widest"
+        <p class="mb-2 px-1 text-[12px] font-bold"
            style="font-family:monospace; color: var(--sempa-text-dim);">Up Next</p>
         <div class="flex flex-col gap-2">
           {#each openToday.slice(0, 5) as task (task.id)}
             <a href="/day/{todayDate}"
                class="flex items-center gap-3 rounded-xl px-4 py-3 transition-opacity active:opacity-70"
-               style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);">
+               style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
               <!-- Status dot -->
               <span class="h-2 w-2 shrink-0 rounded-full"
                     style="background: {task.status === 'in_progress' ? 'var(--sempa-accent)' : 'var(--sempa-text-dim)'};"></span>
@@ -235,7 +235,7 @@
     <!-- Week card -->
     <a href="/week/{thisWeek}"
        class="block rounded-2xl px-5 py-4 transition-opacity active:opacity-70"
-       style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);">
+       style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
       <div class="flex items-center justify-between mb-3">
         <p class="text-sm font-semibold" style="color: var(--sempa-text);">This Week</p>
         <svg class="h-4 w-4" style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -268,8 +268,8 @@
     <!-- Quick actions row -->
     <div class="flex gap-2">
       <a href="/day/{todayDate}"
-         class="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-3 font-medium text-sm transition-opacity active:opacity-70"
-         style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);">
+         class="flex flex-1 items-center justify-center gap-1.5 rounded-full py-3 font-medium text-sm transition-opacity active:opacity-70"
+         style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);">
         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
         </svg>
@@ -294,7 +294,7 @@
       </a>
       <a href="/email"
          class="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-3 text-sm transition-opacity active:opacity-70"
-         style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
+         style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-soft);">
         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
         </svg>
@@ -305,14 +305,14 @@
     <!-- Weekly objectives -->
     {#if objectives.length > 0}
       <div>
-        <p class="mb-2 px-1 text-[10.5px] font-bold uppercase tracking-widest"
+        <p class="mb-2 px-1 text-[12px] font-bold"
            style="font-family:monospace; color: var(--sempa-text-dim);">Weekly Objectives</p>
         <div class="flex flex-col gap-2">
           {#each objectives.slice(0, 4) as obj (obj.id)}
             {@const isDone = obj.status === 'completed'}
             <a href="/week/{thisWeek}"
                class="flex items-center gap-3 rounded-xl px-4 py-3 transition-opacity active:opacity-70"
-               style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);">
+               style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
               <!-- Checkbox -->
               <div class="h-5 w-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors
                           {isDone ? 'border-green-500 bg-green-500' : ''}"

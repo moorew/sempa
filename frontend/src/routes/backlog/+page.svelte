@@ -199,8 +199,8 @@
 
       <!-- Add -->
       <button onclick={openCreate}
-              class="flex items-center gap-1.5 rounded-[9px] px-3 transition-colors shadow-sm"
-              style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); height: 32px; font-size: 13px; font-weight: 500;"
+              class="flex items-center gap-1.5 rounded-[12px] px-3 transition-colors shadow-sm"
+              style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); height: 32px; font-size: 13px; font-weight: 500;"
               onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
               onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>
         <Plus size={13} strokeWidth={2.5} />
@@ -222,7 +222,7 @@
 
   {:else if tasks.length === 0}
     <div class="flex flex-col items-center justify-center py-20 gap-4"
-         style="border: 2px dashed var(--sempa-border); border-radius: 16px;">
+         style="border: 2px dashed var(--sempa-border); border-radius: 22px;">
       <div class="h-12 w-12 rounded-full flex items-center justify-center"
            style="background: var(--sempa-accent-bg);">
         <svg class="h-6 w-6" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -231,8 +231,8 @@
       </div>
       <p class="text-sm" style="color: var(--sempa-text-dim);">Your backlog is clear.</p>
       <button onclick={openCreate}
-              class="rounded-[9px] px-4 py-2 text-[13px] font-medium"
-              style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);">
+              class="rounded-[12px] px-4 py-2 text-[13px] font-medium"
+              style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);">
         Add a task
       </button>
     </div>
@@ -253,7 +253,7 @@
           </div>
 
           <!-- One bordered panel; rows divided by a hairline -->
-          <div style="border: 1px solid var(--sempa-border); border-radius: 12px; background: var(--sempa-bg-panel); overflow: hidden;">
+          <div style="box-shadow: var(--sempa-shadow-1); border-radius: 18px; background: var(--sempa-bg-panel); overflow: hidden;">
             {#each group.items as task, i (task.id)}
               <div class="group/row flex items-center gap-3 px-4 transition-colors"
                    style="min-height: {mobile.value ? '44px' : '38px'}; {i > 0 ? 'border-top: 1px solid var(--sempa-border);' : ''}"

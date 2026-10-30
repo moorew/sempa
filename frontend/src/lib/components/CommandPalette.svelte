@@ -121,7 +121,7 @@
        onclick={(e) => { if (e.target === e.currentTarget) commandPalette.close(); }}
        role="presentation">
     <div class="mt-[10vh] flex w-full max-w-lg flex-col overflow-hidden rounded-2xl shadow-2xl"
-         style="max-height: 70vh; background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);"
+         style="max-height: 70vh; background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);"
          role="dialog" aria-modal="true" aria-label="Command palette">
       <div class="flex items-center gap-2.5 px-4 py-3" style="border-bottom: 1px solid var(--sempa-border);">
         <Search size={16} style="color: var(--sempa-text-dim);" />

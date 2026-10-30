@@ -172,8 +172,7 @@
     {:else}
 
       {#snippet sectionLabel(text: string)}
-        <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-           text-transform:uppercase; color:var(--sempa-text-dim)">{text}</p>
+        <p class="mb-3" style="font-family:monospace; font-size: 12px; font-weight:700;            color:var(--sempa-text-dim)">{text}</p>
       {/snippet}
 
       {#snippet toggleRow(label: string, desc: string, value: boolean, onChange: (v: boolean) => void, disabled: boolean)}
@@ -194,7 +193,7 @@
 
       <!-- ── Master ──────────────────────────────────────────────────────── -->
       {@render sectionLabel('General')}
-      <section class="mb-7 overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+      <section class="mb-7 overflow-hidden rounded-xl " style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         {@render toggleRow('All notifications', 'Master switch — pause or enable everything.',
           settings.master_enabled, (v) => { settings!.master_enabled = v; void save(); }, false)}
         <div style="border-top: 1px solid var(--sempa-border);"></div>
@@ -204,7 +203,7 @@
 
       <!-- ── Timezone ────────────────────────────────────────────────────── -->
       {@render sectionLabel('Timezone')}
-      <section class="mb-7 rounded-xl border px-4 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+      <section class="mb-7 rounded-xl px-4 py-4" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <p class="mb-1.5 font-semibold" style="font-size:13px; color: var(--sempa-text);">Home timezone</p>
         <p class="mb-3" style="font-size:11.5px; color: var(--sempa-text-soft);">
           Sempa anchors recurring tasks and the morning digest to this zone. Task
@@ -236,7 +235,7 @@
       {#if settings.sound_enabled && settings.master_enabled}
         {@const selected = settings.sound_id || DEFAULT_SOUND_ID}
         {@render sectionLabel('Alert sound')}
-        <section class="mb-7 overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <section class="mb-7 overflow-hidden rounded-xl " style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           {#each NOTIFICATION_SOUNDS as snd, i (snd.id)}
             {@const active = selected === snd.id}
             <div class="flex items-center gap-3 px-4 py-3"
@@ -265,7 +264,7 @@
 
       <!-- ── Delivery channels ───────────────────────────────────────────── -->
       {@render sectionLabel('Delivery channels')}
-      <section class="mb-2 overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+      <section class="mb-2 overflow-hidden rounded-xl " style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <!-- Web Push -->
         <div class="flex items-center gap-3 px-4 py-3.5">
           <div class="min-w-0 flex-1">
@@ -302,15 +301,15 @@
 
       <!-- ── On-device test (Android) ────────────────────────────────────── -->
       {#if onAndroid}
-        <section class="mb-7 rounded-xl border px-4 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <section class="mb-7 rounded-xl px-4 py-4" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           <p class="mb-1 font-semibold" style="font-size:13px; color: var(--sempa-text);">Test this device</p>
           <p class="mb-3" style="font-size:11.5px; color: var(--sempa-text-soft);">
             Fires a real notification in a few seconds so you can confirm sound and pop-up work on this phone.
           </p>
           <div class="flex items-center gap-3">
             <button onclick={sendDeviceTest} disabled={deviceTestBusy}
-                    class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-opacity disabled:opacity-40"
-                    style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);">
+                    class="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold transition-opacity disabled:opacity-40"
+                    style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);">
               <Bell size={14} />
               {deviceTestBusy ? 'Sending…' : 'Send test notification'}
             </button>
@@ -325,7 +324,7 @@
 
       <!-- ── Webhook config ──────────────────────────────────────────────── -->
       {#if settings.webhook_enabled}
-        <section class="mb-7 rounded-xl border px-4 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <section class="mb-7 rounded-xl px-4 py-4" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           <label class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);" for="wh-endpoint">Endpoint URL</label>
           <input id="wh-endpoint" type="url" placeholder="https://ntfy.sh/ or https://gotify/message?token=…"
                  bind:value={settings.webhook.endpoint}
@@ -365,8 +364,8 @@
           <div class="flex items-center gap-3">
             <button onclick={async () => { await save(); await sendTest(); }}
                     disabled={testState === 'sending' || !settings.webhook.endpoint}
-                    class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-opacity disabled:opacity-40"
-                    style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);">
+                    class="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold transition-opacity disabled:opacity-40"
+                    style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);">
               <Send size={14} />
               {testState === 'sending' ? 'Sending…' : 'Send test notification'}
             </button>
@@ -381,7 +380,7 @@
 
       <!-- ── Routines ────────────────────────────────────────────────────── -->
       {@render sectionLabel('In-app routines')}
-      <section class="mb-7 rounded-xl border px-4 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+      <section class="mb-7 rounded-xl px-4 py-4" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <!-- Weekly planning -->
         <div class="mb-4">
           <p class="mb-2 font-semibold" style="font-size:13px; color: var(--sempa-text);">Weekly planning prompt</p>
@@ -435,8 +434,8 @@
       <!-- Save -->
       <div class="flex items-center gap-3">
         <button onclick={save} disabled={saving}
-                class="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-opacity disabled:opacity-50"
-                style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);">
+                class="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-opacity disabled:opacity-50"
+                style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);">
           <Bell size={14} />
           {saving ? 'Saving…' : 'Save settings'}
         </button>

@@ -731,10 +731,9 @@
        SECTION: Account / profile
   ════════════════════════════════════════════════════════════════════════ -->
   <div id="settings-profile" class="mb-8 scroll-mt-6">
-    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-       text-transform:uppercase; color:var(--sempa-text-dim)">Account</p>
+    <p class="mb-3" style="font-family:monospace; font-size: 12px; font-weight:700;        color:var(--sempa-text-dim)">Account</p>
 
-    <section class="overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+    <section class="overflow-hidden rounded-xl " style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
       <!-- Identity row: avatar · email · auth method -->
       <div class="flex items-center gap-3.5 px-5 py-4" style="border-bottom: 1px solid var(--sempa-border);">
         {#if accountPicture}
@@ -782,7 +781,7 @@
           <p class="text-xs" style="color: var(--sempa-text-dim);">Local data stays on this device until you sign back in.</p>
         </div>
         <button onclick={doSignOut} disabled={signingOut}
-                class="shrink-0 rounded-[9px] px-4 py-2 text-[13px] font-medium transition-colors disabled:opacity-50"
+                class="shrink-0 rounded-[12px] px-4 py-2 text-[13px] font-medium transition-colors disabled:opacity-50"
                 style="border: 1px solid color-mix(in srgb, #ef4444 40%, var(--sempa-border)); color: #ef4444; background: transparent;"
                 onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, #ef4444 10%, transparent)'}
                 onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
@@ -793,8 +792,8 @@
 
     <!-- Users & credentials -->
     <a href="/settings/users"
-       class="mt-3 flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
-       style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+       class="mt-3 flex items-center gap-3 rounded-xl px-5 py-4 transition-colors"
+       style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
       <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
         <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 3-3.87m6-1.13a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"/>
@@ -829,11 +828,10 @@
     {/if}
 
     <!-- ── Email & Calendar ──────────────────────────────────────── -->
-    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-       text-transform:uppercase; color:var(--sempa-text-dim)">Email & Calendar</p>
+    <p class="mb-3" style="font-family:monospace; font-size: 12px; font-weight:700;        color:var(--sempa-text-dim)">Email & Calendar</p>
 
     <!-- ── Gmail ─────────────────────────────────────────────────── -->
-    <section class="mb-3 overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+    <section class="mb-3 overflow-hidden rounded-xl " style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
       <!-- Header -->
       <div class="flex items-center gap-3 px-5 py-4"
            class:border-b={gmail.connected}
@@ -937,7 +935,7 @@
     </section>
 
     <!-- ── Fastmail ──────────────────────────────────────────────── -->
-    <section class="mb-3 overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+    <section class="mb-3 overflow-hidden rounded-xl " style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
       <!-- Header -->
       <div class="flex items-center gap-3 px-5 py-4"
            class:border-b={fastmail.connected || fmShowForm}
@@ -1206,8 +1204,8 @@
             {#if tiError}<p class="text-sm text-red-600 dark:text-red-400">{tiError}</p>{/if}
             <div class="flex gap-2">
               <button onclick={connectTaskInbox} disabled={tiSaving || !tiEmail || !tiPassword || !tiAddress}
-                      class="rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
-                      style="background: var(--sempa-accent);">
+                      class="rounded-full px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+                      style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
                 {tiSaving ? 'Connecting...' : 'Connect'}
               </button>
               <button onclick={() => { tiShowForm = false; tiError = ''; }}
@@ -1248,8 +1246,8 @@
           {#if fmError}<p class="text-sm text-red-600 dark:text-red-400">{fmError}</p>{/if}
           <div class="flex gap-2">
             <button onclick={connectFastmail} disabled={fmSaving || !fmEmail || !fmPassword}
-                    class="rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
-                    style="background: var(--sempa-accent);">
+                    class="rounded-full px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+                    style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
               {fmSaving ? 'Connecting...' : 'Connect'}
             </button>
             <button onclick={() => { fmShowForm = false; fmError = ''; }}
@@ -1268,8 +1266,8 @@
          /settings/calendars page (also reachable from the schedule sidebar),
          so this is a single entry point rather than a second, divergent copy. -->
     <a href="/settings/calendars"
-       class="mb-8 flex items-center gap-3 overflow-hidden rounded-xl border px-5 py-4 transition-colors"
-       style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+       class="mb-8 flex items-center gap-3 overflow-hidden rounded-xl px-5 py-4 transition-colors"
+       style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
       <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
            style="background: var(--sempa-cal-feed-bg, #1a2820);">
         <svg class="h-4 w-4" style="color: var(--sempa-success);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -1289,13 +1287,12 @@
     </a>
 
     <!-- ── Project Management ────────────────────────────────────── -->
-    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-     text-transform:uppercase; color:var(--sempa-text-dim)">Project Management</p>
+    <p class="mb-3" style="font-family:monospace; font-size: 12px; font-weight:700;      color:var(--sempa-text-dim)">Project Management</p>
 
     <div class="mb-8">
       <a href="/settings/integrations/jira"
-         class="flex items-center gap-3 overflow-hidden rounded-xl border px-5 py-4 transition-colors"
-         style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+         class="flex items-center gap-3 overflow-hidden rounded-xl px-5 py-4 transition-colors"
+         style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
           <svg class="h-4 w-4" style="color: var(--sempa-accent);" viewBox="0 0 24 24" fill="currentColor">
             <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.757a5.215 5.215 0 0 0 5.214 5.214h2.129v2.058A5.218 5.218 0 0 0 18.313 18.3V6.763a1.006 1.006 0 0 0-1.019-1.006zM23.277.007H11.749a5.215 5.215 0 0 0 5.214 5.214h2.129v2.058A5.218 5.218 0 0 0 24.282 12.5V1.012A1.005 1.005 0 0 0 23.277.007z"/>
@@ -1320,10 +1317,9 @@
     </div>
 
     <!-- ── AI task-title cleanup (local Ollama) ──────────────────── -->
-    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-     text-transform:uppercase; color:var(--sempa-text-dim)">AI</p>
+    <p class="mb-3" style="font-family:monospace; font-size: 12px; font-weight:700;      color:var(--sempa-text-dim)">AI</p>
 
-    <section class="mb-8 overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+    <section class="mb-8 overflow-hidden rounded-xl " style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
       <div class="flex items-start gap-3 px-5 py-4">
         <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
           <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -1407,8 +1403,8 @@
                            class="flex-1 rounded-lg border px-3 py-2 text-sm font-mono outline-none"
                            style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
                     <button onclick={pullAiModel} disabled={!aiPullModel.trim()}
-                            class="shrink-0 rounded-lg px-3 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                            style="background: var(--sempa-accent);">
+                            class="shrink-0 rounded-full px-3 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                            style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
                       Download
                     </button>
                   </div>
@@ -1438,8 +1434,8 @@
                   {aiTesting ? 'Testing…' : 'Test connection'}
                 </button>
                 <button onclick={() => saveAiTitle()} disabled={aiSaving}
-                        class="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                        style="background: var(--sempa-accent);">
+                        class="rounded-full px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                        style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
                   {aiSaving ? 'Saving…' : 'Save'}
                 </button>
               </div>
@@ -1503,13 +1499,12 @@
        SECTION: Tasks
   ════════════════════════════════════════════════════════════════════════ -->
   <div id="settings-tasks">
-    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-     text-transform:uppercase; color:var(--sempa-text-dim)">Tasks</p>
+    <p class="mb-3" style="font-family:monospace; font-size: 12px; font-weight:700;      color:var(--sempa-text-dim)">Tasks</p>
 
     <div class="mb-8 flex flex-col gap-2">
       <a href="/settings/tags"
-         class="flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
-         style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+         class="flex items-center gap-3 rounded-xl px-5 py-4 transition-colors"
+         style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-950">
           <svg class="h-4 w-4 text-violet-500" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
             <path stroke-linecap="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 0 1 0 2.828l-7 7a2 2 0 0 1-2.828 0l-7-7A2 2 0 0 1 3 12V7a4 4 0 0 1 4-4z"/>
@@ -1525,8 +1520,8 @@
       </a>
 
       <a href="/settings/projects"
-         class="flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
-         style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+         class="flex items-center gap-3 rounded-xl px-5 py-4 transition-colors"
+         style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
           <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zM8 11v4M12 11v2M16 11v5"/>
@@ -1542,8 +1537,8 @@
       </a>
 
       <a href="/settings/recurring"
-         class="flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
-         style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+         class="flex items-center gap-3 rounded-xl px-5 py-4 transition-colors"
+         style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
           <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -1559,8 +1554,8 @@
       </a>
 
       <a href="/settings/time"
-         class="flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
-         style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+         class="flex items-center gap-3 rounded-xl px-5 py-4 transition-colors"
+         style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
           <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 7v5l3 3"/>
@@ -1584,13 +1579,12 @@
        SECTION: System — app-level concerns (notifications, backup)
   ════════════════════════════════════════════════════════════════════════ -->
   <div id="settings-system">
-    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-     text-transform:uppercase; color:var(--sempa-text-dim)">System</p>
+    <p class="mb-3" style="font-family:monospace; font-size: 12px; font-weight:700;      color:var(--sempa-text-dim)">System</p>
 
     <div class="mb-8 flex flex-col gap-2">
       <a href="/settings/notifications"
-         class="flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
-         style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+         class="flex items-center gap-3 rounded-xl px-5 py-4 transition-colors"
+         style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
           <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V5a2 2 0 1 0-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/>
@@ -1606,8 +1600,8 @@
       </a>
 
       <a href="/settings/backup"
-         class="flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
-         style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+         class="flex items-center gap-3 rounded-xl px-5 py-4 transition-colors"
+         style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-950">
           <svg class="h-4 w-4 text-sky-500" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7M3 7l2-3h14l2 3M3 7h18M9 12h6"/>
@@ -1624,8 +1618,8 @@
 
       <!-- Launch at login (desktop only) -->
       {#if isTauri()}
-      <label class="flex cursor-pointer items-center gap-3 rounded-xl border px-5 py-4"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+      <label class="flex cursor-pointer items-center gap-3 rounded-xl px-5 py-4"
+             style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
           <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M13 3 4 14h7l-1 7 9-11h-7l1-7Z"/>
@@ -1642,7 +1636,7 @@
       {/if}
 
       <!-- Paired devices (the Sempa Dock): approve a code, see + revoke devices. -->
-      <div class="rounded-xl border px-5 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+      <div class="rounded-xl px-5 py-4" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <p class="text-sm font-semibold" style="color: var(--sempa-text);">Paired devices</p>
         <p class="mb-3 text-xs" style="color: var(--sempa-text-soft);">
           Pair a Sempa Dock: enter the code it shows. The device gets a scoped, revocable token — no password ever leaves this app.
@@ -1650,10 +1644,10 @@
         <div class="flex gap-2">
           <input bind:value={pairCodeInput} placeholder="Pairing code" maxlength="8"
                  onkeydown={(e) => e.key === 'Enter' && approveDevice()}
-                 style="flex:1; min-width:0; padding:8px 12px; border-radius:9px; border:1px solid var(--sempa-border);
-                        background: var(--sempa-bg-main); color: var(--sempa-text); font-family:monospace; letter-spacing:.12em; text-transform:uppercase;" />
+                 style="flex:1; min-width:0; padding:8px 12px; border-radius:12px; border:1px solid var(--sempa-border);
+                        background: var(--sempa-bg-main); color: var(--sempa-text); font-family:monospace; " />
           <button onclick={approveDevice} disabled={pairBusy}
-                  style="padding:8px 16px; border-radius:9px; border:none; background: var(--sempa-accent); color: var(--sempa-btn-fg); font-weight:600; cursor:pointer;">
+                  style="padding:8px 16px; border-radius: 999px; border:none; background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); font-weight:600; cursor:pointer;">
             {pairBusy ? '…' : 'Pair'}
           </button>
         </div>
@@ -1693,10 +1687,9 @@
        SECTION: Appearance
   ════════════════════════════════════════════════════════════════════════ -->
   <div id="settings-appearance">
-    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-     text-transform:uppercase; color:var(--sempa-text-dim)">Appearance</p>
+    <p class="mb-3" style="font-family:monospace; font-size: 12px; font-weight:700;      color:var(--sempa-text-dim)">Appearance</p>
 
-    <section class="overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+    <section class="overflow-hidden rounded-xl " style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
       <div class="px-5 py-5 space-y-6">
 
         <!-- Theme gallery -->
@@ -1714,13 +1707,13 @@
                       aria-pressed={selected}
                       title={t.label}
                       class="text-left transition-all"
-                      style="border-radius:12px; padding:10px; cursor:pointer; background: var(--sempa-bg-panel);
+                      style="border-radius:18px; padding:10px; cursor:pointer; background: var(--sempa-bg-panel);
                              border:1px solid {selected ? 'var(--sempa-accent)' : 'var(--sempa-border)'};
                              {selected ? 'box-shadow:0 0 0 3px var(--sempa-accent-bg);' : ''}">
                 <!-- Live mini-preview rendered in THIS theme's tokens (data-theme
                      re-declares the --sempa-* vars for this subtree). -->
                 <div data-theme={t.id} class:dark={previewDark}
-                     style="display:flex; gap:6px; height:54px; padding:8px; border-radius:8px;
+                     style="display:flex; gap:6px; height:54px; padding:8px; border-radius:12px;
                             background: var(--sempa-bg-main); border:1px solid var(--sempa-border);">
                   <div style="width:18px; border-radius:4px; background: var(--sempa-bg-nav);
                               display:flex; flex-direction:column; align-items:center; padding-top:7px; gap:5px;">
@@ -1730,7 +1723,7 @@
                   <div style="flex:1; display:flex; flex-direction:column; gap:5px;">
                     {#each [0, 1] as _row}
                       <div style="flex:1; display:flex; align-items:center; gap:4px; padding:0 5px;
-                                  border-radius:4px; background: var(--card-bg); border:1px solid var(--card-border);">
+                                  border-radius:4px; background: var(--card-bg); box-shadow: var(--sempa-shadow-1);">
                         <span style="width:6px;height:6px;border-radius:50%;background:var(--sempa-accent)"></span>
                         <span style="flex:1;height:3px;border-radius:2px;background:var(--sempa-text-dim)"></span>
                       </div>
@@ -1745,7 +1738,7 @@
                   {#if selected}
                     <span aria-hidden="true"
                           style="display:flex; align-items:center; justify-content:center; width:18px; height:18px;
-                                 border-radius:50%; background: var(--sempa-accent); color: var(--sempa-btn-fg); flex-shrink:0;">
+                                 border-radius:50%; background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); flex-shrink:0;">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                       </svg>
@@ -1768,8 +1761,8 @@
                         class="rounded-lg px-2.5 py-1.5 text-[12px] transition-opacity hover:opacity-70"
                         style="color: var(--sempa-text-dim);">Not now</button>
                 <button onclick={confirmAppIcon}
-                        class="rounded-lg px-3 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90"
-                        style="background: var(--sempa-accent);">Update icon</button>
+                        class="rounded-full px-3 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90"
+                        style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">Update icon</button>
               </div>
             </div>
           {/if}
@@ -1909,10 +1902,9 @@
        crowd Appearance (reflections, daily quote, celebration sound).
   ════════════════════════════════════════════════════════════════════════ -->
   <div id="settings-personal">
-    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-     text-transform:uppercase; color:var(--sempa-text-dim)">Personalization</p>
+    <p class="mb-3" style="font-family:monospace; font-size: 12px; font-weight:700;      color:var(--sempa-text-dim)">Personalization</p>
 
-    <section class="overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+    <section class="overflow-hidden rounded-xl " style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
       <div class="px-5 py-5 space-y-6">
 
         <!-- Contextual reflections toggle -->
@@ -2013,8 +2005,8 @@
                        class="w-32 rounded-lg border px-2.5 py-1.5 text-xs outline-none"
                        style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
                 <button onclick={addQuote} disabled={!newQuoteText.trim()}
-                        class="rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-40"
-                        style="background: var(--sempa-accent); color: var(--sempa-btn-fg);">Add</button>
+                        class="rounded-full px-3 py-1.5 text-xs font-medium disabled:opacity-40"
+                        style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);">Add</button>
               </div>
             </div>
           {/if}
@@ -2049,8 +2041,7 @@
        SECTION: About / Updates
   ════════════════════════════════════════════════════════════════════════ -->
   <div id="settings-about" class="mt-8 scroll-mt-6">
-    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-     text-transform:uppercase; color:var(--sempa-text-dim)">About</p>
+    <p class="mb-3" style="font-family:monospace; font-size: 12px; font-weight:700;      color:var(--sempa-text-dim)">About</p>
     <UpdatesPanel />
   </div>
 {/snippet}

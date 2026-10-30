@@ -41,7 +41,7 @@
           {@const on = match === opt.k}
           <button onclick={() => (match = opt.k as 'any' | 'all')}
                   style="font-size: 11px; padding: 4px 9px;
-                         {on ? 'background: var(--sempa-accent); color: var(--sempa-btn-fg);' : 'color: var(--sempa-text-dim);'}">
+                         {on ? 'background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);' : 'color: var(--sempa-text-dim);'}">
             {opt.l}
           </button>
         {/each}

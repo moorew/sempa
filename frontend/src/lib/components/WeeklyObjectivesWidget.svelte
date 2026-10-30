@@ -57,7 +57,7 @@
             class="flex w-full items-center justify-between px-4 py-2.5 text-left
                    hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
       <div class="flex items-center gap-2">
-        <span class="text-[10.5px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-600">
+        <span class="text-[12px] font-semibold text-gray-400 dark:text-gray-600">
           This week
         </span>
         <span class="text-[10.5px] text-gray-400 dark:text-gray-600">

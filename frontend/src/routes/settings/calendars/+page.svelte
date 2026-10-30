@@ -120,22 +120,21 @@
   <div class="flex-1 overflow-y-auto px-5 py-6 pb-16">
 
       <!-- ── Connected accounts ─────────────────────────────────────────── -->
-      <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-         text-transform:uppercase; color:var(--sempa-text-dim)">Accounts</p>
+      <p class="mb-3" style="font-family:monospace; font-size: 12px; font-weight:700;          color:var(--sempa-text-dim)">Accounts</p>
 
       {#if accountsLoading}
-        <div class="mb-7 rounded-xl border px-4 py-4 text-sm"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text-dim);">
+        <div class="mb-7 rounded-xl px-4 py-4 text-sm"
+             style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel); color: var(--sempa-text-dim);">
           Loading accounts…
         </div>
       {:else if accounts.length === 0}
-        <div class="mb-7 rounded-xl border px-4 py-4 text-sm"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text-soft);">
+        <div class="mb-7 rounded-xl px-4 py-4 text-sm"
+             style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel); color: var(--sempa-text-soft);">
           No calendar accounts connected yet.
           <a href="/settings/accounts" style="color: var(--sempa-accent);">Connect one →</a>
         </div>
       {:else}
-        <section class="mb-7 overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <section class="mb-7 overflow-hidden rounded-xl " style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           {#each accounts as acct, i (acct.id)}
             <div class="flex items-center gap-3.5 px-4 py-3.5"
                  style={i < accounts.length - 1 ? 'border-bottom: 1px solid var(--sempa-border);' : ''}>
@@ -162,8 +161,7 @@
 
       <!-- ── Subscribed calendars ───────────────────────────────────────── -->
       <div class="mb-3 flex items-center justify-between">
-        <p style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-           text-transform:uppercase; color:var(--sempa-text-dim)">Calendars</p>
+        <p style="font-family:monospace; font-size: 12px; font-weight:700;            color:var(--sempa-text-dim)">Calendars</p>
         <button onclick={openAddFeed}
                 class="rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors"
                 style="border-color: var(--sempa-border); color: var(--sempa-text-soft);">
@@ -172,24 +170,24 @@
       </div>
 
       {#if subsLoading}
-        <div class="mb-7 rounded-xl border px-4 py-4 text-sm"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text-dim);">
+        <div class="mb-7 rounded-xl px-4 py-4 text-sm"
+             style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel); color: var(--sempa-text-dim);">
           Loading feeds…
         </div>
       {:else if subsError}
-        <div class="mb-7 rounded-xl border px-4 py-4 text-sm"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text-soft);">
+        <div class="mb-7 rounded-xl px-4 py-4 text-sm"
+             style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel); color: var(--sempa-text-soft);">
           <span class="text-red-500 dark:text-red-400">{subsError}</span>
           <button onclick={loadSubs} class="ml-1 underline" style="color: var(--sempa-accent);">Retry</button>
         </div>
       {:else if subs.length === 0}
-        <div class="mb-7 rounded-xl border px-4 py-4 text-sm"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text-soft);">
+        <div class="mb-7 rounded-xl px-4 py-4 text-sm"
+             style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel); color: var(--sempa-text-soft);">
           No subscribed calendars yet.
           <button onclick={openAddFeed} style="color: var(--sempa-accent);">Add an iCal or webcal feed →</button>
         </div>
       {:else}
-        <section class="mb-2 overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <section class="mb-2 overflow-hidden rounded-xl " style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           {#each subs as sub, i (sub.id)}
             {@const on = !calendars.isHidden(sub.id)}
             {@const colorKey = calendars.colorKey(sub.id)}
@@ -197,7 +195,7 @@
                  style="opacity: {on ? 1 : 0.55}; {i < subs.length - 1 ? 'border-bottom: 1px solid var(--sempa-border);' : ''}">
               <!-- Colour swatch — tap to cycle the four brand colours -->
               <button onclick={() => calendars.cycleColor(sub.id)}
-                      class="shrink-0 rounded-[5px] transition-transform active:scale-90"
+                      class="shrink-0 rounded-[8px] transition-transform active:scale-90"
                       style="width:14px; height:14px; background: {calFg(colorKey)};"
                       title="Colour: {BRAND_CAL_LABEL[colorKey]} — tap to change"
                       aria-label="Change calendar colour"></button>
@@ -220,10 +218,9 @@
       {/if}
 
       <!-- ── Display preferences ────────────────────────────────────────── -->
-      <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-         text-transform:uppercase; color:var(--sempa-text-dim)">Display preferences</p>
+      <p class="mb-3" style="font-family:monospace; font-size: 12px; font-weight:700;          color:var(--sempa-text-dim)">Display preferences</p>
 
-      <section class="overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+      <section class="overflow-hidden rounded-xl " style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         {#each [
           { key: 'showDeclined',   label: 'Show declined events',          desc: 'Include events you’ve declined.' },
           { key: 'showAllDayWeek', label: 'Show all-day in week header',   desc: 'Surface all-day events above the week grid.' },
@@ -257,7 +254,7 @@
        onclick={() => (showAddFeed = false)}>
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
     <div class="mx-4 w-full max-w-sm rounded-2xl p-5 shadow-2xl animate-scale-in"
-         style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);"
+         style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);"
          onclick={(e) => e.stopPropagation()}>
       <h3 class="mb-1 text-sm font-semibold" style="color: var(--sempa-text);">Add calendar feed</h3>
       <p class="mb-4 text-xs" style="color: var(--sempa-text-dim);">Subscribe to a read-only ICS or webcal URL.</p>
@@ -289,8 +286,8 @@
           Cancel
         </button>
         <button onclick={saveFeed} disabled={feedSaving || !feedUrl.trim()}
-                class="rounded-lg px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-                style="background: var(--sempa-accent);">
+                class="rounded-full px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+                style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
           {feedSaving ? 'Saving…' : 'Save'}
         </button>
       </div>

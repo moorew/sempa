@@ -178,7 +178,7 @@
       <div style="font-family:'JetBrains Mono',monospace; font-size:64px; color:var(--sempa-text);">{clock}</div>
       <div style="font-size:20px; color:var(--sempa-text-soft);">{dateLabel}</div>
       <div style="display:flex; align-items:center; gap:12px; margin-top:8px;">
-        <span style="width:14px; height:14px; border-radius:7px; background:var(--sempa-amber);
+        <span style="width:14px; height:14px; border-radius:10px; background:var(--sempa-amber);
                      box-shadow:0 0 0 6px color-mix(in srgb, var(--sempa-amber) 18%, transparent);"></span>
         <span style="font-size:22px; color:var(--sempa-text);">{active[0]?.title ?? 'All done — rest easy.'}</span>
       </div>
@@ -210,8 +210,8 @@
     </div>
 
     <!-- Paper list -->
-    <div style="flex:1; min-height:0; overflow:auto; background:var(--sempa-bg-panel); border:1px solid var(--sempa-border);
-                border-radius:20px; box-shadow:0 12px 30px rgba(80,55,25,0.10); padding:4px 0;">
+    <div style="flex:1; min-height:0; overflow:auto; background:var(--sempa-bg-panel); 
+                border-radius:26px; box-shadow:0 12px 30px rgba(80,55,25,0.10); padding:4px 0;">
       {#if active.length === 0 && done.length === 0}
         <div style="height:100%; display:flex; align-items:center; justify-content:center; color:var(--sempa-text-dim); font-size:18px;">All done — rest easy.</div>
       {/if}
@@ -251,7 +251,7 @@
           {#if t.id === nowId}
             <div style="display:flex; align-items:center;">
               <span style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.12em; color:var(--sempa-amber);
-                           background:color-mix(in srgb, var(--sempa-amber) 16%, transparent); border-radius:6px; padding:3px 8px;">NOW</span>
+                           background:color-mix(in srgb, var(--sempa-amber) 16%, transparent); border-radius:10px; padding:3px 8px;">NOW</span>
             </div>
           {/if}
         </div>
@@ -289,8 +289,8 @@
 
     <!-- Add button -->
     <button onclick={() => { adding = true; poke(); }}
-            style="margin-top:{c.gap}px; width:100%; background:var(--sempa-btn-bg); color:var(--sempa-btn-fg); border:none;
-                   border-radius:16px; padding:{c.rowH * 0.26}px; font-size:{c.addFont}px; font-weight:700; cursor:pointer;
+            style="margin-top:{c.gap}px; width:100%; background:var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color:var(--sempa-btn-fg); border:none;
+                   border-radius: 999px; padding:{c.rowH * 0.26}px; font-size:{c.addFont}px; font-weight:700; cursor:pointer;
                    display:flex; align-items:center; justify-content:center; gap:10px; touch-action:manipulation;">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
       Add a task
@@ -302,34 +302,34 @@
     <div style="position:absolute; left:0; right:0; bottom:0; background:var(--sempa-bg-panel); border-top:1px solid var(--sempa-border);
                 padding:{c.pad}px; box-shadow:0 -20px 40px rgba(0,0,0,0.18); display:flex; flex-direction:column; gap:10px; z-index:5;">
       <div style="display:flex; gap:10px; align-items:center;">
-        <div style="flex:1; min-height:{c.kbKey}px; display:flex; align-items:center; padding:0 14px; border-radius:12px;
+        <div style="flex:1; min-height:{c.kbKey}px; display:flex; align-items:center; padding:0 14px; border-radius:18px;
                     background:var(--sempa-bg-main); border:1px solid var(--sempa-border); font-size:{c.kbFont}px; color:var(--sempa-text);">
           {#if draft}{draft}{:else}<span style="color:var(--sempa-text-dim);">New task…</span>{/if}
           <span style="width:2px; height:{c.kbFont}px; background:var(--sempa-accent); margin-left:2px; animation:sempaCaret 1.1s steps(1) infinite;"></span>
         </div>
         <button onclick={() => { adding = false; draft = ''; }}
-                style="min-height:{c.kbKey}px; padding:0 18px; border-radius:12px; border:1px solid var(--sempa-border);
+                style="min-height:{c.kbKey}px; padding:0 18px; border-radius:18px; border:1px solid var(--sempa-border);
                        background:none; color:var(--sempa-text-soft); font-size:{c.kbFont - 4}px; cursor:pointer;">Cancel</button>
         <button onclick={commitAdd}
-                style="min-height:{c.kbKey}px; padding:0 22px; border-radius:12px; border:none; background:var(--sempa-btn-bg);
+                style="min-height:{c.kbKey}px; padding:0 22px; border-radius: 999px; border:none; background:var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);
                        color:var(--sempa-btn-fg); font-weight:700; font-size:{c.kbFont - 4}px; cursor:pointer;">Add</button>
       </div>
       {#each kbRows as row, ri}
         <div style="display:flex; gap:8px; justify-content:center; padding:0 {ri === 1 ? c.kbKey * 0.5 : 0}px;">
           {#if ri === 2}
             <button onpointerdown={(e) => { e.preventDefault(); backspace(); }}
-                    style="flex:1.6; height:{c.kbKey}px; border-radius:10px; border:1px solid var(--sempa-border);
+                    style="flex:1.6; height:{c.kbKey}px; border-radius:14px; border:1px solid var(--sempa-border);
                            background:var(--sempa-bg-main); color:var(--sempa-text-soft); font-size:{c.kbFont}px; cursor:pointer; touch-action:none;">⌫</button>
           {/if}
           {#each row.split('') as ch}
             <button onpointerdown={(e) => { e.preventDefault(); press(ch); }}
-                    style="flex:1; min-width:{c.kbKey}px; height:{c.kbKey}px; border-radius:10px; border:1px solid var(--sempa-border);
+                    style="flex:1; min-width:{c.kbKey}px; height:{c.kbKey}px; border-radius:14px; box-shadow: var(--sempa-shadow-1);
                            background:var(--sempa-bg-panel); color:var(--sempa-text); font-size:{c.kbFont}px; font-weight:600;
                            cursor:pointer; touch-action:none; -webkit-tap-highlight-color:transparent;">{ch}</button>
           {/each}
           {#if ri === 2}
             <button onpointerdown={(e) => { e.preventDefault(); press(' '); }}
-                    style="flex:1.6; height:{c.kbKey}px; border-radius:10px; border:1px solid var(--sempa-border);
+                    style="flex:1.6; height:{c.kbKey}px; border-radius:14px; border:1px solid var(--sempa-border);
                            background:var(--sempa-bg-main); color:var(--sempa-text-soft); font-size:{c.kbFont}px; cursor:pointer; touch-action:none;">space</button>
           {/if}
         </div>

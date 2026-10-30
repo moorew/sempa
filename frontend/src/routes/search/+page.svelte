@@ -113,7 +113,7 @@
 
     <!-- Text input -->
     <div class="flex items-center gap-2 rounded-xl px-3"
-         style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); height: 40px;">
+         style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel); height: 40px;">
       <Search size={16} style="color: var(--sempa-text-dim);" />
       <input bind:this={searchInput} bind:value={q}
              placeholder="Search tasks, projects, objectives, journal…"
@@ -174,7 +174,7 @@
               </button>
             </div>
           </div>
-          <div style="border: 1px solid var(--sempa-border); border-radius: 12px; background: var(--sempa-bg-panel); overflow: hidden;">
+          <div style="box-shadow: var(--sempa-shadow-1); border-radius: 18px; background: var(--sempa-bg-panel); overflow: hidden;">
             {#each results.tasks as task, i (task.id)}
               <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
               <button class="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors"
@@ -205,7 +205,7 @@
             <span class="type-label" style="color: var(--sempa-accent);">Projects</span>
             <span class="type-label" style="color: var(--sempa-text-dim);">{projectHits.length}</span>
           </div>
-          <div style="border: 1px solid var(--sempa-border); border-radius: 12px; background: var(--sempa-bg-panel); overflow: hidden;">
+          <div style="box-shadow: var(--sempa-shadow-1); border-radius: 18px; background: var(--sempa-bg-panel); overflow: hidden;">
             {#each projectHits as p, i (p.id)}
               <button class="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors"
                       style="{i > 0 ? 'border-top: 1px solid var(--sempa-border);' : ''}"
@@ -226,7 +226,7 @@
             <span class="type-label" style="color: var(--sempa-accent);">Objectives</span>
             <span class="type-label" style="color: var(--sempa-text-dim);">{results.objectives.length}</span>
           </div>
-          <div style="border: 1px solid var(--sempa-border); border-radius: 12px; background: var(--sempa-bg-panel); overflow: hidden;">
+          <div style="box-shadow: var(--sempa-shadow-1); border-radius: 18px; background: var(--sempa-bg-panel); overflow: hidden;">
             {#each results.objectives as obj, i (obj.id)}
               <button class="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors"
                       style="{i > 0 ? 'border-top: 1px solid var(--sempa-border);' : ''}"
@@ -247,7 +247,7 @@
             <span class="type-label" style="color: var(--sempa-accent);">Journal</span>
             <span class="type-label" style="color: var(--sempa-text-dim);">{results.journal.length}</span>
           </div>
-          <div style="border: 1px solid var(--sempa-border); border-radius: 12px; background: var(--sempa-bg-panel); overflow: hidden;">
+          <div style="box-shadow: var(--sempa-shadow-1); border-radius: 18px; background: var(--sempa-bg-panel); overflow: hidden;">
             {#each results.journal as hit, i (hit.kind + hit.date)}
               <button class="flex w-full flex-col gap-0.5 px-4 py-2.5 text-left transition-colors"
                       style="{i > 0 ? 'border-top: 1px solid var(--sempa-border);' : ''}"

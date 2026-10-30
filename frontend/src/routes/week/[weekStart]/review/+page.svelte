@@ -159,10 +159,10 @@
       <button onclick={() => step = s.n}
               class="flex items-center gap-1.5 transition-colors"
               style={step === s.n
-                ? 'background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:9999px; padding:4px 14px; font-size:12px; font-weight:500;'
+                ? 'background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px; padding:4px 14px; font-size:12px; font-weight:500;'
                 : step > s.n
-                  ? 'background: var(--sempa-success-soft); color: var(--sempa-success); border-radius:9999px; padding:4px 14px; font-size:12px; font-weight:500;'
-                  : 'background: var(--sempa-accent-bg); color: var(--sempa-text-dim); border-radius:9999px; padding:4px 14px; font-size:12px;'}>
+                  ? 'background: var(--sempa-success-soft); color: var(--sempa-success); border-radius: 999px; padding:4px 14px; font-size:12px; font-weight:500;'
+                  : 'background: var(--sempa-accent-bg); color: var(--sempa-text-dim); border-radius: 999px; padding:4px 14px; font-size:12px;'}>
         {s.icon} {s.label}
       </button>
       {#if s.n < STEPS.length}
@@ -182,15 +182,15 @@
       <h2 class="text-base font-semibold" style="color: var(--sempa-text);">This week at a glance</h2>
 
       <div class="grid grid-cols-3 gap-3">
-        <div class="rounded-xl p-4 text-center" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+        <div class="rounded-xl p-4 text-center" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           <p class="text-2xl font-bold" style="color: var(--sempa-accent);">{doneTasks.length}</p>
           <p class="text-xs" style="color: var(--sempa-text-soft);">of {totalTasks.length} tasks done</p>
         </div>
-        <div class="rounded-xl p-4 text-center" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+        <div class="rounded-xl p-4 text-center" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           <p class="text-2xl font-bold text-green-600">{doneObjs}</p>
           <p class="text-xs" style="color: var(--sempa-text-soft);">of {objectives.length} objectives</p>
         </div>
-        <div class="rounded-xl p-4 text-center" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+        <div class="rounded-xl p-4 text-center" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           <p class="text-2xl font-bold" style="color: var(--sempa-amber);">{totalMins > 0 ? formatMinutes(totalMins) : '—'}</p>
           <p class="text-xs" style="color: var(--sempa-text-soft);">time logged</p>
         </div>
@@ -198,8 +198,7 @@
 
       {#if doneTasks.length > 0}
         <div>
-          <p class="mb-2" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-                   text-transform:uppercase; color:var(--sempa-text-dim)">Completed tasks</p>
+          <p class="mb-2" style="font-family:monospace; font-size: 12px; font-weight:700;                    color:var(--sempa-text-dim)">Completed tasks</p>
           <ul class="space-y-1">
             {#each doneTasks.slice(0, 8) as t}
               <li class="flex items-center gap-2 text-sm" style="color: var(--sempa-text-soft);">
@@ -218,7 +217,7 @@
 
       <button onclick={() => step = 2}
               class="w-full transition-colors"
-              style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
+              style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
                      padding:10px 20px; font-size:14px; font-weight:500; border:none; cursor:pointer;"
               onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
               onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>
@@ -296,12 +295,12 @@
         <button onclick={() => step = 1}
                 class="flex-1 transition-colors"
                 style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);
-                       background: transparent; border-radius:12px; padding:10px; font-size:14px;">
+                       background: transparent; border-radius:18px; padding:10px; font-size:14px;">
           ← Back
         </button>
         <button onclick={() => step = 3}
                 class="flex-1 transition-colors"
-                style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
+                style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
                        padding:10px; font-size:14px; font-weight:500; border:none; cursor:pointer;"
                 onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
                 onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>
@@ -325,7 +324,7 @@
           Carried {carriedCount} {carriedCount === 1 ? 'objective' : 'objectives'} to next week.
         </div>
       {:else if unfinished.length > 0}
-        <div class="rounded-xl p-4" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+        <div class="rounded-xl p-4" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           <p class="mb-2 text-sm font-medium" style="color: var(--sempa-text);">
             {unfinished.length} unfinished {unfinished.length === 1 ? 'objective' : 'objectives'} this week
           </p>
@@ -355,7 +354,7 @@
                   onfocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2.5px rgba(179,89,46,0.12)'; }}
                   onblur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'; (e.currentTarget as HTMLElement).style.boxShadow = ''; }}
                   style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main);
-                         border-radius:12px; padding:14px; resize:none; width:100%;
+                         border-radius:18px; padding:14px; resize:none; width:100%;
                          font-size:14px; line-height:1.65; color:var(--sempa-text); outline:none;"></textarea>
       </div>
 
@@ -367,12 +366,12 @@
         <button onclick={() => step = 2}
                 class="flex-1 transition-colors"
                 style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);
-                       background: transparent; border-radius:12px; padding:10px; font-size:14px;">
+                       background: transparent; border-radius:18px; padding:10px; font-size:14px;">
           ← Back
         </button>
         <button onclick={save} disabled={saving}
                 class="flex-1 disabled:opacity-40 transition-colors"
-                style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
+                style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
                        padding:10px; font-size:14px; font-weight:500; border:none; cursor:pointer;"
                 onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
                 onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>

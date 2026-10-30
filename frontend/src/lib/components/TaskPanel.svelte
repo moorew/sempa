@@ -682,7 +682,7 @@
     {@const proj = projectStore.get(task.project_id)}
     <!-- Action bar -->
     <div class="flex shrink-0 items-center gap-2 border-b px-5 py-3" style="border-color: var(--sempa-border);">
-      <h2 class="flex-1 text-xs font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">
+      <h2 class="flex-1 text-xs font-semibold" style="color: var(--sempa-text-dim);">
         {#if task.source && task.source !== 'manual'}From {sourceLabel[task.source] ?? task.source}{:else}Task{/if}
       </h2>
 
@@ -822,7 +822,7 @@
       <!-- Notes / forwarded message -->
       {#if task.description}
         <div class="py-4" style="border-bottom: 1px solid var(--sempa-border);">
-          <p class="mb-2 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">
+          <p class="mb-2 text-[12px] font-semibold" style="color: var(--sempa-text-dim);">
             {isEmailSource ? 'Message' : 'Notes'}
           </p>
 
@@ -839,7 +839,7 @@
                   <p class="truncate text-[12.5px] font-medium" style="color: var(--sempa-text);">{sourceLabel[task.source ?? ''] ?? 'Mail'}</p>
                   <p class="truncate text-[11px]" style="color: var(--sempa-text-dim);">{task.title}</p>
                 </div>
-                <span class="shrink-0 rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider"
+                <span class="shrink-0 rounded px-1.5 py-0.5 text-[12px] font-bold"
                       style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">Mail</span>
               </div>
               <div bind:this={notesEl}
@@ -897,7 +897,7 @@
       <!-- Focus sessions -->
       {#if sessions.length > 0}
         <div class="py-4">
-          <p class="mb-2 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">
+          <p class="mb-2 text-[12px] font-semibold" style="color: var(--sempa-text-dim);">
             Focus sessions <span class="font-normal normal-case tracking-normal">· {sessions.reduce((s, p) => s + p.duration_minutes, 0)} min</span>
           </p>
           <div class="flex flex-col gap-1">
@@ -1188,8 +1188,8 @@
 
       <!-- Private / Shared (multi-user household only) -->
       {#if household.multiUser}
-        <div class="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <div class="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5"
+             style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           <div class="min-w-0">
             <p class="text-[13px] font-medium" style="color: var(--sempa-text);">
               {shared ? 'Shared' : 'Private'}
@@ -1455,8 +1455,8 @@
               class="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none
                      dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200" />
             <button type="button" onclick={createLinkedList} disabled={!newListName.trim()}
-              class="shrink-0 rounded-lg px-3 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-              style="background: var(--sempa-accent);">+ New</button>
+              class="shrink-0 rounded-full px-3 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+              style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">+ New</button>
           </div>
           {#if unlinkedLists.length}
             <div class="mt-2">
@@ -1563,7 +1563,7 @@
          and the store re-measures on focusin/out so it recovers on dismiss.) -->
     <div role="dialog" aria-modal="true" aria-label="{isEdit ? 'Edit task' : 'New task'}"
          class="fixed left-0 right-0 z-50 flex flex-col shadow-2xl"
-         style="border-radius: 20px 20px 0 0; background: var(--sempa-bg-panel);
+         style="border-radius: 26px 26px 0 0; background: var(--sempa-bg-panel);
                 top: max(40px, env(safe-area-inset-top, 0px));
                 height: calc({viewport.height}px - max(40px, env(safe-area-inset-top, 0px)));
                 transition: height 180ms ease-out;
@@ -1593,8 +1593,8 @@
            aria-label="{isEdit ? 'Edit task' : 'New task'}"
            transition:modalPop
            class="relative flex w-full max-w-[720px] flex-col overflow-hidden"
-           style="max-height: 86vh; border-radius: 16px; background: var(--card-bg);
-                  border: 1px solid var(--card-border);
+           style="max-height: 86vh; border-radius: 22px; background: var(--card-bg);
+                  
                   box-shadow: var(--shadow-float, 0 24px 64px -16px rgba(0,0,0,0.5));">
         {#if canView && viewMode === 'view'}
           {@render taskView()}

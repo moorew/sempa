@@ -77,8 +77,8 @@
         class="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
         style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text);" />
       <button type="submit" disabled={!newName.trim()}
-        class="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-        style="background: var(--sempa-accent);">
+        class="flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+        style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
         <Plus size={16} /> Add
       </button>
     </form>
@@ -122,7 +122,7 @@
 
 {#snippet listRow(l: List, isArchived: boolean)}
   <div class="flex items-center gap-3 rounded-xl px-4 py-3"
-    style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); {isArchived ? 'opacity:0.65;' : ''}">
+    style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel); {isArchived ? 'opacity:0.65;' : ''}">
     <a href={`/lists/${l.id}`} class="min-w-0 flex-1">
       <p class="truncate text-sm font-medium" style="color: var(--sempa-text);">{l.name || 'Untitled list'}</p>
       {#if l.task_id}

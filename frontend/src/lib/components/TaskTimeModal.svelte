@@ -36,9 +36,9 @@
   <div class="fixed inset-0 z-[60] flex items-end justify-center p-4 sm:items-center"
     style="background: rgba(0,0,0,0.45);" role="dialog" aria-modal="true">
     <div class="w-full max-w-sm rounded-2xl p-5 shadow-2xl"
-      style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border); color: var(--sempa-text);">
+      style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text);">
 
-      <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--sempa-accent);">
+      <p class="text-xs font-semibold" style="color: var(--sempa-accent);">
         How long did that take?
       </p>
       <p class="mt-1 truncate text-base font-semibold" title={p.title}>{p.title}</p>
@@ -52,9 +52,9 @@
       <div class="mt-4 flex flex-wrap gap-1.5">
         {#each CHIPS as c}
           <button onclick={() => (minutes = c)}
-            class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
+            class="rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
             style={minutes === c
-              ? 'background: var(--sempa-accent); color: #fff;'
+              ? 'background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: #fff;'
               : 'background: var(--sempa-bg); color: var(--sempa-text-soft); border: 1px solid var(--sempa-border);'}>
             {c}m
           </button>
@@ -80,8 +80,8 @@
       </div>
 
       <button onclick={log}
-        class="mt-5 w-full rounded-xl py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-        style="background: var(--sempa-accent);">
+        class="mt-5 w-full rounded-full py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+        style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
         Log {minutes}m
       </button>
       <div class="mt-2 flex items-center justify-between text-xs">

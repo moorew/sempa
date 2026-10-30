@@ -66,7 +66,7 @@
        soft keyboard, keeping the footer reachable. See note in TaskPanel.svelte. -->
   <div role="dialog" aria-modal="true" aria-label="Task details" tabindex="-1"
        class="fixed left-0 right-0 z-[90] flex flex-col shadow-2xl"
-       style="border-radius: 20px 20px 0 0; background: var(--sempa-bg-panel);
+       style="border-radius: 26px 26px 0 0; background: var(--sempa-bg-panel);
               top: max(40px, env(safe-area-inset-top, 0px));
               height: calc({viewport.height}px - max(40px, env(safe-area-inset-top, 0px)));
               transition: height 180ms ease-out;
@@ -259,7 +259,7 @@
       <!-- Description -->
       {#if task.description}
         <div class="py-4" style="border-bottom: 1px solid var(--sempa-border);">
-          <p class="text-[11px] font-semibold uppercase tracking-wider mb-2"
+          <p class="text-[12px] font-semibold mb-2"
              style="color: var(--sempa-text-dim);">Notes</p>
           <div class="text-sm leading-relaxed" style="color: var(--sempa-text-soft);">
             <RichText text={task.description} />

@@ -565,7 +565,7 @@
 
       {#snippet navLabel(text: string)}
         {#if !rail}
-          <div class="px-3 pb-1.5 pt-3.5 font-mono text-[10px] font-semibold uppercase tracking-[0.13em]"
+          <div class="px-3 pb-1.5 pt-3.5 text-[12px] font-semibold"
                style="color: var(--sempa-text-dim);">{text}</div>
         {/if}
       {/snippet}
@@ -575,7 +575,7 @@
         <button onclick={() => goto('/search')} title={rail ? 'Search' : undefined}
                 class="mb-3 flex w-full items-center gap-2 rounded-lg py-2 text-[13px] transition-colors"
                 class:px-3={!rail} class:justify-center={rail} class:px-0={rail}
-                style="background: var(--card-bg); border: 1px solid var(--sempa-border); color: var(--sempa-text-dim);"
+                style="background: var(--card-bg); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-dim);"
                 onmouseenter={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-text-dim)'}
                 onmouseleave={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'}>
           <Search size={15} strokeWidth={1.75} />
@@ -606,7 +606,7 @@
       {#if pomodoro.taskId}
         <div class="mt-2 rounded-xl border px-3 py-2.5"
              style="border-color: var(--sempa-accent-bg); background: var(--sempa-accent-bg); color: var(--sempa-accent);">
-          <p class="truncate text-[10.5px] font-semibold uppercase tracking-wider opacity-70">
+          <p class="truncate text-[12px] font-semibold opacity-70">
             {pomodoro.phaseLabel}
           </p>
           <p class="font-mono text-xl font-bold">{pomodoro.display}</p>
@@ -622,13 +622,13 @@
           {#if updates.available}
             <button onclick={() => goto('/settings/accounts')} title="Update available — open About"
                     aria-label="Update available"
-                    class="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] transition-colors"
+                    class="flex h-[34px] w-[34px] items-center justify-center rounded-[12px] transition-colors"
                     style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
               <ArrowUpCircle size={18} strokeWidth={1.9} />
             </button>
           {/if}
           <button onclick={() => goto('/settings/accounts')} title="Settings" aria-label="Settings"
-                  class="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] transition-colors"
+                  class="flex h-[34px] w-[34px] items-center justify-center rounded-[12px] transition-colors"
                   style={isActive('/settings') ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent);' : 'color: var(--sempa-text-dim);'}
                   onmouseenter={(e) => { if (!isActive('/settings')) { const t = e.currentTarget as HTMLElement; t.style.background = 'var(--sempa-accent-bg)'; t.style.color = 'var(--sempa-text-soft)'; } }}
                   onmouseleave={(e) => { if (!isActive('/settings')) { const t = e.currentTarget as HTMLElement; t.style.background = ''; t.style.color = 'var(--sempa-text-dim)'; } }}>
@@ -637,7 +637,7 @@
 
           <button onclick={theme.toggle} title={theme.dark ? 'Light mode' : 'Dark mode'}
                   aria-label={theme.dark ? 'Switch to light mode' : 'Switch to dark mode'}
-                  class="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] transition-colors"
+                  class="flex h-[34px] w-[34px] items-center justify-center rounded-[12px] transition-colors"
                   style="color: var(--sempa-text-dim);"
                   onmouseenter={(e) => { const t = e.currentTarget as HTMLElement; t.style.background = 'var(--sempa-accent-bg)'; t.style.color = 'var(--sempa-text-soft)'; }}
                   onmouseleave={(e) => { const t = e.currentTarget as HTMLElement; t.style.background = ''; t.style.color = 'var(--sempa-text-dim)'; }}>
@@ -646,7 +646,7 @@
 
           {#if isTauri()}
             <button onclick={() => createWidgetWindow()} title="Open Widget" aria-label="Open the floating desktop widget"
-                    class="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] transition-colors"
+                    class="flex h-[34px] w-[34px] items-center justify-center rounded-[12px] transition-colors"
                     style="color: var(--sempa-text-dim);"
                     onmouseenter={(e) => { const t = e.currentTarget as HTMLElement; t.style.background = 'var(--sempa-accent-bg)'; t.style.color = 'var(--sempa-text-soft)'; }}
                     onmouseleave={(e) => { const t = e.currentTarget as HTMLElement; t.style.background = ''; t.style.color = 'var(--sempa-text-dim)'; }}>
@@ -658,7 +658,7 @@
         <!-- Account chip — avatar + identity; the "Sign out" line is the affordance. -->
         <button onclick={signOut} title={accountEmail ? `${accountEmail} — sign out` : 'Sign out'}
                 aria-label="Sign out"
-                class="flex w-full items-center gap-2.5 rounded-[10px] px-2 py-1.5 text-left transition-colors"
+                class="flex w-full items-center gap-2.5 rounded-[14px] px-2 py-1.5 text-left transition-colors"
                 class:justify-center={rail}
                 onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--sempa-accent-bg)'}
                 onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = ''}>
@@ -750,7 +750,7 @@
       onclick={() => { hapticTick(); goto(`/day/${todayDate}?new=1`); }}
       aria-label="New task"
       style="position: fixed; bottom: calc(72px + env(safe-area-inset-bottom, 0px) + 12px); right: 20px; width: 52px; height: 52px;
-             border-radius: 16px; background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);
+             border-radius: 999px; background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);
              display: flex; align-items: center; justify-content: center; z-index: 30;
              box-shadow: 0 4px 16px rgba(0,0,0,0.25); border: none; cursor: pointer;">
       <Plus size={22} strokeWidth={2.5} />
@@ -808,7 +808,7 @@
       </div>
 
       <!-- Plan -->
-      <p class="mb-2 mt-4 px-1 text-[10.5px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Plan</p>
+      <p class="mb-2 mt-4 px-1 text-[12px] font-semibold" style="color: var(--sempa-text-dim);">Plan</p>
       <div class="grid grid-cols-2 gap-2">
         {@render sheetTile(`/plan/${todayDate}`, 'Plan Day', ClipboardCheck)}
         {@render sheetTile('/schedule', 'Schedule', CalendarClock)}
@@ -818,7 +818,7 @@
       </div>
 
       <!-- Inbox -->
-      <p class="mb-2 mt-4 px-1 text-[10.5px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Inbox</p>
+      <p class="mb-2 mt-4 px-1 text-[12px] font-semibold" style="color: var(--sempa-text-dim);">Inbox</p>
       <div class="grid grid-cols-2 gap-2">
         {@render sheetTile('/email', 'Email', Mail)}
         {@render sheetTile('/reminders', 'Reminders', Bell)}
@@ -830,7 +830,7 @@
       {#if pomodoro.taskId}
         <div class="mt-4 rounded-xl px-4 py-3"
              style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
-          <p class="text-[10.5px] font-semibold uppercase tracking-wider opacity-70">{pomodoro.phaseLabel}</p>
+          <p class="text-[12px] font-semibold opacity-70">{pomodoro.phaseLabel}</p>
           <p class="font-mono text-xl font-bold">{pomodoro.display}</p>
         </div>
       {/if}

@@ -105,8 +105,8 @@
 {#if menu}
   <div role="menu" tabindex="-1"
        style="position: fixed; left: {menu.x}px; top: {menu.y}px; z-index: 9999;
-              min-width: 160px; padding: 4px; border-radius: 8px;
-              background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);
+              min-width: 160px; padding: 4px; border-radius: 12px;
+              background: var(--sempa-bg-panel); 
               box-shadow: 0 8px 24px rgba(0,0,0,0.28);">
     {#if isMaximized}
       <button role="menuitem" class="tb-menu-item" onclick={() => runMenu(toggleMax)}>Restore</button>

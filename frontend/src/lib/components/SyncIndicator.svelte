@@ -124,7 +124,7 @@
         ? 'No connection to your sempa server. Changes are saved locally and will sync when you reconnect.'
         : 'Click to sync now'}
       class="flex items-center gap-2 rounded-full px-2 py-2 shadow-md transition-colors"
-      style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border); color: {color};">
+      style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: {color};">
       <span class="flex h-4 w-4 items-center justify-center" class:spin={syncStore.syncing}>
         {#if syncState === 'syncing'}
           <RefreshCw size={15} strokeWidth={1.75} />

@@ -293,8 +293,8 @@
       </div>
     </div>
 
-    <div class="rounded-2xl border p-6 shadow-sm space-y-4 animate-scale-in"
-         style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+    <div class="rounded-2xl p-6 shadow-sm space-y-4 animate-scale-in"
+         style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
 
       {#if error}
         <div class="rounded-lg px-4 py-3 text-sm text-red-700 bg-red-50 dark:bg-red-950 dark:text-red-300 animate-slide-down">
@@ -319,8 +319,8 @@
             </p>
           </div>
           <button type="submit" disabled={loading || !serverUrl.trim()}
-                  class="w-full rounded-lg py-2.5 text-sm font-medium text-white disabled:opacity-40 transition-colors"
-                  style="background: var(--sempa-accent);">
+                  class="w-full rounded-full py-2.5 text-sm font-medium text-white disabled:opacity-40 transition-colors"
+                  style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
             {loading ? 'Connecting…' : 'Connect'}
           </button>
         </form>
@@ -334,9 +334,9 @@
       {:else if authInfo.google_enabled}
         <!-- Google Sign-In (primary) -->
         <button onclick={googleSignIn}
-                class="flex w-full items-center justify-center gap-3 rounded-xl border px-4 py-3
+                class="flex w-full items-center justify-center gap-3 rounded-xl px-4 py-3
                        text-sm font-medium shadow-sm transition-all hover:shadow-md"
-                style="border-color: var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text);"
+                style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel); color: var(--sempa-text);"
                 onmousedown={(e) => (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)'}
                 onmouseup={(e) => (e.currentTarget as HTMLElement).style.transform = ''}
                 onmouseleave={(e) => (e.currentTarget as HTMLElement).style.transform = ''}>
@@ -378,8 +378,8 @@
                        onblur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'; (e.currentTarget as HTMLElement).style.boxShadow = ''; }} />
               </div>
               <button type="submit" disabled={loading || !username || !password}
-                      class="w-full rounded-lg py-2.5 text-sm font-medium text-white disabled:opacity-40 transition-colors"
-                      style="background: var(--sempa-accent);">
+                      class="w-full rounded-full py-2.5 text-sm font-medium text-white disabled:opacity-40 transition-colors"
+                      style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
                 {loading ? 'Signing in…' : 'Sign in'}
               </button>
             </form>
@@ -407,8 +407,8 @@
                    onblur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'; (e.currentTarget as HTMLElement).style.boxShadow = ''; }} />
           </div>
           <button type="submit" disabled={loading || !username || !password}
-                  class="w-full rounded-lg py-2.5 text-sm font-medium text-white disabled:opacity-40 transition-colors"
-                  style="background: var(--sempa-accent);">
+                  class="w-full rounded-full py-2.5 text-sm font-medium text-white disabled:opacity-40 transition-colors"
+                  style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>

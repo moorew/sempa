@@ -66,7 +66,7 @@
 <div class="fixed left-4 top-4 z-10">
   <button onclick={() => history.back()}
           class="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors"
-          style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);
+          style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);
                  color: var(--sempa-text-soft);">
     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m7-7-7 7 7 7"/>
@@ -113,7 +113,7 @@
 
       <!-- Description -->
       {#if task.description}
-        <div class="mb-8 rounded-xl px-4 py-3" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+        <div class="mb-8 rounded-xl px-4 py-3" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           <div class="text-sm leading-relaxed" style="color: var(--sempa-text-soft);">
             <RichText text={task.description} />
           </div>
@@ -121,14 +121,14 @@
       {/if}
 
       <!-- Sub-tasks -->
-      <div class="mb-8 rounded-xl p-4" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+      <div class="mb-8 rounded-xl p-4" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <SubTaskList parentId={task.id} parentDate={task.planned_date ?? undefined} />
       </div>
 
       <!-- Pomodoro panel -->
-      <div class="rounded-2xl p-6 text-center" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+      <div class="rounded-2xl p-6 text-center" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         {#if isMyPomodoro}
-          <p class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: var(--sempa-accent);">
+          <p class="text-xs font-semibold mb-3" style="color: var(--sempa-accent);">
             {pomodoro.phaseLabel}
           </p>
           <div class="font-mono text-6xl font-bold mb-4 tabular-nums" style="color: var(--sempa-text);">
@@ -141,8 +141,8 @@
           </div>
           <div class="flex items-center justify-center gap-3">
             <button onclick={() => pomodoro.togglePause()}
-                    class="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium transition-colors"
-                    style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);"
+                    class="flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-colors"
+                    style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);"
                     onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
                     onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>
               {#if pomodoro.isRunning}
@@ -179,9 +179,9 @@
             {/if}
           </div>
           <button onclick={startPomodoro} disabled={isDone}
-                  class="flex items-center gap-2 mx-auto rounded-xl px-6 py-3 text-sm font-medium
+                  class="flex items-center gap-2 mx-auto rounded-full px-6 py-3 text-sm font-medium
                          transition-colors disabled:opacity-40"
-                  style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);"
+                  style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);"
                   onmouseenter={(e) => { if (!isDone) (e.currentTarget as HTMLElement).style.opacity = '0.88'; }}
                   onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>
             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">

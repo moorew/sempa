@@ -127,8 +127,7 @@
 
       {#snippet sectionLabel(text: string, count: number)}
         <div class="mb-3 flex items-center gap-2">
-          <p style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-             text-transform:uppercase; color:var(--sempa-text-dim)">{text}</p>
+          <p style="font-family:monospace; font-size: 12px; font-weight:700;              color:var(--sempa-text-dim)">{text}</p>
           <span class="rounded-full px-1.5 text-[10px] font-semibold"
                 style="background: var(--sempa-bg-panel); color: var(--sempa-text-dim);">{count}</span>
         </div>
@@ -170,8 +169,8 @@
 
       {#if rang.length > 0}
         {@render sectionLabel('Rang', rang.length)}
-        <section class="mb-7 overflow-hidden rounded-xl border"
-                 style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <section class="mb-7 overflow-hidden rounded-xl "
+                 style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           {#each rang as r (r.task.id)}
             {@render row(r.task, r.at, true)}
           {/each}
@@ -180,8 +179,8 @@
 
       {#if upcoming.length > 0}
         {@render sectionLabel('Upcoming', upcoming.length)}
-        <section class="mb-7 overflow-hidden rounded-xl border"
-                 style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <section class="mb-7 overflow-hidden rounded-xl "
+                 style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           {#each upcoming as r (r.task.id)}
             {@render row(r.task, r.at, false)}
           {/each}

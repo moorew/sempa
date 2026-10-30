@@ -57,7 +57,7 @@
   <div class="mb-3 flex items-center justify-between px-1">
     <div class="flex items-center gap-2">
       <div class="h-2 w-2 rounded-full {accent}"></div>
-      <span class="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+      <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">
         {label}
       </span>
     </div>

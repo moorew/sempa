@@ -284,8 +284,8 @@
         {/if}
         <div class="flex gap-2">
           <button onclick={() => planFor(todayDate)} disabled={planning}
-                  class="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-50"
-                  style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);">
+                  class="flex flex-1 items-center justify-center gap-1.5 rounded-full py-2.5 text-sm font-semibold transition-colors disabled:opacity-50"
+                  style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);">
             <CirclePlus size={16} /> {planning ? 'Adding…' : 'Add to today'}
           </button>
         </div>

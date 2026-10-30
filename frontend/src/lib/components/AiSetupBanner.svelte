@@ -42,8 +42,8 @@
 
     <button
       onclick={() => { dismiss(); goto('/settings/accounts'); }}
-      class="shrink-0 rounded-md px-2.5 py-1 font-semibold transition-opacity hover:opacity-90"
-      style="font-size: 12px; background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);">
+      class="shrink-0 rounded-full px-2.5 py-1 font-semibold transition-opacity hover:opacity-90"
+      style="font-size: 12px; background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);">
       Set up
     </button>
 

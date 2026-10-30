@@ -141,10 +141,10 @@
 
 {#snippet nowCard(big: boolean)}
   <div style="display:flex; flex-direction:column; height:100%; background:var(--sempa-bg-panel);
-              border:1px solid var(--sempa-border); border-radius:20px; padding:{big ? '34px 38px' : '24px 26px'};
+               border-radius:26px; padding:{big ? '34px 38px' : '24px 26px'};
               box-shadow:0 12px 30px rgba(0,0,0,0.10);">
     <div style="display:flex; align-items:center; gap:10px;">
-      <span style="width:9px; height:9px; border-radius:5px; background:var(--sempa-amber);
+      <span style="width:9px; height:9px; border-radius:8px; background:var(--sempa-amber);
                    box-shadow:0 0 0 4px color-mix(in srgb, var(--sempa-amber) 18%, transparent);"></span>
       <span style="font-family:'JetBrains Mono',monospace; font-size:13.5px; letter-spacing:.16em;
                    color:var(--sempa-amber); font-weight:600;">NOW</span>
@@ -159,7 +159,7 @@
       <div style="display:flex; gap:10px; margin-top:18px;">
         <button onclick={() => toggle(now)}
                 style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px;
-                       background:var(--sempa-btn-bg); color:var(--sempa-btn-fg); border:none; border-radius:12px;
+                       background:var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color:var(--sempa-btn-fg); border:none; border-radius: 999px;
                        padding:14px; font-size:16px; font-weight:600; cursor:pointer;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
           Complete
@@ -179,8 +179,8 @@
 {/snippet}
 
 {#snippet timeline(h: number)}
-  <div style="height:{h}px; flex-shrink:0; background:var(--sempa-bg-panel); border:1px solid var(--sempa-border);
-              border-radius:18px; padding:12px 20px 0; overflow:hidden; position:relative;">
+  <div style="height:{h}px; flex-shrink:0; background:var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);
+              border-radius:24px; padding:12px 20px 0; overflow:hidden; position:relative;">
     <div style="font-family:'JetBrains Mono',monospace; font-size:12.5px; letter-spacing:.14em; color:var(--sempa-text-soft);">TIMELINE</div>
     <div style="position:relative; height:{h - 56}px; margin-top:8px;">
       {#each [8,10,12,14,16,18] as hr}
@@ -191,7 +191,7 @@
         {@const dur = b.e && b.e > b.s ? b.e - b.s : 30}
         <div title={b.t.title}
              style="position:absolute; left:{xpct(b.s)}%; width:max({(dur/SPAN)*100}%, 1.6%); top:0; height:{h-78}px;
-                    border-radius:9px; padding:6px 9px; overflow:hidden; font-size:13px; box-sizing:border-box;
+                    border-radius:12px; padding:6px 9px; overflow:hidden; font-size:13px; box-sizing:border-box;
                     background:{isDone(b.t) ? 'var(--sempa-success-bg)' : b.t === now ? 'var(--sempa-amber)' : 'var(--sempa-accent-bg)'};
                     color:{b.t === now ? '#2b1c0e' : isDone(b.t) ? 'var(--sempa-success)' : 'var(--sempa-accent)'};
                     border:1px solid {b.t === now ? 'var(--sempa-amber)' : isDone(b.t) ? 'var(--sempa-success)' : 'var(--sempa-accent)'};">
@@ -200,7 +200,7 @@
       {/each}
       <!-- now-line: the cockpit day-thread "now" treatment -->
       <div style="position:absolute; left:{xpct(nowMin())}%; top:-4px; bottom:14px; width:2px; background:var(--sempa-amber);">
-        <span style="position:absolute; top:-5px; left:-4px; width:10px; height:10px; border-radius:5px; background:var(--sempa-amber);"></span>
+        <span style="position:absolute; top:-5px; left:-4px; width:10px; height:10px; border-radius:8px; background:var(--sempa-amber);"></span>
       </div>
     </div>
   </div>
@@ -219,7 +219,7 @@
       <span style="font-weight:600; font-size:20px; letter-spacing:-.02em; color:var(--sempa-text);">sempa</span>
     </span>
     <span style="font-family:'JetBrains Mono',monospace; font-size:11.5px; letter-spacing:.14em; color:var(--sempa-text-soft);
-                 border:1px solid var(--sempa-border); border-radius:6px; padding:3px 7px;">COCKPIT</span>
+                 border:1px solid var(--sempa-border); border-radius:10px; padding:3px 7px;">COCKPIT</span>
     <div style="flex:1;"></div>
     <span style="font-size:14.5px; color:var(--sempa-text-soft);">{doneCount}/{total} today</span>
     <div style="width:140px; height:6px; border-radius:3px; background:var(--sempa-accent-bg);">
@@ -228,7 +228,7 @@
     <span style="font-family:'JetBrains Mono',monospace; font-size:15px; color:var(--sempa-text-soft);">{clock}</span>
     <button onclick={() => cockpit.toggleMode()}
             style="border:1px solid var(--sempa-border); background:none; color:var(--sempa-text-soft);
-                   border-radius:9px; padding:6px 12px; font-size:13px; cursor:pointer;">
+                   border-radius:12px; padding:6px 12px; font-size:13px; cursor:pointer;">
       {cockpit.mode === 'cockpit' ? 'Glance' : 'Expand'}
     </button>
   </div>
@@ -240,7 +240,7 @@
         <div style="width:34%; max-width:600px; flex-shrink:0;">{@render nowCard(false)}</div>
         <!-- TodayList -->
         <div style="flex:1; min-width:0; display:flex; flex-direction:column; background:var(--sempa-bg-panel);
-                    border:1px solid var(--sempa-border); border-radius:20px; overflow:hidden; box-shadow:0 12px 30px rgba(0,0,0,0.10);">
+                     border-radius:26px; overflow:hidden; box-shadow:0 12px 30px rgba(0,0,0,0.10);">
           <div style="padding:18px 22px 12px; border-bottom:1px solid var(--sempa-border);">
             <div style="display:flex; align-items:center; gap:10px;">
               <span style="font-family:'JetBrains Mono',monospace; font-size:13px; letter-spacing:.14em; color:var(--sempa-text-soft);">TODAY</span>
@@ -249,15 +249,15 @@
             </div>
             <div style="display:flex; gap:8px; margin-top:12px;">
               <input bind:value={draft} placeholder="Add a task…" onkeydown={(e) => e.key === 'Enter' && add()}
-                     style="flex:1; background:var(--sempa-bg-main); border:1px solid var(--sempa-border); border-radius:10px;
+                     style="flex:1; background:var(--sempa-bg-main); border:1px solid var(--sempa-border); border-radius:14px;
                             padding:9px 12px; font-size:15px; color:var(--sempa-text); outline:none;" />
               <button onclick={add} style="background:var(--sempa-accent-bg); color:var(--sempa-accent); border:none;
-                            border-radius:10px; padding:0 16px; font-size:15px; font-weight:600; cursor:pointer;">Add</button>
+                            border-radius:14px; padding:0 16px; font-size:15px; font-weight:600; cursor:pointer;">Add</button>
             </div>
           </div>
           <div style="flex:1; overflow:auto; padding:8px 12px 14px;">
             {#each active as t (t.id)}
-              <div style="display:flex; align-items:center; gap:12px; padding:9px 10px; border-radius:12px;
+              <div style="display:flex; align-items:center; gap:12px; padding:9px 10px; border-radius:18px;
                           background:{t === now ? 'color-mix(in srgb, var(--sempa-amber) 14%, transparent)' : 'transparent'};
                           border-left:3px solid {t === now ? 'var(--sempa-amber)' : 'transparent'};">
                 <span style="font-family:'JetBrains Mono',monospace; font-size:13.5px; color:var(--sempa-text-soft); width:52px;">{hhmm(t.scheduled_start) || '—'}</span>
@@ -279,7 +279,7 @@
         </div>
         <!-- WeekPanel -->
         <div style="width:26%; max-width:470px; flex-shrink:0; display:flex; flex-direction:column; gap:16px;
-                    background:var(--sempa-bg-panel); border:1px solid var(--sempa-border); border-radius:20px;
+                    background:var(--sempa-bg-panel);  border-radius:26px;
                     padding:20px 22px; box-shadow:0 12px 30px rgba(0,0,0,0.10);">
           <div style="display:flex; align-items:center; gap:14px;">
             {@render ring(total ? doneCount / total : 0, 78, 9)}
@@ -311,7 +311,7 @@
       <div style="flex:1; min-height:0; display:flex; gap:40px;">
         <div style="flex:1.5; min-width:0;">{@render nowCard(true)}</div>
         <div style="flex:1; display:flex; align-items:center; gap:28px; background:var(--sempa-bg-panel);
-                    border:1px solid var(--sempa-border); border-radius:20px; padding:0 40px; box-shadow:0 12px 30px rgba(0,0,0,0.10);">
+                     border-radius:26px; padding:0 40px; box-shadow:0 12px 30px rgba(0,0,0,0.10);">
           {@render ring(total ? doneCount / total : 0, 150, 14)}
           <div style="min-width:0;">
             <div style="font-size:24px; font-weight:600; color:var(--sempa-text);">{active.length} tasks left</div>

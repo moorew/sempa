@@ -191,10 +191,9 @@
   <!-- Card -->
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div
-    class="relative flex items-start gap-3 rounded-xl border p-3.5"
+    class="relative flex items-start gap-3 rounded-xl p-3.5"
     class:reordering={dragging}
-    style="background: var(--card-bg); border-color: var(--card-border);
-           transform: {dragging ? 'scale(1.02)' : `translateX(${deltaX}px)`};
+    style="background: var(--card-bg);            transform: {dragging ? 'scale(1.02)' : `translateX(${deltaX}px)`};
            transition: {swiping || dragging ? 'none' : 'transform 200ms ease-out'};
            {dragging ? 'box-shadow: 0 12px 28px -6px rgba(0,0,0,0.35); z-index: 5;' : ''}
            -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"

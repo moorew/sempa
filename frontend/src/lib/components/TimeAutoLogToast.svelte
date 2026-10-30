@@ -31,7 +31,7 @@
 
 {#if entry && bucket}
   <div class="pointer-events-auto flex items-center gap-2.5 rounded-xl px-3 py-2 shadow-lg"
-       style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);">
+       style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
     <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
          style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
       <Check size={15} strokeWidth={2.2} />
@@ -48,8 +48,8 @@
 
     <button
       onclick={() => timeCapture.correctAutoLogged()}
-      class="shrink-0 rounded-md px-2.5 py-1 font-semibold transition-opacity hover:opacity-90"
-      style="font-size: 12px; background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);">
+      class="shrink-0 rounded-full px-2.5 py-1 font-semibold transition-opacity hover:opacity-90"
+      style="font-size: 12px; background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);">
       Change
     </button>
 

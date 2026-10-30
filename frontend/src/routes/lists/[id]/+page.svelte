@@ -211,8 +211,8 @@
 
       <!-- Private / Shared (multi-user household only) -->
       {#if household.multiUser}
-        <div class="mb-4 flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <div class="mb-4 flex items-center justify-between gap-3 rounded-lg px-3 py-2.5"
+             style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           <div class="min-w-0">
             <p class="text-[13px] font-medium" style="color: var(--sempa-text);">{list.shared ? 'Shared' : 'Private'}</p>
             <p class="text-[11.5px]" style="color: var(--sempa-text-soft);">
@@ -256,8 +256,8 @@
           class="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
           style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text);" />
         <button type="submit" disabled={!newText.trim()}
-          class="rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-          style="background: var(--sempa-accent);">Add</button>
+          class="rounded-full px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+          style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">Add</button>
       </form>
 
       <!-- Items -->
@@ -265,7 +265,7 @@
         <p class="text-sm" style="color: var(--sempa-text-dim);">No items yet.</p>
       {:else if grouped}
         {#each groups as [cat, its]}
-          <p class="mb-2 mt-4 text-xs font-semibold uppercase tracking-wider first:mt-0" style="color: var(--sempa-text-dim);">{cat || 'Other'}</p>
+          <p class="mb-2 mt-4 text-xs font-semibold first:mt-0" style="color: var(--sempa-text-dim);">{cat || 'Other'}</p>
           <div class="flex flex-col gap-1.5">
             {#each its as it (it.id)}{@render itemRow(it, false)}{/each}
           </div>
@@ -282,7 +282,7 @@
 {#snippet itemRow(it: ListItem, draggable: boolean)}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="flex items-center gap-2.5 rounded-xl px-3 py-2.5"
-    style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); {dragId === it.id ? 'opacity:0.4;' : ''}"
+    style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel); {dragId === it.id ? 'opacity:0.4;' : ''}"
     draggable={draggable}
     ondragstart={() => (dragId = it.id)}
     ondragover={(e) => { if (draggable) e.preventDefault(); }}

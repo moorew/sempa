@@ -129,8 +129,7 @@
 
   <!-- Compact header: MON + day-number circle -->
   <div class="mb-2 flex shrink-0 items-center gap-1.5 px-1">
-    <span class="text-[10.5px] font-semibold uppercase tracking-wider
-                 {isWeekend ? 'text-gray-400 dark:text-gray-600' : 'text-gray-400 dark:text-gray-500'}">
+    <span class="text-[12px] font-semibold {isWeekend ? 'text-gray-400 dark:text-gray-600' : 'text-gray-400 dark:text-gray-500'}">
       {dayName}
     </span>
     <!-- Day number — circle only on today -->

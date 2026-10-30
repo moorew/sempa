@@ -82,7 +82,7 @@
 
     {:else if !data?.available}
       <!-- Learning state -->
-      <div class="rounded-2xl px-5 py-8 text-center" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+      <div class="rounded-2xl px-5 py-8 text-center" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <div class="mb-3 text-4xl">🌱</div>
         <h2 class="mb-1.5 text-lg font-bold" style="color: var(--sempa-text);">Still learning your timing</h2>
         <p class="mx-auto max-w-sm text-sm leading-relaxed" style="color: var(--sempa-text-soft);">
@@ -97,8 +97,8 @@
       <!-- Headline -->
       {#if headline}
         <div class="mb-6 rounded-2xl px-5 py-6 text-center"
-          style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
-          <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">
+          style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
+          <p class="text-xs font-semibold" style="color: var(--sempa-text-dim);">
             Your estimating
           </p>
           <p class="my-1 text-5xl font-bold tabular-nums"
@@ -110,8 +110,8 @@
         </div>
 
         <!-- Planned vs actual totals -->
-        <div class="mb-6 rounded-2xl px-5 py-5" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
-          <p class="mb-3 text-xs font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">
+        <div class="mb-6 rounded-2xl px-5 py-5" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
+          <p class="mb-3 text-xs font-semibold" style="color: var(--sempa-text-dim);">
             Planned vs. actual (recent)
           </p>
           <div class="flex flex-col gap-2.5">
@@ -138,8 +138,8 @@
       <!-- By activity -->
       {#if activityRows.length}
         <div class="mb-6">
-          <p class="mb-3 text-xs font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">By activity</p>
-          <div class="flex flex-col gap-3 rounded-2xl px-5 py-4" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+          <p class="mb-3 text-xs font-semibold" style="color: var(--sempa-text-dim);">By activity</p>
+          <div class="flex flex-col gap-3 rounded-2xl px-5 py-4" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
             {#each activityRows as row}
               <div class="flex items-center gap-3">
                 <span class="w-6 text-center text-lg">{row.bucket.emoji}</span>
@@ -157,8 +157,8 @@
       <!-- By tag -->
       {#if data.tags.length}
         <div class="mb-6">
-          <p class="mb-3 text-xs font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">By tag</p>
-          <div class="flex flex-col gap-3 rounded-2xl px-5 py-4" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+          <p class="mb-3 text-xs font-semibold" style="color: var(--sempa-text-dim);">By tag</p>
+          <div class="flex flex-col gap-3 rounded-2xl px-5 py-4" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
             {#each data.tags as t}
               <div class="flex items-center gap-3">
                 <span class="w-36 shrink-0 truncate text-sm" style="color: var(--sempa-text);">#{t.tag}</span>
@@ -175,7 +175,7 @@
       <!-- Recent tasks -->
       {#if recent.length}
         <div class="mb-6">
-          <p class="mb-3 text-xs font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Recent tasks</p>
+          <p class="mb-3 text-xs font-semibold" style="color: var(--sempa-text-dim);">Recent tasks</p>
           <div class="overflow-hidden rounded-2xl" style="border: 1px solid var(--sempa-border);">
             {#each recent.slice(0, 25) as r, i}
               {@const over = r.actual_minutes - r.estimate_minutes}

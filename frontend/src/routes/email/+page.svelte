@@ -93,7 +93,7 @@
     </div>
     <button onclick={load} disabled={loading}
             class="flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
-            style="border: 1px solid var(--sempa-border); border-radius: 8px; padding: 7px 14px;
+            style="border: 1px solid var(--sempa-border); border-radius: 12px; padding: 7px 14px;
                    color: var(--sempa-text-soft); background: transparent;">
       <RefreshCw size={13} class={loading ? 'animate-spin' : ''} />
       {loading ? 'Loading…' : 'Refresh'}
@@ -112,8 +112,8 @@
         <p class="text-sm font-medium" style="color: var(--sempa-text);">Fastmail not connected</p>
         <p class="text-xs" style="color: var(--sempa-text-dim);">Connect your Fastmail account in Settings → Accounts.</p>
         <a href="/settings/accounts"
-           class="mt-1 rounded-lg px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-           style="background: var(--sempa-accent);">
+           class="mt-1 rounded-full px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+           style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
           Go to Settings
         </a>
       </div>
@@ -153,14 +153,14 @@
            on-theme via the --sempa-* tokens. -->
       <div class="mx-auto flex max-w-3xl flex-col gap-2.5 px-4 py-4 sm:px-6">
         {#each emails as email (email.id)}
-          <div class="flex items-start gap-3 rounded-xl border p-3.5 transition-colors"
-               style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);
+          <div class="flex items-start gap-3 rounded-xl p-3.5 transition-colors"
+               style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);
                       {done[email.id] ? 'opacity: 0.5;' : ''}">
 
             <!-- Avatar -->
             <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold"
                  style={email.is_unread
-                   ? 'background: var(--sempa-accent); color: var(--sempa-btn-fg);'
+                   ? 'background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);'
                    : 'background: var(--sempa-bg-main); color: var(--sempa-text-soft); border: 1px solid var(--sempa-border);'}>
               {senderInitial(email)}
             </div>
@@ -185,8 +185,8 @@
                 <button onclick={() => toTask(email)}
                         disabled={converting[email.id] || done[email.id]}
                         title="Add to today's tasks and archive"
-                        class="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                        style="background: var(--sempa-accent);">
+                        class="flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                        style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
                   {#if converting[email.id]}
                     <svg class="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>

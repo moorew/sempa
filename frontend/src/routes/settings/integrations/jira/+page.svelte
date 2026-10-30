@@ -151,8 +151,8 @@
 
     <div class="flex items-center gap-3 pt-1">
       <button type="submit" disabled={saving}
-              class="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
-              style="background: var(--sempa-accent);">
+              class="rounded-full px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
+              style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
         {saving ? 'Saving…' : 'Save'}
       </button>
 

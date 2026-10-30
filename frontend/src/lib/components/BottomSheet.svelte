@@ -27,7 +27,7 @@
        adjustResize shrinks/restores that viewport with the keyboard. -->
   <div class="sheet-panel fixed left-0 right-0 bottom-0 z-[90] flex flex-col overflow-hidden"
        style="max-height: calc(100% - max(32px, env(safe-area-inset-top, 0px)));
-              border-radius: 20px 20px 0 0;
+              border-radius: 26px 26px 0 0;
               background: var(--sempa-bg-panel);
               padding-bottom: env(safe-area-inset-bottom);
               animation: sempa-sheet-up 300ms cubic-bezier(0.16, 0.84, 0.44, 1) both;"

@@ -175,7 +175,7 @@
 
             <div class="flex items-start gap-2.5">
               <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white
-                          {email.is_unread ? 'bg-[var(--sempa-accent)]' : 'bg-gray-300 dark:bg-gray-600'}">
+                          {email.is_unread ? 'bg-[var(--sempa-btn-bg)]' : 'bg-gray-300 dark:bg-gray-600'}">
                 {senderInitial(email)}
               </div>
               <div class="min-w-0 flex-1 pr-1">
@@ -200,7 +200,7 @@
                         title="Add as task + archive"
                         class="rounded px-2 py-1 text-[10.5px] font-medium text-white
                                hover:opacity-90 disabled:opacity-50 transition-opacity"
-                        style="background: var(--sempa-accent);">
+                        style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
                   {converting[email.id] ? '…' : done[email.id] === 'task' ? '✓' : '→ Task'}
                 </button>
                 <button onclick={() => archive(email)}

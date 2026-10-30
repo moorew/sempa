@@ -377,7 +377,7 @@
         </a>
         <a href="/week/{weekStartDate}/plan"
            class="flex items-center gap-1 shadow-sm"
-           style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius: 9px;
+           style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
                   padding: 7px 12px; font-size: 13px; font-weight: 500; border: none; cursor: pointer;"
            onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
            onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>
@@ -391,7 +391,7 @@
         <button onclick={copyMarkdown}
                 class="flex items-center gap-1.5 font-medium transition-colors"
                 style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);
-                       background: transparent; border-radius: 9px; padding: 7px 14px; font-size: 12px;">
+                       background: transparent; border-radius: 12px; padding: 7px 14px; font-size: 12px;">
           {#if copied}
             <svg class="h-3.5 w-3.5 text-green-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
@@ -410,7 +410,7 @@
            class="flex items-center gap-1.5 font-medium transition-colors"
            style="border: 1px solid {reviewDone ? 'var(--sempa-accent)' : 'var(--sempa-border)'};
                   color: {reviewDone ? 'var(--sempa-accent)' : 'var(--sempa-text-soft)'};
-                  background: {reviewDone ? 'var(--sempa-accent-bg)' : 'transparent'}; border-radius: 9px; padding: 7px 14px; font-size: 12px;">
+                  background: {reviewDone ? 'var(--sempa-accent-bg)' : 'transparent'}; border-radius: 12px; padding: 7px 14px; font-size: 12px;">
           {#if reviewDone}
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
@@ -426,7 +426,7 @@
 
       <a href="/week/{weekStartDate}/plan"
          class="flex items-center gap-1.5 shadow-sm"
-         style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius: 9px;
+         style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
                 padding: 8px 20px; font-size: 13px; font-weight: 500; border: none; cursor: pointer;"
          onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
          onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>
@@ -493,7 +493,7 @@
           <svg class="h-3.5 w-3.5 shrink-0" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
           </svg>
-          <p class="text-[10.5px] font-semibold uppercase tracking-wider" style="color: var(--sempa-accent);">Week reviewed</p>
+          <p class="text-[12px] font-semibold" style="color: var(--sempa-accent);">Week reviewed</p>
         </div>
         {#if reviewWins.length}
           <p class="text-sm leading-relaxed" style="color: var(--sempa-text);">
@@ -535,7 +535,7 @@
              ondragover={(e) => { e.preventDefault(); if (dragObjId && dragObjId !== obj.id) dragOverObjId = obj.id; }}
              ondragleave={() => { if (dragOverObjId === obj.id) dragOverObjId = null; }}
              ondrop={(e) => { e.preventDefault(); void onObjDrop(obj.id); }}
-             style="border-radius:12px; background: var(--sempa-bg-panel);
+             style="border-radius:18px; background: var(--sempa-bg-panel);
                     border: 1px solid {dragOverObjId === obj.id ? 'var(--sempa-accent)' : 'var(--sempa-border)'};
                     box-shadow: {dragOverObjId === obj.id ? '0 0 0 1px var(--sempa-accent)' : 'none'};">
 
@@ -677,8 +677,8 @@
                         options={Array.from({length:7},(_,i)=>{ const d=offsetDate(weekStartDate,i); return { value: d, label: new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) }; })} />
                     </div>
                     <button onclick={() => addTask(obj.id)} disabled={addingTask[obj.id]}
-                            class="rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-40 transition-colors"
-                            style="background: var(--sempa-accent); color: var(--sempa-btn-fg);">
+                            class="rounded-full px-3 py-1.5 text-xs font-medium disabled:opacity-40 transition-colors"
+                            style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);">
                       Add
                     </button>
                   </div>
@@ -718,7 +718,7 @@
 
       <!-- Inline add form -->
       {#if showAddForm}
-        <div style="border-radius:12px; border: 1px solid var(--sempa-accent-bg);
+        <div style="border-radius:18px; border: 1px solid var(--sempa-accent-bg);
                     background: var(--sempa-accent-bg); padding:16px;">
           <input bind:this={addingInput}
                  bind:value={addingTitle}
@@ -732,8 +732,8 @@
                         color: var(--sempa-text);" />
           <div class="mt-2 flex gap-2">
             <button onclick={addObjective} disabled={!addingTitle.trim()}
-                    class="rounded-lg px-4 py-1.5 text-xs font-medium disabled:opacity-40 transition-colors"
-                    style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);">
+                    class="rounded-full px-4 py-1.5 text-xs font-medium disabled:opacity-40 transition-colors"
+                    style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);">
               Add
             </button>
             <button onclick={() => showAddForm = false}
@@ -748,7 +748,7 @@
 
     <!-- Unscheduled tasks for this week -->
     {#if unscheduled.length > 0}
-      <div class="mt-4" style="border-radius:12px; border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+      <div class="mt-4" style="border-radius:18px; box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <button class="flex w-full items-center justify-between px-4 py-3"
                 onclick={() => showUnscheduled = !showUnscheduled}>
           <span class="text-sm font-semibold" style="color: var(--sempa-text);">Unscheduled this week</span>

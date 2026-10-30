@@ -36,7 +36,7 @@
   ];
 </script>
 
-<section class="overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+<section class="overflow-hidden rounded-xl " style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
   <!-- Identity + current version -->
   <div class="flex items-center gap-3 px-5 py-4" style="border-bottom: 1px solid var(--sempa-border);">
     <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
@@ -71,8 +71,8 @@
         {/if}
         <div class="mt-3 flex flex-wrap items-center gap-2">
           <button onclick={() => openExternal(updates.info!.downloadUrl)}
-             class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
-             style="background: var(--sempa-accent);">
+             class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-white"
+             style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
             <Download size={14} strokeWidth={2} /> Download update
           </button>
           <button onclick={() => openExternal(updates.info!.url)}

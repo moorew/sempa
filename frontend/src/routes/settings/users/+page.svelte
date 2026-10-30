@@ -89,7 +89,7 @@
       <p class="text-sm" style="color: var(--sempa-text-dim);">Loading…</p>
     {:else}
       {#if me?.is_admin}
-        <p class="mb-3 text-[10.5px] font-bold uppercase tracking-wider" style="color: var(--sempa-text-dim);">People</p>
+        <p class="mb-3 text-[12px] font-bold" style="color: var(--sempa-text-dim);">People</p>
         <div class="mb-4 overflow-hidden rounded-xl" style="border: 1px solid var(--sempa-border);">
           {#each users as u, i}
             <div class="flex items-center gap-3 px-4 py-3" style="background: var(--sempa-bg-panel); {i > 0 ? 'border-top: 1px solid var(--sempa-border);' : ''}">
@@ -110,8 +110,8 @@
           {/each}
         </div>
 
-        <p class="mb-2 text-[10.5px] font-bold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Invite a person</p>
-        <div class="mb-8 flex flex-col gap-2 rounded-xl px-4 py-4" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+        <p class="mb-2 text-[12px] font-bold" style="color: var(--sempa-text-dim);">Invite a person</p>
+        <div class="mb-8 flex flex-col gap-2 rounded-xl px-4 py-4" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           <p class="text-xs" style="color: var(--sempa-text-dim);">
             They sign in with their Google account — no password is stored. Just enter
             their email and tell them to open Sempa and choose “Sign in with Google”.
@@ -133,20 +133,20 @@
           {/if}
 
           <button onclick={addUser} disabled={adding || !canAdd}
-            class="mt-1 rounded-lg py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40" style="background: var(--sempa-accent);">
+            class="mt-1 rounded-full py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40" style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
             {adding ? 'Adding…' : (nUsePassword ? 'Create account' : 'Invite via Google')}
           </button>
         </div>
       {/if}
 
-      <p class="mb-2 text-[10.5px] font-bold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Change my password</p>
-      <div class="flex flex-col gap-2 rounded-xl px-4 py-4" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+      <p class="mb-2 text-[12px] font-bold" style="color: var(--sempa-text-dim);">Change my password</p>
+      <div class="flex flex-col gap-2 rounded-xl px-4 py-4" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
         <input bind:value={curPass} type="password" placeholder="Current password" autocomplete="current-password"
           class="rounded-lg px-3 py-2 text-sm outline-none" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
         <input bind:value={newPass} type="password" placeholder="New password (min 8)" autocomplete="new-password"
           class="rounded-lg px-3 py-2 text-sm outline-none" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
         <button onclick={changeMyPassword} disabled={changing || newPass.length < 8}
-          class="mt-1 rounded-lg py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40" style="background: var(--sempa-accent);">
+          class="mt-1 rounded-full py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40" style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
           {changing ? 'Saving…' : 'Change password'}
         </button>
       </div>

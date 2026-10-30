@@ -390,7 +390,7 @@
             {@const opts = optionsFor(def, allTasks)}
             {#if opts.length}
               <div>
-                <p class="mb-1 text-[10.5px] font-semibold uppercase tracking-wide" style="color: var(--sempa-text-dim);">{def.label}</p>
+                <p class="mb-1 text-[12px] font-semibold" style="color: var(--sempa-text-dim);">{def.label}</p>
                 <div class="flex flex-wrap gap-1">
                   {#each opts as o}
                     {@const active = (filterState.selects[def.id] ?? []).includes(o)}

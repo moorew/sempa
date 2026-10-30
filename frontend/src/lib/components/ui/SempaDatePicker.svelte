@@ -184,9 +184,9 @@
             {@const isSel = ymd === value}
             {@const isToday = ymd === today}
             <button type="button" onclick={() => selectDay(cell)}
-                    class="sempa-date-day flex h-8 items-center justify-center rounded-lg text-sm transition-colors"
+                    class="sempa-date-day flex h-8 items-center justify-center rounded-full text-sm transition-colors"
                     style={isSel
-                      ? 'background: var(--sempa-accent); color: var(--sempa-btn-fg); font-weight: 600;'
+                      ? 'background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); font-weight: 600;'
                       : isToday
                         ? 'border: 1px solid var(--sempa-accent); color: var(--sempa-accent);'
                         : 'color: var(--sempa-text);'}>

@@ -21,7 +21,7 @@
        onclick={(e) => { if (e.target === e.currentTarget) confirmDialog.cancel(); }}
        role="presentation">
     <div class="w-full max-w-sm overflow-hidden rounded-2xl shadow-2xl"
-         style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);"
+         style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);"
          role="alertdialog" aria-modal="true" aria-label={confirmDialog.opts.title}>
       <div class="px-5 pt-5 pb-4">
         <h2 class="text-sm font-semibold" style="color: var(--sempa-text);">{confirmDialog.opts.title}</h2>

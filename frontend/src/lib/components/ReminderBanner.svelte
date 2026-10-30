@@ -50,7 +50,7 @@
             <Bell size={15} strokeWidth={2} />
           </div>
           <div class="min-w-0 flex-1">
-            <span class="font-semibold" style="font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--sempa-accent);">
+            <span class="font-semibold" style="font-size: 12px; color: var(--sempa-accent);">
               Reminder
             </span>
             <p class="truncate" style="font-size: 13px; line-height: 1.25; color: var(--sempa-text);">{a.title}</p>
@@ -61,8 +61,8 @@
         <div class="flex shrink-0 items-center gap-1.5">
           <button
             onclick={() => startFocus(a.taskId, a.title)}
-            class="rounded-md px-2.5 py-1 font-semibold transition-opacity hover:opacity-90"
-            style="font-size: 12px; background: var(--sempa-accent); color: #fff;">
+            class="rounded-full px-2.5 py-1 font-semibold transition-opacity hover:opacity-90"
+            style="font-size: 12px; background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: #fff;">
             Focus
           </button>
           <button
