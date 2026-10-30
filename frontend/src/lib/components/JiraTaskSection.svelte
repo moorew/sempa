@@ -72,9 +72,9 @@
 </script>
 
 {#if meta?.key}
-  <div class="overflow-hidden rounded-xl" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main);">
+  <div class="overflow-hidden rounded-[18px]" style="background: var(--sempa-fill);">
     <!-- Header: key + open link -->
-    <div class="flex items-center justify-between gap-2 px-3 py-2" style="border-bottom: 1px solid var(--sempa-border);">
+    <div class="flex items-center justify-between gap-2 px-4 pb-1 pt-3">
       <span class="inline-flex items-center gap-1.5 text-xs font-semibold" style="color: var(--sempa-text-soft);">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="color: var(--sempa-accent);">
           <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.757a5.215 5.215 0 0 0 5.214 5.214h2.129v2.058A5.218 5.218 0 0 0 18.313 18.3V6.763a1.006 1.006 0 0 0-1.019-1.006zM23.277.007H11.749a5.215 5.215 0 0 0 5.214 5.214h2.129v2.058A5.218 5.218 0 0 0 24.282 12.5V1.012A1.005 1.005 0 0 0 23.277.007z"/>
@@ -83,7 +83,7 @@
       </span>
       {#if task.source_url}
         <button onclick={() => openExternal(task.source_url!)}
-                class="inline-flex items-center gap-1 text-xs font-medium" style="color: var(--sempa-accent);">
+                class="btn-surface h-7 gap-1 px-3 text-[11.5px]" style="color: var(--sempa-accent-ink);">
           Open in Jira
           <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
@@ -92,7 +92,7 @@
       {/if}
     </div>
 
-    <div class="px-3 py-2.5 text-xs" style="color: var(--sempa-text-soft);">
+    <div class="px-4 pb-3.5 pt-2 text-xs" style="color: var(--sempa-text-soft);">
       {#if loading && !detail}
         <p style="color: var(--sempa-text-dim);">Loading Jira issue…</p>
       {:else}
@@ -106,19 +106,18 @@
         {#if labels.length}
           <div class="mt-1.5 flex flex-wrap gap-1">
             {#each labels as l}
-              <span class="rounded-full px-2 py-0.5 text-[10.5px]" style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">{l}</span>
+              <span class="chip" style="background: var(--sempa-bg-panel); color: var(--sempa-text-soft);">{l}</span>
             {/each}
           </div>
         {/if}
 
         <!-- Transitions -->
         {#if transitions.length}
-          <p class="mb-1.5 mt-3" style="color: var(--sempa-text-dim);">Move to</p>
+          <p class="type-label mb-1.5 mt-3" style="color: var(--sempa-text-soft);">Move to</p>
           <div class="flex flex-wrap gap-1.5">
             {#each transitions as t (t.id)}
               <button onclick={() => move(t)} disabled={working}
-                      class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50"
-                      style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
+                      class="btn-surface h-8 px-3.5 text-xs disabled:opacity-50">
                 {t.name}
               </button>
             {/each}
@@ -126,7 +125,7 @@
         {/if}
 
         {#if err}
-          <p class="mt-2 text-red-500">{err}</p>
+          <p class="mt-2" style="color: var(--sempa-danger, #c0392b);">{err}</p>
         {/if}
       {/if}
     </div>

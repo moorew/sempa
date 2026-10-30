@@ -107,26 +107,25 @@
 </script>
 
 <div class="flex h-full flex-col">
-  <!-- Tabs -->
-  <div class="flex shrink-0 border-b border-gray-100 dark:border-gray-800">
-    <button onclick={() => switchTab('inbox')}
-            class="flex-1 py-2 text-xs font-medium transition-colors
-                   {tab === 'inbox'
-                     ? 'border-b-2 border-[var(--sempa-accent)] text-[var(--sempa-accent)]'
-                     : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}">
-      Inbox
-    </button>
-    <button onclick={() => switchTab('archived')}
-            class="flex-1 py-2 text-xs font-medium transition-colors
-                   {tab === 'archived'
-                     ? 'border-b-2 border-[var(--sempa-accent)] text-[var(--sempa-accent)]'
-                     : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}">
-      Archived
-    </button>
+  <!-- Tabs: a segmented pill on the panel -->
+  <div class="flex shrink-0 items-center gap-2 px-3 py-2.5">
+    <div class="segmented flex-1" role="tablist" aria-label="Mailbox">
+      <button onclick={() => switchTab('inbox')} role="tab" aria-selected={tab === 'inbox'}
+              class="py-1.5 text-xs font-semibold transition-colors"
+              style="color: {tab === 'inbox' ? 'var(--sempa-text)' : 'var(--sempa-text-soft)'};">
+        Inbox
+      </button>
+      <button onclick={() => switchTab('archived')} role="tab" aria-selected={tab === 'archived'}
+              class="py-1.5 text-xs font-semibold transition-colors"
+              style="color: {tab === 'archived' ? 'var(--sempa-text)' : 'var(--sempa-text-soft)'};">
+        Archived
+      </button>
+    </div>
     <button onclick={() => tab === 'inbox' ? loadInbox() : loadArchived()}
             disabled={loading}
             aria-label="Refresh"
-            class="px-2 text-gray-300 hover:text-gray-500 disabled:opacity-40 transition-colors dark:text-gray-600">
+            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40"
+            style="background: var(--sempa-fill); color: var(--sempa-text-soft);">
       <svg class="h-3.5 w-3.5 {loading ? 'animate-spin' : ''}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path stroke-linecap="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
       </svg>
@@ -136,56 +135,61 @@
   <div class="flex-1 overflow-y-auto">
     {#if !connected}
       <div class="flex flex-col items-center justify-center gap-2 p-6 text-center">
-        <p class="text-xs text-gray-400 dark:text-gray-600">Fastmail not connected</p>
-        <a href="/settings/accounts" class="text-xs hover:underline" style="color: var(--sempa-accent);">Set up →</a>
+        <p class="text-xs" style="color: var(--sempa-text-dim);">Fastmail not connected</p>
+        <a href="/settings/accounts" class="btn-soft h-8 px-3.5 text-xs">Set up →</a>
       </div>
 
     {:else if loading}
       <div class="space-y-px">
         {#each Array(5) as _}
           <div class="flex items-start gap-2.5 px-3 py-3 animate-pulse">
-            <div class="h-7 w-7 shrink-0 rounded-full bg-gray-100 dark:bg-gray-800"></div>
+            <div class="h-8 w-8 shrink-0 rounded-full" style="background: var(--sempa-fill);"></div>
             <div class="flex-1 space-y-1.5 pt-0.5">
-              <div class="h-2.5 w-20 rounded bg-gray-100 dark:bg-gray-800"></div>
-              <div class="h-2.5 w-full rounded bg-gray-100 dark:bg-gray-800"></div>
+              <div class="h-2.5 w-20 rounded-full" style="background: var(--sempa-fill);"></div>
+              <div class="h-2.5 w-full rounded-full" style="background: var(--sempa-fill);"></div>
             </div>
           </div>
         {/each}
       </div>
 
     {:else if error}
-      <p class="p-4 text-xs text-red-500 dark:text-red-400">{error}</p>
+      <p class="p-4 text-xs" style="color: var(--sempa-danger, #c0392b);">{error}</p>
 
     {:else if emails.length === 0}
       <div class="flex h-32 items-center justify-center">
-        <p class="text-xs text-gray-400 dark:text-gray-600">
+        <p class="text-xs" style="color: var(--sempa-text-dim);">
           {tab === 'inbox' ? 'Inbox is empty' : 'No archived emails'}
         </p>
       </div>
 
     {:else}
-      <ul class="divide-y divide-gray-50 dark:divide-gray-800/60">
-        {#each emails as email (email.id)}
+      <ul>
+        {#each emails as email, i (email.id)}
           <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-          <li class="group relative px-3 py-2.5 transition-colors
-                     {done[email.id] ? 'opacity-40' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}
+          <li class="email-row group relative mx-1.5 rounded-[14px] px-2.5 py-2.5
+                     {done[email.id] ? 'opacity-40' : ''}
                      {tab === 'inbox' ? 'cursor-grab active:cursor-grabbing' : ''}"
+              style={i > 0 ? 'box-shadow: 0 -1px 0 var(--sempa-border);' : ''}
               draggable={tab === 'inbox'}
               ondragstart={tab === 'inbox' ? (e) => onDragStart(e, email) : null}>
 
             <div class="flex items-start gap-2.5">
-              <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white
-                          {email.is_unread ? 'bg-[var(--sempa-btn-bg)]' : 'bg-gray-300 dark:bg-gray-600'}">
+              <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                   style={email.is_unread
+                     ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);'
+                     : 'background: var(--sempa-fill); color: var(--sempa-text-soft);'}>
                 {senderInitial(email)}
               </div>
               <div class="min-w-0 flex-1 pr-1">
                 <div class="flex items-baseline justify-between gap-1">
-                  <span class="truncate text-xs {email.is_unread ? 'font-semibold text-gray-800 dark:text-gray-100' : 'text-gray-600 dark:text-gray-400'}">
+                  <span class="truncate text-xs"
+                        style="color: {email.is_unread ? 'var(--sempa-text)' : 'var(--sempa-text-soft)'}; font-weight: {email.is_unread ? 700 : 500};">
                     {senderName(email)}
                   </span>
-                  <span class="shrink-0 text-[10.5px] text-gray-400 dark:text-gray-600">{formatTime(email.received_at)}</span>
+                  <span class="shrink-0 font-mono text-[10.5px]" style="color: var(--sempa-text-dim);">{formatTime(email.received_at)}</span>
                 </div>
-                <p class="truncate text-xs {email.is_unread ? 'font-medium text-gray-700 dark:text-gray-200' : 'text-gray-400 dark:text-gray-500'}">
+                <p class="truncate text-xs"
+                   style="color: {email.is_unread ? 'var(--sempa-text)' : 'var(--sempa-text-dim)'}; font-weight: {email.is_unread ? 500 : 400};">
                   {email.subject || '(no subject)'}
                 </p>
               </div>
@@ -198,26 +202,22 @@
                 <button onclick={() => toTask(email)}
                         disabled={!!converting[email.id] || !!done[email.id]}
                         title="Add as task + archive"
-                        class="rounded px-2 py-1 text-[10.5px] font-medium text-white
-                               hover:opacity-90 disabled:opacity-50 transition-opacity"
-                        style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
+                        class="btn-primary h-7 px-2.5 text-[11px] disabled:opacity-50">
                   {converting[email.id] ? '…' : done[email.id] === 'task' ? '✓' : '→ Task'}
                 </button>
                 <button onclick={() => archive(email)}
                         disabled={archiving[email.id]}
                         title="Archive"
-                        class="rounded border border-gray-200 px-1.5 py-1 text-xs text-gray-400
-                               hover:text-gray-600 hover:bg-gray-100 disabled:opacity-50
-                               dark:border-gray-700 dark:hover:bg-gray-700 transition-colors">
+                        aria-label="Archive"
+                        class="flex h-7 w-7 items-center justify-center rounded-full text-xs transition-colors disabled:opacity-50"
+                        style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-soft);">
                   {archiving[email.id] ? '…' : '×'}
                 </button>
               {:else}
                 <button onclick={() => unarchive(email)}
                         disabled={unarchiving[email.id]}
                         title="Move back to inbox"
-                        class="rounded border border-gray-200 px-2 py-1 text-[10.5px] text-gray-500
-                               hover:text-gray-700 hover:bg-gray-100 disabled:opacity-50
-                               dark:border-gray-700 dark:hover:bg-gray-700 transition-colors">
+                        class="btn-surface h-7 px-2.5 text-[11px] disabled:opacity-50">
                   {unarchiving[email.id] ? '…' : '↩ Inbox'}
                 </button>
               {/if}
@@ -229,8 +229,14 @@
   </div>
 
   {#if tab === 'inbox'}
-    <div class="shrink-0 border-t border-gray-50 px-3 py-2 dark:border-gray-800">
-      <p class="text-[10.5px] text-gray-300 dark:text-gray-700">Drag emails onto a task column</p>
+    <div class="shrink-0 px-4 py-2.5" style="border-top: 1px solid var(--sempa-border);">
+      <p class="text-[11px]" style="color: var(--sempa-text-dim);">Drag emails onto a task column</p>
     </div>
   {/if}
 </div>
+
+<style>
+  .email-row { transition: background-color 120ms ease; }
+  .email-row:hover { background: var(--sempa-fill); box-shadow: none !important; }
+  .email-row:hover + .email-row { box-shadow: none !important; }
+</style>

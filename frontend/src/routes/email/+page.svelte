@@ -82,136 +82,141 @@
 <div class="flex h-full flex-col" style="background: var(--sempa-bg-main);">
   <!-- Header — sticky + safe-area padding so the title clears the status bar
        (clock) on mobile, matching the other full-page mobile headers. -->
-  <header class="sticky top-0 z-[40] flex items-center justify-between px-6 pb-4"
-          style="background: var(--sempa-bg-main); border-bottom: 1px solid var(--sempa-border);
+  <header class="sticky top-0 z-[40]"
+          style="background: var(--sempa-bg-main);
                  padding-top: max(16px, calc(env(safe-area-inset-top, 0px) + 12px));">
-    <div>
-      <h1 class="text-base font-semibold" style="color: var(--sempa-text);">Fastmail inbox</h1>
-      {#if !loading}
-        <p class="text-xs" style="color: var(--sempa-text-dim);">{emails.length} message{emails.length !== 1 ? 's' : ''}</p>
-      {/if}
+    <div class="mx-auto flex max-w-3xl items-end justify-between gap-3 px-4 pb-3 pt-3 sm:px-6">
+      <div class="min-w-0">
+        <h1 class="type-page" style="color: var(--sempa-text);">Fastmail inbox</h1>
+        {#if !loading}
+          <p class="type-meta mt-1" style="color: var(--sempa-text-dim);">
+            {emails.length} message{emails.length !== 1 ? 's' : ''}{emails.some((e) => e.is_unread) ? ` · ${emails.filter((e) => e.is_unread).length} unread` : ''}
+          </p>
+        {/if}
+      </div>
+      <button onclick={load} disabled={loading}
+              class="btn-surface h-9 shrink-0 gap-1.5 px-4 text-[12.5px] disabled:opacity-40">
+        <RefreshCw size={13} class={loading ? 'animate-spin' : ''} />
+        {loading ? 'Loading…' : 'Refresh'}
+      </button>
     </div>
-    <button onclick={load} disabled={loading}
-            class="flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
-            style="border: 1px solid var(--sempa-border); border-radius: 12px; padding: 7px 14px;
-                   color: var(--sempa-text-soft); background: transparent;">
-      <RefreshCw size={13} class={loading ? 'animate-spin' : ''} />
-      {loading ? 'Loading…' : 'Refresh'}
-    </button>
   </header>
 
   <!-- Body -->
   <div class="flex-1 overflow-y-auto">
     {#if !connected}
       <div class="flex h-full flex-col items-center justify-center gap-3 text-center px-6">
-        <div class="flex h-12 w-12 items-center justify-center rounded-full" style="background: var(--sempa-accent-bg);">
-          <svg class="h-6 w-6" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+        <div class="flex h-12 w-12 items-center justify-center rounded-2xl" style="background: var(--sempa-accent-bg);">
+          <svg class="h-6 w-6" style="color: var(--sempa-accent-ink);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
             <path stroke-linecap="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
           </svg>
         </div>
-        <p class="text-sm font-medium" style="color: var(--sempa-text);">Fastmail not connected</p>
-        <p class="text-xs" style="color: var(--sempa-text-dim);">Connect your Fastmail account in Settings → Accounts.</p>
-        <a href="/settings/accounts"
-           class="mt-1 rounded-full px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-           style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
+        <p class="font-bold" style="font-size: 15px; color: var(--sempa-text);">Fastmail not connected</p>
+        <p class="type-meta" style="color: var(--sempa-text-soft);">Connect your Fastmail account in Settings → Accounts.</p>
+        <a href="/settings/accounts" class="btn-primary mt-1 h-10 px-5 text-sm">
           Go to Settings
         </a>
       </div>
 
     {:else if loading}
-      <div class="divide-y divide-gray-100 dark:divide-gray-800">
-        {#each Array(8) as _}
-          <div class="flex items-start gap-3 px-6 py-4 animate-pulse">
-            <div class="h-9 w-9 shrink-0 rounded-full bg-gray-100 dark:bg-gray-800"></div>
-            <div class="flex-1 space-y-2 pt-0.5">
-              <div class="h-3 w-32 rounded bg-gray-100 dark:bg-gray-800"></div>
-              <div class="h-3 w-64 rounded bg-gray-100 dark:bg-gray-800"></div>
-              <div class="h-3 w-48 rounded bg-gray-50 dark:bg-gray-800/50"></div>
+      <div class="mx-auto max-w-3xl px-4 py-3 sm:px-6">
+        <div class="surface overflow-hidden" style="border-radius: 22px;">
+          {#each Array(6) as _, i}
+            <div class="flex items-start gap-3 px-4 py-4 animate-pulse"
+                 style={i > 0 ? 'border-top: 1px solid var(--sempa-border);' : ''}>
+              <div class="h-9 w-9 shrink-0 rounded-full" style="background: var(--sempa-fill);"></div>
+              <div class="flex-1 space-y-2 pt-0.5">
+                <div class="h-3 w-32 rounded-full" style="background: var(--sempa-fill);"></div>
+                <div class="h-3 w-64 max-w-full rounded-full" style="background: var(--sempa-fill);"></div>
+                <div class="h-3 w-48 max-w-full rounded-full" style="background: var(--sempa-fill);"></div>
+              </div>
             </div>
-          </div>
-        {/each}
+          {/each}
+        </div>
       </div>
 
     {:else if error}
-      <div class="m-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700
-                  dark:border-red-900 dark:bg-red-950 dark:text-red-400">
-        {error}
-        <button onclick={load} class="ml-2 underline">Retry</button>
+      <div class="mx-auto max-w-3xl px-4 py-3 sm:px-6">
+        <div class="surface flex items-center gap-3 px-4 py-3 text-sm" style="color: var(--sempa-danger, #c0392b);">
+          <span class="flex-1">{error}</span>
+          <button onclick={load} class="btn-soft h-8 px-3.5 text-[12px]">Retry</button>
+        </div>
       </div>
 
     {:else if emails.length === 0}
-      <div class="flex h-full flex-col items-center justify-center gap-2 text-center">
-        <svg class="h-10 w-10 text-gray-200 dark:text-gray-800" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-        </svg>
-        <p class="text-sm text-gray-400 dark:text-gray-600">Inbox is empty</p>
+      <div class="flex h-full flex-col items-center justify-center gap-3 text-center">
+        <span class="flex h-12 w-12 items-center justify-center rounded-2xl"
+              style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-dim);">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+        </span>
+        <p class="type-meta" style="color: var(--sempa-text-soft);">Inbox is empty</p>
       </div>
 
     {:else}
-      <!-- Emails as themed cards (mirrors the Reminders layout) rather than a
-           flat divider list — each message sits in its own bordered box, fully
-           on-theme via the --sempa-* tokens. -->
-      <div class="mx-auto flex max-w-3xl flex-col gap-2.5 px-4 py-4 sm:px-6">
-        {#each emails as email (email.id)}
-          <div class="flex items-start gap-3 rounded-xl p-3.5 transition-colors"
-               style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);
-                      {done[email.id] ? 'opacity: 0.5;' : ''}">
+      <!-- One raised surface; each message is a row divided by a hairline. -->
+      <div class="mx-auto max-w-3xl px-4 pb-6 pt-3 sm:px-6">
+        <div class="surface overflow-hidden" style="border-radius: 22px;">
+          {#each emails as email, i (email.id)}
+            <div class="flex items-start gap-3 px-4 py-3.5 transition-opacity"
+                 style="{i > 0 ? 'border-top: 1px solid var(--sempa-border);' : ''}
+                        {done[email.id] ? 'opacity: 0.5;' : ''}">
 
-            <!-- Avatar -->
-            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold"
-                 style={email.is_unread
-                   ? 'background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);'
-                   : 'background: var(--sempa-bg-main); color: var(--sempa-text-soft); border: 1px solid var(--sempa-border);'}>
-              {senderInitial(email)}
-            </div>
-
-            <!-- Content -->
-            <div class="min-w-0 flex-1">
-              <div class="flex items-baseline justify-between gap-2">
-                <span class="truncate text-sm" style="color: var(--sempa-text); font-weight: {email.is_unread ? 600 : 500};">
-                  {senderName(email)}
-                </span>
-                <span class="shrink-0 text-xs" style="color: var(--sempa-text-dim);">{formatTime(email.received_at)}</span>
+              <!-- Avatar -->
+              <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[13px] font-bold"
+                   style={email.is_unread
+                     ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);'
+                     : 'background: var(--sempa-fill); color: var(--sempa-text-soft);'}>
+                {senderInitial(email)}
               </div>
-              <p class="truncate text-sm" style="color: {email.is_unread ? 'var(--sempa-text)' : 'var(--sempa-text-soft)'};">
-                {email.subject || '(no subject)'}
-              </p>
-              {#if email.preview}
-                <p class="mt-0.5 line-clamp-2 text-xs" style="color: var(--sempa-text-dim);">{email.preview}</p>
-              {/if}
 
-              <!-- Actions -->
-              <div class="mt-2.5 flex items-center gap-2">
-                <button onclick={() => toTask(email)}
-                        disabled={converting[email.id] || done[email.id]}
-                        title="Add to today's tasks and archive"
-                        class="flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                        style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
-                  {#if converting[email.id]}
-                    <svg class="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                    </svg>
-                    Adding…
-                  {:else if done[email.id]}
-                    ✓ Added
-                  {:else}
-                    → Task
-                  {/if}
-                </button>
-                <button onclick={() => archive(email)}
-                        disabled={archiving[email.id]}
-                        title="Archive"
-                        class="rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
-                        style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);"
-                        onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--sempa-accent-bg)'}
-                        onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
-                  {archiving[email.id] ? '…' : 'Archive'}
-                </button>
+              <!-- Content -->
+              <div class="min-w-0 flex-1">
+                <div class="flex items-baseline justify-between gap-2">
+                  <span class="flex min-w-0 items-center gap-1.5 text-sm" style="color: var(--sempa-text); font-weight: {email.is_unread ? 700 : 500};">
+                    {#if email.is_unread}<span class="h-2 w-2 shrink-0 rounded-full" style="background: var(--sempa-accent);" aria-label="Unread"></span>{/if}
+                    <span class="truncate">{senderName(email)}</span>
+                  </span>
+                  <span class="shrink-0 font-mono text-[11px]" style="color: var(--sempa-text-dim);">{formatTime(email.received_at)}</span>
+                </div>
+                <p class="truncate text-[13.5px]" style="color: {email.is_unread ? 'var(--sempa-text)' : 'var(--sempa-text-soft)'}; font-weight: {email.is_unread ? 600 : 400};">
+                  {email.subject || '(no subject)'}
+                </p>
+                {#if email.preview}
+                  <p class="type-meta mt-0.5 line-clamp-2" style="color: var(--sempa-text-dim); font-weight: 400;">{email.preview}</p>
+                {/if}
+
+                <!-- Actions -->
+                <div class="mt-2.5 flex items-center gap-2">
+                  <button onclick={() => toTask(email)}
+                          disabled={converting[email.id] || done[email.id]}
+                          title="Add to today's tasks and archive"
+                          class="btn-primary h-8 gap-1 px-3.5 text-[12px] disabled:opacity-50">
+                    {#if converting[email.id]}
+                      <svg class="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                      </svg>
+                      Adding…
+                    {:else if done[email.id]}
+                      ✓ Added
+                    {:else}
+                      → Task
+                    {/if}
+                  </button>
+                  <button onclick={() => archive(email)}
+                          disabled={archiving[email.id]}
+                          title="Archive"
+                          class="btn-soft h-8 px-3.5 text-[12px] disabled:opacity-50"
+                          style="background: var(--sempa-fill); color: var(--sempa-text-soft);">
+                    {archiving[email.id] ? '…' : 'Archive'}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        {/each}
+          {/each}
+        </div>
       </div>
     {/if}
   </div>
