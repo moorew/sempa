@@ -3,6 +3,7 @@
   import { formatMinutes, bareUrl, prettyUrl } from '$lib/utils';
   import { clock } from '$lib/stores/clock.svelte';
   import { tagStore } from '$lib/stores/tags.svelte';
+  import { projectStore } from '$lib/stores/projects.svelte';
   import { hapticClick } from '$lib/haptics';
   import { api } from '$lib/api';
   import { mobile } from '$lib/stores/mobile.svelte';
@@ -61,8 +62,9 @@
     return Math.round((now - past) / 86400000);
   });
 
+  const project = $derived(projectStore.get(task.project_id));
   const hasFooter = $derived(
-    !!(task.tags?.length || task.time_estimate_minutes ||
+    !!(project || task.tags?.length || task.time_estimate_minutes ||
        (task.source && task.source !== 'manual') || isRecurring || daysBehind > 0 || hasReminder)
   );
 
@@ -232,6 +234,11 @@
   {#if hasFooter}
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
     <div class="flex flex-wrap items-center cursor-pointer" style="gap: 4px; margin-top: 7px;" onclick={() => onClick?.(task)}>
+{#if project}
+        <!-- Project as a small colour SQUARE (tags are round dots); name on hover. -->
+        <span class="shrink-0" title={`Project: ${project.title || 'Untitled project'}`}
+              style="width: 8px; height: 8px; border-radius: 2px; background: {project.color};"></span>
+      {/if}
       {#if (task.tags ?? []).length}
         <!-- Tags as colour dots only — scan the list by colour without label
              clutter. Full names live in the task detail view. Title shows the

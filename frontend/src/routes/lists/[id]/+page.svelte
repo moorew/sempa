@@ -7,6 +7,8 @@
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
   import { prefs } from '$lib/stores/prefs.svelte';
   import { household } from '$lib/stores/household.svelte';
+  import { projectStore } from '$lib/stores/projects.svelte';
+  import SempaSelect from '$lib/components/ui/SempaSelect.svelte';
   import { Sparkles, Download, Trash2, GripVertical, X } from 'lucide-svelte';
 
   const listId = $derived(page.params.id ?? '');
@@ -28,7 +30,7 @@
     } catch { /* ignore */ }
     finally { loading = false; }
   }
-  onMount(() => { void household.ensure(); load(); });
+  onMount(() => { void household.ensure(); projectStore.load(); load(); });
   $effect(() => { void realtime.lastEvent; void listId; load(); });
 
   const aiOrganizeOn = $derived(prefs.aiOn('organizeList') && aiStatus.reachable);
@@ -65,6 +67,17 @@
   async function rename(name: string) {
     if (!list || name === list.name) return;
     try { list = await api.lists.update(list.id, { name }); } catch { /* ignore */ }
+  }
+  const projectOptions = $derived.by(() => {
+    const open = [...projectStore.open];
+    const cur = projectStore.get(list?.project_id);
+    if (cur && !open.some((p) => p.id === cur.id)) open.push(cur);
+    return [{ value: null, label: 'No project' },
+      ...open.map((p) => ({ value: p.id, label: p.title || 'Untitled project', color: p.color }))];
+  });
+  async function setProject(projectId: string | null) {
+    if (!list || (list.project_id ?? null) === projectId) return;
+    try { list = await api.lists.update(list.id, { project_id: projectId ?? '' }); } catch { /* ignore */ }
   }
   async function toggleArchiveOnComplete() {
     if (!list) return;
@@ -181,6 +194,20 @@
           <span>Not linked to a task — attach it from a task's “Lists” section.</span>
         {/if}
       </div>
+
+      <!-- Project -->
+      {#if projectStore.projects.length > 0 || list.project_id}
+        <div class="mb-4 flex items-center gap-2 text-xs" style="color: var(--sempa-text-dim);">
+          <span>Project</span>
+          <div class="w-56">
+            <SempaSelect value={list.project_id ?? null} placeholder="No project" options={projectOptions}
+              onchange={(v) => setProject(typeof v === 'string' ? v : null)} />
+          </div>
+          {#if list.project_id && projectStore.get(list.project_id)}
+            <a href={`/projects/${list.project_id}`} class="hover:underline" style="color: var(--sempa-accent);">Open</a>
+          {/if}
+        </div>
+      {/if}
 
       <!-- Private / Shared (multi-user household only) -->
       {#if household.multiUser}

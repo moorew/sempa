@@ -4,6 +4,8 @@
   import { api } from '$lib/api';
   import type { Objective, Task } from '$lib/types';
   import { appendPosition, formatWeekRange, offsetDate, today, weekStart as calcWeekStart } from '$lib/utils';
+  import { projectStore } from '$lib/stores/projects.svelte';
+  import SempaSelect from '$lib/components/ui/SempaSelect.svelte';
 
   let ws = $derived(page.params.weekStart ?? calcWeekStart(today()));
   const thisWeek = calcWeekStart(today());
@@ -16,6 +18,21 @@
 
   let objectives = $state<Objective[]>([]);
   let tasks      = $state<Task[]>([]);
+
+  // Active projects, shown for reference while choosing objectives (no prompts).
+  $effect(() => { projectStore.load(); });
+  const activeProjects = $derived(projectStore.projects.filter((p) => projectStore.categoryOf(p) === 'active'));
+  const projectOptions = $derived([
+    { value: null, label: 'No project' },
+    ...projectStore.open.map((p) => ({ value: p.id, label: p.title || 'Untitled project', color: p.color })),
+  ]);
+  async function setObjectiveProject(obj: Objective, projectId: string | null) {
+    if ((obj.project_id ?? null) === projectId) return;
+    try {
+      const updated = await api.objectives.update(obj.id, { project_id: projectId ?? '' });
+      objectives = objectives.map(o => o.id === updated.id ? updated : o);
+    } catch { /* ignore */ }
+  }
 
   // Step 1: draft objective titles (mirrors objectives array; separate to allow optimistic edits)
   let draftTitles = $state<string[]>([]);
@@ -124,6 +141,8 @@
         planned_date: plannedDate,
         status: 'planned',
         position: pos,
+        // Work toward a project's objective belongs to that project too.
+        project_id: objectives.find(o => o.id === objId)?.project_id ?? undefined,
       });
       tasks = [...tasks, t];
     } catch {}
@@ -247,6 +266,12 @@
               class="flex-1 bg-transparent text-sm font-medium outline-none"
               style="color: var(--sempa-text);"
             />
+            {#if projectStore.open.length > 0 || obj.project_id}
+              <div class="w-36 shrink-0">
+                <SempaSelect value={obj.project_id ?? null} placeholder="No project" options={projectOptions}
+                  onchange={(v) => setObjectiveProject(obj, typeof v === 'string' ? v : null)} />
+              </div>
+            {/if}
             <button onclick={() => deleteObjective(obj.id)} aria-label="Delete objective"
                     class="transition-colors"
                     style="color: var(--sempa-text-dim);"
@@ -279,6 +304,30 @@
           {/if}
         </div>
       </div>
+
+      <!-- Active projects — reference only, to inform this week's objectives. -->
+      {#if activeProjects.length > 0}
+        <div class="rounded-xl px-4 py-3" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+          <p class="mb-2 text-[10.5px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Active projects</p>
+          <div class="flex flex-col gap-1.5">
+            {#each activeProjects as p (p.id)}
+              {@const linked = objectives.filter(o => o.project_id === p.id).length}
+              <a href={`/projects/${p.id}`} class="flex items-center gap-2 text-sm hover:underline" style="color: var(--sempa-text);">
+                <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background: {p.color};"></span>
+                <span class="min-w-0 flex-1 truncate">{p.title || 'Untitled project'}</span>
+                {#if linked > 0}
+                  <span class="shrink-0 text-[11px]" style="color: var(--sempa-text-dim);">🎯 {linked}</span>
+                {/if}
+                {#if p.target_date}
+                  <span class="shrink-0 text-[11px]" style="color: var(--sempa-text-dim);">
+                    target {new Date(p.target_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                {/if}
+              </a>
+            {/each}
+          </div>
+        </div>
+      {/if}
 
       <div class="pt-2 flex justify-end">
         <button onclick={() => step = 2} disabled={objectives.length === 0}

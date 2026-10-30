@@ -46,6 +46,9 @@ interface Feed {
     plans?: Record<string, unknown>[];
     tags?: Record<string, unknown>[];
     week_reviews?: Record<string, unknown>[];
+    lists?: Record<string, unknown>[];
+    projects?: Record<string, unknown>[];
+    project_statuses?: Record<string, unknown>[];
     deletions?: { entity_type: string; entity_id: string; deleted_at: string }[];
     cursor?: string;
 }
@@ -71,6 +74,9 @@ function stubServer(feed: Feed) {
                 plans: feed.plans ?? [],
                 tags: feed.tags ?? [],
                 week_reviews: feed.week_reviews ?? [],
+                lists: feed.lists ?? [],
+                projects: feed.projects ?? [],
+                project_statuses: feed.project_statuses ?? [],
                 deletions: feed.deletions ?? [],
                 cursor: feed.cursor ?? '2026-06-09 12:00:00',
             }), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -344,5 +350,74 @@ describe.each(SCHEMAS)('sync engine on %s schema', (_name, schema) => {
         const poison = db.select<{ synced: number }[]>("SELECT synced FROM sync_log WHERE entity_id = 'poison'");
         expect(poison[0].synced).toBe(2);
         expect(db.select<{ c: number }[]>('SELECT COUNT(*) c FROM sync_log WHERE synced = 0')[0].c).toBe(0);
+    });
+
+    // ── Projects ──────────────────────────────────────────────────────────────
+
+    const sampleProject = (over: Record<string, unknown> = {}) => ({
+        id: 'proj-1', title: 'Kitchen', description: 'Redo it', status_id: 'active', color: '#b3592e',
+        start_date: '2026-06-01', target_date: '2026-09-01', position: 0, shared: false,
+        created_at: '2026-06-09 10:00:00', updated_at: '2026-06-09 10:00:00', ...over,
+    });
+
+    it('pulls projects + statuses and links tasks, objectives and lists to them', async () => {
+        stubServer({
+            project_statuses: [{ id: 'blocked', name: 'Blocked', color: '#000', category: 'on_hold', position: 9,
+                created_at: '2026-06-09 10:00:00', updated_at: '2026-06-09 10:00:00' }],
+            projects: [sampleProject({ status_id: 'blocked' })],
+            objectives: [{ id: 'obj-1', week_start: '2026-06-08', title: 'Tiles', status: 'active', position: 0,
+                project_id: 'proj-1', created_at: '2026-06-09 10:00:00', updated_at: '2026-06-09 10:00:00' }],
+            tasks: [sampleTask({ project_id: 'proj-1' })],
+            lists: [{ id: 'list-1', name: 'Shopping', position: 0, archive_on_complete: false, project_id: 'proj-1',
+                created_at: '2026-06-09 10:00:00', updated_at: '2026-06-09 10:00:00' }],
+        });
+
+        await sync();
+
+        expect(db.select<{ status_id: string }[]>("SELECT status_id FROM projects WHERE id = 'proj-1'")[0].status_id).toBe('blocked');
+        expect(db.select("SELECT * FROM project_statuses WHERE id = 'blocked'")).toHaveLength(1);
+        for (const table of ['tasks', 'weekly_objectives', 'lists']) {
+            const rows = db.select<{ project_id: string }[]>(`SELECT project_id FROM ${table}`);
+            expect(rows[0]?.project_id, table).toBe('proj-1');
+        }
+    });
+
+    it('a task pointing at a project this user cannot see still applies (no FK on-device)', async () => {
+        stubServer({ tasks: [sampleTask({ project_id: 'someone-elses-private-project' })] });
+
+        await sync();
+
+        expect(db.select("SELECT * FROM tasks WHERE id = 'task-1'")).toHaveLength(1);
+        expect(syncStore.lastError ?? null).toBeNull();
+    });
+
+    it('server statuses override the local epoch-stamped seed', async () => {
+        // The Capacitor schema seeds defaults; Tauri's migration seeds them too.
+        const seeded = db.select<{ name: string }[]>("SELECT name FROM project_statuses WHERE id = 'active'");
+        expect(seeded[0]?.name).toBe('Active');
+        stubServer({ project_statuses: [{ id: 'active', name: 'In flight', color: '#123456', category: 'active',
+            position: 1, created_at: '2026-06-01 00:00:00', updated_at: '2026-06-02 00:00:00' }] });
+
+        await sync();
+
+        expect(db.select<{ name: string }[]>("SELECT name FROM project_statuses WHERE id = 'active'")[0].name).toBe('In flight');
+    });
+
+    it('replays an offline project create and applies a project tombstone', async () => {
+        const { localApi } = await import('$lib/tauri/local-api');
+        const calls = stubServer({ deletions: [] });
+        const p = await localApi.projects.create({ title: 'Offline project' });
+        await localApi.tasks.create({ title: 'In it', project_id: p.id });
+
+        await sync();
+
+        const create = calls.find(c => c.method === 'POST' && c.url.endsWith('/api/v1/projects'));
+        expect(create?.body).toMatchObject({ id: p.id, title: 'Offline project', shared: false });
+        const taskCreate = calls.find(c => c.method === 'POST' && c.url.endsWith('/api/v1/tasks'));
+        expect(taskCreate?.body).toMatchObject({ project_id: p.id });
+
+        stubServer({ deletions: [{ entity_type: 'project', entity_id: p.id, deleted_at: '2099-01-01 00:00:00' }] });
+        await sync();
+        expect(db.select(`SELECT * FROM projects WHERE id = '${p.id}'`)).toHaveLength(0);
     });
 });
