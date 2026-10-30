@@ -6,7 +6,7 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
-## [Unreleased]
+## [1.25.7] - 2026-10-30
 
 ### Security
 - **Patched vulnerable dependencies.** Go 1.26.10 (eleven standard-library
