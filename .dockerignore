@@ -1,0 +1,22 @@
+# Keep host build artifacts out of the image build context.
+#
+# Without this, `COPY frontend/ ./` in the Dockerfile copies a host
+# frontend/node_modules over the one `npm ci` just installed, so the build runs
+# against whatever happens to be on the build machine (wrong libc, stale vite /
+# rolldown). That is why a production host with an old checkout failed
+# `vite build` while CI and clean clones passed.
+.git
+**/node_modules
+frontend/.svelte-kit
+frontend/build
+frontend/src-tauri/target
+frontend/android/.gradle
+frontend/android/build
+frontend/android/app/build
+frontend/ios/App/build
+
+# Signing material and service credentials are never needed to build the image.
+frontend/android/app/release.keystore
+frontend/android/app/google-services.json
+**/*.keystore
+**/*.jks
