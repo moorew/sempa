@@ -273,158 +273,193 @@
 
 <svelte:head><title>Sign in — Sempa</title></svelte:head>
 
-<div class="flex min-h-screen items-center justify-center px-4" style="background: var(--sempa-bg-main);">
+<div class="flex min-h-screen items-center justify-center px-4 py-10" style="background: var(--sempa-bg-main);">
 
-  <div class="w-full max-w-sm">
+  <div class="w-full max-w-[400px]">
 
-    <!-- Logo -->
-    <div class="mb-8 flex flex-col items-center gap-3">
-      <div class="flex h-14 w-14 items-center justify-center rounded-2xl shadow-lg"
-           style="background: var(--sempa-accent);">
-        <svg width="32" height="32" viewBox="0 0 100 100" fill="none" aria-hidden="true">
-          <path d="M22,40 a28,28 0 0 0 56,0"
-                stroke="white" stroke-width="10" stroke-linecap="round"/>
-          <circle cx="50" cy="35" r="8" fill="white"/>
-        </svg>
-      </div>
-      <div class="text-center">
-        <h1 class="text-2xl font-semibold tracking-tight" style="color: var(--sempa-text);">sempa</h1>
-        <p class="mt-1 text-sm" style="color: var(--sempa-text-soft);">Your personal task manager</p>
-      </div>
-    </div>
+    <div class="surface-raised animate-scale-in px-6 pt-8 pb-7 sm:px-8">
 
-    <div class="rounded-2xl border p-6 shadow-sm space-y-4 animate-scale-in"
-         style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-
-      {#if error}
-        <div class="rounded-lg px-4 py-3 text-sm text-red-700 bg-red-50 dark:bg-red-950 dark:text-red-300 animate-slide-down">
-          {error}
-        </div>
-      {/if}
-
-      {#if showServerUrl}
-        <!-- Server URL configuration (native/mobile) -->
-        <form onsubmit={(e) => { e.preventDefault(); connectServer(); }} class="space-y-4">
-          <div>
-            <label for="server-url" class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);">Server URL</label>
-            <input id="server-url" type="url" bind:value={serverUrl}
-                   placeholder="https://sempa.example.com"
-                   autofocus
-                   class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-                   style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);"
-                   onfocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2.5px rgba(179,89,46,0.12)'; }}
-                   onblur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'; (e.currentTarget as HTMLElement).style.boxShadow = ''; }} />
-            <p class="mt-1.5 text-xs" style="color: var(--sempa-text-dim);">
-              Enter your self-hosted Sempa server address
-            </p>
-          </div>
-          <button type="submit" disabled={loading || !serverUrl.trim()}
-                  class="w-full rounded-lg py-2.5 text-sm font-medium text-white disabled:opacity-40 transition-colors"
-                  style="background: var(--sempa-accent);">
-            {loading ? 'Connecting…' : 'Connect'}
-          </button>
-        </form>
-      {:else if authInfo === null}
-        <!-- Loading -->
-        <div class="flex justify-center py-6">
-          <div class="h-5 w-5 animate-spin rounded-full border-2 border-gray-200"
-               style="border-top-color: var(--sempa-accent);"></div>
-        </div>
-
-      {:else if authInfo.google_enabled}
-        <!-- Google Sign-In (primary) -->
-        <button onclick={googleSignIn}
-                class="flex w-full items-center justify-center gap-3 rounded-xl border px-4 py-3
-                       text-sm font-medium shadow-sm transition-all hover:shadow-md"
-                style="border-color: var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text);"
-                onmousedown={(e) => (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)'}
-                onmouseup={(e) => (e.currentTarget as HTMLElement).style.transform = ''}
-                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.transform = ''}>
-          <!-- Google coloured G -->
-          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
-            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      <!-- Logo -->
+      <div class="mb-7 flex flex-col items-center gap-4">
+        <div class="flex h-16 w-16 items-center justify-center rounded-[20px]"
+             style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
+          <svg width="34" height="34" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+            <path d="M22,40 a28,28 0 0 0 56,0"
+                  stroke="var(--sempa-btn-fg)" stroke-width="10" stroke-linecap="round"/>
+            <circle cx="50" cy="35" r="8" fill="var(--sempa-btn-fg)"/>
           </svg>
-          Continue with Google
-        </button>
+        </div>
+        <div class="text-center">
+          <h1 class="login-wordmark" style="color: var(--sempa-text);">sempa</h1>
+          <p class="mt-1 text-[13.5px]" style="color: var(--sempa-text-soft);">Your personal task manager</p>
+        </div>
+      </div>
 
-        <!-- Password fallback (collapsed by default) -->
-        {#if !showPasswordForm}
-          <button onclick={() => showPasswordForm = true}
-                  class="w-full text-center text-xs transition-colors"
-                  style="color: var(--sempa-text-dim);">
-            Sign in with username & password instead
-          </button>
-        {:else}
-          <div class="border-t pt-4 space-y-3" style="border-color: var(--sempa-border);">
-            <p class="text-xs font-medium" style="color: var(--sempa-text-soft);">Password sign-in</p>
-            <form onsubmit={(e) => { e.preventDefault(); submit(); }} class="space-y-3">
-              <div>
-                <label for="username" class="mb-1 block text-xs" style="color: var(--sempa-text-soft);">Username</label>
-                <input id="username" type="text" bind:value={username} autocomplete="username"
-                       class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-                       style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);"
-                       onfocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2.5px rgba(179,89,46,0.12)'; }}
-                       onblur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'; (e.currentTarget as HTMLElement).style.boxShadow = ''; }} />
-              </div>
-              <div>
-                <label for="password" class="mb-1 block text-xs" style="color: var(--sempa-text-soft);">Password</label>
-                <input id="password" type="password" bind:value={password} autocomplete="current-password"
-                       class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-                       style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);"
-                       onfocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2.5px rgba(179,89,46,0.12)'; }}
-                       onblur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'; (e.currentTarget as HTMLElement).style.boxShadow = ''; }} />
-              </div>
-              <button type="submit" disabled={loading || !username || !password}
-                      class="w-full rounded-lg py-2.5 text-sm font-medium text-white disabled:opacity-40 transition-colors"
-                      style="background: var(--sempa-accent);">
-                {loading ? 'Signing in…' : 'Sign in'}
-              </button>
-            </form>
+      <div class="space-y-4">
+        {#if error}
+          <div class="login-error tint animate-slide-down" role="alert" style="--tint: #d0453a;">
+            {error}
           </div>
         {/if}
 
-      {:else}
-        <!-- Password-only (no Google configured) -->
-        <form onsubmit={(e) => { e.preventDefault(); submit(); }} class="space-y-4">
-          <div>
-            <label for="username" class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);">Username</label>
-            <input id="username" type="text" bind:value={username} autocomplete="username"
-                   autofocus
-                   class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-                   style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);"
-                   onfocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2.5px rgba(179,89,46,0.12)'; }}
-                   onblur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'; (e.currentTarget as HTMLElement).style.boxShadow = ''; }} />
+        {#if showServerUrl}
+          <!-- Server URL configuration (native/mobile) -->
+          <form onsubmit={(e) => { e.preventDefault(); connectServer(); }} class="space-y-4">
+            <div>
+              <label for="server-url" class="login-label">Server URL</label>
+              <input id="server-url" type="url" bind:value={serverUrl}
+                     placeholder="https://sempa.example.com"
+                     autofocus
+                     class="login-input"
+                     onfocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--sempa-accent) 18%, transparent)'; }}
+                     onblur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'; (e.currentTarget as HTMLElement).style.boxShadow = ''; }} />
+              <p class="mt-2 px-1 text-[12.5px]" style="color: var(--sempa-text-soft);">
+                Enter your self-hosted Sempa server address
+              </p>
+            </div>
+            <button type="submit" disabled={loading || !serverUrl.trim()}
+                    class="btn-primary login-cta">
+              {loading ? 'Connecting…' : 'Connect'}
+            </button>
+          </form>
+        {:else if authInfo === null}
+          <!-- Loading -->
+          <div class="flex justify-center py-6">
+            <div class="h-6 w-6 animate-spin rounded-full border-[2.5px]"
+                 style="border-color: var(--sempa-track); border-top-color: var(--sempa-accent);"></div>
           </div>
-          <div>
-            <label for="password" class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);">Password</label>
-            <input id="password" type="password" bind:value={password} autocomplete="current-password"
-                   class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-                   style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);"
-                   onfocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2.5px rgba(179,89,46,0.12)'; }}
-                   onblur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'; (e.currentTarget as HTMLElement).style.boxShadow = ''; }} />
-          </div>
-          <button type="submit" disabled={loading || !username || !password}
-                  class="w-full rounded-lg py-2.5 text-sm font-medium text-white disabled:opacity-40 transition-colors"
-                  style="background: var(--sempa-accent);">
-            {loading ? 'Signing in…' : 'Sign in'}
+
+        {:else if authInfo.google_enabled}
+          <!-- Google Sign-In (primary) -->
+          <button onclick={googleSignIn}
+                  class="login-google"
+                  onmousedown={(e) => (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)'}
+                  onmouseup={(e) => (e.currentTarget as HTMLElement).style.transform = ''}
+                  onmouseleave={(e) => (e.currentTarget as HTMLElement).style.transform = ''}>
+            <!-- Google coloured G -->
+            <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Continue with Google
           </button>
-        </form>
-      {/if}
+
+          <!-- Password fallback (collapsed by default) -->
+          {#if !showPasswordForm}
+            <button onclick={() => showPasswordForm = true}
+                    class="login-link">
+              Sign in with username & password instead
+            </button>
+          {:else}
+            <div class="space-y-3 pt-4" style="border-top: 1px solid var(--sempa-border);">
+              <p class="px-1 text-[13px] font-bold" style="color: var(--sempa-text);">Password sign-in</p>
+              <form onsubmit={(e) => { e.preventDefault(); submit(); }} class="space-y-3">
+                <div>
+                  <label for="username" class="login-label">Username</label>
+                  <input id="username" type="text" bind:value={username} autocomplete="username"
+                         class="login-input"
+                         onfocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--sempa-accent) 18%, transparent)'; }}
+                         onblur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'; (e.currentTarget as HTMLElement).style.boxShadow = ''; }} />
+                </div>
+                <div>
+                  <label for="password" class="login-label">Password</label>
+                  <input id="password" type="password" bind:value={password} autocomplete="current-password"
+                         class="login-input"
+                         onfocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--sempa-accent) 18%, transparent)'; }}
+                         onblur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'; (e.currentTarget as HTMLElement).style.boxShadow = ''; }} />
+                </div>
+                <button type="submit" disabled={loading || !username || !password}
+                        class="btn-primary login-cta">
+                  {loading ? 'Signing in…' : 'Sign in'}
+                </button>
+              </form>
+            </div>
+          {/if}
+
+        {:else}
+          <!-- Password-only (no Google configured) -->
+          <form onsubmit={(e) => { e.preventDefault(); submit(); }} class="space-y-4">
+            <div>
+              <label for="username" class="login-label">Username</label>
+              <input id="username" type="text" bind:value={username} autocomplete="username"
+                     autofocus
+                     class="login-input"
+                     onfocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--sempa-accent) 18%, transparent)'; }}
+                     onblur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'; (e.currentTarget as HTMLElement).style.boxShadow = ''; }} />
+            </div>
+            <div>
+              <label for="password" class="login-label">Password</label>
+              <input id="password" type="password" bind:value={password} autocomplete="current-password"
+                     class="login-input"
+                     onfocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--sempa-accent) 18%, transparent)'; }}
+                     onblur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'; (e.currentTarget as HTMLElement).style.boxShadow = ''; }} />
+            </div>
+            <button type="submit" disabled={loading || !username || !password}
+                    class="btn-primary login-cta">
+              {loading ? 'Signing in…' : 'Sign in'}
+            </button>
+          </form>
+        {/if}
+      </div>
     </div>
 
     {#if needsServerUrl && getServerUrl()}
       <button onclick={() => { showServerUrl = true; localStorage.removeItem('sempa_server_url'); clearTauriToken(); clearNativeToken(); resetApiResolver(); serverUrl = ''; authInfo = null; error = ''; }}
-              class="mt-4 w-full text-center text-xs transition-colors"
-              style="color: var(--sempa-text-dim);">
+              class="login-link mt-4">
         Change server ({getServerUrl().replace(/^https?:\/\//, '')})
       </button>
     {/if}
 
-    <p class="mt-6 text-center text-xs" style="color: var(--sempa-text-dim);">
+    <p class="mt-6 text-center text-[12.5px]" style="color: var(--sempa-text-dim);">
       Self-hosted · Your data stays yours
     </p>
   </div>
 </div>
+
+<style>
+  .login-wordmark {
+    font-size: 27px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1;
+  }
+  .login-label {
+    display: block; margin: 0 4px 6px;
+    font-size: 12.5px; font-weight: 600; color: var(--sempa-text-soft);
+  }
+  /* Filled input, radius 14. */
+  .login-input {
+    width: 100%; height: 46px; padding: 0 15px;
+    border-radius: 14px; border: 1px solid var(--sempa-border);
+    background: var(--sempa-fill); color: var(--sempa-text);
+    font-size: 15px; outline: none;
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+  }
+  .login-input::placeholder { color: var(--sempa-text-dim); }
+  .login-input:focus {
+    border-color: var(--sempa-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--sempa-accent) 18%, transparent);
+  }
+  /* Full-width pill primary (pairs with .btn-primary from app.css). */
+  .login-cta { width: 100%; height: 48px; font-size: 15px; }
+  .login-cta:disabled { opacity: .45; cursor: default; filter: none; }
+  .login-google {
+    display: flex; width: 100%; height: 48px; align-items: center; justify-content: center; gap: 10px;
+    border: 0; border-radius: 999px; cursor: pointer;
+    background: var(--sempa-fill); color: var(--sempa-text);
+    box-shadow: inset 0 0 0 1px var(--sempa-border);
+    font-size: 15px; font-weight: 700;
+    transition: background-color 120ms ease;
+  }
+  .login-google:hover { background: color-mix(in srgb, var(--sempa-text) 4%, var(--sempa-fill)); }
+  .login-link {
+    display: block; width: 100%; min-height: 36px; border-radius: 999px;
+    text-align: center; font-size: 13px; font-weight: 600; color: var(--sempa-text-soft);
+    transition: color 120ms ease;
+  }
+  .login-link:hover { color: var(--sempa-accent-ink); }
+  /* Colour comes from .tint (a red mixed against the theme). */
+  .login-error {
+    border-radius: 14px; padding: 11px 14px;
+    font-size: 13px; font-weight: 600; line-height: 1.45;
+  }
+</style>

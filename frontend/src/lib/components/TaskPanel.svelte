@@ -682,7 +682,7 @@
     {@const proj = projectStore.get(task.project_id)}
     <!-- Action bar -->
     <div class="flex shrink-0 items-center gap-2 border-b px-5 py-3" style="border-color: var(--sempa-border);">
-      <h2 class="flex-1 text-xs font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">
+      <h2 class="flex-1 text-xs font-semibold" style="color: var(--sempa-text-dim);">
         {#if task.source && task.source !== 'manual'}From {sourceLabel[task.source] ?? task.source}{:else}Task{/if}
       </h2>
 
@@ -739,15 +739,15 @@
       <!-- Title + complete -->
       <div class="flex items-start gap-3 pb-5" style="border-bottom: 1px solid var(--sempa-border);">
         <button type="button" onclick={toggleDoneFromView}
-                class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all
-                       {isDone ? 'border-green-500 bg-green-500' : ''}"
-                style={isDone ? '' : 'border-color: var(--sempa-border);'}
+                class="check-ring mt-1"
+                style="width: 26px; height: 26px;"
+                data-state={isDone ? 'done' : task?.status === 'in_progress' ? 'active' : undefined}
                 aria-label={isDone ? 'Mark incomplete' : 'Mark complete'}>
           {#if isDone}
-            <svg class="h-3.5 w-3.5 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
           {/if}
         </button>
-        <h1 class="flex-1 min-w-0 text-xl font-semibold leading-snug {isDone ? 'line-through opacity-50' : ''}"
+        <h1 class="flex-1 min-w-0 text-[21px] font-extrabold tracking-[-0.02em] leading-snug {isDone ? 'line-through opacity-50' : ''}"
             style="color: var(--sempa-text); overflow-wrap: anywhere; word-break: break-word;">
           {#if bareUrl(task.title)}
             <a href={task.title} target="_blank" rel="noopener noreferrer"
@@ -808,7 +808,7 @@
           <span class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs" style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">🎯 {objTitle}</span>
         {/if}
         {#each (task.tags ?? []) as tag}
-          <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-white" style="background-color: {tagStore.colorFor(tag)}">{tag}</span>
+          <span class="tint inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-bold" style="--tint: {tagStore.colorFor(tag)};"><span class="h-[7px] w-[7px] rounded-full" style="background: {tagStore.colorFor(tag)};"></span>{tag}</span>
         {/each}
       </div>
 
@@ -822,7 +822,7 @@
       <!-- Notes / forwarded message -->
       {#if task.description}
         <div class="py-4" style="border-bottom: 1px solid var(--sempa-border);">
-          <p class="mb-2 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">
+          <p class="mb-2 text-[12px] font-semibold" style="color: var(--sempa-text-dim);">
             {isEmailSource ? 'Message' : 'Notes'}
           </p>
 
@@ -839,7 +839,7 @@
                   <p class="truncate text-[12.5px] font-medium" style="color: var(--sempa-text);">{sourceLabel[task.source ?? ''] ?? 'Mail'}</p>
                   <p class="truncate text-[11px]" style="color: var(--sempa-text-dim);">{task.title}</p>
                 </div>
-                <span class="shrink-0 rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider"
+                <span class="shrink-0 rounded px-1.5 py-0.5 text-[12px] font-bold"
                       style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">Mail</span>
               </div>
               <div bind:this={notesEl}
@@ -897,7 +897,7 @@
       <!-- Focus sessions -->
       {#if sessions.length > 0}
         <div class="py-4">
-          <p class="mb-2 text-[11px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">
+          <p class="mb-2 text-[12px] font-semibold" style="color: var(--sempa-text-dim);">
             Focus sessions <span class="font-normal normal-case tracking-normal">· {sessions.reduce((s, p) => s + p.duration_minutes, 0)} min</span>
           </p>
           <div class="flex flex-col gap-1">
@@ -923,25 +923,25 @@
            unreliable on this Android WebView (the soft keyboard / layout-vs-visual
            viewport split kept hiding a bottom footer), so the primary actions live
            in the header — which is always on screen (top: 40px) no matter what. -->
-      <div class="flex shrink-0 items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+      <div class="flex shrink-0 items-center gap-2 px-4 pb-3 pt-1">
         <button onclick={onClose}
-                class="-ml-1 shrink-0 rounded-lg px-2 py-1.5 text-sm text-gray-500 dark:text-gray-400">
+                class="btn-surface h-10 shrink-0 px-4 text-[14px]" style="color: var(--sempa-text-soft);">
           Cancel
         </button>
-        <h2 class="flex-1 truncate text-center text-sm font-semibold text-gray-800 dark:text-gray-100">
+        <h2 class="flex-1 truncate text-center text-[15px] font-bold" style="color: var(--sempa-text);">
           {isEdit ? 'Edit task' : 'New task'}
         </h2>
         <div class="flex shrink-0 items-center gap-1">
           {#if isEdit && task}
             {#if deleteConfirm}
               <button onclick={async () => { await api.tasks.delete(task!.id); onSave({ ...task!, status: 'cancelled' } as Task); }}
-                      class="rounded-lg px-2.5 py-1.5 text-sm font-medium text-red-500"
+                      class="h-10 rounded-full px-4 text-sm font-bold text-red-600 dark:text-red-400"
                       style="background: color-mix(in srgb, #ef4444 12%, transparent);">
                 Delete
               </button>
             {:else}
               <button onclick={() => deleteConfirm = true} aria-label="Delete task"
-                      class="rounded-lg p-1.5 text-gray-400 hover:text-red-500 dark:text-gray-500">
+                      class="btn-icon hover:text-red-500">
                 <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/>
                 </svg>
@@ -949,7 +949,7 @@
             {/if}
           {/if}
           <button onclick={handleSubmit} disabled={!title.trim() || saving}
-                  class="rounded-lg bg-blue-500 px-3.5 py-1.5 text-sm font-medium text-white
+                  class="btn-primary h-10 px-5 text-[14px]
                          disabled:opacity-40 disabled:cursor-not-allowed">
             {saving ? 'Saving…' : isEdit ? 'Save' : recurrenceRule ? 'Create' : 'Add'}
           </button>
@@ -959,14 +959,14 @@
            line sits far below the fold, so on mobile a failed save looked like
            the button "did nothing". -->
       {#if error}
-        <p class="shrink-0 border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-600
-                  dark:border-red-950 dark:bg-red-950/60 dark:text-red-400">{error}</p>
+        <p class="mx-4 mb-2 shrink-0 rounded-[14px] bg-red-50 px-4 py-2 text-sm text-red-700
+                  dark:bg-red-950/60 dark:text-red-300">{error}</p>
       {/if}
     {:else}
     <!-- Header -->
-    <div class="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+    <div class="flex shrink-0 items-center justify-between px-6 pb-2 pt-5">
       <div>
-        <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-100">
+        <h2 class="text-[18px] font-extrabold tracking-[-0.02em]" style="color: var(--sempa-text);">
           {isEdit ? 'Edit task' : 'New task'}
         </h2>
         {#if isEdit && task?.source && task.source !== 'manual'}
@@ -979,9 +979,8 @@
           </p>
         {/if}
       </div>
-      <button onclick={onClose}
-              class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors
-                     dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-300">
+      <button onclick={onClose} aria-label="Close"
+              class="btn-icon" style="background: var(--sempa-fill); box-shadow: none;">
         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/>
         </svg>
@@ -1003,7 +1002,7 @@
 
       <!-- Title -->
       <div>
-        <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400" for="task-title">
+        <label class="mb-1.5 block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-title">
           Title <span class="text-red-400">*</span>
         </label>
         <div class="flex items-center gap-2">
@@ -1013,11 +1012,10 @@
                  onkeydown={(e) => e.key === 'Escape' && onClose()}
                  type="text"
                  placeholder="What needs to get done?"
-                 class="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm
-                        text-gray-800 placeholder-gray-400 outline-none
-                        focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100
-                        dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-600
-                        dark:focus:border-blue-500 dark:focus:bg-gray-800 dark:focus:ring-blue-900/40" />
+                 class="flex-1 rounded-lg border border-transparent bg-[var(--sempa-fill)] px-3 py-2.5 text-sm
+                        text-[var(--sempa-text)] placeholder-[var(--sempa-text-dim)] outline-none
+                        focus:border-blue-400 focus:bg-[var(--sempa-bg-panel)] focus:ring-2 focus:ring-blue-100
+                        dark:focus:border-blue-500 dark:focus:ring-blue-900/40" />
           {#if aiQuickAddOn}
             <button type="button" onclick={aiQuickParse} disabled={aiParsing || !title.trim()}
                     class="shrink-0 rounded-lg border p-2.5 transition-colors disabled:opacity-40"
@@ -1035,7 +1033,7 @@
       <!-- Notes -->
       <div>
         <div class="mb-1.5 flex items-center justify-between gap-2">
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400" for="task-notes">
+          <label class="block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-notes">
             Notes <span class="text-xs font-normal text-gray-400 dark:text-gray-600">— markdown supported</span>
           </label>
           {#if aiTidyNotesOn && description.trim()}
@@ -1050,11 +1048,10 @@
         </div>
         <textarea id="task-notes" bind:value={description} rows="4"
                   placeholder="Add details, links, context...&#10;&#10;Supports **bold**, _italic_, [links](https://...)"
-                  class="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm
-                         text-gray-800 placeholder-gray-400 outline-none leading-relaxed
-                         focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100
-                         dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-600
-                         dark:focus:border-blue-500 dark:focus:bg-gray-800"></textarea>
+                  class="w-full resize-none rounded-lg border border-transparent bg-[var(--sempa-fill)] px-3 py-2.5 text-sm
+                         text-[var(--sempa-text)] placeholder-[var(--sempa-text-dim)] outline-none leading-relaxed
+                         focus:border-blue-400 focus:bg-[var(--sempa-bg-panel)] focus:ring-2 focus:ring-blue-100
+                         dark:focus:border-blue-500"></textarea>
 
         <!-- Live link previews for any pasted URLs in the notes. Shown on every
              platform (this edit panel is the desktop/web/Windows task view), so
@@ -1099,14 +1096,14 @@
       <!-- Date + Estimate -->
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400" for="task-date">
+          <label class="mb-1.5 block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-date">
             Due date
           </label>
           <SempaDatePicker id="task-date" bind:value={plannedDate}
                            disabled={!!recurrenceRule} placeholder="No date" />
         </div>
         <div>
-          <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400" for="task-estimate">
+          <label class="mb-1.5 block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-estimate">
             Time estimate
           </label>
           <SempaSelect id="task-estimate" bind:value={estimateMinutes}
@@ -1159,7 +1156,7 @@
 
       <!-- Reminder (remind_at) — styled pickers, no native Android selectors -->
       <div>
-        <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400" for="task-remind-date">
+        <label class="mb-1.5 block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-remind-date">
           Remind me
         </label>
         <div class="flex items-center gap-2">
@@ -1188,8 +1185,8 @@
 
       <!-- Private / Shared (multi-user household only) -->
       {#if household.multiUser}
-        <div class="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <div class="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5"
+             style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
           <div class="min-w-0">
             <p class="text-[13px] font-medium" style="color: var(--sempa-text);">
               {shared ? 'Shared' : 'Private'}
@@ -1211,7 +1208,7 @@
       <!-- Project (sub-tasks always follow their parent's, so hide it for them) -->
       {#if !task?.parent_task_id && (projectStore.projects.length > 0 || selectedProjectId)}
         <div>
-          <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400" for="task-project">
+          <label class="mb-1.5 block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-project">
             Project
           </label>
           <SempaSelect id="task-project" bind:value={selectedProjectId}
@@ -1222,7 +1219,7 @@
       <!-- Weekly objective -->
       {#if weekObjectives.length > 0}
         <div>
-          <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400" for="task-objective">
+          <label class="mb-1.5 block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-objective">
             Weekly objective
           </label>
           <SempaSelect id="task-objective" bind:value={selectedObjectiveId}
@@ -1234,7 +1231,7 @@
       <!-- Tags -->
       <div>
         <div class="mb-1.5 flex items-center justify-between gap-2">
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Tags</label>
+          <label class="block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]">Tags</label>
           <div class="flex items-center gap-2">
             {#if aiTagNotice}
               <span class="text-[11px]" style="color: var(--sempa-text-dim);">{aiTagNotice}</span>
@@ -1251,13 +1248,13 @@
           </div>
         </div>
         <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-        <div class="flex min-h-[42px] flex-wrap gap-1.5 items-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-2
-                    focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100
-                    dark:border-gray-700 dark:bg-gray-800 dark:focus-within:border-blue-500"
+        <div class="flex min-h-[42px] flex-wrap gap-1.5 items-center rounded-lg border border-transparent bg-[var(--sempa-fill)] px-3 py-2
+                    focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:border-blue-500"
              onclick={() => tagDropdownOpen = true}>
           {#each selectedTags as tag}
-            <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-white shrink-0"
-                  style="background-color: {tagStore.colorFor(tag)}">
+            <span class="tint inline-flex h-7 items-center gap-1.5 rounded-full pl-2.5 pr-1.5 text-xs font-bold shrink-0"
+                  style="--tint: {tagStore.colorFor(tag)};">
+              <span class="h-[7px] w-[7px] rounded-full" style="background: {tagStore.colorFor(tag)};"></span>
               {tag}
               <button type="button" onclick={(e) => { e.stopPropagation(); selectedTags = selectedTags.filter(t => t !== tag); }}
                       class="opacity-75 hover:opacity-100 ml-0.5">×</button>
@@ -1275,8 +1272,7 @@
         </div>
         {#if tagDropdownOpen}
           <div class="relative z-10">
-            <div class="absolute top-1 left-0 right-0 rounded-lg border border-gray-200 bg-white shadow-lg
-                        dark:border-gray-700 dark:bg-gray-800 max-h-44 overflow-y-auto">
+            <div class="absolute top-1 left-0 right-0 rounded-[16px] p-1 bg-[var(--sempa-bg-panel)] shadow-[var(--sempa-shadow-2)] max-h-44 overflow-y-auto">
               {#if filteredTags.length}
                 {#each filteredTags as t}
                   <button type="button"
@@ -1311,8 +1307,8 @@
               <button type="button" onclick={() => acceptSuggestedTag(s)}
                 class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-opacity hover:opacity-80"
                 style={known
-                  ? `color:#fff; background-color:${tagStore.colorFor(s)};`
-                  : 'color: var(--sempa-text-soft); border: 1px dashed var(--sempa-border); background: var(--sempa-bg);'}>
+                  ? `--tint:${tagStore.colorFor(s)}; background: color-mix(in srgb, var(--tint) var(--sempa-tint-bg), var(--sempa-bg-panel)); color: color-mix(in srgb, var(--tint) var(--sempa-tint-fg), var(--sempa-text));`
+                  : 'color: var(--sempa-text-soft); border: 1px dashed var(--sempa-track); background: var(--sempa-bg-panel);'}>
                 <span style="opacity:0.8;">+</span> {s}
               </button>
             {/each}
@@ -1323,12 +1319,12 @@
       <!-- Scheduled time (edit mode only) — split date+time inputs for Android (FIX 4) -->
       {#if isEdit}
         <div>
-          <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400">
+          <label class="mb-1.5 block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]">
             Scheduled time <span class="font-normal text-gray-400 dark:text-gray-600">— drag to calendar or set here</span>
           </label>
           <div class="grid grid-cols-2 gap-2">
             <div class="space-y-1.5">
-              <label class="block text-[10.5px] text-gray-400 dark:text-gray-600" for="sched-start">Start</label>
+              <label class="block text-[11.5px] font-medium text-[var(--sempa-text-soft)]" for="sched-start">Start</label>
               <SempaDatePicker id="sched-start" bind:value={scheduledStartDate} placeholder="No date"
                                onchange={(v) => { if (v && !scheduledStartTime) scheduledStartTime = nowSlot30(); }} />
               {#if scheduledStartDate}
@@ -1338,7 +1334,7 @@
               {/if}
             </div>
             <div class="space-y-1.5">
-              <label class="block text-[10.5px] text-gray-400 dark:text-gray-600" for="sched-end">End</label>
+              <label class="block text-[11.5px] font-medium text-[var(--sempa-text-soft)]" for="sched-end">End</label>
               <SempaDatePicker id="sched-end" bind:value={scheduledEndDate} placeholder="No date" />
               {#if scheduledEndDate}
                 <SempaSelect value={scheduledEndTime} options={TIME_SLOTS} placeholder="No time"
@@ -1359,15 +1355,14 @@
       <!-- Log actual time (edit mode only) -->
       {#if isEdit}
         <div>
-          <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400" for="task-actual">
+          <label class="mb-1.5 block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-actual">
             Actual time logged
           </label>
           <div class="flex items-center gap-2">
             <input id="task-actual" type="text" inputmode="numeric" pattern="[0-9]*" bind:value={actualMinutesInput}
                    placeholder="minutes"
-                   class="w-28 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm
-                          text-gray-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100
-                          dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100" />
+                   class="w-28 rounded-lg border border-transparent bg-[var(--sempa-fill)] px-3 py-2 text-sm
+                          text-gray-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:text-gray-100" />
             <span class="text-xs text-gray-400 dark:text-gray-600">minutes
               {#if parseInt(actualMinutesInput) > 0}
                 ({Math.floor(parseInt(actualMinutesInput) / 60)}h {parseInt(actualMinutesInput) % 60}m)
@@ -1417,7 +1412,7 @@
           </p>
           <div class="flex flex-col gap-1 max-h-40 overflow-y-auto">
             {#each sessions as session}
-              <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-1.5
+              <div class="flex items-center justify-between rounded-lg bg-[var(--sempa-fill)] px-3 py-1.5
                           dark:bg-gray-800/60">
                 <span class="text-[11px] text-gray-500 dark:text-gray-400">
                   {new Date(session.started_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
@@ -1437,7 +1432,7 @@
       <!-- Linked lists (existing tasks only) -->
       {#if isEdit && task}
         <div>
-          <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400">Lists</label>
+          <label class="mb-1.5 block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]">Lists</label>
           {#if taskLists.length}
             <div class="mb-2 flex flex-wrap gap-1.5">
               {#each taskLists as l}
@@ -1452,11 +1447,10 @@
           <div class="flex items-center gap-2">
             <input bind:value={newListName} placeholder="New list for this task…"
               onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); createLinkedList(); } }}
-              class="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none
-                     dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200" />
+              class="flex-1 rounded-lg border border-transparent bg-[var(--sempa-fill)] px-3 py-2 text-sm outline-none dark:text-gray-200" />
             <button type="button" onclick={createLinkedList} disabled={!newListName.trim()}
-              class="shrink-0 rounded-lg px-3 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-              style="background: var(--sempa-accent);">+ New</button>
+              class="shrink-0 rounded-full px-3 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+              style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">+ New</button>
           </div>
           {#if unlinkedLists.length}
             <div class="mt-2">
@@ -1471,7 +1465,7 @@
       <!-- Recurrence — in create mode, and when editing a recurring template. -->
       {#if !isEdit || isTemplate}
         <div>
-          <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400" for="task-recurrence">
+          <label class="mb-1.5 block text-[12.5px] font-semibold text-[var(--sempa-text-soft)]" for="task-recurrence">
             Repeat
           </label>
           <SempaSelect id="task-recurrence" bind:value={recurrenceRule}
@@ -1494,7 +1488,7 @@
          the top action bar (the bottom of the sheet is unreliable behind the
          Android soft keyboard), so this footer is suppressed there. -->
     {#if !(mobile.value && !inline)}
-    <div class="flex shrink-0 items-center justify-between border-t border-gray-100 px-5 py-4 dark:border-gray-800">
+    <div class="flex shrink-0 items-center justify-between px-6 pb-5 pt-3" style="border-top: 1px solid var(--sempa-border);">
       {#if isEdit && task}
         {#if deleteConfirm}
           <div class="flex items-center gap-2">
@@ -1503,7 +1497,7 @@
                       await api.tasks.delete(task!.id);
                       onSave({ ...task!, status: 'cancelled' } as Task);
                     }}
-                    class="rounded-lg px-3 py-1.5 text-sm font-medium text-red-500 transition-colors"
+                    class="h-9 rounded-full px-4 text-sm font-bold text-red-600 transition-colors dark:text-red-400"
                     style="background: color-mix(in srgb, #ef4444 10%, transparent);">
               Yes, delete
             </button>
@@ -1523,13 +1517,12 @@
       {/if}
       <div class="flex gap-2">
         <button onclick={onClose}
-                class="rounded-lg px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 transition-colors
-                       dark:text-gray-400 dark:hover:bg-gray-800">
+                class="btn-surface h-10 px-5 text-sm" style="background: var(--sempa-fill); box-shadow: none; color: var(--sempa-text-soft);">
           Cancel
         </button>
         <button onclick={handleSubmit} disabled={!title.trim() || saving}
-                class="rounded-lg bg-blue-500 px-5 py-2 text-sm font-medium text-white
-                       hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                class="btn-primary h-10 px-6 text-sm
+                       disabled:opacity-40 disabled:cursor-not-allowed">
           {saving ? 'Saving…' : isEdit ? 'Save changes' : recurrenceRule ? 'Create recurring' : 'Add task'}
         </button>
       </div>
@@ -1549,7 +1542,7 @@
   {:else if mobile.value}
     <!-- Mobile bottom sheet (FIX 5) — shrinks when soft keyboard opens via visualViewport -->
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-    <div class="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm animate-fade-in"
+    <div class="fixed inset-0 z-40 bg-black/45 animate-fade-in"
          onclick={onClose}></div>
     <!-- Height = the VISIBLE (visual) viewport, not the layout viewport. On this
          Android WebView the layout viewport (100vh / innerHeight, and therefore a
@@ -1562,8 +1555,8 @@
          keyboardHeight into BOTH bottom and max-height; here it's a single height,
          and the store re-measures on focusin/out so it recovers on dismiss.) -->
     <div role="dialog" aria-modal="true" aria-label="{isEdit ? 'Edit task' : 'New task'}"
-         class="fixed left-0 right-0 z-50 flex flex-col shadow-2xl"
-         style="border-radius: 20px 20px 0 0; background: var(--sempa-bg-panel);
+         class="fixed left-0 right-0 z-50 flex flex-col"
+         style="border-radius: 30px 30px 0 0; background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-2);
                 top: max(40px, env(safe-area-inset-top, 0px));
                 height: calc({viewport.height}px - max(40px, env(safe-area-inset-top, 0px)));
                 transition: height 180ms ease-out;
@@ -1572,7 +1565,7 @@
       <!-- Drag handle -->
       <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
       <div class="flex justify-center pt-3 pb-1 cursor-grab shrink-0" data-sheet-handle onclick={onClose}>
-        <div class="h-1 w-8 rounded-full" style="background: var(--sempa-border);"></div>
+        <div class="h-[5px] w-10 rounded-full" style="background: var(--sempa-track);"></div>
       </div>
       <!-- basis-auto + min-h-0 so this wrapper fills the capped sheet and lets
            the inner body scroll (see note on the body element). -->
@@ -1586,16 +1579,15 @@
          Scrim click + Esc close it; it scales + rises in (and reverses out). -->
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
     <div class="fixed inset-0 z-[60] flex items-center justify-center p-6" use:portal>
-      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"
+      <div class="absolute inset-0 bg-black/45"
            transition:fade={{ duration: reduced ? 0 : 180 }}
            onclick={onClose}></div>
       <div role="dialog" aria-modal="true"
            aria-label="{isEdit ? 'Edit task' : 'New task'}"
            transition:modalPop
            class="relative flex w-full max-w-[720px] flex-col overflow-hidden"
-           style="max-height: 86vh; border-radius: 16px; background: var(--card-bg);
-                  border: 1px solid var(--card-border);
-                  box-shadow: var(--shadow-float, 0 24px 64px -16px rgba(0,0,0,0.5));">
+           style="max-height: 86vh; border-radius: 30px; background: var(--card-bg);
+                  box-shadow: var(--sempa-shadow-2);">
         {#if canView && viewMode === 'view'}
           {@render taskView()}
         {:else}

@@ -41,22 +41,35 @@
 
 <svelte:window onkeydown={onKey} />
 
+<svelte:head>
+  <style>
+    /* Opaque window (transparent:false in Rust): the panel paints every pixel,
+       so the page behind it matches and no backing shows at the edges. */
+    html, body { background: var(--sempa-bg-panel) !important; margin: 0; overflow: hidden; }
+  </style>
+</svelte:head>
+
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   data-tauri-drag-region
-  style="height:100vh; display:flex; flex-direction:column; gap:10px; padding:16px 18px;
-         background: var(--sempa-bg-panel); border:1px solid var(--sempa-border); border-radius:14px;
+  style="height:100vh; display:flex; flex-direction:column; justify-content:center; gap:12px; padding:14px 18px 18px;
+         background: var(--sempa-bg-panel); border-radius:0;
          box-sizing:border-box; overflow:hidden; user-select:none;">
-  <div style="display:flex; align-items:center; gap:8px; color: var(--sempa-accent);">
-    <svg width="20" height="20" viewBox="0 0 100 100" fill="none" aria-hidden="true">
-      <path d="M22,40 a28,28 0 0 0 56,0" stroke="currentColor" stroke-width="9"
-            stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="50" cy="35" r="7.5" fill="currentColor"/>
-    </svg>
-    <span style="font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:.14em;
-                 text-transform:uppercase; color: var(--sempa-text-dim);">Quick add</span>
-    <span style="margin-left:auto; font-family:'JetBrains Mono', monospace; font-size:11px;
-                 color: var(--sempa-text-dim);">Enter ↵ · Esc</span>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:999px;
+                 background: var(--sempa-accent-bg); color: var(--sempa-accent);">
+      <svg width="16" height="16" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+        <path d="M22,40 a28,28 0 0 0 56,0" stroke="currentColor" stroke-width="9"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="50" cy="35" r="7.5" fill="currentColor"/>
+      </svg>
+    </span>
+    <span style="font-size:13px; font-weight:700; color: var(--sempa-text);">Quick add</span>
+    <span style="font-size:12px; font-weight:500; color: var(--sempa-text-dim);">to today</span>
+    <span style="margin-left:auto; display:flex; gap:6px;">
+      <span class="chip chip-time">Enter ↵</span>
+      <span class="chip chip-time">Esc</span>
+    </span>
   </div>
 
   <input
@@ -65,9 +78,9 @@
     type="text"
     placeholder="Add a task to today…"
     disabled={busy}
-    style="width:100%; box-sizing:border-box; padding:12px 14px; border-radius:10px;
-           background: var(--sempa-bg-main); border:1px solid var(--sempa-border);
-           color: var(--sempa-text); font-size:16px; font-family:'Plus Jakarta Sans', sans-serif;
+    style="width:100%; box-sizing:border-box; height:48px; padding:0 20px; border-radius:999px;
+           background: var(--sempa-fill); border:1.5px solid var(--sempa-border);
+           color: var(--sempa-text); font-size:16px; font-weight:500; font-family:'Plus Jakarta Sans', sans-serif;
            outline:none; user-select:text;"
     onfocus={(e) => ((e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)')}
     onblur={(e) => ((e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)')}

@@ -129,7 +129,7 @@
     aria-haspopup="dialog"
     aria-expanded={open}
     class="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm outline-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-    style="background: var(--sempa-bg-main); border: 1px solid {open ? 'var(--sempa-accent)' : 'var(--sempa-border)'};
+    style="background: var(--sempa-fill); border: 1px solid {open ? 'var(--sempa-accent)' : 'transparent'};
            color: {hasValue ? 'var(--sempa-text)' : 'var(--sempa-text-dim)'};">
     <span class="flex min-w-0 items-center gap-2 truncate">
       <span class="shrink-0" style="color: {hasValue ? 'var(--sempa-accent)' : 'var(--sempa-text-dim)'};">
@@ -184,9 +184,9 @@
             {@const isSel = ymd === value}
             {@const isToday = ymd === today}
             <button type="button" onclick={() => selectDay(cell)}
-                    class="sempa-date-day flex h-8 items-center justify-center rounded-lg text-sm transition-colors"
+                    class="sempa-date-day flex h-8 items-center justify-center rounded-full text-sm transition-colors"
                     style={isSel
-                      ? 'background: var(--sempa-accent); color: var(--sempa-btn-fg); font-weight: 600;'
+                      ? 'background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); font-weight: 600;'
                       : isToday
                         ? 'border: 1px solid var(--sempa-accent); color: var(--sempa-accent);'
                         : 'color: var(--sempa-text);'}>
@@ -216,14 +216,13 @@
     z-index: 60;
     width: 17rem;
     max-width: calc(100vw - 2rem);
-    border-radius: 0.75rem;
-    border: 1px solid var(--sempa-border);
-    background: var(--sempa-bg-nav);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    border-radius: 20px;
+    background: var(--sempa-bg-panel);
+    box-shadow: var(--sempa-shadow-2);
     animation: sempa-fade-in 140ms ease both;
   }
   .sempa-date-day:hover {
-    background: var(--sempa-border);
+    background: var(--sempa-fill);
   }
   @media (prefers-reduced-motion: reduce) {
     .sempa-date-menu { animation: none; }

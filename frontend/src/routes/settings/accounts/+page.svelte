@@ -550,33 +550,34 @@
   }
 </script>
 
+
 {#snippet sectionIcon(id: string)}
   {#if id === 'profile'}
-    <svg class="h-5 w-5" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
       <circle cx="12" cy="8" r="4"/><path stroke-linecap="round" d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>
     </svg>
   {:else if id === 'integrations'}
-    <svg class="h-5 w-5" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
       <path stroke-linecap="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
     </svg>
   {:else if id === 'tasks'}
-    <svg class="h-5 w-5" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
       <path stroke-linecap="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2m-6 9 2 2 4-4"/>
     </svg>
   {:else if id === 'about'}
-    <svg class="h-5 w-5" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
       <circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 8h.01M11 12h1v4h1"/>
     </svg>
   {:else if id === 'personal'}
-    <svg class="h-5 w-5" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4L12 3zM18 14l.9 2.1L21 17l-2.1.9L18 20l-.9-2.1L15 17l2.1-.9L18 14z"/>
     </svg>
   {:else if id === 'system'}
-    <svg class="h-5 w-5" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2M8 11h.01M12 11h4"/>
     </svg>
   {:else}
-    <svg class="h-5 w-5" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
       <circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.07 4.93A10 10 0 1 0 4.93 19.07M12 2v2m0 18v-2m8-8h2M2 12h2m13.66-7.07 1.41-1.41M4.93 19.07l1.41-1.41M19.07 19.07l1.41 1.41M4.93 4.93 3.51 3.51"/>
     </svg>
   {/if}
@@ -593,75 +594,66 @@
   {/if}
 {/snippet}
 
+<!-- Row chevron for link rows. -->
+{#snippet chevron()}
+  <svg class="set-chevron h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+    <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
+  </svg>
+{/snippet}
+
 {#if mobile.value}
   <!-- ══ MOBILE SETTINGS ═══════════════════════════════════════════════════ -->
   {#if !mobileSection}
     <!-- State A: section list -->
-    <div style="padding-top: env(safe-area-inset-top, 0px);">
-      <div class="px-5 pt-5 pb-4" style="border-bottom: 1px solid var(--sempa-border);">
-        <h1 class="text-xl font-bold" style="color: var(--sempa-text);">Settings</h1>
-      </div>
-      <div class="px-4 py-3">
+    <div class="px-4 pb-8" style="padding-top: calc(env(safe-area-inset-top, 0px) + 20px);">
+      <h1 class="type-page mb-5 px-1" style="color: var(--sempa-text);">Settings</h1>
+
+      <div class="set-group">
         {#each MOBILE_SECTIONS as section}
           <button onclick={() => mobileSection = section.id}
-                  class="flex w-full items-center gap-4 rounded-xl px-3 py-3.5 transition-colors"
-                  style="text-align:left;"
-                  onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--sempa-accent-bg)'}
-                  onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = ''}>
-            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-                 style="background: var(--sempa-accent-bg);">
-              {@render sectionIcon(section.id)}
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-semibold" style="color: var(--sempa-text);">{section.label}</p>
-              <p class="text-xs" style="color: var(--sempa-text-dim);">{@render sectionDesc(section.id)}</p>
-            </div>
-            <svg class="h-4 w-4 shrink-0" style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
-            </svg>
+                  class="set-row set-row-link">
+            <span class="set-icon">{@render sectionIcon(section.id)}</span>
+            <span class="set-row-main">
+              <span class="set-label block">{section.label}</span>
+              <span class="set-desc block truncate">{@render sectionDesc(section.id)}</span>
+            </span>
+            {@render chevron()}
           </button>
         {/each}
       </div>
 
       <!-- Theme toggle -->
-      <div class="mx-4 mt-1 px-3 py-3 rounded-xl" style="border: 1px solid var(--sempa-border);">
-        <div class="flex items-center justify-between">
-          <p class="text-sm font-medium" style="color: var(--sempa-text);">
-            {theme.dark ? 'Dark mode' : 'Light mode'}
-          </p>
+      <div class="set-group mt-3">
+        <div class="set-row">
+          <p class="set-row-main set-label">{theme.dark ? 'Dark mode' : 'Light mode'}</p>
           <button onclick={theme.toggle}
-                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-                  style="background: {theme.dark ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
-            <span class="inline-block h-4 w-4 rounded-full bg-white shadow transition-transform"
-                  style="transform: translateX({theme.dark ? '24px' : '4px'});"></span>
-          </button>
+                  role="switch" aria-checked={theme.dark} aria-label="Dark mode"
+                  class="set-switch" data-on={theme.dark}></button>
         </div>
       </div>
 
       <!-- Version -->
-      <p class="mt-8 text-center text-[11px] pb-6" style="color: var(--sempa-text-dim);">Sempa · self-hosted</p>
+      <p class="mt-8 text-center text-[12px]" style="color: var(--sempa-text-dim);">Sempa · self-hosted</p>
     </div>
 
   {:else}
     <!-- State B: section detail -->
     <div style="padding-top: env(safe-area-inset-top, 0px); display:flex; flex-direction:column; height:100%;">
       <!-- Back header -->
-      <div class="flex items-center gap-3 px-4 py-3" style="border-bottom: 1px solid var(--sempa-border);">
-        <button onclick={() => mobileSection = null}
-                class="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm transition-colors"
-                style="color: var(--sempa-accent);">
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" d="M19 12H5m7-7-7 7 7 7"/>
+      <div class="px-4 pt-4 pb-1">
+        <button onclick={() => mobileSection = null} class="set-back">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m15 18-6-6 6-6"/>
           </svg>
           Settings
         </button>
-        <p class="text-sm font-semibold" style="color: var(--sempa-text);">
-          {NAV_SECTIONS.find(s => s.id === mobileSection)?.label}
-        </p>
       </div>
       <!-- Section content -->
       <div class="flex-1 overflow-y-auto">
-        <div class="px-4 py-4 pb-16">
+        <div class="px-4 pt-3 pb-16">
+          <h1 class="type-page mb-5 px-1" style="color: var(--sempa-text);">
+            {NAV_SECTIONS.find(s => s.id === mobileSection)?.label}
+          </h1>
           {#if mobileSection === 'profile'}
             {@render profileContent()}
           {:else if mobileSection === 'integrations'}
@@ -687,15 +679,13 @@
   <div class="flex h-full">
 
     <!-- ── Settings sub-nav ──────────────────────────────────────────────── -->
-    <nav class="flex w-[148px] shrink-0 flex-col gap-1 px-3 pt-8"
-         style="background: var(--sempa-bg-nav); border-right: 1px solid var(--sempa-border);">
-      <h1 class="mb-4 px-3 text-base font-semibold" style="color: var(--sempa-text);">Settings</h1>
+    <nav class="flex w-[200px] shrink-0 flex-col gap-1 px-4 pt-8" aria-label="Settings sections"
+         style="background: var(--sempa-bg-nav);">
+      <h1 class="type-date mb-4 px-3" style="color: var(--sempa-text);">Settings</h1>
       {#each NAV_SECTIONS as section}
         <button onclick={() => selectSection(section.id)}
-                class="rounded-lg px-3 py-2 text-left text-[13px] font-medium transition-colors"
-                style={desktopSection === section.id
-                  ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent);'
-                  : 'color: var(--sempa-text-soft);'}>
+                aria-current={desktopSection === section.id ? 'page' : undefined}
+                class="set-nav-item">
           {section.label}
         </button>
       {/each}
@@ -703,7 +693,10 @@
 
     <!-- ── Active section (one at a time, not a long scroll) ─────────────────── -->
     <div bind:this={scrollContainer} class="flex-1 overflow-y-auto">
-      <div class="mx-auto max-w-xl px-6 py-8 pb-16">
+      <div class="mx-auto max-w-[640px] px-8 pt-9 pb-16">
+        <h2 class="type-page mb-6 px-1" style="color: var(--sempa-text);">
+          {NAV_SECTIONS.find(s => s.id === desktopSection)?.label}
+        </h2>
         {#if desktopSection === 'profile'}
           {@render profileContent()}
         {:else if desktopSection === 'integrations'}
@@ -730,30 +723,26 @@
   <!-- ═══════════════════════════════════════════════════════════════════════
        SECTION: Account / profile
   ════════════════════════════════════════════════════════════════════════ -->
-  <div id="settings-profile" class="mb-8 scroll-mt-6">
-    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-       text-transform:uppercase; color:var(--sempa-text-dim)">Account</p>
-
-    <section class="overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+  <div id="settings-profile" class="scroll-mt-6">
+    <section class="set-group">
       <!-- Identity row: avatar · email · auth method -->
-      <div class="flex items-center gap-3.5 px-5 py-4" style="border-bottom: 1px solid var(--sempa-border);">
+      <div class="set-row" style="min-height: 72px;">
         {#if accountPicture}
           <img src={accountPicture} alt="" referrerpolicy="no-referrer"
-               class="h-11 w-11 shrink-0 rounded-full object-cover"
-               style="border: 1px solid var(--sempa-border);" />
+               class="h-11 w-11 shrink-0 rounded-full object-cover" />
         {:else}
-          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-bold"
-               style="background: var(--sempa-accent-bg); color: var(--sempa-accent); border: 1px solid var(--sempa-border);">
+          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-extrabold"
+               style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
             {(accountEmail ?? '?').charAt(0).toUpperCase()}
           </div>
         {/if}
-        <div class="min-w-0 flex-1">
+        <div class="set-row-main">
           {#if accountEmail}
-            <p class="truncate text-sm font-semibold" style="color: var(--sempa-text);" title={accountEmail}>{accountEmail}</p>
+            <p class="set-label truncate" style="font-size: 15px;" title={accountEmail}>{accountEmail}</p>
           {:else}
-            <p class="text-sm font-semibold" style="color: var(--sempa-text);">Signed in</p>
+            <p class="set-label" style="font-size: 15px;">Signed in</p>
           {/if}
-          <p class="mt-0.5 flex items-center gap-1.5 text-xs" style="color: var(--sempa-text-soft);">
+          <p class="set-desc flex items-center gap-1.5">
             {#if accountPicture}
               <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1Z"/>
@@ -769,45 +758,40 @@
 
       <!-- Server URL -->
       {#if serverUrl}
-        <div class="flex items-center justify-between gap-3 px-5 py-3" style="border-bottom: 1px solid var(--sempa-border);">
-          <span class="text-xs" style="color: var(--sempa-text-soft);">Server</span>
-          <span class="truncate font-mono text-xs" style="color: var(--sempa-text-dim);" title={serverUrl}>{serverUrl}</span>
+        <div class="set-row set-row-compact">
+          <span class="set-row-main set-label">Server</span>
+          <span class="truncate font-mono text-xs" style="color: var(--sempa-text-soft);" title={serverUrl}>{serverUrl}</span>
         </div>
       {/if}
 
       <!-- Sign out -->
-      <div class="flex items-center justify-between gap-3 px-5 py-4">
-        <div>
-          <p class="text-sm font-medium" style="color: var(--sempa-text);">Sign out</p>
-          <p class="text-xs" style="color: var(--sempa-text-dim);">Local data stays on this device until you sign back in.</p>
+      <div class="set-row">
+        <div class="set-row-main">
+          <p class="set-label">Sign out</p>
+          <p class="set-desc">Local data stays on this device until you sign back in.</p>
         </div>
         <button onclick={doSignOut} disabled={signingOut}
-                class="shrink-0 rounded-[9px] px-4 py-2 text-[13px] font-medium transition-colors disabled:opacity-50"
-                style="border: 1px solid color-mix(in srgb, #ef4444 40%, var(--sempa-border)); color: #ef4444; background: transparent;"
-                onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, #ef4444 10%, transparent)'}
-                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                class="set-danger set-btn">
           {signingOut ? 'Signing out…' : 'Sign out'}
         </button>
       </div>
     </section>
 
     <!-- Users & credentials -->
-    <a href="/settings/users"
-       class="mt-3 flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
-       style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-      <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
-        <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 3-3.87m6-1.13a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"/>
-        </svg>
-      </div>
-      <div class="flex-1">
-        <p class="text-sm font-semibold" style="color: var(--sempa-text);">Users &amp; password</p>
-        <p class="text-xs" style="color: var(--sempa-text-soft);">Add people, manage credentials, change your password</p>
-      </div>
-      <svg class="h-4 w-4" style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
-      </svg>
-    </a>
+    <div class="set-group">
+      <a href="/settings/users" class="set-row set-row-link">
+        <span class="set-icon">
+          <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 3-3.87m6-1.13a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"/>
+          </svg>
+        </span>
+        <span class="set-row-main">
+          <span class="set-label block">Users &amp; password</span>
+          <span class="set-desc block">Add people, manage credentials, change your password</span>
+        </span>
+        {@render chevron()}
+      </a>
+    </div>
   </div>
 {/snippet}
 
@@ -818,50 +802,43 @@
   <div id="settings-integrations">
 
     {#if serverUnreachable}
-      <div class="mb-4 rounded-xl px-4 py-3 text-sm"
-           style="border: 1px solid var(--sempa-amber); background: color-mix(in srgb, var(--sempa-amber) 10%, var(--sempa-bg-panel)); color: var(--sempa-amber);">
-        <p class="font-semibold">Can't reach your server</p>
-        <p class="mt-1 text-xs leading-relaxed" style="color: var(--sempa-text-soft);">
+      <div class="tint mb-5 rounded-2xl px-4 py-3" style="--tint: var(--sempa-amber);">
+        <p class="text-sm font-bold">Can't reach your server</p>
+        <p class="mt-1 text-[12.5px] leading-relaxed" style="color: var(--sempa-text-soft);">
           Integration status couldn't load. Check your connection and that the server URL is
           correct, then pull to refresh or reopen this screen.
         </p>
       </div>
     {/if}
 
-    <!-- ── Email & Calendar ──────────────────────────────────────── -->
-    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-       text-transform:uppercase; color:var(--sempa-text-dim)">Email & Calendar</p>
+    <!-- ── Email & calendar ──────────────────────────────────────── -->
+    <h3 class="set-heading">Email &amp; calendar</h3>
 
     <!-- ── Gmail ─────────────────────────────────────────────────── -->
-    <section class="mb-3 overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+    <section class="set-group">
       <!-- Header -->
-      <div class="flex items-center gap-3 px-5 py-4"
-           class:border-b={gmail.connected}
-           style="border-color: var(--sempa-border);">
-        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-50 dark:bg-red-950">
-          <svg class="h-4 w-4 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+      <div class="set-row" style="min-height: 64px;">
+        <span class="set-icon tint" style="--tint: #ea4335;">
+          <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="currentColor">
             <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/>
           </svg>
-        </div>
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-semibold" style="color: var(--sempa-text);">Gmail</p>
+        </span>
+        <div class="set-row-main">
+          <p class="set-label">Gmail</p>
           {#if gmail.connected}
-            <p class="text-xs truncate" style="color: var(--sempa-text-soft);">
+            <p class="set-desc truncate">
               {gmail.email} &middot; Last synced {formatTime(gmail.last_synced_at)}
             </p>
           {:else}
-            <p class="text-xs" style="color: var(--sempa-text-dim);">Import starred emails as tasks</p>
+            <p class="set-desc">Import starred emails as tasks</p>
           {/if}
         </div>
         {#if gmail.connected}
-          <span class="inline-flex items-center gap-1.5 text-xs font-medium" style="color: var(--sempa-text-soft);">
-            <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>Connected
-          </span>
+          <span class="set-status">Connected</span>
         {:else}
           <a href={api.integrations.gmail.authUrl(false)}
              onclick={(e) => oauthConnect(e, api.integrations.gmail.authUrl(false))}
-             class="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
-             style="border-color: var(--sempa-border); color: var(--sempa-text-soft);">
+             class="btn-soft set-btn-sm">
             Connect &rarr;
           </a>
         {/if}
@@ -869,67 +846,52 @@
 
       {#if gmail.connected}
         <!-- Sub-features -->
-        <div class="flex h-10 items-center justify-between border-b px-5 text-xs"
-             style="border-color: var(--sempa-border);">
-          <span style="color: var(--sempa-text-soft);">Starred emails</span>
-          <div class="flex items-center gap-3">
-            {#if syncResults['gmail']}
-              <span style="color: var(--sempa-accent);">{syncResults['gmail']}</span>
-            {/if}
-            <button onclick={() => syncService('gmail', api.integrations.gmail.sync)}
-                    disabled={syncing['gmail']}
-                    class="transition-colors disabled:opacity-50"
-                    style="color: var(--sempa-text-dim);">
-              {syncing['gmail'] ? 'Syncing...' : 'Sync'}
-            </button>
-          </div>
+        <div class="set-row set-row-compact">
+          <span class="set-row-main set-label">Starred emails</span>
+          {#if syncResults['gmail']}
+            <span class="set-meta" style="color: var(--sempa-accent-ink);">{syncResults['gmail']}</span>
+          {/if}
+          <button onclick={() => syncService('gmail', api.integrations.gmail.sync)}
+                  disabled={syncing['gmail']}
+                  class="set-btn-quiet set-btn-sm">
+            {syncing['gmail'] ? 'Syncing...' : 'Sync'}
+          </button>
         </div>
 
         <!-- Google Calendar sub-feature -->
-        <div class="flex h-10 items-center justify-between border-b px-5 text-xs"
-             style="border-color: var(--sempa-border);">
-          <span style="color: var(--sempa-text-soft);">Google Calendar</span>
-          <div class="flex items-center gap-3">
-            {#if syncResults['calendar']}
-              <span style="color: var(--sempa-accent);">{syncResults['calendar']}</span>
-            {/if}
-            {#if calendar.connected}
-              <button onclick={() => syncService('calendar', () => api.integrations.calendar.sync())}
-                      disabled={syncing['calendar']}
-                      class="transition-colors disabled:opacity-50"
-                      style="color: var(--sempa-text-dim);">
-                {syncing['calendar'] ? 'Syncing...' : 'Sync today'}
-              </button>
-              <button onclick={() => toggleCalendar(false)}
-                      aria-label="Disable Google Calendar"
-                      class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
-                      style="background: var(--sempa-accent);">
-                <span class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform"
-                      style="transform: translateX(18px);"></span>
-              </button>
-            {:else}
-              <a href={api.integrations.gmail.authUrl(true)}
-                 onclick={(e) => oauthConnect(e, api.integrations.gmail.authUrl(true))}
-                 class="transition-colors"
-                 style="color: var(--sempa-accent);">
-                Enable
-              </a>
-            {/if}
-          </div>
+        <div class="set-row set-row-compact">
+          <span class="set-row-main set-label">Google Calendar</span>
+          {#if syncResults['calendar']}
+            <span class="set-meta" style="color: var(--sempa-accent-ink);">{syncResults['calendar']}</span>
+          {/if}
+          {#if calendar.connected}
+            <button onclick={() => syncService('calendar', () => api.integrations.calendar.sync())}
+                    disabled={syncing['calendar']}
+                    class="set-btn-quiet set-btn-sm">
+              {syncing['calendar'] ? 'Syncing...' : 'Sync today'}
+            </button>
+            <button onclick={() => toggleCalendar(false)}
+                    aria-label="Disable Google Calendar"
+                    class="set-switch" data-on="true"></button>
+          {:else}
+            <a href={api.integrations.gmail.authUrl(true)}
+               onclick={(e) => oauthConnect(e, api.integrations.gmail.authUrl(true))}
+               class="btn-soft set-btn-sm">
+              Enable
+            </a>
+          {/if}
         </div>
 
         <!-- Gmail labels link -->
-        <div class="flex h-10 items-center justify-between border-b px-5 text-xs"
-             style="border-color: var(--sempa-border);">
-          <span style="color: var(--sempa-text-soft);">Label filters</span>
-          <a href="/settings/integrations/gmail" style="color: var(--sempa-text-dim);">
-            Configure &rarr;
-          </a>
-        </div>
+        <a href="/settings/integrations/gmail" class="set-row set-row-compact set-row-link">
+          <span class="set-row-main set-label">Label filters</span>
+          <span class="set-meta">Configure</span>
+          {@render chevron()}
+        </a>
 
         <!-- Disconnect -->
-        <div class="px-5 py-3">
-          <button onclick={disconnectGmail} class="text-xs transition-colors" style="color: var(--sempa-text-dim);">
+        <div class="set-row set-row-compact">
+          <button onclick={disconnectGmail} class="set-ghost set-btn-sm -ml-3" style="color: var(--set-danger);">
             Disconnect Gmail
           </button>
         </div>
@@ -937,34 +899,29 @@
     </section>
 
     <!-- ── Fastmail ──────────────────────────────────────────────── -->
-    <section class="mb-3 overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+    <section class="set-group">
       <!-- Header -->
-      <div class="flex items-center gap-3 px-5 py-4"
-           class:border-b={fastmail.connected || fmShowForm}
-           style="border-color: var(--sempa-border);">
-        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
-          <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+      <div class="set-row" style="min-height: 64px;">
+        <span class="set-icon">
+          <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
             <path stroke-linecap="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
           </svg>
-        </div>
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-semibold" style="color: var(--sempa-text);">Fastmail</p>
+        </span>
+        <div class="set-row-main">
+          <p class="set-label">Fastmail</p>
           {#if fastmail.connected}
-            <p class="text-xs truncate" style="color: var(--sempa-text-soft);">
+            <p class="set-desc truncate">
               {fastmail.email} &middot; Last synced {formatTime(fastmail.last_synced_at)}
             </p>
           {:else}
-            <p class="text-xs" style="color: var(--sempa-text-dim);">Sync starred emails and calendar via JMAP</p>
+            <p class="set-desc">Sync starred emails and calendar via JMAP</p>
           {/if}
         </div>
         {#if fastmail.connected}
-          <span class="inline-flex items-center gap-1.5 text-xs font-medium" style="color: var(--sempa-text-soft);">
-            <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>Connected
-          </span>
+          <span class="set-status">Connected</span>
         {:else if !fmShowForm}
           <button onclick={() => fmShowForm = true}
-                  class="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
-                  style="border-color: var(--sempa-border); color: var(--sempa-text-soft);">
+                  class="btn-soft set-btn-sm">
             Connect &rarr;
           </button>
         {/if}
@@ -972,96 +929,76 @@
 
       {#if fastmail.connected}
         <!-- Starred emails -->
-        <div class="flex h-10 items-center justify-between border-b px-5 text-xs"
-             style="border-color: var(--sempa-border);">
-          <span style="color: var(--sempa-text-soft);">Starred emails</span>
-          <div class="flex items-center gap-3">
-            {#if syncResults['fastmail']}
-              <span style="color: var(--sempa-accent);">{syncResults['fastmail']}</span>
-            {/if}
-            <button onclick={() => syncService('fastmail', api.integrations.fastmail.sync)}
-                    disabled={syncing['fastmail']}
-                    class="transition-colors disabled:opacity-50"
-                    style="color: var(--sempa-text-dim);">
-              {syncing['fastmail'] ? 'Syncing...' : 'Sync'}
-            </button>
-          </div>
+        <div class="set-row set-row-compact">
+          <span class="set-row-main set-label">Starred emails</span>
+          {#if syncResults['fastmail']}
+            <span class="set-meta" style="color: var(--sempa-accent-ink);">{syncResults['fastmail']}</span>
+          {/if}
+          <button onclick={() => syncService('fastmail', api.integrations.fastmail.sync)}
+                  disabled={syncing['fastmail']}
+                  class="set-btn-quiet set-btn-sm">
+            {syncing['fastmail'] ? 'Syncing...' : 'Sync'}
+          </button>
         </div>
 
         <!-- Fastmail Calendar -->
         {#if fmCal.connected}
-          <div class="flex h-10 items-center justify-between border-b px-5 text-xs"
-               style="border-color: var(--sempa-border);">
-            <span style="color: var(--sempa-text-soft);">
-              Calendar
+          <div class="set-row set-row-compact">
+            <div class="set-row-main">
+              <p class="set-label">Calendar</p>
               {#if fmCal.enabled && fmCal.last_synced_at}
-                <span style="color: var(--sempa-text-dim);"> &middot; {formatTime(fmCal.last_synced_at)}</span>
+                <p class="set-desc">Synced {formatTime(fmCal.last_synced_at)}</p>
               {/if}
-            </span>
-            <div class="flex items-center gap-3">
-              {#if syncResults['fmcal']}
-                <span style="color: var(--sempa-accent);">{syncResults['fmcal']}</span>
-              {/if}
-              {#if fmCal.enabled}
-                <button onclick={syncFastmailCalendar}
-                        disabled={syncing['fmcal']}
-                        class="transition-colors disabled:opacity-50"
-                        style="color: var(--sempa-text-dim);">
-                  {syncing['fmcal'] ? 'Syncing...' : 'Sync'}
-                </button>
-              {/if}
-              <button onclick={() => toggleFastmailCalendar(!fmCal.enabled)}
-                      disabled={syncing['fmcal-toggle']}
-                      aria-label="Toggle Fastmail Calendar"
-                      class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50"
-                      style="background: {fmCal.enabled ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
-                <span class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform"
-                      style="transform: translateX({fmCal.enabled ? '18px' : '3px'});"></span>
-              </button>
             </div>
+            {#if syncResults['fmcal']}
+              <span class="set-meta" style="color: var(--sempa-accent-ink);">{syncResults['fmcal']}</span>
+            {/if}
+            {#if fmCal.enabled}
+              <button onclick={syncFastmailCalendar}
+                      disabled={syncing['fmcal']}
+                      class="set-btn-quiet set-btn-sm">
+                {syncing['fmcal'] ? 'Syncing...' : 'Sync'}
+              </button>
+            {/if}
+            <button onclick={() => toggleFastmailCalendar(!fmCal.enabled)}
+                    disabled={syncing['fmcal-toggle']}
+                    aria-label="Toggle Fastmail Calendar"
+                    class="set-switch" data-on={fmCal.enabled}></button>
           </div>
         {/if}
 
         <!-- CalDAV — push scheduled tasks to a calendar -->
         {#if caldav.connected}
-          <div class="border-b px-5 py-2.5 text-xs" style="border-color: var(--sempa-border);">
-            <div class="flex min-h-7 items-center justify-between">
-              <span style="color: var(--sempa-text-soft);">
-                Push tasks to calendar
-                {#if caldav.calendar_name}
-                  <span style="color: var(--sempa-text-dim);"> &middot; {caldav.calendar_name}</span>
+          <div>
+            <div class="set-row set-row-compact set-row-wrap">
+              <div class="set-row-main">
+                <p class="set-label">Push tasks to calendar</p>
+                {#if caldav.calendar_name || (caldav.enabled && caldav.last_synced_at)}
+                  <p class="set-desc">
+                    {caldav.calendar_name ?? ''}{#if caldav.calendar_name && caldav.enabled && caldav.last_synced_at}&nbsp;&middot;&nbsp;{/if}{#if caldav.enabled && caldav.last_synced_at}{formatTime(caldav.last_synced_at)}{/if}
+                  </p>
                 {/if}
-                {#if caldav.enabled && caldav.last_synced_at}
-                  <span style="color: var(--sempa-text-dim);"> &middot; {formatTime(caldav.last_synced_at)}</span>
-                {/if}
-              </span>
-              <div class="flex items-center gap-3">
+              </div>
+              <div class="ml-auto flex items-center gap-2">
                 {#if syncResults['caldav']}
-                  <span style="color: var(--sempa-accent);">{syncResults['caldav']}</span>
+                  <span class="set-meta" style="color: var(--sempa-accent-ink);">{syncResults['caldav']}</span>
                 {/if}
                 {#if caldav.calendar_href}
                   {#if caldav.enabled}
                     <button onclick={syncCaldav} disabled={syncing['caldav']}
-                            class="transition-colors disabled:opacity-50"
-                            style="color: var(--sempa-text-dim);">
+                            class="set-btn-quiet set-btn-sm">
                       {syncing['caldav'] ? 'Pushing...' : 'Sync now'}
                     </button>
                   {/if}
                   <button onclick={openCaldavPicker} disabled={caldavLoading}
-                          class="transition-colors disabled:opacity-50"
-                          style="color: var(--sempa-text-dim);">Change</button>
+                          class="set-btn-quiet set-btn-sm">Change</button>
                   <button onclick={() => toggleCaldav(!caldav.enabled)}
                           disabled={syncing['caldav-toggle']}
                           aria-label="Toggle CalDAV task push"
-                          class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50"
-                          style="background: {caldav.enabled ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
-                    <span class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform"
-                          style="transform: translateX({caldav.enabled ? '18px' : '3px'});"></span>
-                  </button>
+                          class="set-switch" data-on={!!caldav.enabled}></button>
                 {:else}
                   <button onclick={openCaldavPicker} disabled={caldavLoading}
-                          class="rounded-lg border px-3 py-1 font-medium transition-colors disabled:opacity-50"
-                          style="border-color: var(--sempa-border); color: var(--sempa-text-soft);">
+                          class="btn-soft set-btn-sm">
                     {caldavLoading ? 'Loading...' : 'Set up'}
                   </button>
                 {/if}
@@ -1069,34 +1006,34 @@
             </div>
 
             {#if caldavPickerOpen}
-              <div class="mt-2.5 space-y-1.5">
+              <div class="space-y-1.5 px-[18px] pb-4 text-[13px]">
                 {#if caldavError}
-                  <p class="text-red-600 dark:text-red-400">{caldavError}</p>
+                  <p class="set-error">{caldavError}</p>
                 {/if}
                 {#if caldavLoading}
-                  <p style="color: var(--sempa-text-dim);">Loading calendars…</p>
+                  <p class="set-meta">Loading calendars…</p>
                 {:else if caldavCalendars.length === 0 && !caldavError}
-                  <p style="color: var(--sempa-text-dim);">No writable calendars found.</p>
+                  <p class="set-meta">No writable calendars found.</p>
                 {:else}
-                  <p class="mb-1" style="color: var(--sempa-text-dim);">Choose a calendar to write task time-blocks into:</p>
+                  <p class="set-meta mb-1">Choose a calendar to write task time-blocks into:</p>
                   {#each caldavCalendars as cal (cal.href)}
                     {@const selected = caldav.calendar_href === cal.href}
                     <button onclick={() => selectCaldavCalendar(cal.href, cal.name)}
                             disabled={caldavLoading}
-                            class="flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors disabled:opacity-50"
-                            style="border-color: {selected ? 'var(--sempa-accent)' : 'var(--sempa-border)'};
-                                   background: {selected ? 'var(--sempa-accent-bg)' : 'transparent'};">
+                            class="flex min-h-10 w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-colors disabled:opacity-50"
+                            style="background: {selected ? 'var(--sempa-accent-bg)' : 'var(--sempa-fill)'};
+                                   {selected ? 'box-shadow: inset 0 0 0 1.5px var(--sempa-accent);' : ''}">
                       <span class="h-2.5 w-2.5 shrink-0 rounded-full"
                             style="background: {cal.color || '#6b7280'};"></span>
-                      <span class="flex-1 min-w-0 truncate" style="color: var(--sempa-text-soft);">{cal.name}</span>
+                      <span class="flex-1 min-w-0 truncate font-semibold" style="color: var(--sempa-text);">{cal.name}</span>
                       {#if selected}
-                        <span style="color: var(--sempa-accent);">Selected</span>
+                        <span class="font-bold" style="color: var(--sempa-accent-ink);">Selected</span>
                       {/if}
                     </button>
                   {/each}
                 {/if}
                 <button onclick={() => { caldavPickerOpen = false; caldavError = ''; }}
-                        class="transition-colors" style="color: var(--sempa-text-dim);">Cancel</button>
+                        class="set-ghost set-btn-sm -ml-3">Cancel</button>
               </div>
             {/if}
           </div>
@@ -1104,43 +1041,38 @@
 
         <!-- Email Inbox (Fastmail sub-feature) -->
         {#if taskInbox.connected}
-          <div class="flex h-10 items-center justify-between border-b px-5 text-xs"
-               style="border-color: var(--sempa-border);">
-            <span style="color: var(--sempa-text-soft);">
-              Email Inbox
+          <div class="set-row set-row-compact">
+            <div class="set-row-main">
+              <p class="set-label">Email inbox</p>
               {#if taskInbox.inbox_address}
-                <span class="font-mono" style="color: var(--sempa-text-dim);"> &middot; {taskInbox.inbox_address}</span>
+                <p class="set-desc truncate font-mono" style="font-size: 12px;">{taskInbox.inbox_address}</p>
               {/if}
-            </span>
-            <div class="flex items-center gap-3">
-              {#if syncResults['task-inbox']}
-                <span style="color: var(--sempa-accent);">{syncResults['task-inbox']}</span>
-              {/if}
-              <button onclick={() => syncService('task-inbox', api.integrations.taskInbox.sync)}
-                      disabled={syncing['task-inbox']}
-                      class="transition-colors disabled:opacity-50"
-                      style="color: var(--sempa-text-dim);">
-                {syncing['task-inbox'] ? 'Syncing...' : 'Sync'}
-              </button>
             </div>
+            {#if syncResults['task-inbox']}
+              <span class="set-meta" style="color: var(--sempa-accent-ink);">{syncResults['task-inbox']}</span>
+            {/if}
+            <button onclick={() => syncService('task-inbox', api.integrations.taskInbox.sync)}
+                    disabled={syncing['task-inbox']}
+                    class="set-btn-quiet set-btn-sm">
+              {syncing['task-inbox'] ? 'Syncing...' : 'Sync'}
+            </button>
           </div>
 
           <!-- Allowed senders -->
-          <div class="border-b px-5 py-3 space-y-2" style="border-color: var(--sempa-border);">
+          <div class="set-block space-y-2.5">
             <div class="flex items-center justify-between">
-              <p class="text-xs font-medium" style="color: var(--sempa-text-soft);">Allowed senders</p>
+              <p class="set-label">Allowed senders</p>
               {#if (taskInbox.allowed_senders ?? []).length === 0}
-                <p class="text-xs" style="color: var(--sempa-text-dim);">All senders allowed</p>
+                <p class="set-meta">All senders allowed</p>
               {/if}
             </div>
             {#if (taskInbox.allowed_senders ?? []).length > 0}
               <div class="flex flex-wrap gap-1.5">
                 {#each (taskInbox.allowed_senders ?? []) as sender}
-                  <span class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs"
-                        style="border-color: var(--sempa-border); color: var(--sempa-text-soft);">
+                  <span class="set-chip">
                     {sender}
-                    <button onclick={() => removeSender(sender)} aria-label="Remove {sender}" class="hover:text-red-500 transition-colors">
-                      <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <button onclick={() => removeSender(sender)} aria-label="Remove {sender}">
+                      <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
                         <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/>
                       </svg>
                     </button>
@@ -1151,31 +1083,29 @@
             <form onsubmit={(e) => { e.preventDefault(); addSender(); }} class="flex gap-2">
               <input bind:value={senderInput}
                      placeholder="@company.com or user@example.com"
-                     class="flex-1 rounded-lg border px-3 py-1.5 text-xs outline-none"
-                     style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
+                     class="set-input min-w-0 flex-1 text-[13px]" />
               <button type="submit" disabled={senderSaving || !senderInput.trim()}
-                      class="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-40"
-                      style="border-color: var(--sempa-border); color: var(--sempa-text-soft);">
+                      class="set-btn-quiet set-btn">
                 Add
               </button>
             </form>
           </div>
 
           <!-- Disconnect inbox -->
-          <div class="flex h-10 items-center justify-between border-b px-5 text-xs"
-               style="border-color: var(--sempa-border);">
-            <button onclick={disconnectTaskInbox} class="transition-colors" style="color: var(--sempa-text-dim);">
+          <div class="set-row set-row-compact">
+            <button onclick={disconnectTaskInbox} class="set-ghost set-btn-sm -ml-3" style="color: var(--set-danger);">
               Remove email inbox
             </button>
           </div>
         {:else}
           <!-- Email inbox not set up yet -->
-          <div class="flex h-10 items-center justify-between border-b px-5 text-xs"
-               style="border-color: var(--sempa-border);">
-            <span style="color: var(--sempa-text-soft);">Email Inbox &mdash; forward emails to create tasks</span>
+          <div class="set-row set-row-compact">
+            <div class="set-row-main">
+              <p class="set-label">Email inbox</p>
+              <p class="set-desc">Forward emails to create tasks</p>
+            </div>
             <button onclick={() => tiShowForm = true}
-                    class="transition-colors"
-                    style="color: var(--sempa-accent);">
+                    class="btn-soft set-btn-sm">
               Set up &rarr;
             </button>
           </div>
@@ -1183,36 +1113,31 @@
 
         <!-- Email inbox setup form (inline) -->
         {#if tiShowForm && !taskInbox.connected}
-          <div class="border-b px-5 py-4 space-y-3" style="border-color: var(--sempa-border);">
+          <div class="set-block space-y-3">
             <div>
-              <label class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);" for="ti-email">Fastmail email</label>
+              <label class="set-field-label" for="ti-email">Fastmail email</label>
               <input id="ti-email" type="email" inputmode="email" autocapitalize="none" spellcheck="false" bind:value={tiEmail} placeholder="you@fastmail.com"
-                     class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-                     style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
+                     class="set-input w-full" />
             </div>
             <div>
-              <label class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);" for="ti-pass">App password</label>
+              <label class="set-field-label" for="ti-pass">App password</label>
               <input id="ti-pass" type="password" bind:value={tiPassword}
                      placeholder="Generate at Fastmail -> Settings -> Privacy & Security"
-                     class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-                     style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
+                     class="set-input w-full" />
             </div>
             <div>
-              <label class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);" for="ti-addr">Forwarding address</label>
+              <label class="set-field-label" for="ti-addr">Forwarding address</label>
               <input id="ti-addr" type="email" inputmode="email" autocapitalize="none" spellcheck="false" bind:value={tiAddress} placeholder="tasks@sempa.ca"
-                     class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-                     style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
+                     class="set-input w-full" />
             </div>
-            {#if tiError}<p class="text-sm text-red-600 dark:text-red-400">{tiError}</p>{/if}
-            <div class="flex gap-2">
+            {#if tiError}<p class="set-error">{tiError}</p>{/if}
+            <div class="flex gap-2 pt-1">
               <button onclick={connectTaskInbox} disabled={tiSaving || !tiEmail || !tiPassword || !tiAddress}
-                      class="rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
-                      style="background: var(--sempa-accent);">
+                      class="btn-primary set-btn">
                 {tiSaving ? 'Connecting...' : 'Connect'}
               </button>
               <button onclick={() => { tiShowForm = false; tiError = ''; }}
-                      class="rounded-lg border px-4 py-2 text-sm transition-colors"
-                      style="border-color: var(--sempa-border); color: var(--sempa-text-soft);">
+                      class="set-btn-quiet set-btn">
                 Cancel
               </button>
             </div>
@@ -1220,41 +1145,37 @@
         {/if}
 
         <!-- Disconnect Fastmail -->
-        <div class="px-5 py-3">
-          <button onclick={disconnectFastmail} class="text-xs transition-colors" style="color: var(--sempa-text-dim);">
+        <div class="set-row set-row-compact">
+          <button onclick={disconnectFastmail} class="set-ghost set-btn-sm -ml-3" style="color: var(--set-danger);">
             Disconnect Fastmail
           </button>
         </div>
 
       {:else if fmShowForm}
         <!-- Fastmail connect form -->
-        <div class="px-5 py-4 space-y-3">
+        <div class="set-block space-y-3">
           <div>
-            <label class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);" for="fm-email">Email</label>
+            <label class="set-field-label" for="fm-email">Email</label>
             <input id="fm-email" type="email" inputmode="email" autocapitalize="none" spellcheck="false" bind:value={fmEmail} placeholder="you@fastmail.com"
-                   class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-                   style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
+                   class="set-input w-full" />
           </div>
           <div>
-            <label class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);" for="fm-pass">App Password</label>
+            <label class="set-field-label" for="fm-pass">App password</label>
             <input id="fm-pass" type="password" bind:value={fmPassword}
                    placeholder="Generate at fastmail.com -> Settings -> Security"
-                   class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-                   style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
-            <p class="mt-1 text-xs" style="color: var(--sempa-text-dim);">
+                   class="set-input w-full" />
+            <p class="set-meta mt-1.5 px-0.5">
               Create at fastmail.com -> Settings -> Privacy & Security -> App Passwords
             </p>
           </div>
-          {#if fmError}<p class="text-sm text-red-600 dark:text-red-400">{fmError}</p>{/if}
-          <div class="flex gap-2">
+          {#if fmError}<p class="set-error">{fmError}</p>{/if}
+          <div class="flex gap-2 pt-1">
             <button onclick={connectFastmail} disabled={fmSaving || !fmEmail || !fmPassword}
-                    class="rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
-                    style="background: var(--sempa-accent);">
+                    class="btn-primary set-btn">
               {fmSaving ? 'Connecting...' : 'Connect'}
             </button>
             <button onclick={() => { fmShowForm = false; fmError = ''; }}
-                    class="rounded-lg border px-4 py-2 text-sm transition-colors"
-                    style="border-color: var(--sempa-border); color: var(--sempa-text-soft);">
+                    class="set-btn-quiet set-btn">
               Cancel
             </button>
           </div>
@@ -1267,233 +1188,200 @@
          connected Google/Fastmail accounts all live on the dedicated
          /settings/calendars page (also reachable from the schedule sidebar),
          so this is a single entry point rather than a second, divergent copy. -->
-    <a href="/settings/calendars"
-       class="mb-8 flex items-center gap-3 overflow-hidden rounded-xl border px-5 py-4 transition-colors"
-       style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-      <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-           style="background: var(--sempa-cal-feed-bg, #1a2820);">
-        <svg class="h-4 w-4" style="color: var(--sempa-success);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-          <line x1="16" y1="2" x2="16" y2="6"/>
-          <line x1="8" y1="2" x2="8" y2="6"/>
-          <line x1="3" y1="10" x2="21" y2="10"/>
-        </svg>
-      </div>
-      <div class="flex-1 min-w-0">
-        <p class="text-sm font-semibold" style="color: var(--sempa-text);">Calendars</p>
-        <p class="text-xs" style="color: var(--sempa-text-dim);">Subscriptions, colours, and connected calendars</p>
-      </div>
-      <svg class="h-4 w-4 shrink-0" style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
-      </svg>
-    </a>
+    <div class="set-group">
+      <a href="/settings/calendars" class="set-row set-row-link">
+        <span class="set-icon tint" style="--tint: var(--sempa-success);">
+          <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </span>
+        <span class="set-row-main">
+          <span class="set-label block">Calendars</span>
+          <span class="set-desc block">Subscriptions, colours, and connected calendars</span>
+        </span>
+        {@render chevron()}
+      </a>
+    </div>
 
-    <!-- ── Project Management ────────────────────────────────────── -->
-    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-     text-transform:uppercase; color:var(--sempa-text-dim)">Project Management</p>
+    <!-- ── Project management ────────────────────────────────────── -->
+    <h3 class="set-heading">Project management</h3>
 
-    <div class="mb-8">
-      <a href="/settings/integrations/jira"
-         class="flex items-center gap-3 overflow-hidden rounded-xl border px-5 py-4 transition-colors"
-         style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
-          <svg class="h-4 w-4" style="color: var(--sempa-accent);" viewBox="0 0 24 24" fill="currentColor">
+    <div class="set-group">
+      <a href="/settings/integrations/jira" class="set-row set-row-link">
+        <span class="set-icon">
+          <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="currentColor">
             <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.757a5.215 5.215 0 0 0 5.214 5.214h2.129v2.058A5.218 5.218 0 0 0 18.313 18.3V6.763a1.006 1.006 0 0 0-1.019-1.006zM23.277.007H11.749a5.215 5.215 0 0 0 5.214 5.214h2.129v2.058A5.218 5.218 0 0 0 24.282 12.5V1.012A1.005 1.005 0 0 0 23.277.007z"/>
           </svg>
-        </div>
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-semibold" style="color: var(--sempa-text);">Jira</p>
+        </span>
+        <span class="set-row-main">
+          <span class="set-label block">Jira</span>
           {#if jira.connected}
-            <p class="text-xs" style="color: var(--sempa-text-soft);">Connected &middot; syncs assigned issues</p>
+            <span class="set-desc block">Syncs assigned issues</span>
           {:else}
-            <p class="text-xs" style="color: var(--sempa-text-dim);">Sync assigned Jira issues as tasks</p>
+            <span class="set-desc block">Sync assigned Jira issues as tasks</span>
           {/if}
-        </div>
+        </span>
         {#if jira.connected}
-          <span class="inline-flex items-center gap-1.5 text-xs font-medium" style="color: var(--sempa-text-soft);">
-            <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>Connected
-          </span>
+          <span class="set-status">Connected</span>
         {:else}
-          <span class="text-xs" style="color: var(--sempa-text-dim);">Connect &rarr;</span>
+          <span class="set-meta font-semibold" style="color: var(--sempa-accent-ink);">Connect</span>
         {/if}
+        {@render chevron()}
       </a>
     </div>
 
     <!-- ── AI task-title cleanup (local Ollama) ──────────────────── -->
-    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-     text-transform:uppercase; color:var(--sempa-text-dim)">AI</p>
+    <h3 class="set-heading">AI</h3>
 
-    <section class="mb-8 overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-      <div class="flex items-start gap-3 px-5 py-4">
-        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
-          <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+    <section class="set-group">
+      <div class="set-row set-row-top" style="padding-top: 16px; padding-bottom: 16px;">
+        <span class="set-icon">
+          <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 3l1.8 4.4L18 9l-4.2 1.6L12 15l-1.8-4.4L6 9l4.2-1.6L12 3z"/>
           </svg>
-        </div>
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center justify-between gap-2">
-            <p class="text-sm font-semibold" style="color: var(--sempa-text);">AI task-title cleanup</p>
-            <button onclick={toggleAi}
-                    disabled={aiSaving}
-                    aria-label="Toggle AI task-title cleanup"
-                    class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50"
-                    style="background: {aiTitle.enabled ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
-              <span class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform"
-                    style="transform: translateX({aiTitle.enabled ? '18px' : '3px'});"></span>
-            </button>
-          </div>
-          <p class="mt-0.5 text-xs" style="color: var(--sempa-text-dim);">
+        </span>
+        <div class="set-row-main">
+          <p class="set-label">AI task-title cleanup</p>
+          <p class="set-desc">
             Tidies imported email subjects into concise task titles using a language model that
             runs on your own server. Nothing is sent to any third party; if it's unavailable the
             original subject is kept.
           </p>
+        </div>
+        <button onclick={toggleAi}
+                disabled={aiSaving}
+                aria-label="Toggle AI task-title cleanup"
+                class="set-switch mt-1" data-on={aiTitle.enabled}></button>
+      </div>
 
-          {#if aiTitle.enabled}
-            <div class="mt-3 flex flex-col gap-3">
-              <!-- Reachability -->
-              <div class="flex items-center gap-2 text-xs">
-                <span class="h-1.5 w-1.5 rounded-full" style="background: {aiTitle.reachable ? 'var(--sempa-success)' : 'var(--sempa-amber)'};"></span>
-                <span style="color: var(--sempa-text-soft);">
-                  {aiTitle.reachable ? 'Model server reachable' : 'Not reachable — falls back to the raw subject'}
-                </span>
-              </div>
+      {#if aiTitle.enabled}
+        <div class="set-block flex flex-col gap-4">
+          <!-- Reachability -->
+          <div class="flex items-center gap-2 text-[12.5px] font-semibold">
+            <span class="h-2 w-2 rounded-full" style="background: {aiTitle.reachable ? 'var(--sempa-success)' : 'var(--sempa-amber)'};"></span>
+            <span style="color: var(--sempa-text-soft);">
+              {aiTitle.reachable ? 'Model server reachable' : 'Not reachable — falls back to the raw subject'}
+            </span>
+          </div>
 
-              <!-- Downloaded models: pick the active one, see its size, remove it -->
-              {#if aiTitle.available_models.length > 0}
-                <div>
-                  <p class="mb-1 text-xs font-medium" style="color: var(--sempa-text-soft);">Model</p>
-                  <div class="overflow-hidden rounded-lg border" style="border-color: var(--sempa-border);">
-                    {#each aiTitle.available_models as m, i (m.name)}
-                      <label class="flex cursor-pointer items-center gap-2.5 px-3 py-2"
-                             style={i < aiTitle.available_models.length - 1 ? 'border-bottom: 1px solid var(--sempa-border);' : ''}>
-                        <input type="radio" name="ai-active-model" value={m.name} checked={aiTitle.model === m.name}
-                               onchange={() => { aiTitle.model = m.name; saveAiTitle('Active model updated'); }}
-                               style="accent-color: var(--sempa-accent);" />
-                        <span class="flex-1 truncate text-sm font-mono" style="color: var(--sempa-text);">{m.name}</span>
-                        <span class="shrink-0 text-[11px] font-mono" style="color: var(--sempa-text-dim);">{fmtBytes(m.size)}</span>
-                        <button onclick={() => removeAiModel(m.name)} disabled={aiRemoving === m.name}
-                                class="shrink-0 rounded p-1 transition-colors disabled:opacity-50"
-                                aria-label="Remove {m.name}" title="Remove model"
-                                style="color: var(--sempa-text-dim);"
-                                onmouseenter={(e) => (e.currentTarget as HTMLElement).style.color = '#dc2626'}
-                                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text-dim)'}>
-                          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                          </svg>
-                        </button>
-                      </label>
-                    {/each}
-                  </div>
-                </div>
-              {/if}
-
-              <!-- Download a model (with progress) -->
-              <div>
-                <label class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);" for="ai-pull">Download a model</label>
-                {#if aiPulling}
-                  <div class="rounded-lg border p-3" style="border-color: var(--sempa-border);">
-                    <div class="mb-1.5 flex items-center justify-between text-[11px]" style="color: var(--sempa-text-soft);">
-                      <span class="truncate pr-2">{aiPullLabel}</span>
-                      <span class="font-mono">{aiPullPct}%</span>
-                    </div>
-                    <div class="h-1.5 overflow-hidden rounded-full" style="background: var(--sempa-border);">
-                      <div class="h-full rounded-full transition-all" style="width: {aiPullPct}%; background: var(--sempa-accent);"></div>
-                    </div>
-                  </div>
-                {:else}
-                  <div class="flex items-center gap-2">
-                    <input id="ai-pull" bind:value={aiPullModel} placeholder="e.g. qwen2.5:1.5b" spellcheck="false"
-                           onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); pullAiModel(); } }}
-                           class="flex-1 rounded-lg border px-3 py-2 text-sm font-mono outline-none"
-                           style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
-                    <button onclick={pullAiModel} disabled={!aiPullModel.trim()}
-                            class="shrink-0 rounded-lg px-3 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                            style="background: var(--sempa-accent);">
-                      Download
+          <!-- Downloaded models: pick the active one, see its size, remove it -->
+          {#if aiTitle.available_models.length > 0}
+            <div>
+              <p class="set-field-label">Model</p>
+              <div class="set-fill-list">
+                {#each aiTitle.available_models as m (m.name)}
+                  <label class="flex min-h-12 cursor-pointer items-center gap-3 px-3.5 py-2">
+                    <input type="radio" name="ai-active-model" value={m.name} checked={aiTitle.model === m.name}
+                           onchange={() => { aiTitle.model = m.name; saveAiTitle('Active model updated'); }}
+                           class="set-radio" />
+                    <span class="flex-1 truncate text-[13px] font-mono" style="color: var(--sempa-text);">{m.name}</span>
+                    <span class="shrink-0 text-[11.5px] font-mono" style="color: var(--sempa-text-dim);">{fmtBytes(m.size)}</span>
+                    <button onclick={() => removeAiModel(m.name)} disabled={aiRemoving === m.name}
+                            class="set-icon-btn danger"
+                            aria-label="Remove {m.name}" title="Remove model">
+                      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                      </svg>
                     </button>
-                  </div>
-                  <p class="mt-1 text-[11px]" style="color: var(--sempa-text-dim);">Find model names at ollama.com/library (e.g. qwen2.5:1.5b, llama3.2:3b).</p>
-                {/if}
-              </div>
-
-              <!-- Model server URL -->
-              <div>
-                <label class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);" for="ai-url">Model server URL (Ollama)</label>
-                <input id="ai-url" bind:value={aiTitle.base_url} placeholder="http://127.0.0.1:11434" spellcheck="false"
-                       class="w-full rounded-lg border px-3 py-2 text-sm font-mono outline-none"
-                       style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
-              </div>
-
-              <!-- Feedback -->
-              {#if aiError}
-                <p class="text-xs" style="color: #dc2626;">{aiError}</p>
-              {:else if aiStatus}
-                <p class="text-xs" style="color: var(--sempa-success);">{aiStatus}</p>
-              {/if}
-
-              <div class="flex items-center gap-2">
-                <button onclick={testAiTitle} disabled={aiTesting}
-                        class="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
-                        style="border-color: var(--sempa-border); color: var(--sempa-text-soft);">
-                  {aiTesting ? 'Testing…' : 'Test connection'}
-                </button>
-                <button onclick={() => saveAiTitle()} disabled={aiSaving}
-                        class="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                        style="background: var(--sempa-accent);">
-                  {aiSaving ? 'Saving…' : 'Save'}
-                </button>
-              </div>
-
-              <!-- Per-feature controls — full control over where the model is used.
-                   Each is also gated by reachability above. -->
-              <div style="border-top: 1px solid var(--sempa-border); padding-top: 14px;">
-                <p class="mb-1 text-xs font-medium" style="color: var(--sempa-text-soft);">AI features</p>
-                <p class="mb-3 text-[11px]" style="color: var(--sempa-text-dim);">Choose where Sempa uses the model. Turn any off to hide it across the app.</p>
-                <div class="flex flex-col gap-3">
-                  {#each AI_FEATURE_META as f (f.key)}
-                    <div class="flex items-start justify-between gap-3">
-                      <div class="min-w-0">
-                        <p class="text-xs" style="color: var(--sempa-text);">{f.label}</p>
-                        <p class="text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">{f.hint}</p>
-                      </div>
-                      <button onclick={() => prefs.setAiFeature(f.key, !prefs.aiOn(f.key))}
-                              role="switch" aria-checked={prefs.aiOn(f.key)} aria-label={f.label}
-                              class="relative shrink-0 rounded-full transition-colors"
-                              style="width:40px; height:22px; border:none; cursor:pointer; background: {prefs.aiOn(f.key) ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
-                        <span class="absolute rounded-full bg-white" style="top:3px; left:{prefs.aiOn(f.key) ? '21px' : '3px'}; width:16px; height:16px; transition: left 150ms ease;"></span>
-                      </button>
-                    </div>
-                  {/each}
-                </div>
-
-                <!-- Where the Import feature is exposed (only meaningful when the
-                     "Import from URL or text" feature above is on). -->
-                {#if prefs.aiOn('aiImport')}
-                  <div class="mt-4" style="border-top: 1px dashed var(--sempa-border); padding-top: 12px;">
-                    <p class="mb-2 text-[11px] font-medium" style="color: var(--sempa-text-soft);">Import entry points</p>
-                    <div class="flex flex-col gap-3">
-                      {#each IMPORT_ENTRY_META as e (e.key)}
-                        <div class="flex items-start justify-between gap-3">
-                          <div class="min-w-0">
-                            <p class="text-xs" style="color: var(--sempa-text);">{e.label}</p>
-                            <p class="text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">{e.hint}</p>
-                          </div>
-                          <button onclick={() => prefs.setImportEntry(e.key, !prefs.importEntryOn(e.key))}
-                                  role="switch" aria-checked={prefs.importEntryOn(e.key)} aria-label={e.label}
-                                  class="relative shrink-0 rounded-full transition-colors"
-                                  style="width:40px; height:22px; border:none; cursor:pointer; background: {prefs.importEntryOn(e.key) ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
-                            <span class="absolute rounded-full bg-white" style="top:3px; left:{prefs.importEntryOn(e.key) ? '21px' : '3px'}; width:16px; height:16px; transition: left 150ms ease;"></span>
-                          </button>
-                        </div>
-                      {/each}
-                    </div>
-                  </div>
-                {/if}
+                  </label>
+                {/each}
               </div>
             </div>
           {/if}
+
+          <!-- Download a model (with progress) -->
+          <div>
+            <label class="set-field-label" for="ai-pull">Download a model</label>
+            {#if aiPulling}
+              <div class="set-fill p-3.5">
+                <div class="mb-2 flex items-center justify-between text-[12px] font-semibold" style="color: var(--sempa-text-soft);">
+                  <span class="truncate pr-2">{aiPullLabel}</span>
+                  <span class="font-mono">{aiPullPct}%</span>
+                </div>
+                <div class="day-bar-track">
+                  <div class="day-bar-fill" style="width: {aiPullPct}%; background: var(--sempa-accent);"></div>
+                </div>
+              </div>
+            {:else}
+              <div class="flex items-center gap-2">
+                <input id="ai-pull" bind:value={aiPullModel} placeholder="e.g. qwen2.5:1.5b" spellcheck="false"
+                       onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); pullAiModel(); } }}
+                       class="set-input set-input-mono min-w-0 flex-1" />
+                <button onclick={pullAiModel} disabled={!aiPullModel.trim()}
+                        class="btn-primary set-btn">
+                  Download
+                </button>
+              </div>
+              <p class="set-meta mt-1.5 px-0.5">Find model names at ollama.com/library (e.g. qwen2.5:1.5b, llama3.2:3b).</p>
+            {/if}
+          </div>
+
+          <!-- Model server URL -->
+          <div>
+            <label class="set-field-label" for="ai-url">Model server URL (Ollama)</label>
+            <input id="ai-url" bind:value={aiTitle.base_url} placeholder="http://127.0.0.1:11434" spellcheck="false"
+                   class="set-input set-input-mono w-full" />
+          </div>
+
+          <!-- Feedback -->
+          {#if aiError}
+            <p class="set-error">{aiError}</p>
+          {:else if aiStatus}
+            <p class="set-ok">{aiStatus}</p>
+          {/if}
+
+          <div class="flex items-center gap-2">
+            <button onclick={() => saveAiTitle()} disabled={aiSaving}
+                    class="btn-primary set-btn">
+              {aiSaving ? 'Saving…' : 'Save'}
+            </button>
+            <button onclick={testAiTitle} disabled={aiTesting}
+                    class="set-btn-quiet set-btn">
+              {aiTesting ? 'Testing…' : 'Test connection'}
+            </button>
+          </div>
         </div>
-      </div>
+
+        <!-- Per-feature controls — full control over where the model is used.
+             Each is also gated by reachability above. -->
+        <div class="set-block pb-1">
+          <p class="set-label">AI features</p>
+          <p class="set-desc">Choose where Sempa uses the model. Turn any off to hide it across the app.</p>
+        </div>
+        {#each AI_FEATURE_META as f (f.key)}
+          <div class="set-row">
+            <div class="set-row-main">
+              <p class="set-label" style="font-weight: 600;">{f.label}</p>
+              <p class="set-desc">{f.hint}</p>
+            </div>
+            <button onclick={() => prefs.setAiFeature(f.key, !prefs.aiOn(f.key))}
+                    role="switch" aria-checked={prefs.aiOn(f.key)} aria-label={f.label}
+                    class="set-switch" data-on={prefs.aiOn(f.key)}></button>
+          </div>
+        {/each}
+
+        <!-- Where the Import feature is exposed (only meaningful when the
+             "Import from URL or text" feature above is on). -->
+        {#if prefs.aiOn('aiImport')}
+          <div class="set-block pb-1" style="background: var(--sempa-fill);">
+            <p class="set-label">Import entry points</p>
+          </div>
+          {#each IMPORT_ENTRY_META as e (e.key)}
+            <div class="set-row" style="background: var(--sempa-fill);">
+              <div class="set-row-main pl-3">
+                <p class="set-label">{e.label}</p>
+                <p class="set-desc">{e.hint}</p>
+              </div>
+              <button onclick={() => prefs.setImportEntry(e.key, !prefs.importEntryOn(e.key))}
+                      role="switch" aria-checked={prefs.importEntryOn(e.key)} aria-label={e.label}
+                      class="set-switch" data-on={prefs.importEntryOn(e.key)}></button>
+            </div>
+          {/each}
+        {/if}
+      {/if}
     </section>
   </div>
 {/snippet}
@@ -1503,78 +1391,58 @@
        SECTION: Tasks
   ════════════════════════════════════════════════════════════════════════ -->
   <div id="settings-tasks">
-    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-     text-transform:uppercase; color:var(--sempa-text-dim)">Tasks</p>
-
-    <div class="mb-8 flex flex-col gap-2">
-      <a href="/settings/tags"
-         class="flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
-         style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-950">
-          <svg class="h-4 w-4 text-violet-500" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+    <div class="set-group">
+      <a href="/settings/tags" class="set-row set-row-link">
+        <span class="set-icon">
+          <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
             <path stroke-linecap="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 0 1 0 2.828l-7 7a2 2 0 0 1-2.828 0l-7-7A2 2 0 0 1 3 12V7a4 4 0 0 1 4-4z"/>
           </svg>
-        </div>
-        <div class="flex-1">
-          <p class="text-sm font-semibold" style="color: var(--sempa-text);">Tags</p>
-          <p class="text-xs" style="color: var(--sempa-text-soft);">Colour-coded labels for your tasks</p>
-        </div>
-        <svg class="h-4 w-4" style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
-        </svg>
+        </span>
+        <span class="set-row-main">
+          <span class="set-label block">Tags</span>
+          <span class="set-desc block">Colour-coded labels for your tasks</span>
+        </span>
+        {@render chevron()}
       </a>
 
-      <a href="/settings/projects"
-         class="flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
-         style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
-          <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+      <a href="/settings/projects" class="set-row set-row-link">
+        <span class="set-icon">
+          <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zM8 11v4M12 11v2M16 11v5"/>
           </svg>
-        </div>
-        <div class="flex-1">
-          <p class="text-sm font-semibold" style="color: var(--sempa-text);">Project statuses</p>
-          <p class="text-xs" style="color: var(--sempa-text-soft);">Name, colour and order the stages your projects move through</p>
-        </div>
-        <svg class="h-4 w-4" style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
-        </svg>
+        </span>
+        <span class="set-row-main">
+          <span class="set-label block">Project statuses</span>
+          <span class="set-desc block">Name, colour and order the stages your projects move through</span>
+        </span>
+        {@render chevron()}
       </a>
 
-      <a href="/settings/recurring"
-         class="flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
-         style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
-          <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+      <a href="/settings/recurring" class="set-row set-row-link">
+        <span class="set-icon">
+          <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
           </svg>
-        </div>
-        <div class="flex-1">
-          <p class="text-sm font-semibold" style="color: var(--sempa-text);">Recurring Tasks</p>
-          <p class="text-xs" style="color: var(--sempa-text-soft);">Daily, weekly, and monthly templates</p>
-        </div>
-        <svg class="h-4 w-4" style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
-        </svg>
+        </span>
+        <span class="set-row-main">
+          <span class="set-label block">Recurring tasks</span>
+          <span class="set-desc block">Daily, weekly, and monthly templates</span>
+        </span>
+        {@render chevron()}
       </a>
 
-      <a href="/settings/time"
-         class="flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
-         style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
-          <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+      <a href="/settings/time" class="set-row set-row-link">
+        <span class="set-icon">
+          <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 7v5l3 3"/>
           </svg>
-        </div>
-        <div class="flex-1">
-          <p class="text-sm font-semibold" style="color: var(--sempa-text);">Time tracking</p>
-          <p class="text-xs" style="color: var(--sempa-text-soft);">Completion prompts, default activity times, focus timer</p>
-        </div>
-        <svg class="h-4 w-4" style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
-        </svg>
+        </span>
+        <span class="set-row-main">
+          <span class="set-label block">Time tracking</span>
+          <span class="set-desc block">Completion prompts, default activity times, focus timer</span>
+        </span>
+        {@render chevron()}
       </a>
-
     </div>
   </div>
 {/snippet}
@@ -1584,95 +1452,81 @@
        SECTION: System — app-level concerns (notifications, backup)
   ════════════════════════════════════════════════════════════════════════ -->
   <div id="settings-system">
-    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-     text-transform:uppercase; color:var(--sempa-text-dim)">System</p>
-
-    <div class="mb-8 flex flex-col gap-2">
-      <a href="/settings/notifications"
-         class="flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
-         style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
-          <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+    <div class="set-group">
+      <a href="/settings/notifications" class="set-row set-row-link">
+        <span class="set-icon">
+          <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V5a2 2 0 1 0-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/>
           </svg>
-        </div>
-        <div class="flex-1">
-          <p class="text-sm font-semibold" style="color: var(--sempa-text);">Notifications</p>
-          <p class="text-xs" style="color: var(--sempa-text-soft);">Reminders, push channels, sound, and routines</p>
-        </div>
-        <svg class="h-4 w-4" style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
-        </svg>
+        </span>
+        <span class="set-row-main">
+          <span class="set-label block">Notifications</span>
+          <span class="set-desc block">Reminders, push channels, sound, and routines</span>
+        </span>
+        {@render chevron()}
       </a>
 
-      <a href="/settings/backup"
-         class="flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
-         style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-950">
-          <svg class="h-4 w-4 text-sky-500" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+      <a href="/settings/backup" class="set-row set-row-link">
+        <span class="set-icon">
+          <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7M3 7l2-3h14l2 3M3 7h18M9 12h6"/>
           </svg>
-        </div>
-        <div class="flex-1">
-          <p class="text-sm font-semibold" style="color: var(--sempa-text);">Backup &amp; Restore</p>
-          <p class="text-xs" style="color: var(--sempa-text-soft);">Automatic backups, encryption, and recovery</p>
-        </div>
-        <svg class="h-4 w-4" style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
-        </svg>
+        </span>
+        <span class="set-row-main">
+          <span class="set-label block">Backup &amp; restore</span>
+          <span class="set-desc block">Automatic backups, encryption, and recovery</span>
+        </span>
+        {@render chevron()}
       </a>
 
       <!-- Launch at login (desktop only) -->
       {#if isTauri()}
-      <label class="flex cursor-pointer items-center gap-3 rounded-xl border px-5 py-4"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
-          <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+      <label class="set-row cursor-pointer">
+        <span class="set-icon">
+          <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M13 3 4 14h7l-1 7 9-11h-7l1-7Z"/>
           </svg>
-        </div>
-        <div class="flex-1">
-          <p class="text-sm font-semibold" style="color: var(--sempa-text);">Launch at login</p>
-          <p class="text-xs" style="color: var(--sempa-text-soft);">Start Sempa automatically and open minimized to the tray</p>
-        </div>
+        </span>
+        <span class="set-row-main">
+          <span class="set-label block">Launch at login</span>
+          <span class="set-desc block">Start Sempa automatically and open minimized to the tray</span>
+        </span>
         <input type="checkbox" checked={autostartOn} disabled={autostartBusy}
                onchange={(e) => toggleAutostart((e.target as HTMLInputElement).checked)}
-               style="width:18px; height:18px; accent-color: var(--sempa-accent); cursor:pointer; flex-shrink:0;" />
+               class="set-switch-input" />
+        <span class="set-switch" aria-hidden="true"></span>
       </label>
       {/if}
+    </div>
 
-      <!-- Paired devices (the Sempa Dock): approve a code, see + revoke devices. -->
-      <div class="rounded-xl border px-5 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-        <p class="text-sm font-semibold" style="color: var(--sempa-text);">Paired devices</p>
-        <p class="mb-3 text-xs" style="color: var(--sempa-text-soft);">
+    <!-- Paired devices (the Sempa Dock): approve a code, see + revoke devices. -->
+    <h3 class="set-heading">Paired devices</h3>
+    <div class="set-group">
+      <div class="set-block">
+        <p class="set-desc" style="margin-top: 0;">
           Pair a Sempa Dock: enter the code it shows. The device gets a scoped, revocable token — no password ever leaves this app.
         </p>
-        <div class="flex gap-2">
+        <div class="mt-3 flex gap-2">
           <input bind:value={pairCodeInput} placeholder="Pairing code" maxlength="8"
                  onkeydown={(e) => e.key === 'Enter' && approveDevice()}
-                 style="flex:1; min-width:0; padding:8px 12px; border-radius:9px; border:1px solid var(--sempa-border);
-                        background: var(--sempa-bg-main); color: var(--sempa-text); font-family:monospace; letter-spacing:.12em; text-transform:uppercase;" />
+                 class="set-input set-input-mono min-w-0 flex-1 uppercase tracking-[0.12em]" />
           <button onclick={approveDevice} disabled={pairBusy}
-                  style="padding:8px 16px; border-radius:9px; border:none; background: var(--sempa-accent); color: var(--sempa-btn-fg); font-weight:600; cursor:pointer;">
+                  class="btn-primary set-btn">
             {pairBusy ? '…' : 'Pair'}
           </button>
         </div>
-        {#if pairError}<p class="mt-2 text-xs" style="color:#c0392b;">{pairError}</p>{/if}
-        {#if pairedDevices.length}
-          <div class="mt-4 flex flex-col gap-2">
-            {#each pairedDevices as dev (dev.id)}
-              <div class="flex items-center gap-3 rounded-lg border px-3 py-2" style="border-color: var(--sempa-border);">
-                <div class="flex-1 min-w-0">
-                  <p class="truncate text-[13px] font-medium" style="color: var(--sempa-text);">{dev.device_name || 'Device'}</p>
-                  <p class="text-[11px]" style="color: var(--sempa-text-dim);">{dev.platform}{dev.approved_at ? ' · paired ' + dev.approved_at.slice(0, 10) : ''}</p>
-                </div>
-                <button onclick={() => revokeDevice(dev.id)}
-                        style="font-size:12px; color:#c0392b; background:none; border:none; cursor:pointer;">Revoke</button>
-              </div>
-            {/each}
-          </div>
-        {/if}
+        {#if pairError}<p class="set-error mt-2">{pairError}</p>{/if}
       </div>
+      {#each pairedDevices as dev (dev.id)}
+        <div class="set-row set-row-compact">
+          <div class="set-row-main">
+            <p class="set-label truncate">{dev.device_name || 'Device'}</p>
+            <p class="set-desc">{dev.platform}{dev.approved_at ? ' · paired ' + dev.approved_at.slice(0, 10) : ''}</p>
+          </div>
+          <button onclick={() => revokeDevice(dev.id)}
+                  class="set-danger set-btn-sm">Revoke</button>
+        </div>
+      {/each}
     </div>
   </div>
 {/snippet}
@@ -1680,12 +1534,7 @@
 <!-- Sempa-styled on/off switch — the brand toggle used across settings. -->
 {#snippet toggleSwitch(on: boolean, toggle: () => void, label: string)}
   <button onclick={toggle} role="switch" aria-checked={on} aria-label={label}
-          class="relative shrink-0 rounded-full transition-colors"
-          style="width:44px; height:24px; padding:0; border:none; appearance:none; -webkit-appearance:none; cursor:pointer;
-                 background: {on ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
-    <span class="absolute rounded-full bg-white"
-          style="top:4px; left:{on ? '24px' : '4px'}; width:16px; height:16px; transition: left 150ms ease;"></span>
-  </button>
+          class="set-switch" data-on={on}></button>
 {/snippet}
 
 {#snippet appearanceContent()}
@@ -1693,213 +1542,206 @@
        SECTION: Appearance
   ════════════════════════════════════════════════════════════════════════ -->
   <div id="settings-appearance">
-    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-     text-transform:uppercase; color:var(--sempa-text-dim)">Appearance</p>
 
-    <section class="overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-      <div class="px-5 py-5 space-y-6">
-
-        <!-- Theme gallery -->
-        <div>
-          <p class="text-xs font-medium" style="color: var(--sempa-text);">Theme</p>
-          <p class="mb-3 mt-1 text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
-            A full palette for the whole interface. Calm and refined — pick what feels right;
-            you can switch any time.
-          </p>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px;">
-            {#each theme.THEMES as t (t.id)}
-              {@const selected = theme.theme === t.id}
-              {@const previewDark = t.darkOnly || theme.dark}
-              <button onclick={() => chooseTheme(t.id, t.label)}
-                      aria-pressed={selected}
-                      title={t.label}
-                      class="text-left transition-all"
-                      style="border-radius:12px; padding:10px; cursor:pointer; background: var(--sempa-bg-panel);
-                             border:1px solid {selected ? 'var(--sempa-accent)' : 'var(--sempa-border)'};
-                             {selected ? 'box-shadow:0 0 0 3px var(--sempa-accent-bg);' : ''}">
-                <!-- Live mini-preview rendered in THIS theme's tokens (data-theme
-                     re-declares the --sempa-* vars for this subtree). -->
-                <div data-theme={t.id} class:dark={previewDark}
-                     style="display:flex; gap:6px; height:54px; padding:8px; border-radius:8px;
-                            background: var(--sempa-bg-main); border:1px solid var(--sempa-border);">
-                  <div style="width:18px; border-radius:4px; background: var(--sempa-bg-nav);
-                              display:flex; flex-direction:column; align-items:center; padding-top:7px; gap:5px;">
-                    <span style="width:8px;height:8px;border-radius:50%;background:var(--sempa-accent)"></span>
-                    <span style="width:9px;height:3px;border-radius:2px;background:var(--sempa-text-dim)"></span>
-                  </div>
-                  <div style="flex:1; display:flex; flex-direction:column; gap:5px;">
-                    {#each [0, 1] as _row}
-                      <div style="flex:1; display:flex; align-items:center; gap:4px; padding:0 5px;
-                                  border-radius:4px; background: var(--card-bg); border:1px solid var(--card-border);">
-                        <span style="width:6px;height:6px;border-radius:50%;background:var(--sempa-accent)"></span>
-                        <span style="flex:1;height:3px;border-radius:2px;background:var(--sempa-text-dim)"></span>
-                      </div>
-                    {/each}
-                  </div>
+    <!-- Theme gallery -->
+    <h3 class="set-heading">Theme</h3>
+    <section class="set-group">
+      <div class="set-block">
+        <p class="set-desc" style="margin-top: 0;">
+          A full palette for the whole interface. Calm and refined — pick what feels right;
+          you can switch any time.
+        </p>
+        <div class="mt-3.5" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px;">
+          {#each theme.THEMES as t (t.id)}
+            {@const selected = theme.theme === t.id}
+            {@const previewDark = t.darkOnly || theme.dark}
+            <button onclick={() => chooseTheme(t.id, t.label)}
+                    aria-pressed={selected}
+                    title={t.label}
+                    class="text-left transition-shadow"
+                    style="border-radius:18px; padding:6px 6px 10px; cursor:pointer; background: var(--sempa-bg-panel);
+                           box-shadow: {selected
+                             ? '0 0 0 2px var(--sempa-accent), 0 0 0 6px var(--sempa-accent-bg)'
+                             : 'inset 0 0 0 1px var(--sempa-border)'};">
+              <!-- Live mini-preview rendered in THIS theme's tokens (data-theme
+                   re-declares the --sempa-* vars for this subtree): the theme's
+                   canvas, a raised card on it, and its accent pill. -->
+              <div data-theme={t.id} class:dark={previewDark}
+                   style="display:flex; flex-direction:column; gap:8px; height:84px; padding:10px;
+                          border-radius:13px; background: var(--sempa-bg-main);">
+                <div style="display:flex; align-items:center; gap:7px; padding:8px 9px; border-radius:10px;
+                            background: var(--card-bg); box-shadow: var(--sempa-shadow-1);">
+                  <span style="width:10px; height:10px; flex-shrink:0; border-radius:50%; border:2px solid var(--sempa-accent);"></span>
+                  <span style="flex:1; height:4px; border-radius:2px; background: var(--sempa-text-soft); opacity:.75;"></span>
+                  <span style="width:20px; height:8px; flex-shrink:0; border-radius:999px; background: var(--sempa-fill);"></span>
                 </div>
-                <div class="mt-2 flex items-center justify-between gap-2">
-                  <div class="min-w-0">
-                    <p style="font-size:13px; font-weight:600; color: var(--sempa-text);">{t.label}</p>
-                    <p style="font-size:11px; color: var(--sempa-text-dim);">{t.sublabel}</p>
-                  </div>
-                  {#if selected}
-                    <span aria-hidden="true"
-                          style="display:flex; align-items:center; justify-content:center; width:18px; height:18px;
-                                 border-radius:50%; background: var(--sempa-accent); color: var(--sempa-btn-fg); flex-shrink:0;">
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                      </svg>
-                    </span>
-                  {/if}
+                <div style="display:flex; align-items:center; gap:7px; padding:0 2px;">
+                  <span style="display:inline-flex; align-items:center; justify-content:center; width:46px; height:18px;
+                               border-radius:999px; background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
+                    <span style="width:22px; height:3px; border-radius:2px; background: var(--sempa-btn-fg);"></span>
+                  </span>
+                  <span style="flex:1; height:6px; border-radius:999px; background: var(--sempa-track);"></span>
                 </div>
-              </button>
-            {/each}
-          </div>
-
-          {#if iconPromptTheme}
-            <div class="mt-3 flex items-center justify-between gap-3 rounded-xl p-3"
-                 style="background: var(--sempa-accent-bg); border:1px solid var(--sempa-border);">
-              <p class="text-[12px] leading-snug" style="color: var(--sempa-text);">
-                Match your app icon to <strong>{iconPromptTheme.label}</strong>?
-                <span style="color: var(--sempa-text-dim);">The home-screen icon will refresh.</span>
-              </p>
-              <div class="flex shrink-0 items-center gap-2">
-                <button onclick={() => (iconPromptTheme = null)}
-                        class="rounded-lg px-2.5 py-1.5 text-[12px] transition-opacity hover:opacity-70"
-                        style="color: var(--sempa-text-dim);">Not now</button>
-                <button onclick={confirmAppIcon}
-                        class="rounded-lg px-3 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90"
-                        style="background: var(--sempa-accent);">Update icon</button>
               </div>
+              <div class="mt-2 flex items-center justify-between gap-2 px-1.5">
+                <div class="min-w-0">
+                  <p style="font-size:13.5px; font-weight:700; color: var(--sempa-text);">{t.label}</p>
+                  <p style="font-size:12px; color: var(--sempa-text-dim);">{t.sublabel}</p>
+                </div>
+                {#if selected}
+                  <span aria-hidden="true"
+                        style="display:flex; align-items:center; justify-content:center; width:20px; height:20px;
+                               border-radius:50%; background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); flex-shrink:0;">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                  </span>
+                {/if}
+              </div>
+            </button>
+          {/each}
+        </div>
+
+        {#if iconPromptTheme}
+          <div class="mt-3.5 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-3 pl-4"
+               style="background: var(--sempa-accent-bg);">
+            <p class="text-[13px] leading-snug" style="color: var(--sempa-text);">
+              Match your app icon to <strong>{iconPromptTheme.label}</strong>?
+              <span style="color: var(--sempa-text-soft);">The home-screen icon will refresh.</span>
+            </p>
+            <div class="flex shrink-0 items-center gap-1.5">
+              <button onclick={() => (iconPromptTheme = null)}
+                      class="set-ghost set-btn-sm">Not now</button>
+              <button onclick={confirmAppIcon}
+                      class="btn-primary set-btn-sm">Update icon</button>
             </div>
-          {/if}
-        </div>
-
-        <!-- Text size -->
-        <div>
-          <p class="mb-3 text-xs font-medium" style="color: var(--sempa-text-soft);">Text size</p>
-          <div style="display:flex; align-items:center; gap:12px;">
-            <span style="font-size:12px; color:var(--sempa-text-dim)">A</span>
-            <input type="range" min="80" max="130" step="5"
-                   value={theme.textScale}
-                   oninput={(e) => theme.setScale(parseInt((e.target as HTMLInputElement).value, 10))}
-                   class="h-1.5 appearance-none rounded-full cursor-pointer"
-                   style="flex:1; background: var(--sempa-border); accent-color: var(--sempa-accent);" />
-            <span style="font-size:18px; font-weight:600; color:var(--sempa-text)">A</span>
-            <span style="font-family:monospace; font-size:12px; color:var(--sempa-text-dim); width:36px">{theme.textScale}%</span>
           </div>
-          <button onclick={() => theme.setScale(100)}
-                  class="mt-2" style="color: var(--sempa-text-dim); font-size:12px; background:none; border:none; cursor:pointer;">
-            Reset to default
-          </button>
-        </div>
-
-        <!-- Mode: System / Light / Dark. System follows the OS colour scheme live
-             (org.freedesktop.appearance on Linux). Disabled for dark-only OLED. -->
-        <div>
-          <p class="mb-3 text-xs font-medium" style="color: var(--sempa-text-soft);">Mode</p>
-          <div style="display:flex; border-radius:9999px; border:1px solid var(--sempa-border);
-                      padding:3px; gap:2px; width:fit-content;
-                      {theme.darkOnly ? 'opacity:0.5; pointer-events:none;' : ''}">
-            {#each [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']] as [val, label] (val)}
-              <button onclick={() => theme.setMode(val as 'system' | 'light' | 'dark')}
-                      disabled={theme.darkOnly} aria-disabled={theme.darkOnly}
-                      aria-pressed={theme.mode === val}
-                      class="transition-colors"
-                      style="border-radius:9999px; padding:6px 16px; font-size:13px; border:none; cursor:pointer;
-                             {theme.mode === val
-                               ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent); font-weight:600;'
-                               : 'background: transparent; color: var(--sempa-text-soft);'}">
-                {label}
-              </button>
-            {/each}
-          </div>
-          {#if theme.darkOnly}
-            <p class="mt-2 text-[11px]" style="color: var(--sempa-text-dim);">OLED Black is a dark-only theme.</p>
-          {/if}
-        </div>
-
-        <!-- Match system accent — opt-in, only when the platform exposes an accent
-             colour to the webview (Linux GNOME 47+/KDE; also Windows). -->
-        {#if theme.canMatchAccent}
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-          <span class="min-w-0">
-            <span class="text-xs font-medium" style="color: var(--sempa-text);">Match system accent</span>
-            <span class="mt-0.5 block text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
-              Use your desktop's accent colour instead of the theme's. Off keeps the Sempa accent.
-            </span>
-          </span>
-          {@render toggleSwitch(theme.matchAccent, () => theme.setMatchAccent(!theme.matchAccent), 'Match system accent')}
-        </div>
         {/if}
-
-        <!-- Use system UI font — swap the brand sans for the native UI font. -->
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-          <span class="min-w-0">
-            <span class="text-xs font-medium" style="color: var(--sempa-text);">Use system UI font</span>
-            <span class="mt-0.5 block text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
-              Render the interface in your device's font instead of Plus Jakarta Sans.
-            </span>
-          </span>
-          {@render toggleSwitch(theme.systemFont, () => theme.setUiFont(theme.systemFont ? 'brand' : 'system'), 'Use system UI font')}
-        </div>
-
-        <!-- Use system title bar — hand window decorations back to the WM (desktop). -->
-        {#if isTauri()}
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-          <span class="min-w-0">
-            <span class="text-xs font-medium" style="color: var(--sempa-text);">Use system title bar</span>
-            <span class="mt-0.5 block text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
-              Let your desktop draw the window frame instead of Sempa's. Off keeps the in-app title bar,
-              which mirrors your system's window-button layout.
-            </span>
-          </span>
-          {@render toggleSwitch(windowChrome.useSystemTitlebar, () => windowChrome.setUseSystemTitlebar(!windowChrome.useSystemTitlebar), 'Use system title bar')}
-        </div>
-        {/if}
-
-        <!-- Sidebar navigation grouping (desktop rail only) -->
-        {#if !mobile.value}
-        <div style="border-top: 1px solid var(--sempa-border); padding-top: 20px;">
-          <p class="text-xs font-medium" style="color: var(--sempa-text-soft);">Sidebar grouping</p>
-          <p class="mb-3 mt-1 text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
-            How the left navigation rail is organised.
-          </p>
-          <div style="display:inline-flex; flex-wrap:wrap; border-radius:9999px; border:1px solid var(--sempa-border); padding:3px; gap:2px;">
-            {#each [['spaces', 'Spaces'], ['rhythm', 'Plan · Focus · Review'], ['flat', 'Flat']] as [val, label]}
-              <button onclick={() => prefs.setNavGrouping(val as 'spaces' | 'rhythm' | 'flat')}
-                      class="transition-colors"
-                      style="border-radius:9999px; padding:6px 14px; font-size:12px; border:none; cursor:pointer;
-                             {prefs.navGrouping === val
-                               ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent); font-weight:600;'
-                               : 'background: transparent; color: var(--sempa-text-soft);'}">
-                {label}
-              </button>
-            {/each}
-          </div>
-
-          <p class="mb-3 mt-5 text-xs font-medium" style="color: var(--sempa-text-soft);">Section style</p>
-          <div style="display:inline-flex; border-radius:9999px; border:1px solid var(--sempa-border); padding:3px; gap:2px;
-                      {prefs.navGrouping === 'flat' ? 'opacity:0.5; pointer-events:none;' : ''}">
-            {#each [['labels', 'Labels'], ['dividers', 'Dividers']] as [val, label]}
-              <button onclick={() => prefs.setNavSections(val as 'labels' | 'dividers')}
-                      class="transition-colors"
-                      style="border-radius:9999px; padding:6px 16px; font-size:12px; border:none; cursor:pointer;
-                             {prefs.navSections === val
-                               ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent); font-weight:600;'
-                               : 'background: transparent; color: var(--sempa-text-soft);'}">
-                {label}
-              </button>
-            {/each}
-          </div>
-          {#if prefs.navGrouping === 'flat'}
-            <p class="mt-2 text-[11px]" style="color: var(--sempa-text-dim);">Section labels apply to grouped layouts.</p>
-          {/if}
-        </div>
-        {/if}
-
       </div>
     </section>
+
+    <!-- Display -->
+    <h3 class="set-heading">Display</h3>
+    <section class="set-group">
+      <!-- Text size -->
+      <div class="set-block">
+        <div class="flex items-center justify-between gap-3">
+          <p class="set-label">Text size</p>
+          <div class="flex items-center gap-1">
+            <span class="font-mono text-[12px]" style="color: var(--sempa-text-soft);">{theme.textScale}%</span>
+            <button onclick={() => theme.setScale(100)}
+                    class="set-ghost set-btn-sm">
+              Reset to default
+            </button>
+          </div>
+        </div>
+        <div class="mt-2" style="display:flex; align-items:center; gap:14px;">
+          <span style="font-size:12px; font-weight:600; color:var(--sempa-text-dim)">A</span>
+          <input type="range" min="80" max="130" step="5"
+                 value={theme.textScale}
+                 oninput={(e) => theme.setScale(parseInt((e.target as HTMLInputElement).value, 10))}
+                 aria-label="Text size"
+                 style="flex:1; accent-color: var(--sempa-accent);" />
+          <span style="font-size:19px; font-weight:700; color:var(--sempa-text)">A</span>
+        </div>
+      </div>
+
+      <!-- Mode: System / Light / Dark. System follows the OS colour scheme live
+           (org.freedesktop.appearance on Linux). Disabled for dark-only OLED. -->
+      <div class="set-row set-row-wrap">
+        <div class="set-row-main">
+          <p class="set-label">Mode</p>
+          {#if theme.darkOnly}
+            <p class="set-desc">OLED Black is a dark-only theme.</p>
+          {:else}
+            <p class="set-desc">System follows your device.</p>
+          {/if}
+        </div>
+        <div class="set-seg" style={theme.darkOnly ? 'opacity:0.5; pointer-events:none;' : ''}>
+          {#each [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']] as [val, label] (val)}
+            <button onclick={() => theme.setMode(val as 'system' | 'light' | 'dark')}
+                    disabled={theme.darkOnly} aria-disabled={theme.darkOnly}
+                    aria-pressed={theme.mode === val}
+                    data-active={theme.mode === val}>
+              {label}
+            </button>
+          {/each}
+        </div>
+      </div>
+
+      <!-- Match system accent — opt-in, only when the platform exposes an accent
+           colour to the webview (Linux GNOME 47+/KDE; also Windows). -->
+      {#if theme.canMatchAccent}
+      <div class="set-row">
+        <div class="set-row-main">
+          <p class="set-label">Match system accent</p>
+          <p class="set-desc">Use your desktop's accent colour instead of the theme's. Off keeps the Sempa accent.</p>
+        </div>
+        {@render toggleSwitch(theme.matchAccent, () => theme.setMatchAccent(!theme.matchAccent), 'Match system accent')}
+      </div>
+      {/if}
+
+      <!-- Use system UI font — swap the brand sans for the native UI font. -->
+      <div class="set-row">
+        <div class="set-row-main">
+          <p class="set-label">Use system UI font</p>
+          <p class="set-desc">Render the interface in your device's font instead of Plus Jakarta Sans.</p>
+        </div>
+        {@render toggleSwitch(theme.systemFont, () => theme.setUiFont(theme.systemFont ? 'brand' : 'system'), 'Use system UI font')}
+      </div>
+
+      <!-- Use system title bar — hand window decorations back to the WM (desktop). -->
+      {#if isTauri()}
+      <div class="set-row">
+        <div class="set-row-main">
+          <p class="set-label">Use system title bar</p>
+          <p class="set-desc">
+            Let your desktop draw the window frame instead of Sempa's. Off keeps the in-app title bar,
+            which mirrors your system's window-button layout.
+          </p>
+        </div>
+        {@render toggleSwitch(windowChrome.useSystemTitlebar, () => windowChrome.setUseSystemTitlebar(!windowChrome.useSystemTitlebar), 'Use system title bar')}
+      </div>
+      {/if}
+    </section>
+
+    <!-- Sidebar navigation grouping (desktop rail only) -->
+    {#if !mobile.value}
+    <h3 class="set-heading">Sidebar</h3>
+    <section class="set-group">
+      <div class="set-block">
+        <p class="set-label">Sidebar grouping</p>
+        <p class="set-desc">How the left navigation rail is organised.</p>
+        <div class="set-seg mt-3">
+          {#each [['spaces', 'Spaces'], ['rhythm', 'Plan · Focus · Review'], ['flat', 'Flat']] as [val, label]}
+            <button onclick={() => prefs.setNavGrouping(val as 'spaces' | 'rhythm' | 'flat')}
+                    aria-pressed={prefs.navGrouping === val}
+                    data-active={prefs.navGrouping === val}>
+              {label}
+            </button>
+          {/each}
+        </div>
+      </div>
+
+      <div class="set-block">
+        <p class="set-label">Section style</p>
+        {#if prefs.navGrouping === 'flat'}
+          <p class="set-desc">Section labels apply to grouped layouts.</p>
+        {:else}
+          <p class="set-desc">Name each group, or separate them with a line.</p>
+        {/if}
+        <div class="set-seg mt-3" style={prefs.navGrouping === 'flat' ? 'opacity:0.5; pointer-events:none;' : ''}>
+          {#each [['labels', 'Labels'], ['dividers', 'Dividers']] as [val, label]}
+            <button onclick={() => prefs.setNavSections(val as 'labels' | 'dividers')}
+                    aria-pressed={prefs.navSections === val}
+                    data-active={prefs.navSections === val}>
+              {label}
+            </button>
+          {/each}
+        </div>
+      </div>
+    </section>
+    {/if}
   </div>
 {/snippet}
 
@@ -1909,136 +1751,108 @@
        crowd Appearance (reflections, daily quote, celebration sound).
   ════════════════════════════════════════════════════════════════════════ -->
   <div id="settings-personal">
-    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-     text-transform:uppercase; color:var(--sempa-text-dim)">Personalization</p>
+    <section class="set-group">
 
-    <section class="overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-      <div class="px-5 py-5 space-y-6">
+      <!-- Contextual reflections toggle -->
+      <div class="set-row">
+        <div class="set-row-main">
+          <p class="set-label">Show reflections in context</p>
+          <p class="set-desc">
+            Surface your daily intention &amp; reflection on the day view, and the week-review
+            summary on the week view. Turn off to keep them only in the Journal.
+          </p>
+        </div>
+        <button onclick={prefs.toggleContextualReflections}
+                role="switch" aria-checked={prefs.contextualReflections}
+                aria-label="Show reflections in context"
+                class="set-switch" data-on={prefs.contextualReflections}></button>
+      </div>
 
-        <!-- Contextual reflections toggle -->
-        <div>
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0">
-              <p class="text-xs font-medium" style="color: var(--sempa-text-soft);">Show reflections in context</p>
-              <p class="mt-1 text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
-                Surface your daily intention &amp; reflection on the day view, and the week-review
-                summary on the week view. Turn off to keep them only in the Journal.
-              </p>
-            </div>
-            <button onclick={prefs.toggleContextualReflections}
-                    role="switch" aria-checked={prefs.contextualReflections}
-                    aria-label="Show reflections in context"
-                    class="relative shrink-0 rounded-full transition-colors"
-                    style="width:44px; height:24px; padding:0; border:none; appearance:none; -webkit-appearance:none; cursor:pointer;
-                           background: {prefs.contextualReflections ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
-              <span class="absolute rounded-full bg-white"
-                    style="top:4px; left:{prefs.contextualReflections ? '24px' : '4px'}; width:16px; height:16px;
-                           transition: left 150ms ease;"></span>
-            </button>
+      <!-- Daily encouragement (rotating quote) -->
+      <div>
+        <div class="set-row">
+          <div class="set-row-main">
+            <p class="set-label">Daily encouragement</p>
+            <p class="set-desc">
+              A quiet, rotating quote on the day view — subtle by design. Choose which packs to draw from,
+              add your own, or turn it off.
+            </p>
           </div>
+          <button onclick={() => quotes.setEnabled(!quotes.enabled)}
+                  role="switch" aria-checked={quotes.enabled} aria-label="Daily encouragement"
+                  class="set-switch" data-on={quotes.enabled}></button>
         </div>
 
-        <!-- Daily encouragement (rotating quote) -->
-        <div style="border-top: 1px solid var(--sempa-border); padding-top: 20px;">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0">
-              <p class="text-xs font-medium" style="color: var(--sempa-text-soft);">Daily encouragement</p>
-              <p class="mt-1 text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
-                A quiet, rotating quote on the day view — subtle by design. Choose which packs to draw from,
-                add your own, or turn it off.
-              </p>
-            </div>
-            <button onclick={() => quotes.setEnabled(!quotes.enabled)}
-                    role="switch" aria-checked={quotes.enabled} aria-label="Daily encouragement"
-                    class="relative shrink-0 rounded-full transition-colors"
-                    style="width:44px; height:24px; padding:0; border:none; appearance:none; -webkit-appearance:none; cursor:pointer;
-                           background: {quotes.enabled ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
-              <span class="absolute rounded-full bg-white"
-                    style="top:4px; left:{quotes.enabled ? '24px' : '4px'}; width:16px; height:16px; transition: left 150ms ease;"></span>
-            </button>
-          </div>
-
-          {#if quotes.enabled}
+        {#if quotes.enabled}
+          <div class="px-[18px] pb-4">
             <!-- Quote packs: toggle on/off and combine freely -->
-            <div class="mt-3 space-y-1">
-              <div class="flex items-center justify-between">
-                <p class="text-[11px] font-medium" style="color: var(--sempa-text-dim);">Packs</p>
-                <span class="text-[11px]" style="color: var(--sempa-text-dim);">{quotes.poolSize} quote{quotes.poolSize === 1 ? '' : 's'} in rotation</span>
-              </div>
+            <div class="mb-2 flex items-center justify-between px-0.5">
+              <p class="text-[12.5px] font-semibold" style="color: var(--sempa-text-soft);">Packs</p>
+              <span class="set-meta">{quotes.poolSize} quote{quotes.poolSize === 1 ? '' : 's'} in rotation</span>
+            </div>
+            <div class="set-fill-list">
               {#each quotes.packs as p (p.id)}
                 <button onclick={() => quotes.togglePack(p.id)}
                         aria-pressed={quotes.packEnabled(p.id)}
-                        class="flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left"
-                        style="background: var(--sempa-bg-main); border: 1px solid {quotes.packEnabled(p.id) ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
+                        class="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left">
                   <span class="min-w-0">
-                    <span class="block text-[11px] font-medium" style="color: var(--sempa-text-soft);">{p.name}
+                    <span class="block text-[13px] font-semibold" style="color: var(--sempa-text);">{p.name}
                       <span class="font-normal" style="color: var(--sempa-text-dim);">· {p.quotes.length}</span>
                     </span>
-                    <span class="mt-0.5 block text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">{p.description}</span>
+                    <span class="mt-0.5 block text-[12px] leading-relaxed" style="color: var(--sempa-text-soft);">{p.description}</span>
                   </span>
-                  <span class="relative shrink-0 rounded-full" role="switch" aria-checked={quotes.packEnabled(p.id)}
-                        style="width:38px; height:21px; background: {quotes.packEnabled(p.id) ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
-                    <span class="absolute rounded-full bg-white"
-                          style="top:3px; left:{quotes.packEnabled(p.id) ? '20px' : '3px'}; width:15px; height:15px; transition: left 150ms ease;"></span>
-                  </span>
+                  <span class="set-switch" role="switch" aria-checked={quotes.packEnabled(p.id)}
+                        data-on={quotes.packEnabled(p.id)}></span>
                 </button>
               {/each}
-              <button onclick={() => quotes.resetPacks()} class="mt-1 text-[11px] hover:underline" style="color: var(--sempa-text-dim);">
-                Reset packs to defaults
-              </button>
             </div>
+            <button onclick={() => quotes.resetPacks()} class="set-ghost set-btn-sm -ml-1 mt-1.5">
+              Reset packs to defaults
+            </button>
 
             <!-- Your own quotes -->
-            <div class="mt-4 space-y-1">
-              <p class="text-[11px] font-medium" style="color: var(--sempa-text-dim);">Your own quotes</p>
-              {#each quotes.custom as q, i (q.text + i)}
-                <div class="flex items-start gap-2 rounded-lg px-2 py-1.5" style="background: var(--sempa-bg-main);">
-                  <span class="min-w-0 flex-1 text-[11px] leading-relaxed" style="color: var(--sempa-text-soft);">
-                    “{q.text}”{#if q.author} <span style="color: var(--sempa-text-dim);">— {q.author}</span>{/if}
-                  </span>
-                  <button onclick={() => quotes.removeCustom(i)} aria-label="Remove quote"
-                          class="shrink-0" style="color: var(--sempa-text-dim);">
-                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18 18 6M6 6l12 12"/></svg>
-                  </button>
-                </div>
-              {/each}
-
-              <div class="flex flex-wrap items-center gap-2 pt-1.5">
-                <input bind:value={newQuoteText} placeholder="Quote"
-                       onkeydown={(e) => { if (e.key === 'Enter') addQuote(); }}
-                       class="min-w-0 flex-1 rounded-lg border px-2.5 py-1.5 text-xs outline-none"
-                       style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
-                <input bind:value={newQuoteAuthor} placeholder="Author (optional)"
-                       onkeydown={(e) => { if (e.key === 'Enter') addQuote(); }}
-                       class="w-32 rounded-lg border px-2.5 py-1.5 text-xs outline-none"
-                       style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
-                <button onclick={addQuote} disabled={!newQuoteText.trim()}
-                        class="rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-40"
-                        style="background: var(--sempa-accent); color: var(--sempa-btn-fg);">Add</button>
+            <p class="mb-2 mt-3 px-0.5 text-[12.5px] font-semibold" style="color: var(--sempa-text-soft);">Your own quotes</p>
+            {#if quotes.custom.length}
+              <div class="set-fill-list mb-2">
+                {#each quotes.custom as q, i (q.text + i)}
+                  <div class="flex items-start gap-2 py-2 pl-3.5 pr-1.5">
+                    <span class="min-w-0 flex-1 pt-1 text-[12.5px] leading-relaxed" style="color: var(--sempa-text);">
+                      “{q.text}”{#if q.author} <span style="color: var(--sempa-text-soft);">— {q.author}</span>{/if}
+                    </span>
+                    <button onclick={() => quotes.removeCustom(i)} aria-label="Remove quote"
+                            class="set-icon-btn danger">
+                      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                    </button>
+                  </div>
+                {/each}
               </div>
-            </div>
-          {/if}
-        </div>
+            {/if}
 
-        <!-- Celebration sound -->
-        <div style="border-top: 1px solid var(--sempa-border); padding-top: 20px;">
-          <div class="flex items-center justify-between gap-4">
-            <div class="min-w-0">
-              <p class="text-xs font-medium" style="color: var(--sempa-text-soft);">Celebration sound</p>
-              <p class="mt-1 text-[11px] leading-relaxed" style="color: var(--sempa-text-dim);">
-                A soft chime on the day &amp; week celebration moments. The visuals always play; this only adds sound.
-              </p>
+            <div class="flex flex-wrap items-center gap-2">
+              <input bind:value={newQuoteText} placeholder="Quote"
+                     onkeydown={(e) => { if (e.key === 'Enter') addQuote(); }}
+                     class="set-input min-w-0 flex-1 text-[13px]" />
+              <input bind:value={newQuoteAuthor} placeholder="Author (optional)"
+                     onkeydown={(e) => { if (e.key === 'Enter') addQuote(); }}
+                     class="set-input w-36 text-[13px]" />
+              <button onclick={addQuote} disabled={!newQuoteText.trim()}
+                      class="btn-primary set-btn">Add</button>
             </div>
-            <button onclick={prefs.toggleCelebrateSound}
-                    role="switch" aria-checked={prefs.celebrateSound} aria-label="Celebration sound"
-                    class="relative shrink-0 rounded-full transition-colors"
-                    style="width:44px; height:24px; padding:0; border:none; appearance:none; -webkit-appearance:none; cursor:pointer;
-                           background: {prefs.celebrateSound ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
-              <span class="absolute rounded-full bg-white"
-                    style="top:4px; left:{prefs.celebrateSound ? '24px' : '4px'}; width:16px; height:16px; transition: left 150ms ease;"></span>
-            </button>
           </div>
+        {/if}
+      </div>
+
+      <!-- Celebration sound -->
+      <div class="set-row">
+        <div class="set-row-main">
+          <p class="set-label">Celebration sound</p>
+          <p class="set-desc">
+            A soft chime on the day &amp; week celebration moments. The visuals always play; this only adds sound.
+          </p>
         </div>
+        <button onclick={prefs.toggleCelebrateSound}
+                role="switch" aria-checked={prefs.celebrateSound} aria-label="Celebration sound"
+                class="set-switch" data-on={prefs.celebrateSound}></button>
       </div>
     </section>
   </div>
@@ -2048,18 +1862,7 @@
   <!-- ═══════════════════════════════════════════════════════════════════════
        SECTION: About / Updates
   ════════════════════════════════════════════════════════════════════════ -->
-  <div id="settings-about" class="mt-8 scroll-mt-6">
-    <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-     text-transform:uppercase; color:var(--sempa-text-dim)">About</p>
+  <div id="settings-about" class="scroll-mt-6">
     <UpdatesPanel />
   </div>
 {/snippet}
-
-<style>
-  :root {
-    --sempa-cal-feed-bg: #e8f4ee;
-  }
-  :global(.dark) {
-    --sempa-cal-feed-bg: #1a2820;
-  }
-</style>

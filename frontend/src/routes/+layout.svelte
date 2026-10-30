@@ -71,6 +71,7 @@
     ChevronLeft, ChevronRight, Plus, RefreshCw, X, Check,
     Target, Timer, Palette, Menu, Layers, BookOpen, Search, Bell, LayoutGrid,
     SquareKanban, CalendarClock, ArrowUpCircle, Gauge, ListChecks, Sparkles, FolderKanban,
+    CalendarCheck, CalendarRange,
   } from 'lucide-svelte';
   import { createWidgetWindow } from '$lib/tauri/bridge';
 
@@ -524,40 +525,40 @@
   <!-- ── Sidebar (hidden on mobile) ───────────────────────────────────── -->
   {#if !mobile.value}
   {@const rail = mobile.rail}
-  <aside class="flex shrink-0 flex-col" class:w-48={!rail} class:w-14={rail}
-         style="background: var(--sempa-bg-nav); border-right: 1px solid var(--sempa-border);">
+  <aside class="flex shrink-0 flex-col" class:w-56={!rail} class:w-16={rail}
+         style="background: var(--sempa-bg-nav);">
 
     <!-- Logo (Cradle mark) — wordmark hides in the collapsed icon rail. -->
-    <div class="flex items-center gap-2 py-5" class:px-4={!rail} class:justify-center={rail} class:px-0={rail}
+    <div class="flex items-center gap-2.5 pb-5 pt-6" class:px-5={!rail} class:justify-center={rail} class:px-0={rail}
          style="color: var(--sempa-accent);">
-      <svg width="26" height="26" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+      <svg width="28" height="28" viewBox="0 0 100 100" fill="none" aria-hidden="true">
         <path d="M22,40 a28,28 0 0 0 56,0"
-          stroke="currentColor" stroke-width="9"
+          stroke="currentColor" stroke-width="10"
           stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="50" cy="35" r="7.5" fill="currentColor"/>
+        <circle cx="50" cy="35" r="8" fill="var(--sempa-amber)"/>
       </svg>
       {#if !rail}
-        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 500;
-                     font-size: 18px; letter-spacing: -0.02em; color: var(--sempa-text);">sempa</span>
+        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700;
+                     font-size: 20px; letter-spacing: -0.03em; color: var(--sempa-text);">sempa</span>
       {/if}
     </div>
 
     <!-- Nav -->
-    <nav aria-label="Primary" class="flex flex-1 flex-col gap-0.5 pb-3" class:px-3={!rail} class:px-2={rail}>
+    <nav aria-label="Primary" class="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pb-4" class:px-4={!rail} class:px-2.5={rail}>
 
       {#snippet navItem(href: string, label: string, Icon: any)}
         {@const active = isActive(href)}
         <a {href} title={rail ? label : undefined}
-           class="group flex items-center gap-2.5 rounded-lg py-2 text-[13.5px] tracking-[-0.01em] transition-colors"
+           class="group flex min-h-[40px] items-center gap-3 rounded-[14px] py-2 text-[14px] tracking-[-0.01em] transition-colors"
            class:px-3={!rail} class:justify-center={rail} class:px-0={rail}
            style={active
-             ? `background: var(--sempa-accent-bg); color: var(--sempa-accent); font-weight: 600;`
-             : `color: var(--sempa-text-soft);`}
-           onmouseenter={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.04)'; }}
+             ? `background: var(--sempa-accent-bg); color: var(--sempa-accent-ink); font-weight: 700;`
+             : `color: var(--sempa-text); font-weight: 500;`}
+           onmouseenter={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--sempa-text) 5%, transparent)'; }}
            onmouseleave={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = ''; }}>
           <span class="shrink-0 transition-colors"
-                style={active ? `color: var(--sempa-accent)` : ''}>
-            <Icon size={16} strokeWidth={active ? 2.25 : 1.75} />
+                style={active ? `color: var(--sempa-accent)` : 'color: var(--sempa-text-soft)'}>
+            <Icon size={18} strokeWidth={active ? 2.25 : 1.9} />
           </span>
           {#if !rail}{label}{/if}
         </a>
@@ -565,24 +566,24 @@
 
       {#snippet navLabel(text: string)}
         {#if !rail}
-          <div class="px-3 pb-1.5 pt-3.5 font-mono text-[10px] font-semibold uppercase tracking-[0.13em]"
-               style="color: var(--sempa-text-dim);">{text}</div>
+          <div class="px-3 pb-1.5 pt-4 text-[12px] font-semibold"
+               style="color: var(--sempa-text-soft);">{text}</div>
         {/if}
       {/snippet}
 
       <!-- Pinned Search pill (grouped schemes only — in Flat, Search is a row). -->
       {#if prefs.navGrouping !== 'flat'}
         <button onclick={() => goto('/search')} title={rail ? 'Search' : undefined}
-                class="mb-3 flex w-full items-center gap-2 rounded-lg py-2 text-[13px] transition-colors"
-                class:px-3={!rail} class:justify-center={rail} class:px-0={rail}
-                style="background: var(--card-bg); border: 1px solid var(--sempa-border); color: var(--sempa-text-dim);"
-                onmouseenter={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-text-dim)'}
-                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'}>
-          <Search size={15} strokeWidth={1.75} />
+                class="mb-4 flex h-[42px] w-full items-center gap-2.5 rounded-full text-[13.5px] transition-colors"
+                class:px-4={!rail} class:justify-center={rail} class:px-0={rail}
+                style="background: var(--card-bg); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-soft);"
+                onmouseenter={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text)'}
+                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text-soft)'}>
+          <Search size={16} strokeWidth={2} />
           {#if !rail}
             <span>Search</span>
-            <kbd class="ml-auto rounded border px-1.5 font-mono text-[10.5px]"
-                 style="border-color: var(--sempa-border);">{shortcutLabel('K')}</kbd>
+            <kbd class="ml-auto rounded-full px-2 py-0.5 font-mono text-[10.5px]"
+                 style="background: var(--sempa-fill); color: var(--sempa-text-soft);">{shortcutLabel('K')}</kbd>
           {/if}
         </button>
       {/if}
@@ -604,9 +605,9 @@
 
       <!-- Pomodoro in-progress -->
       {#if pomodoro.taskId}
-        <div class="mt-2 rounded-xl border px-3 py-2.5"
-             style="border-color: var(--sempa-accent-bg); background: var(--sempa-accent-bg); color: var(--sempa-accent);">
-          <p class="truncate text-[10.5px] font-semibold uppercase tracking-wider opacity-70">
+        <div class="mt-3 rounded-[18px] px-4 py-3"
+             style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
+          <p class="truncate text-[12px] font-semibold opacity-70">
             {pomodoro.phaseLabel}
           </p>
           <p class="font-mono text-xl font-bold">{pomodoro.display}</p>
@@ -616,40 +617,40 @@
       <!-- Rail footer: a compact utility icon row and a full-width account chip
            (avatar + email + Sign out). Sync status now lives in a floating
            bottom-right widget, so the footer stays short. -->
-      <div class="mt-auto flex flex-col gap-2 pt-3" style="border-top: 1px solid var(--sempa-border);">
+      <div class="mt-auto flex flex-col gap-2 pt-4">
         <!-- Utility icon row -->
         <div class="flex items-center" class:justify-between={!rail} class:flex-col={rail} class:gap-1.5={rail}>
           {#if updates.available}
             <button onclick={() => goto('/settings/accounts')} title="Update available — open About"
                     aria-label="Update available"
-                    class="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] transition-colors"
+                    class="flex h-[36px] w-[36px] items-center justify-center rounded-full transition-colors"
                     style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
               <ArrowUpCircle size={18} strokeWidth={1.9} />
             </button>
           {/if}
           <button onclick={() => goto('/settings/accounts')} title="Settings" aria-label="Settings"
-                  class="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] transition-colors"
-                  style={isActive('/settings') ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent);' : 'color: var(--sempa-text-dim);'}
+                  class="flex h-[36px] w-[36px] items-center justify-center rounded-full transition-colors"
+                  style={isActive('/settings') ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);' : 'color: var(--sempa-text-soft);'}
                   onmouseenter={(e) => { if (!isActive('/settings')) { const t = e.currentTarget as HTMLElement; t.style.background = 'var(--sempa-accent-bg)'; t.style.color = 'var(--sempa-text-soft)'; } }}
-                  onmouseleave={(e) => { if (!isActive('/settings')) { const t = e.currentTarget as HTMLElement; t.style.background = ''; t.style.color = 'var(--sempa-text-dim)'; } }}>
+                  onmouseleave={(e) => { if (!isActive('/settings')) { const t = e.currentTarget as HTMLElement; t.style.background = ''; t.style.color = 'var(--sempa-text-soft)'; } }}>
             <SlidersHorizontal size={18} strokeWidth={1.75} />
           </button>
 
           <button onclick={theme.toggle} title={theme.dark ? 'Light mode' : 'Dark mode'}
                   aria-label={theme.dark ? 'Switch to light mode' : 'Switch to dark mode'}
-                  class="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] transition-colors"
-                  style="color: var(--sempa-text-dim);"
+                  class="flex h-[36px] w-[36px] items-center justify-center rounded-full transition-colors"
+                  style="color: var(--sempa-text-soft);"
                   onmouseenter={(e) => { const t = e.currentTarget as HTMLElement; t.style.background = 'var(--sempa-accent-bg)'; t.style.color = 'var(--sempa-text-soft)'; }}
-                  onmouseleave={(e) => { const t = e.currentTarget as HTMLElement; t.style.background = ''; t.style.color = 'var(--sempa-text-dim)'; }}>
+                  onmouseleave={(e) => { const t = e.currentTarget as HTMLElement; t.style.background = ''; t.style.color = 'var(--sempa-text-soft)'; }}>
             {#if theme.dark}<Sun size={18} strokeWidth={1.75} />{:else}<Moon size={18} strokeWidth={1.75} />{/if}
           </button>
 
           {#if isTauri()}
             <button onclick={() => createWidgetWindow()} title="Open Widget" aria-label="Open the floating desktop widget"
-                    class="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] transition-colors"
-                    style="color: var(--sempa-text-dim);"
+                    class="flex h-[36px] w-[36px] items-center justify-center rounded-full transition-colors"
+                    style="color: var(--sempa-text-soft);"
                     onmouseenter={(e) => { const t = e.currentTarget as HTMLElement; t.style.background = 'var(--sempa-accent-bg)'; t.style.color = 'var(--sempa-text-soft)'; }}
-                    onmouseleave={(e) => { const t = e.currentTarget as HTMLElement; t.style.background = ''; t.style.color = 'var(--sempa-text-dim)'; }}>
+                    onmouseleave={(e) => { const t = e.currentTarget as HTMLElement; t.style.background = ''; t.style.color = 'var(--sempa-text-soft)'; }}>
               <LayoutGrid size={18} strokeWidth={1.75} />
             </button>
           {/if}
@@ -658,26 +659,27 @@
         <!-- Account chip — avatar + identity; the "Sign out" line is the affordance. -->
         <button onclick={signOut} title={accountEmail ? `${accountEmail} — sign out` : 'Sign out'}
                 aria-label="Sign out"
-                class="flex w-full items-center gap-2.5 rounded-[10px] px-2 py-1.5 text-left transition-colors"
-                class:justify-center={rail}
+                class="flex w-full items-center gap-3 rounded-[20px] text-left transition-colors"
+                class:justify-center={rail} class:p-2.5={!rail} class:p-1.5={rail}
+                style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);"
                 onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--sempa-accent-bg)'}
-                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = ''}>
+                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--sempa-bg-panel)'}>
           {#if accountPicture}
             <img src={accountPicture} alt="" referrerpolicy="no-referrer"
-                 class="h-7 w-7 shrink-0 rounded-full object-cover" style="border: 1px solid var(--sempa-border);" />
+                 class="h-9 w-9 shrink-0 rounded-full object-cover" />
           {:else}
-            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-                  style="background: var(--sempa-accent-bg); border: 1px solid var(--sempa-border);
-                         color: var(--sempa-accent); font-size: 11.5px; font-weight: 700;">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                  style="background: var(--sempa-accent-bg);
+                         color: var(--sempa-accent-ink); font-size: 13.5px; font-weight: 800;">
               {(accountEmail ?? '?').charAt(0).toUpperCase()}
             </span>
           {/if}
           {#if !rail}
             <span class="min-w-0 flex-1">
               {#if accountEmail}
-                <span class="block truncate text-[12px]" style="color: var(--sempa-text-soft);">{accountEmail}</span>
+                <span class="block truncate text-[12.5px] font-semibold" style="color: var(--sempa-text);">{accountEmail}</span>
               {/if}
-              <span class="block text-[11px]" style="color: var(--sempa-text-dim);">Sign out</span>
+              <span class="block text-[11.5px]" style="color: var(--sempa-text-soft);">Sign out</span>
             </span>
           {/if}
         </button>
@@ -688,7 +690,7 @@
 
   <!-- ── Main content ───────────────────────────────────────────────────── -->
   <div class="flex-1 overflow-auto" style="background: var(--sempa-bg-main);
-       {mobile.value ? 'padding-bottom: 88px;' : ''}">
+       {mobile.value ? 'padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px));' : ''}">
     {#if hasBanners}
       <!-- Shared spacing for the reminder/routine banners: one top offset (to
            clear the custom titlebar) and a tight gap between them, instead of
@@ -712,9 +714,13 @@
 
 <!-- ── Mobile bottom tab bar ────────────────────────────────────────────── -->
 {#if mobile.value}
-  <nav style="position: fixed; bottom: 0; left: 0; right: 0; height: 72px; z-index: 40;
-              background: var(--sempa-bg-nav); border-top: 1px solid var(--sempa-border);
-              display: flex; align-items: center; padding-bottom: env(safe-area-inset-bottom);">
+  <!-- Floating tab bar (1.27): an inset rounded surface that clears Android's
+       gesture handle via the safe-area inset, with a pill behind the active icon. -->
+  <nav aria-label="Tabs"
+       style="position: fixed; left: 12px; right: 12px; z-index: 40;
+              bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); height: 68px;
+              background: var(--sempa-bg-panel); border-radius: 26px; box-shadow: var(--sempa-shadow-2);
+              display: flex; align-items: center; padding: 0 6px;">
     {#each tabs as tab}
       {@const active = tab.prefix === '__more' ? moreSheetOpen : isActive(tab.prefix)}
       <button
@@ -722,24 +728,31 @@
           if (tab.prefix === '__more') { moreSheetOpen = true; }
           else { goto(tab.href); moreSheetOpen = false; }
         }}
-        style="display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1;
+        aria-current={active && tab.prefix !== '__more' ? 'page' : undefined}
+        style="display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1;
+               min-height: 56px; justify-content: center;
                background: none; border: none; cursor: pointer;
-               color: {active ? 'var(--sempa-accent)' : 'var(--sempa-text-dim)'};">
-        {#if tab.icon === 'today'}
-          <CalendarDays size={22} strokeWidth={active ? 2.25 : 1.75} />
-        {:else if tab.icon === 'week'}
-          <CalendarDays size={22} strokeWidth={active ? 2.25 : 1.75} />
-        {:else if tab.icon === 'inbox'}
-          <Mail size={22} strokeWidth={active ? 2.25 : 1.75} />
-        {:else if tab.icon === 'journal'}
-          <BookOpen size={22} strokeWidth={active ? 2.25 : 1.75} />
-        {:else if tab.icon === 'lists'}
-          <ListChecks size={22} strokeWidth={active ? 2.25 : 1.75} />
-        {:else}
-          <Menu size={22} strokeWidth={active ? 2.25 : 1.75} />
-        {/if}
+               color: {active ? 'var(--sempa-accent-ink)' : 'var(--sempa-text-soft)'};">
+        <span style="display: inline-flex; align-items: center; justify-content: center;
+                     width: 52px; height: 30px; border-radius: 999px;
+                     background: {active ? 'var(--sempa-accent-bg)' : 'transparent'};
+                     transition: background-color 160ms ease;">
+          {#if tab.icon === 'today'}
+            <CalendarCheck size={21} strokeWidth={active ? 2.3 : 1.9} />
+          {:else if tab.icon === 'week'}
+            <CalendarRange size={21} strokeWidth={active ? 2.3 : 1.9} />
+          {:else if tab.icon === 'inbox'}
+            <Mail size={21} strokeWidth={active ? 2.3 : 1.9} />
+          {:else if tab.icon === 'journal'}
+            <BookOpen size={21} strokeWidth={active ? 2.3 : 1.9} />
+          {:else if tab.icon === 'lists'}
+            <ListChecks size={21} strokeWidth={active ? 2.3 : 1.9} />
+          {:else}
+            <Menu size={21} strokeWidth={active ? 2.3 : 1.9} />
+          {/if}
+        </span>
         <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px;
-                     font-weight: {active ? '600' : '400'};">{tab.label}</span>
+                     font-weight: {active ? '700' : '600'};">{tab.label}</span>
       </button>
     {/each}
   </nav>
@@ -749,11 +762,11 @@
     <button
       onclick={() => { hapticTick(); goto(`/day/${todayDate}?new=1`); }}
       aria-label="New task"
-      style="position: fixed; bottom: calc(72px + env(safe-area-inset-bottom, 0px) + 12px); right: 20px; width: 52px; height: 52px;
-             border-radius: 16px; background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);
+      style="position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 10px + 68px + 14px); right: 20px; width: 58px; height: 58px;
+             border-radius: 999px; background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);
              display: flex; align-items: center; justify-content: center; z-index: 30;
-             box-shadow: 0 4px 16px rgba(0,0,0,0.25); border: none; cursor: pointer;">
-      <Plus size={22} strokeWidth={2.5} />
+             box-shadow: var(--sempa-shadow-accent), 0 2px 6px rgba(0,0,0,.12); border: none; cursor: pointer;">
+      <Plus size={26} strokeWidth={2.4} />
     </button>
   {/if}
 
@@ -764,9 +777,9 @@
       {#snippet sheetTile(href: string, label: string, Icon: any)}
         {@const active = isActive(href)}
         <a {href} onclick={() => moreSheetOpen = false}
-           class="flex items-center gap-2.5 rounded-xl px-3 transition-colors"
-           style="min-height: 48px; background: var(--sempa-bg-nav);
-                  {active ? 'color: var(--sempa-accent); font-weight: 600;' : 'color: var(--sempa-text-soft);'}">
+           class="flex items-center gap-3 rounded-[16px] px-3.5 transition-colors"
+           style="min-height: 50px;
+                  {active ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent-ink); font-weight: 700;' : 'background: var(--sempa-fill); color: var(--sempa-text); font-weight: 500;'}">
           <Icon size={18} strokeWidth={active ? 2.25 : 1.75} />
           <span style="font-size: 14px;">{label}</span>
         </a>
@@ -776,31 +789,31 @@
       <div class="flex gap-2">
         <button onclick={() => { goto('/settings/accounts'); moreSheetOpen = false; }}
                 aria-label="Settings"
-                class="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-xl py-3 transition-opacity active:opacity-80"
-                style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
+                class="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-[20px] py-3.5 transition-opacity active:opacity-80"
+                style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
           <SlidersHorizontal size={20} strokeWidth={1.9} />
           <span style="font-size: 12.5px; font-weight: 600;">Settings</span>
         </button>
         <button onclick={() => theme.toggle()}
                 aria-label={theme.dark ? 'Switch to light mode' : 'Switch to dark mode'}
-                class="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-xl py-3 transition-opacity active:opacity-80"
-                style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
+                class="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-[20px] py-3.5 transition-opacity active:opacity-80"
+                style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
           {#if theme.dark}<Sun size={20} strokeWidth={1.9} />{:else}<Moon size={20} strokeWidth={1.9} />{/if}
           <span style="font-size: 12.5px; font-weight: 600;">{theme.dark ? 'Light mode' : 'Dark mode'}</span>
         </button>
         {#if prefs.aiOn('aiImport') && prefs.importEntryOn('button') && aiStatus.reachable}
           <button onclick={() => { importModal.show(); moreSheetOpen = false; }}
                   aria-label="Import with AI"
-                  class="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-xl py-3 transition-opacity active:opacity-80"
-                  style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
+                  class="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-[20px] py-3.5 transition-opacity active:opacity-80"
+                  style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
             <Sparkles size={20} strokeWidth={1.9} />
             <span style="font-size: 12.5px; font-weight: 600;">AI Import</span>
           </button>
         {/if}
         {#if isTauri()}
           <button onclick={() => createWidgetWindow()} aria-label="Open widget"
-                  class="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-xl py-3 transition-opacity active:opacity-80"
-                  style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
+                  class="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-[20px] py-3.5 transition-opacity active:opacity-80"
+                  style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
             <LayoutGrid size={20} strokeWidth={1.9} />
             <span style="font-size: 12.5px; font-weight: 600;">Widget</span>
           </button>
@@ -808,7 +821,7 @@
       </div>
 
       <!-- Plan -->
-      <p class="mb-2 mt-4 px-1 text-[10.5px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Plan</p>
+      <p class="mb-2 mt-5 px-1 text-[13px] font-bold" style="color: var(--sempa-text-soft);">Plan</p>
       <div class="grid grid-cols-2 gap-2">
         {@render sheetTile(`/plan/${todayDate}`, 'Plan Day', ClipboardCheck)}
         {@render sheetTile('/schedule', 'Schedule', CalendarClock)}
@@ -818,7 +831,7 @@
       </div>
 
       <!-- Inbox -->
-      <p class="mb-2 mt-4 px-1 text-[10.5px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Inbox</p>
+      <p class="mb-2 mt-5 px-1 text-[13px] font-bold" style="color: var(--sempa-text-soft);">Inbox</p>
       <div class="grid grid-cols-2 gap-2">
         {@render sheetTile('/email', 'Email', Mail)}
         {@render sheetTile('/reminders', 'Reminders', Bell)}
@@ -828,9 +841,9 @@
 
       <!-- Pomodoro (if running) -->
       {#if pomodoro.taskId}
-        <div class="mt-4 rounded-xl px-4 py-3"
-             style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
-          <p class="text-[10.5px] font-semibold uppercase tracking-wider opacity-70">{pomodoro.phaseLabel}</p>
+        <div class="mt-4 rounded-[20px] px-4 py-3"
+             style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
+          <p class="text-[12px] font-semibold opacity-70">{pomodoro.phaseLabel}</p>
           <p class="font-mono text-xl font-bold">{pomodoro.display}</p>
         </div>
       {/if}
@@ -839,14 +852,14 @@
       <div class="mt-3 px-1"><SyncIndicator /></div>
 
       <!-- Account -->
-      <div class="mt-3 flex items-center gap-3 rounded-xl px-3 py-3" style="border: 1px solid var(--sempa-border);">
+      <div class="mt-3 flex items-center gap-3 rounded-[20px] px-3 py-3" style="background: var(--sempa-fill);">
         {#if accountPicture}
           <img src={accountPicture} alt="" referrerpolicy="no-referrer"
-               class="h-8 w-8 shrink-0 rounded-full object-cover" style="border: 1px solid var(--sempa-border);" />
+               class="h-9 w-9 shrink-0 rounded-full object-cover" />
         {:else}
-          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-                style="background: var(--sempa-accent-bg); border: 1px solid var(--sempa-border);
-                       color: var(--sempa-accent); font-size: 12px; font-weight: 700;">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                style="background: var(--sempa-accent-bg);
+                       color: var(--sempa-accent-ink); font-size: 13px; font-weight: 800;">
             {(accountEmail ?? '?').charAt(0).toUpperCase()}
           </span>
         {/if}
@@ -856,8 +869,8 @@
           {/if}
         </div>
         <button onclick={signOut}
-                class="shrink-0 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-opacity active:opacity-80"
-                style="color: var(--sempa-accent); background: var(--sempa-accent-bg);">
+                class="shrink-0 rounded-full px-4 py-2 text-[13px] font-bold transition-opacity active:opacity-80"
+                style="color: var(--sempa-accent-ink); background: var(--sempa-accent-bg);">
           Sign out
         </button>
       </div>

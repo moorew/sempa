@@ -36,6 +36,6 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:text="✓  Review PR"
-        android:textColor="#B0A498"
+        android:textColor="#8A7B6E"
         android:textSize="13sp" />
 </LinearLayout>

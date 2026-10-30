@@ -40,15 +40,15 @@
 
 <a href={url} target="_blank" rel="noopener noreferrer"
    onclick={(e) => e.stopPropagation()}
-   class="block overflow-hidden rounded-xl no-underline"
-   style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main);">
+   class="block overflow-hidden rounded-[18px] no-underline"
+   style="background: var(--sempa-fill);">
   {#await unfurlCached(url)}
     <!-- Skeleton while fetching -->
     <div class="flex items-center gap-2.5 px-3 py-3">
-      <div class="h-9 w-9 shrink-0 rounded-lg" style="background: var(--sempa-border); opacity:.5;"></div>
+      <div class="h-9 w-9 shrink-0 rounded-lg" style="background: var(--sempa-track); opacity:.7;"></div>
       <div class="flex-1 space-y-1.5">
-        <div class="h-2.5 w-1/2 rounded" style="background: var(--sempa-border); opacity:.5;"></div>
-        <div class="h-2.5 w-3/4 rounded" style="background: var(--sempa-border); opacity:.35;"></div>
+        <div class="h-2.5 w-1/2 rounded" style="background: var(--sempa-track); opacity:.7;"></div>
+        <div class="h-2.5 w-3/4 rounded" style="background: var(--sempa-track); opacity:.5;"></div>
       </div>
     </div>
   {:then data}
@@ -64,7 +64,7 @@
         <!-- No usable hero image → favicon / monogram tile so the card still
              reads as a designed link card rather than bare text. -->
         <div class="flex h-11 w-11 shrink-0 items-center justify-center self-center overflow-hidden rounded-lg"
-             style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);">
+             style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
           {#if data.favicon_url && !favFailed}
             <img src={api.unfurlImageUrl(data.favicon_url)} alt="" class="h-5 w-5"
                  onerror={() => (favFailed = true)} />
@@ -94,7 +94,7 @@
          visible and tappable. -->
     <div class="flex items-center gap-2 px-3 py-2.5">
       <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold"
-            style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border); color: var(--sempa-accent);">{monogram}</span>
+            style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-accent);">{monogram}</span>
       <span class="truncate text-[13px]" style="color: var(--sempa-accent);">{fallbackLabel}</span>
     </div>
   {/await}

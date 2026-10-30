@@ -6,6 +6,61 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.27.0] - 2026-10-30
+
+### Changed
+- **A visual refresh across every platform.** Same terracotta, same six themes,
+  softer shapes. Web, Windows, Linux, Android and the Sempa Dock all move to a
+  "cards on paper" look:
+  - Cards and panels lift off a warm canvas with soft shadows instead of thin
+    borders; dark themes lift surfaces with lightness, and OLED uses a hair of
+    grey plus a faint edge (shadows vanish on true black).
+  - Buttons, chips, search fields and filters are pills. The primary action
+    carries a soft accent glow.
+  - Colour moves from thin lines into soft blocks: timeline blocks take a tint
+    of their first tag's colour, the task in progress is the one solid accent
+    block, and the amber "now" line runs across the schedule.
+  - Round check rings, an accent ring around the task in progress, and a
+    time-used ring on phone cards.
+  - Section labels switch from tracked ALL CAPS to sentence case, and type is a
+    notch larger and bolder at the top.
+- **Today (desktop)** gets a greeting header with round week navigation, summary
+  tiles (done today with a progress ring, this week, time logged) beside your
+  intention, and the schedule moves into a floating card with a segmented
+  Schedule / Inbox / Goals control.
+- **Today (Android)** gets a capsule date strip, a search and tag-filter row, a
+  progress summary card and a floating rounded tab bar. Task details and the
+  editor use raised sections, filled inputs and tinted tag chips; Save and
+  Cancel stay at the top of the sheet.
+- **Week, planning and shutdown**: objectives are raised cards with round checks
+  and a week-progress ring; the planning and shutdown rituals use a pill stepper
+  and calm centred cards; the review has stat tiles and a "focus for next week"
+  card. **Journal** entries, **Insights** stat tiles and the **Focus** timer (a
+  large progress ring with pill controls) follow suit.
+- **Projects** become colour tiles with progress; project pages get a tinted
+  header. **Lists**, **Backlog**, **Search**, **Reminders**, **Email** and
+  **Jira** move to raised list surfaces with pill search and filters. Banners,
+  the command palette, dialogs, menus and toasts are rounded raised surfaces.
+- **Settings** are grouped raised sections with one consistent pill switch, and
+  the Appearance theme picker previews each theme's own canvas, card and accent.
+  **Sign-in and first-run setup** sit in a centred card.
+- **Sempa Dock and cockpit**: the list is a raised card, the current task sits
+  in a soft amber block on the day thread, keys and buttons are rounded, and
+  timeline blocks tint by tag. The **desktop widget**, Pomodoro, sticky note,
+  quick add and reminder popup match (the reminder popup now follows your theme).
+- **Android home-screen widgets** get rounder cards, pill buttons and the new
+  colours.
+- Tag chips in detail and edit views are soft tints of each tag's own colour, so
+  custom colours read well in every theme. Cards still show tags as dots.
+- Titles render at the brand font's true extra-bold weight (the bundled variable
+  font supported it; the app never asked for it).
+
+### Accessibility
+- Secondary ("dim") text now clears 3.5:1 contrast in every theme (it didn't
+  before), and accent-coloured text uses a dedicated darker/lighter shade that
+  holds AA on tinted backgrounds. Filled buttons with light text use a fill
+  that holds AA in dark themes too.
+
 ## [1.26.0] - 2026-10-30
 
 ### Added

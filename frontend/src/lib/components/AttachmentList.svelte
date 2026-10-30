@@ -113,8 +113,8 @@
 
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div role="button" tabindex="0"
-       class="rounded-lg border border-dashed px-3 py-3 transition-colors
-              {dragOver ? 'border-blue-400 bg-blue-50/60 dark:bg-blue-950/30' : 'border-gray-200 dark:border-gray-700'}"
+       class="rounded-[18px] border-2 border-dashed px-3 py-3 transition-colors
+              {dragOver ? 'border-blue-400 bg-[var(--sempa-accent-bg)]' : 'border-[var(--sempa-track)]'}"
        ondragover={(e) => { e.preventDefault(); dragOver = true; }}
        ondragleave={() => dragOver = false}
        ondrop={onDrop}>
@@ -129,14 +129,14 @@
     {:else}
       <div class="flex flex-col gap-2">
         {#each items as att (att.id)}
-          <div class="group flex items-center gap-3 rounded-lg bg-gray-50 px-2.5 py-2 dark:bg-gray-800/60">
+          <div class="group flex items-center gap-3 rounded-[16px] bg-[var(--sempa-fill)] px-2.5 py-2">
             {#if isImage(att.mime_type)}
               <a href={api.attachments.downloadUrl(att.id)} target="_blank" rel="noopener" class="shrink-0">
                 <img src={api.attachments.downloadUrl(att.id)} alt={att.filename}
-                     class="h-10 w-10 rounded-md object-cover" loading="lazy" />
+                     class="h-10 w-10 rounded-[12px] object-cover" loading="lazy" />
               </a>
             {:else}
-              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white text-lg dark:bg-gray-700">
+              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[var(--sempa-bg-panel)] text-lg">
                 {fileIcon(att.mime_type)}
               </span>
             {/if}
@@ -157,11 +157,11 @@
         {/each}
 
         {#if uploadPct !== null}
-          <div class="rounded-lg bg-gray-50 px-2.5 py-2 dark:bg-gray-800/60">
+          <div class="rounded-[16px] bg-[var(--sempa-fill)] px-2.5 py-2">
             <p class="mb-1 truncate text-[11px] text-gray-500 dark:text-gray-400">
               Uploading {uploadingName}… {uploadPct}%
             </p>
-            <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+            <div class="h-1.5 w-full overflow-hidden rounded-full bg-[var(--sempa-track)]">
               <div class="h-full rounded-full bg-blue-500 transition-all" style="width: {uploadPct}%"></div>
             </div>
           </div>

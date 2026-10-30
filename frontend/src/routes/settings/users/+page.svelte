@@ -71,84 +71,101 @@
 
 <svelte:head><title>Users — Sempa</title></svelte:head>
 
-<div class="mx-auto flex h-full max-w-xl flex-col" style="padding-top: env(safe-area-inset-top, 0px);">
-  <div class="flex items-center gap-3 px-5 py-4" style="border-bottom: 1px solid var(--sempa-border);">
-    <a href="/settings/accounts" class="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm transition-colors" style="color: var(--sempa-accent);">
-      <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M19 12H5m7-7-7 7 7 7"/></svg>
+<div class="mx-auto flex h-full max-w-[640px] flex-col" style="padding-top: env(safe-area-inset-top, 0px);">
+  <div class="px-5 pt-6 pb-2 sm:px-8 sm:pt-8">
+    <a href="/settings/accounts" class="set-back">
+      <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m15 18-6-6 6-6"/></svg>
       Settings
     </a>
-    <h1 class="flex items-center gap-2 text-base font-semibold" style="color: var(--sempa-text);"><Users size={18} /> Users</h1>
+    <h1 class="set-title type-page flex items-center gap-2.5"><Users size={24} strokeWidth={2.2} /> Users</h1>
   </div>
 
-  <div class="flex-1 overflow-y-auto px-5 py-6 pb-20">
+  <div class="flex-1 overflow-y-auto px-5 pt-4 pb-20 sm:px-8">
     {#if flash}
-      <div class="mb-4 rounded-lg px-3 py-2 text-sm" style="background: var(--sempa-bg-panel); border: 1px solid {flash.ok ? 'var(--sempa-success)' : '#c0392b'}; color: {flash.ok ? 'var(--sempa-success)' : '#c0392b'};">{flash.text}</div>
+      <div class="mb-4 rounded-2xl px-4 py-3 text-[13px] font-semibold"
+           style="background: {flash.ok ? 'var(--sempa-success-bg)' : 'color-mix(in srgb, var(--set-danger) 10%, var(--sempa-bg-panel))'};
+                  color: {flash.ok ? 'var(--sempa-success)' : 'var(--set-danger)'};">{flash.text}</div>
     {/if}
 
     {#if loading}
       <p class="text-sm" style="color: var(--sempa-text-dim);">Loading…</p>
     {:else}
       {#if me?.is_admin}
-        <p class="mb-3 text-[10.5px] font-bold uppercase tracking-wider" style="color: var(--sempa-text-dim);">People</p>
-        <div class="mb-4 overflow-hidden rounded-xl" style="border: 1px solid var(--sempa-border);">
-          {#each users as u, i}
-            <div class="flex items-center gap-3 px-4 py-3" style="background: var(--sempa-bg-panel); {i > 0 ? 'border-top: 1px solid var(--sempa-border);' : ''}">
-              <div class="min-w-0 flex-1">
-                <p class="flex items-center gap-1.5 truncate text-sm font-medium" style="color: var(--sempa-text);">
+        <h2 class="set-heading">People</h2>
+        <div class="set-group">
+          {#each users as u}
+            <div class="set-row set-row-compact">
+              <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold"
+                   style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
+                {(u.name || u.email).charAt(0).toUpperCase()}
+              </div>
+              <div class="set-row-main">
+                <p class="set-label flex items-center gap-1.5 truncate">
                   {u.name || u.email}
-                  {#if u.is_admin}<Shield size={12} style="color: var(--sempa-accent);" />{/if}
+                  {#if u.is_admin}<Shield size={13} style="color: var(--sempa-accent);" />{/if}
                 </p>
-                <p class="truncate text-xs" style="color: var(--sempa-text-dim);">{u.email}{u.has_password ? '' : ' · Google'}</p>
+                <p class="set-desc truncate">{u.email}{u.has_password ? '' : ' · Google'}</p>
               </div>
               {#if u.has_password}
-                <button onclick={() => resetPassword(u)} aria-label="Reset password" class="rounded p-1.5 transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);"><KeyRound size={15} /></button>
+                <button onclick={() => resetPassword(u)} aria-label="Reset password" class="set-icon-btn"><KeyRound size={15} /></button>
               {/if}
               {#if u.id !== me?.user_id}
-                <button onclick={() => removeUser(u)} aria-label="Delete user" class="rounded p-1.5 transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);"><Trash2 size={15} /></button>
+                <button onclick={() => removeUser(u)} aria-label="Delete user" class="set-icon-btn danger"><Trash2 size={15} /></button>
               {/if}
             </div>
           {/each}
         </div>
 
-        <p class="mb-2 text-[10.5px] font-bold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Invite a person</p>
-        <div class="mb-8 flex flex-col gap-2 rounded-xl px-4 py-4" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
-          <p class="text-xs" style="color: var(--sempa-text-dim);">
-            They sign in with their Google account — no password is stored. Just enter
-            their email and tell them to open Sempa and choose “Sign in with Google”.
-          </p>
-          <input bind:value={nEmail} type="email" placeholder="Google email" autocomplete="off"
-            class="rounded-lg px-3 py-2 text-sm outline-none" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
-          <input bind:value={nName} placeholder="Name (optional)"
-            class="rounded-lg px-3 py-2 text-sm outline-none" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
-          <label class="flex items-center gap-2 text-sm" style="color: var(--sempa-text-soft);">
-            <input type="checkbox" bind:checked={nAdmin} /> Administrator
+        <h2 class="set-heading">Invite a person</h2>
+        <div class="set-group">
+          <div class="set-block flex flex-col gap-2.5">
+            <p class="set-desc" style="margin-top: 0;">
+              They sign in with their Google account — no password is stored. Just enter
+              their email and tell them to open Sempa and choose “Sign in with Google”.
+            </p>
+            <input bind:value={nEmail} type="email" placeholder="Google email" autocomplete="off" aria-label="Email"
+              class="set-input" />
+            <input bind:value={nName} placeholder="Name (optional)" aria-label="Name"
+              class="set-input" />
+          </div>
+          <label class="set-row set-row-compact cursor-pointer">
+            <span class="set-row-main set-label">Administrator</span>
+            <input type="checkbox" bind:checked={nAdmin} class="set-switch-input" />
+            <span class="set-switch" aria-hidden="true"></span>
           </label>
-
-          <label class="mt-1 flex items-center gap-2 text-xs" style="color: var(--sempa-text-dim);">
-            <input type="checkbox" bind:checked={nUsePassword} /> Set a password instead (no Google account)
+          <label class="set-row set-row-compact cursor-pointer">
+            <span class="set-row-main">
+              <span class="set-label block">Set a password instead</span>
+              <span class="set-desc block">For someone without a Google account.</span>
+            </span>
+            <input type="checkbox" bind:checked={nUsePassword} class="set-switch-input" />
+            <span class="set-switch" aria-hidden="true"></span>
           </label>
-          {#if nUsePassword}
-            <input bind:value={nPass} type="password" placeholder="Password (min 8)" autocomplete="new-password"
-              class="rounded-lg px-3 py-2 text-sm outline-none" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
-          {/if}
-
-          <button onclick={addUser} disabled={adding || !canAdd}
-            class="mt-1 rounded-lg py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40" style="background: var(--sempa-accent);">
-            {adding ? 'Adding…' : (nUsePassword ? 'Create account' : 'Invite via Google')}
-          </button>
+          <div class="set-block flex flex-col gap-2.5">
+            {#if nUsePassword}
+              <input bind:value={nPass} type="password" placeholder="Password (min 8)" autocomplete="new-password" aria-label="Password"
+                class="set-input" />
+            {/if}
+            <button onclick={addUser} disabled={adding || !canAdd}
+              class="btn-primary set-btn h-10 w-full">
+              {adding ? 'Adding…' : (nUsePassword ? 'Create account' : 'Invite via Google')}
+            </button>
+          </div>
         </div>
       {/if}
 
-      <p class="mb-2 text-[10.5px] font-bold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Change my password</p>
-      <div class="flex flex-col gap-2 rounded-xl px-4 py-4" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
-        <input bind:value={curPass} type="password" placeholder="Current password" autocomplete="current-password"
-          class="rounded-lg px-3 py-2 text-sm outline-none" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
-        <input bind:value={newPass} type="password" placeholder="New password (min 8)" autocomplete="new-password"
-          class="rounded-lg px-3 py-2 text-sm outline-none" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
-        <button onclick={changeMyPassword} disabled={changing || newPass.length < 8}
-          class="mt-1 rounded-lg py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40" style="background: var(--sempa-accent);">
-          {changing ? 'Saving…' : 'Change password'}
-        </button>
+      <h2 class="set-heading">Change my password</h2>
+      <div class="set-group">
+        <div class="set-block flex flex-col gap-2.5">
+          <input bind:value={curPass} type="password" placeholder="Current password" autocomplete="current-password" aria-label="Current password"
+            class="set-input" />
+          <input bind:value={newPass} type="password" placeholder="New password (min 8)" autocomplete="new-password" aria-label="New password"
+            class="set-input" />
+          <button onclick={changeMyPassword} disabled={changing || newPass.length < 8}
+            class="btn-primary set-btn mt-1 h-10 w-full">
+            {changing ? 'Saving…' : 'Change password'}
+          </button>
+        </div>
       </div>
     {/if}
   </div>

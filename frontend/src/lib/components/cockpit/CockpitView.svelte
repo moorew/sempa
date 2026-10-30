@@ -13,6 +13,7 @@
   import { cockpit } from '$lib/stores/cockpit.svelte';
   import { clock as dayClock } from '$lib/stores/clock.svelte';
   import { realtime } from '$lib/stores/realtime.svelte';
+  import { tagStore } from '$lib/stores/tags.svelte';
   import type { Task } from '$lib/types';
 
   let tasks = $state<Task[]>([]);
@@ -95,6 +96,8 @@
       .map((t) => ({ t, s: minutesOf(t.scheduled_start), e: minutesOf(t.scheduled_end) }))
       .filter((b): b is { t: Task; s: number; e: number | null } => b.s != null),
   );
+  // Timeline block colour: the task's first tag (soft .tint block), else the accent.
+  const tintOf = (t: Task) => (t.tags?.length ? tagStore.colorFor(t.tags[0]) : 'var(--sempa-accent)');
 
   onMount(() => {
     void load();
@@ -116,13 +119,14 @@
 
 {#snippet checkCircle(t: Task, size: number)}
   <button onclick={() => toggle(t)} aria-label={isDone(t) ? 'Mark not done' : 'Complete'}
-          style="width:{size}px; height:{size}px; border:none; background:none; cursor:pointer; flex-shrink:0; padding:0;">
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-         stroke={t === now ? 'var(--sempa-amber)' : isDone(t) ? 'var(--sempa-success)' : 'var(--sempa-text-dim)'}
-         stroke-width="2">
-      <circle cx="12" cy="12" r="10" />
-      {#if isDone(t)}<path stroke-linecap="round" stroke-linejoin="round" d="M7 12.5l3.2 3.2L17 8.5" />{/if}
-    </svg>
+          class="check-ring" data-state={isDone(t) ? 'done' : undefined}
+          style="width:{size}px; height:{size}px; cursor:pointer; padding:0;
+                 {t === now ? 'border-color:var(--sempa-amber); background:var(--sempa-bg-panel);' : ''}">
+    {#if isDone(t)}
+      <svg width={size * 0.6} height={size * 0.6} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5" />
+      </svg>
+    {/if}
   </button>
 {/snippet}
 
@@ -130,46 +134,47 @@
   {@const r = (size - stroke) / 2}
   {@const c = 2 * Math.PI * r}
   <svg width={size} height={size} viewBox="0 0 {size} {size}" style="flex-shrink:0;">
-    <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--sempa-accent-bg)" stroke-width={stroke} />
+    <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--sempa-track)" stroke-width={stroke} />
     <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--sempa-accent)" stroke-width={stroke}
             stroke-linecap="round" stroke-dasharray="{c}" stroke-dashoffset="{c * (1 - value)}"
             transform="rotate(-90 {size / 2} {size / 2})" style="transition:stroke-dashoffset .4s;" />
     <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central"
-          style="font-family:'JetBrains Mono',monospace; font-size:{size * 0.2}px; fill:var(--sempa-text);">{doneCount}/{total}</text>
+          style="font-family:'JetBrains Mono',monospace; font-size:{size * 0.2}px; font-weight:700; fill:var(--sempa-text);">{doneCount}/{total}</text>
   </svg>
 {/snippet}
 
 {#snippet nowCard(big: boolean)}
-  <div style="display:flex; flex-direction:column; height:100%; background:var(--sempa-bg-panel);
-              border:1px solid var(--sempa-border); border-radius:20px; padding:{big ? '34px 38px' : '24px 26px'};
-              box-shadow:0 12px 30px rgba(0,0,0,0.10);">
+  <div style="display:flex; flex-direction:column; height:100%; box-sizing:border-box; background:var(--sempa-bg-panel);
+              border-radius:28px; padding:{big ? '30px 34px' : '22px 24px'}; box-shadow:var(--sempa-shadow-1);">
     <div style="display:flex; align-items:center; gap:10px;">
-      <span style="width:9px; height:9px; border-radius:5px; background:var(--sempa-amber);
-                   box-shadow:0 0 0 4px color-mix(in srgb, var(--sempa-amber) 18%, transparent);"></span>
-      <span style="font-family:'JetBrains Mono',monospace; font-size:13.5px; letter-spacing:.16em;
-                   color:var(--sempa-amber); font-weight:600;">NOW</span>
+      <span style="display:inline-flex; align-items:center; gap:8px; height:28px; padding:0 12px; border-radius:999px;
+                   background:var(--cal-amber-bg); color:var(--cal-amber-fg); font-size:12.5px; font-weight:800; letter-spacing:.04em;">
+        <span style="width:8px; height:8px; border-radius:999px; background:var(--sempa-amber);
+                     box-shadow:0 0 0 3px color-mix(in srgb, var(--sempa-amber) 22%, transparent);"></span>NOW
+      </span>
+      {#if now}
+        <span class="chip chip-time" style="height:26px; padding:0 11px; font-size:12.5px;">
+          {#if now.scheduled_start}{hhmm(now.scheduled_start)}{#if now.scheduled_end} – {hhmm(now.scheduled_end)}{/if}{:else}Unscheduled{/if}
+        </span>
+      {/if}
     </div>
     {#if now}
-      <div style="font-weight:600; font-size:{big ? '60px' : '38px'}; line-height:1.04; letter-spacing:-.02em;
-                  color:var(--sempa-text); margin-top:14px; text-wrap:balance;">{now.title}</div>
-      <div style="font-family:'JetBrains Mono',monospace; font-size:14px; color:var(--sempa-text-soft); margin-top:10px;">
-        {#if now.scheduled_start}{hhmm(now.scheduled_start)}{#if now.scheduled_end} – {hhmm(now.scheduled_end)}{/if}{:else}Unscheduled{/if}
-      </div>
+      <div style="font-weight:800; font-size:{big ? '56px' : '34px'}; line-height:1.06; letter-spacing:-.035em;
+                  color:var(--sempa-text); margin-top:16px; text-wrap:balance;">{now.title}</div>
       <div style="flex:1;"></div>
       <div style="display:flex; gap:10px; margin-top:18px;">
-        <button onclick={() => toggle(now)}
-                style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px;
-                       background:var(--sempa-btn-bg); color:var(--sempa-btn-fg); border:none; border-radius:12px;
-                       padding:14px; font-size:16px; font-weight:600; cursor:pointer;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        <button onclick={() => toggle(now)} class="btn-primary"
+                style="flex:1; height:{big ? 56 : 50}px; font-size:16px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
           Complete
         </button>
       </div>
       {#if next}
-        <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--sempa-border); display:flex; align-items:center; gap:8px;">
-          <span style="font-family:'JetBrains Mono',monospace; font-size:12.5px; letter-spacing:.12em; color:var(--sempa-text-dim);">NEXT</span>
-          <span style="font-size:15px; color:var(--sempa-text-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{next.title}</span>
-          {#if next.scheduled_start}<span style="margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--sempa-text-dim);">{hhmm(next.scheduled_start)}</span>{/if}
+        <div style="margin-top:14px; padding:10px 8px 10px 16px; border-radius:999px; background:var(--sempa-fill);
+                    display:flex; align-items:center; gap:10px;">
+          <span style="font-size:12px; font-weight:600; color:var(--sempa-text-soft); flex-shrink:0;">Next</span>
+          <span style="font-size:15px; font-weight:600; color:var(--sempa-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{next.title}</span>
+          {#if next.scheduled_start}<span class="chip chip-time" style="margin-left:auto; background:var(--sempa-bg-panel);">{hhmm(next.scheduled_start)}</span>{/if}
         </div>
       {/if}
     {:else}
@@ -179,28 +184,39 @@
 {/snippet}
 
 {#snippet timeline(h: number)}
-  <div style="height:{h}px; flex-shrink:0; background:var(--sempa-bg-panel); border:1px solid var(--sempa-border);
-              border-radius:18px; padding:12px 20px 0; overflow:hidden; position:relative;">
-    <div style="font-family:'JetBrains Mono',monospace; font-size:12.5px; letter-spacing:.14em; color:var(--sempa-text-soft);">TIMELINE</div>
-    <div style="position:relative; height:{h - 56}px; margin-top:8px;">
+  <div style="height:{h}px; flex-shrink:0; box-sizing:border-box; background:var(--sempa-bg-panel); box-shadow:var(--sempa-shadow-1);
+              border-radius:28px; padding:14px 22px 0; overflow:hidden; position:relative;">
+    <div style="font-size:15px; font-weight:800; letter-spacing:-.02em; color:var(--sempa-text);">Timeline</div>
+    <div style="position:relative; height:{h - 72}px; margin-top:8px;">
       {#each [8,10,12,14,16,18] as hr}
         <div style="position:absolute; left:{xpct(hr*60)}%; top:0; bottom:0; width:1px; background:var(--sempa-border);"></div>
-        <div style="position:absolute; left:{xpct(hr*60)}%; bottom:-18px; transform:translateX(-50%); font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--sempa-text-soft);">{hr}</div>
+        <!-- edge labels align inward so 08:00 / 18:00 aren't clipped by the card -->
+        <div style="position:absolute; left:{xpct(hr*60)}%; bottom:-20px; transform:translateX({hr === 8 ? '0' : hr === 18 ? '-100%' : '-50%'});
+                    font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--sempa-text-dim);">{String(hr).padStart(2, '0')}:00</div>
       {/each}
       {#each blocks as b (b.t.id)}
         {@const dur = b.e && b.e > b.s ? b.e - b.s : 30}
-        <div title={b.t.title}
-             style="position:absolute; left:{xpct(b.s)}%; width:max({(dur/SPAN)*100}%, 1.6%); top:0; height:{h-78}px;
-                    border-radius:9px; padding:6px 9px; overflow:hidden; font-size:13px; box-sizing:border-box;
-                    background:{isDone(b.t) ? 'var(--sempa-success-bg)' : b.t === now ? 'var(--sempa-amber)' : 'var(--sempa-accent-bg)'};
-                    color:{b.t === now ? '#2b1c0e' : isDone(b.t) ? 'var(--sempa-success)' : 'var(--sempa-accent)'};
-                    border:1px solid {b.t === now ? 'var(--sempa-amber)' : isDone(b.t) ? 'var(--sempa-success)' : 'var(--sempa-accent)'};">
-          <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{b.t.title}</div>
+        <!-- Soft colour block in the task's tag hue; the current block is the one
+             solid btn-bg fill, done blocks fall back to a quiet sage tint. -->
+        <div title={b.t.title} class:tint={b.t !== now && !isDone(b.t)}
+             style="position:absolute; left:{xpct(b.s)}%; width:max(calc({(dur/SPAN)*100}% - 3px), 1.6%); top:0; height:{h-92}px;
+                    border-radius:14px; padding:8px 11px; overflow:hidden; font-size:13px; box-sizing:border-box;
+                    {b.t === now
+                      ? 'background:var(--sempa-btn-bg); color:var(--sempa-btn-fg); box-shadow:var(--sempa-shadow-accent); z-index:1;'
+                      : isDone(b.t)
+                        ? 'background:var(--cal-sage-bg); color:var(--cal-sage-fg);'
+                        : `--tint:${tintOf(b.t)};`}">
+          <div style="font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+                      {isDone(b.t) ? 'text-decoration:line-through;' : ''}">{b.t.title}</div>
+          {#if dur >= 45}
+            <div style="font-family:'JetBrains Mono',monospace; font-size:11px; opacity:.8; margin-top:2px; white-space:nowrap;">{hhmm(b.t.scheduled_start)}{#if b.e} – {hhmm(b.t.scheduled_end)}{/if}</div>
+          {/if}
         </div>
       {/each}
       <!-- now-line: the cockpit day-thread "now" treatment -->
-      <div style="position:absolute; left:{xpct(nowMin())}%; top:-4px; bottom:14px; width:2px; background:var(--sempa-amber);">
-        <span style="position:absolute; top:-5px; left:-4px; width:10px; height:10px; border-radius:5px; background:var(--sempa-amber);"></span>
+      <div style="position:absolute; left:{xpct(nowMin())}%; top:-4px; bottom:14px; width:2px; border-radius:999px; background:var(--sempa-amber); z-index:2;">
+        <span style="position:absolute; top:-5px; left:-4px; width:10px; height:10px; border-radius:999px; background:var(--sempa-amber);
+                     box-shadow:0 0 0 3px color-mix(in srgb, var(--sempa-amber) 25%, transparent);"></span>
       </div>
     </div>
   </div>
@@ -209,68 +225,64 @@
 <div style="display:flex; flex-direction:column; height:100vh; background:var(--sempa-bg-main);
             color:var(--sempa-text); font-family:'Plus Jakarta Sans',sans-serif; overflow:hidden;">
   <!-- Header -->
-  <div style="height:64px; flex-shrink:0; display:flex; align-items:center; gap:18px; padding:0 24px;
-              border-bottom:1px solid var(--sempa-border);">
+  <div style="height:64px; flex-shrink:0; display:flex; align-items:center; gap:16px; padding:0 24px;">
     <span style="display:flex; align-items:center; gap:9px; color:var(--sempa-accent);">
       <svg width="24" height="24" viewBox="0 0 100 100" fill="none" aria-hidden="true">
         <path d="M22,40 a28,28 0 0 0 56,0" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
         <circle cx="50" cy="35" r="7.5" fill="currentColor"/>
       </svg>
-      <span style="font-weight:600; font-size:20px; letter-spacing:-.02em; color:var(--sempa-text);">sempa</span>
+      <span style="font-weight:800; font-size:20px; letter-spacing:-.03em; color:var(--sempa-text);">sempa</span>
     </span>
-    <span style="font-family:'JetBrains Mono',monospace; font-size:11.5px; letter-spacing:.14em; color:var(--sempa-text-soft);
-                 border:1px solid var(--sempa-border); border-radius:6px; padding:3px 7px;">COCKPIT</span>
+    <span class="chip" style="background:var(--sempa-track); color:var(--sempa-text-soft); font-size:12px;">Cockpit</span>
     <div style="flex:1;"></div>
-    <span style="font-size:14.5px; color:var(--sempa-text-soft);">{doneCount}/{total} today</span>
-    <div style="width:140px; height:6px; border-radius:3px; background:var(--sempa-accent-bg);">
-      <div style="width:{pct}%; height:100%; border-radius:3px; background:var(--sempa-accent); transition:width .4s;"></div>
+    <span style="font-size:14px; font-weight:600; color:var(--sempa-text-soft);"><b style="color:var(--sempa-text); font-weight:800;">{doneCount}</b>/{total} today</span>
+    <div style="width:140px; height:6px; border-radius:999px; background:var(--sempa-track); overflow:hidden;">
+      <div style="width:{pct}%; height:100%; border-radius:999px; background:var(--sempa-accent); transition:width .4s;"></div>
     </div>
-    <span style="font-family:'JetBrains Mono',monospace; font-size:15px; color:var(--sempa-text-soft);">{clock}</span>
-    <button onclick={() => cockpit.toggleMode()}
-            style="border:1px solid var(--sempa-border); background:none; color:var(--sempa-text-soft);
-                   border-radius:9px; padding:6px 12px; font-size:13px; cursor:pointer;">
+    <span style="font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:600; color:var(--sempa-text);
+                 background:var(--sempa-bg-panel); box-shadow:var(--sempa-shadow-1); border-radius:999px; padding:6px 14px;">{clock}</span>
+    <button onclick={() => cockpit.toggleMode()} class="btn-surface"
+            style="height:36px; padding:0 16px; font-size:13px;">
       {cockpit.mode === 'cockpit' ? 'Glance' : 'Expand'}
     </button>
   </div>
 
   {#if cockpit.mode === 'cockpit'}
     <!-- Cockpit: 3 columns + timeline -->
-    <div style="flex:1; min-height:0; display:flex; flex-direction:column; gap:18px; padding:18px 24px 20px;">
+    <div style="flex:1; min-height:0; display:flex; flex-direction:column; gap:18px; padding:4px 24px 22px;">
       <div style="flex:1; min-height:0; display:flex; gap:18px;">
         <div style="width:34%; max-width:600px; flex-shrink:0;">{@render nowCard(false)}</div>
         <!-- TodayList -->
         <div style="flex:1; min-width:0; display:flex; flex-direction:column; background:var(--sempa-bg-panel);
-                    border:1px solid var(--sempa-border); border-radius:20px; overflow:hidden; box-shadow:0 12px 30px rgba(0,0,0,0.10);">
-          <div style="padding:18px 22px 12px; border-bottom:1px solid var(--sempa-border);">
+                    border-radius:28px; overflow:hidden; box-shadow:var(--sempa-shadow-1);">
+          <div style="padding:18px 22px 10px;">
             <div style="display:flex; align-items:center; gap:10px;">
-              <span style="font-family:'JetBrains Mono',monospace; font-size:13px; letter-spacing:.14em; color:var(--sempa-text-soft);">TODAY</span>
+              <span style="font-size:17px; font-weight:800; letter-spacing:-.02em; color:var(--sempa-text);">Today</span>
               <div style="flex:1;"></div>
-              <span style="font-size:15px; color:var(--sempa-text-soft);"><b style="color:var(--sempa-text);">{doneCount}</b> / {total} done</span>
+              <span style="font-size:14px; font-weight:600; color:var(--sempa-text-soft);"><b style="color:var(--sempa-text); font-weight:800;">{doneCount}</b> / {total} done</span>
             </div>
             <div style="display:flex; gap:8px; margin-top:12px;">
               <input bind:value={draft} placeholder="Add a task…" onkeydown={(e) => e.key === 'Enter' && add()}
-                     style="flex:1; background:var(--sempa-bg-main); border:1px solid var(--sempa-border); border-radius:10px;
-                            padding:9px 12px; font-size:15px; color:var(--sempa-text); outline:none;" />
-              <button onclick={add} style="background:var(--sempa-accent-bg); color:var(--sempa-accent); border:none;
-                            border-radius:10px; padding:0 16px; font-size:15px; font-weight:600; cursor:pointer;">Add</button>
+                     style="flex:1; min-width:0; height:40px; box-sizing:border-box; background:var(--sempa-fill); border:1px solid var(--sempa-border);
+                            border-radius:999px; padding:0 18px; font-size:15px; color:var(--sempa-text); outline:none;" />
+              <button onclick={add} class="btn-soft" style="height:40px; padding:0 20px; font-size:15px;">Add</button>
             </div>
           </div>
-          <div style="flex:1; overflow:auto; padding:8px 12px 14px;">
+          <div style="flex:1; overflow:auto; padding:4px 12px 14px;">
             {#each active as t (t.id)}
-              <div style="display:flex; align-items:center; gap:12px; padding:9px 10px; border-radius:12px;
-                          background:{t === now ? 'color-mix(in srgb, var(--sempa-amber) 14%, transparent)' : 'transparent'};
-                          border-left:3px solid {t === now ? 'var(--sempa-amber)' : 'transparent'};">
-                <span style="font-family:'JetBrains Mono',monospace; font-size:13.5px; color:var(--sempa-text-soft); width:52px;">{hhmm(t.scheduled_start) || '—'}</span>
-                {@render checkCircle(t, 24)}
-                <span style="flex:1; font-size:16px; font-weight:{t === now ? 600 : 500}; color:var(--sempa-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{t.title}</span>
+              <div style="display:flex; align-items:center; gap:12px; padding:8px 12px; border-radius:16px;
+                          background:{t === now ? 'var(--cal-amber-bg)' : 'transparent'};">
+                <span style="font-family:'JetBrains Mono',monospace; font-size:13px; color:{t === now ? 'var(--cal-amber-fg)' : 'var(--sempa-text-soft)'}; width:48px; flex-shrink:0;">{hhmm(t.scheduled_start) || '—'}</span>
+                {@render checkCircle(t, 22)}
+                <span style="flex:1; font-size:15.5px; font-weight:{t === now ? 700 : 500}; color:var(--sempa-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{t.title}</span>
               </div>
             {/each}
             {#if doneList.length}
-              <div style="margin-top:8px; padding:6px 10px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--sempa-text-dim);">{doneCount} done</div>
+              <div style="margin-top:8px; padding:6px 12px; font-size:12px; font-weight:600; color:var(--sempa-text-soft);">{doneCount} done</div>
               {#each doneList as t (t.id)}
-                <div style="display:flex; align-items:center; gap:12px; padding:7px 10px; opacity:.6;">
-                  <span style="width:52px;"></span>
-                  {@render checkCircle(t, 22)}
+                <div style="display:flex; align-items:center; gap:12px; padding:6px 12px;">
+                  <span style="width:48px; flex-shrink:0;"></span>
+                  {@render checkCircle(t, 20)}
                   <span style="flex:1; font-size:15px; color:var(--sempa-text-dim); text-decoration:line-through; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{t.title}</span>
                 </div>
               {/each}
@@ -278,27 +290,27 @@
           </div>
         </div>
         <!-- WeekPanel -->
-        <div style="width:26%; max-width:470px; flex-shrink:0; display:flex; flex-direction:column; gap:16px;
-                    background:var(--sempa-bg-panel); border:1px solid var(--sempa-border); border-radius:20px;
-                    padding:20px 22px; box-shadow:0 12px 30px rgba(0,0,0,0.10);">
-          <div style="display:flex; align-items:center; gap:14px;">
+        <div style="width:26%; max-width:470px; flex-shrink:0; box-sizing:border-box; display:flex; flex-direction:column; gap:12px;
+                    background:var(--sempa-bg-panel); border-radius:28px;
+                    padding:18px 18px; box-shadow:var(--sempa-shadow-1); overflow:hidden;">
+          <div style="display:flex; align-items:center; gap:14px; padding:0 4px;">
             {@render ring(total ? doneCount / total : 0, 78, 9)}
             <div>
-              <div style="font-size:14px; color:var(--sempa-text);">Today's progress</div>
-              <div style="font-size:13px; color:var(--sempa-text-soft);">{active.length} left · {pct}% done</div>
+              <div style="font-size:15px; font-weight:800; letter-spacing:-.02em; color:var(--sempa-text);">Today's progress</div>
+              <div style="font-size:12.5px; font-weight:500; color:var(--sempa-text-soft); margin-top:2px;">{active.length} left · {pct}% done</div>
             </div>
           </div>
           {#if objectiveTitle}
-            <div style="padding-top:14px; border-top:1px solid var(--sempa-border);">
-              <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:.14em; color:var(--sempa-accent);">THIS WEEK</div>
-              <div style="font-size:16px; font-weight:600; color:var(--sempa-text); margin-top:6px;">{objectiveTitle}</div>
+            <div style="padding:12px 16px; border-radius:18px; background:var(--sempa-accent-bg);">
+              <div style="font-size:12px; font-weight:600; color:var(--sempa-accent-ink);">This week</div>
+              <div style="font-size:15px; font-weight:700; color:var(--sempa-text); margin-top:3px;">{objectiveTitle}</div>
             </div>
           {/if}
           <div style="flex:1;"></div>
           {#if intention}
-            <div style="padding-top:14px; border-top:1px solid var(--sempa-border);">
-              <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:.14em; color:var(--sempa-text-dim);">INTENTION</div>
-              <div style="font-size:15.5px; font-style:italic; color:var(--sempa-text-soft); line-height:1.45; margin-top:6px;">{intention}</div>
+            <div style="padding:12px 16px; border-radius:18px; background:var(--sempa-fill);">
+              <div style="font-size:12px; font-weight:600; color:var(--sempa-text-soft);">Intention</div>
+              <div style="font-size:14.5px; font-style:italic; color:var(--sempa-text); line-height:1.45; margin-top:3px;">{intention}</div>
             </div>
           {/if}
         </div>
@@ -307,17 +319,17 @@
     </div>
   {:else}
     <!-- Glance: big now card + summary + timeline -->
-    <div style="flex:1; min-height:0; display:flex; flex-direction:column; gap:22px; padding:30px 40px 34px;">
-      <div style="flex:1; min-height:0; display:flex; gap:40px;">
+    <div style="flex:1; min-height:0; display:flex; flex-direction:column; gap:22px; padding:8px 40px 30px;">
+      <div style="flex:1; min-height:0; display:flex; gap:28px;">
         <div style="flex:1.5; min-width:0;">{@render nowCard(true)}</div>
         <div style="flex:1; display:flex; align-items:center; gap:28px; background:var(--sempa-bg-panel);
-                    border:1px solid var(--sempa-border); border-radius:20px; padding:0 40px; box-shadow:0 12px 30px rgba(0,0,0,0.10);">
+                    border-radius:28px; padding:0 40px; box-shadow:var(--sempa-shadow-1);">
           {@render ring(total ? doneCount / total : 0, 150, 14)}
           <div style="min-width:0;">
-            <div style="font-size:24px; font-weight:600; color:var(--sempa-text);">{active.length} tasks left</div>
-            <div style="font-size:15px; color:var(--sempa-text-soft); margin-top:4px;">{pct}% of today complete</div>
+            <div style="font-size:27px; font-weight:800; letter-spacing:-.03em; color:var(--sempa-text);">{active.length} tasks left</div>
+            <div style="font-size:15px; font-weight:500; color:var(--sempa-text-soft); margin-top:4px;">{pct}% of today complete</div>
             {#if intention}
-              <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--sempa-border); font-style:italic; font-size:15px; color:var(--sempa-text-soft); line-height:1.45;">{intention}</div>
+              <div style="margin-top:16px; padding:12px 18px; border-radius:18px; background:var(--sempa-fill); font-style:italic; font-size:15px; color:var(--sempa-text); line-height:1.45;">{intention}</div>
             {/if}
           </div>
         </div>

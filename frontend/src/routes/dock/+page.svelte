@@ -27,8 +27,8 @@
   // Responsive config — 7″ (≥1100) vs 5″. Big touch targets either way.
   let c = $derived(
     w >= 1100
-      ? { pad: 34, gap: 16, title: 38, sub: 15, rowH: 78, check: 52, titleSz: 23, node: 9, line: 3, kbKey: 56, kbFont: 22, showMeta: true, addFont: 20, headGap: 18 }
-      : { pad: 20, gap: 10, title: 26, sub: 13.5, rowH: 60, check: 42, titleSz: 19, node: 8, line: 2.5, kbKey: 40, kbFont: 16, showMeta: false, addFont: 17, headGap: 12 },
+      ? { pad: 34, gap: 16, title: 38, sub: 15, rowH: 78, check: 52, titleSz: 23, node: 9, line: 3, kbKey: 56, kbFont: 22, showMeta: true, addFont: 20, headGap: 18, card: 28, inset: 12, ring: 36 }
+      : { pad: 20, gap: 10, title: 26, sub: 13.5, rowH: 60, check: 42, titleSz: 19, node: 8, line: 2.5, kbKey: 40, kbFont: 16, showMeta: false, addFont: 17, headGap: 12, card: 22, inset: 8, ring: 30 },
   );
 
   const isDone = (t: Task) => t.status === 'done';
@@ -158,17 +158,23 @@
 
   {#if needsPairing}
     <!-- Pairing: show a code; approve it from a signed-in Sempa app. -->
-    <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; text-align:center; padding:40px;">
-      <span style="color:var(--sempa-accent);">
-        <svg width="48" height="48" viewBox="0 0 100 100" fill="none" aria-hidden="true">
-          <path d="M22,40 a28,28 0 0 0 56,0" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="50" cy="35" r="7.5" fill="currentColor"/>
-        </svg>
-      </span>
-      <div style="font-size:22px; color:var(--sempa-text);">Pair this Dock</div>
-      <div style="font-family:'JetBrains Mono',monospace; font-size:56px; letter-spacing:.14em; font-weight:700; color:var(--sempa-accent);">{pairCode || '········'}</div>
-      <div style="font-size:16px; color:var(--sempa-text-soft); max-width:420px; line-height:1.5;">
-        In Sempa on your phone or computer, open <b>Settings → Paired devices</b> and enter this code.
+    <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:{c.pad}px;">
+      <div style="display:flex; flex-direction:column; align-items:center; gap:18px; text-align:center;
+                  max-width:560px; width:100%; box-sizing:border-box; padding:{c.pad + 6}px {c.pad}px;
+                  background:var(--sempa-bg-panel); border-radius:{c.card}px; box-shadow:var(--sempa-shadow-2);">
+        <span style="display:flex; align-items:center; justify-content:center; width:64px; height:64px; border-radius:999px;
+                     background:var(--sempa-accent-bg); color:var(--sempa-accent);">
+          <svg width="36" height="36" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+            <path d="M22,40 a28,28 0 0 0 56,0" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="50" cy="35" r="7.5" fill="currentColor"/>
+          </svg>
+        </span>
+        <div style="font-size:{c.title * 0.7}px; font-weight:800; letter-spacing:-.02em; color:var(--sempa-text);">Pair this Dock</div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:{w >= 1100 ? 52 : 40}px; letter-spacing:.14em; font-weight:700;
+                    color:var(--sempa-accent-ink); background:var(--sempa-fill); border-radius:999px; padding:10px 30px;">{pairCode || '········'}</div>
+        <div style="font-size:16px; color:var(--sempa-text-soft); max-width:420px; line-height:1.5;">
+          In Sempa on your phone or computer, open <b style="color:var(--sempa-text);">Settings → Paired devices</b> and enter this code.
+        </div>
       </div>
     </div>
   {:else if idle}
@@ -177,72 +183,80 @@
                 gap:18px; background:var(--sempa-bg-main); opacity:0.55; transition:opacity .6s;">
       <div style="font-family:'JetBrains Mono',monospace; font-size:64px; color:var(--sempa-text);">{clock}</div>
       <div style="font-size:20px; color:var(--sempa-text-soft);">{dateLabel}</div>
-      <div style="display:flex; align-items:center; gap:12px; margin-top:8px;">
-        <span style="width:14px; height:14px; border-radius:7px; background:var(--sempa-amber);
+      <div style="display:flex; align-items:center; gap:14px; margin-top:8px; padding:14px 28px 14px 22px; border-radius:999px;
+                  background:var(--sempa-bg-panel); box-shadow:var(--sempa-shadow-1); max-width:80%;">
+        <span style="width:14px; height:14px; border-radius:999px; background:var(--sempa-amber); flex-shrink:0;
                      box-shadow:0 0 0 6px color-mix(in srgb, var(--sempa-amber) 18%, transparent);"></span>
-        <span style="font-size:22px; color:var(--sempa-text);">{active[0]?.title ?? 'All done — rest easy.'}</span>
+        <span style="font-size:22px; font-weight:600; color:var(--sempa-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{active[0]?.title ?? 'All done — rest easy.'}</span>
       </div>
       <div style="font-size:15px; color:var(--sempa-text-dim);">{done.length}/{total} done today</div>
     </div>
   {:else}
     <!-- Header -->
     <div style="display:flex; align-items:flex-start; gap:16px; margin-bottom:{c.headGap}px;">
-      <span style="color:var(--sempa-accent); flex-shrink:0;">
+      <span style="color:var(--sempa-accent); flex-shrink:0; margin-top:{c.title * 0.22}px;">
         <svg width={c.title * 0.7} height={c.title * 0.7} viewBox="0 0 100 100" fill="none" aria-hidden="true">
           <path d="M22,40 a28,28 0 0 0 56,0" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="50" cy="35" r="7.5" fill="currentColor"/>
         </svg>
       </span>
       <div style="flex:1; min-width:0;">
-        <div style="font-weight:700; font-size:{c.title}px; letter-spacing:-.02em; color:var(--sempa-text);">{dateLabel}</div>
-        {#if intention}<div style="font-style:italic; font-size:{c.sub}px; color:var(--sempa-text-soft); margin-top:2px;">{intention}</div>{/if}
+        <div style="font-weight:800; font-size:{c.title}px; letter-spacing:-.03em; line-height:1.15; color:var(--sempa-text);">{dateLabel}</div>
+        {#if intention}<div style="font-style:italic; font-size:{c.sub}px; color:var(--sempa-text-soft); margin-top:4px;">{intention}</div>{/if}
       </div>
-      <div style="font-family:'JetBrains Mono',monospace; font-size:{c.title * 0.5}px; color:var(--sempa-text);">{clock}</div>
+      <div style="font-family:'JetBrains Mono',monospace; font-size:{c.title * 0.5}px; font-weight:600; color:var(--sempa-text);
+                  background:var(--sempa-bg-panel); box-shadow:var(--sempa-shadow-1); border-radius:999px;
+                  padding:{c.title * 0.2}px {c.title * 0.42}px; flex-shrink:0;">{clock}</div>
     </div>
 
     <!-- Progress strip -->
     <div style="display:flex; align-items:center; gap:14px; margin-bottom:{c.headGap}px;">
-      <span style="font-size:{c.sub}px; color:var(--sempa-text-soft);">{done.length} of {total} done today</span>
-      <div style="flex:1; height:6px; border-radius:3px; background:var(--sempa-accent-bg);">
-        <div style="width:{pct}%; height:100%; border-radius:3px; background:var(--sempa-accent); transition:width .4s;"></div>
+      <span style="font-size:{c.sub}px; font-weight:600; color:var(--sempa-text-soft);"><b style="color:var(--sempa-text); font-weight:800;">{done.length}</b> of {total} done today</span>
+      <div style="flex:1; height:6px; border-radius:999px; background:var(--sempa-track); overflow:hidden;">
+        <div style="width:{pct}%; height:100%; border-radius:999px; background:var(--sempa-accent); transition:width .4s;"></div>
       </div>
-      <span style="font-family:'JetBrains Mono',monospace; font-size:{c.sub}px; color:var(--sempa-text-dim);">{pct}%</span>
+      <span style="font-family:'JetBrains Mono',monospace; font-size:{c.sub}px; font-weight:600; color:var(--sempa-text-soft);">{pct}%</span>
     </div>
 
     <!-- Paper list -->
-    <div style="flex:1; min-height:0; overflow:auto; background:var(--sempa-bg-panel); border:1px solid var(--sempa-border);
-                border-radius:20px; box-shadow:0 12px 30px rgba(80,55,25,0.10); padding:4px 0;">
+    <div style="flex:1; min-height:0; overflow:auto; background:var(--sempa-bg-panel);
+                border-radius:{c.card}px; box-shadow:var(--sempa-shadow-1); padding:{c.inset}px 0;">
       {#if active.length === 0 && done.length === 0}
         <div style="height:100%; display:flex; align-items:center; justify-content:center; color:var(--sempa-text-dim); font-size:18px;">All done — rest easy.</div>
       {/if}
       {#each active as t, i (t.id)}
-        <div style="display:flex; align-items:stretch; gap:{c.gap}px; min-height:{c.rowH}px; padding:0 {c.pad}px;
-                    border-bottom:1px solid var(--sempa-border);">
+        <!-- Row: inset by c.inset so the current task can sit in a soft rounded
+             amber block; padding compensates so the spine stays on one axis and
+             there's no vertical margin, keeping the thread unbroken. -->
+        <div style="display:flex; align-items:stretch; gap:{c.gap}px; min-height:{c.rowH}px;
+                    margin:0 {c.inset}px; padding:0 {c.pad - c.inset}px; border-radius:{c.card - c.inset}px;
+                    background:{t.id === nowId ? 'var(--cal-amber-bg)' : 'transparent'};">
           <!-- Day-thread spine cell -->
           <div style="width:{c.node * 2 + 10}px; position:relative; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-            {#if i > 0}<div style="position:absolute; top:0; height:50%; width:{c.line}px; background:var(--sempa-thread-future, var(--sempa-border));"></div>{/if}
-            {#if i < active.length - 1 || done.length}<div style="position:absolute; bottom:0; height:50%; width:{c.line}px; background:var(--sempa-thread-future, var(--sempa-border));"></div>{/if}
+            {#if i > 0}<div style="position:absolute; top:0; height:50%; width:{c.line}px; background:var(--sempa-thread-future, var(--sempa-track));"></div>{/if}
+            {#if i < active.length - 1 || done.length}<div style="position:absolute; bottom:0; height:50%; width:{c.line}px; background:var(--sempa-thread-future, var(--sempa-track));"></div>{/if}
             {#if t.id === nowId}
               <div style="width:{c.node * 2}px; height:{c.node * 2}px; border-radius:50%; background:var(--sempa-amber); z-index:1;
-                          box-shadow:0 0 0 4px color-mix(in srgb, var(--sempa-amber) 18%, transparent);"></div>
+                          box-shadow:0 0 0 {c.node * 0.6}px color-mix(in srgb, var(--sempa-amber) 24%, transparent);"></div>
             {:else}
-              <div style="width:{c.node * 2}px; height:{c.node * 2}px; border-radius:50%; background:var(--sempa-bg-main);
-                          border:{c.line}px solid var(--sempa-thread-future, var(--sempa-border)); z-index:1; box-sizing:border-box;"></div>
+              <div style="width:{c.node * 2}px; height:{c.node * 2}px; border-radius:50%; background:var(--sempa-bg-panel);
+                          border:{c.line}px solid var(--sempa-thread-future, var(--sempa-track)); z-index:1; box-sizing:border-box;"></div>
             {/if}
           </div>
-          <!-- Check -->
+          <!-- Check: full-size touch target, round ring drawn inside it -->
           <div style="display:flex; align-items:center;">
             <button onclick={() => toggle(t)} aria-label="Complete {t.title}"
-                    style="width:{c.check}px; height:{c.check}px; border:none; background:none; padding:0; cursor:pointer; touch-action:manipulation;">
-              <svg width={c.check} height={c.check} viewBox="0 0 24 24" fill="none"
-                   stroke={t.id === nowId ? 'var(--sempa-amber)' : 'var(--sempa-text-dim)'} stroke-width="2">
-                <circle cx="12" cy="12" r="10" />
-              </svg>
+                    style="width:{c.check}px; height:{c.check}px; border:none; background:none; padding:0; cursor:pointer; touch-action:manipulation;
+                           display:flex; align-items:center; justify-content:center;">
+              <span class="check-ring" aria-hidden="true"
+                    style="width:{c.ring}px; height:{c.ring}px; border-width:{t.id === nowId ? 3 : 2.5}px;
+                           border-color:{t.id === nowId ? 'var(--sempa-amber)' : 'color-mix(in srgb, var(--sempa-text-dim) 55%, var(--sempa-track))'};
+                           {t.id === nowId ? 'background:var(--sempa-bg-panel);' : ''}"></span>
             </button>
           </div>
           <!-- Title + meta -->
-          <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;">
-            <div style="font-size:{c.titleSz}px; font-weight:{t.id === nowId ? 700 : 600}; color:var(--sempa-text);
+          <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:2px;">
+            <div style="font-size:{c.titleSz}px; font-weight:{t.id === nowId ? 700 : 600}; letter-spacing:-.01em; color:var(--sempa-text);
                         overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{t.title}</div>
             {#if c.showMeta && (t.scheduled_start || t.roughly_at)}
               <div style="font-family:'JetBrains Mono',monospace; font-size:13.5px; color:var(--sempa-text-soft);">{metaOf(t)}{#if t.id === nowId} · now{/if}</div>
@@ -250,8 +264,12 @@
           </div>
           {#if t.id === nowId}
             <div style="display:flex; align-items:center;">
-              <span style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.12em; color:var(--sempa-amber);
-                           background:color-mix(in srgb, var(--sempa-amber) 16%, transparent); border-radius:6px; padding:3px 8px;">NOW</span>
+              <span style="display:inline-flex; align-items:center; gap:7px; height:{w >= 1100 ? 30 : 26}px; padding:0 {w >= 1100 ? 13 : 10}px;
+                           border-radius:999px; background:var(--sempa-bg-panel); box-shadow:var(--sempa-shadow-1);
+                           font-size:{w >= 1100 ? 13 : 12}px; font-weight:800; letter-spacing:.04em;
+                           color:var(--cal-amber-fg);">
+                <span style="width:7px; height:7px; border-radius:999px; background:var(--sempa-amber);"></span>NOW
+              </span>
             </div>
           {/if}
         </div>
@@ -259,25 +277,36 @@
 
       {#if done.length}
         <button onclick={() => (doneOpen = !doneOpen)}
-                style="display:flex; align-items:center; gap:{c.gap}px; width:100%; min-height:{c.rowH * 0.7}px; padding:0 {c.pad}px;
-                       border:none; background:none; cursor:pointer; color:var(--sempa-success); font-size:{c.titleSz - 3}px;">
+                style="display:flex; align-items:center; gap:{c.gap}px; width:calc(100% - {c.inset * 2}px); min-height:{c.rowH * 0.7}px;
+                       margin:0 {c.inset}px; padding:0 {c.pad - c.inset}px; border:none; background:none; cursor:pointer;
+                       color:var(--sempa-text-soft); font-size:{c.titleSz - 3}px; font-weight:600;">
           <span style="width:{c.node * 2 + 10}px; display:flex; justify-content:center;">
             <span style="width:{c.node * 2}px; height:{c.node * 2}px; border-radius:50%; background:var(--sempa-success);"></span>
           </span>
           {done.length} done today
-          <span style="margin-left:auto; font-family:'JetBrains Mono',monospace;">{doneOpen ? '▾' : '▸'}</span>
+          <span aria-hidden="true"
+                style="margin-left:auto; display:flex; align-items:center; justify-content:center; width:{c.check * 0.72}px; height:{c.check * 0.72}px;
+                       border-radius:999px; background:var(--sempa-fill); color:var(--sempa-text-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                 style="transform:rotate({doneOpen ? 90 : 0}deg); transition:transform .2s;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6" />
+            </svg>
+          </span>
         </button>
         {#if doneOpen}
           {#each done as t (t.id)}
-            <div style="display:flex; align-items:center; gap:{c.gap}px; min-height:{c.rowH * 0.7}px; padding:0 {c.pad}px; opacity:.75;">
+            <div style="display:flex; align-items:center; gap:{c.gap}px; min-height:{c.rowH * 0.7}px; margin:0 {c.inset}px; padding:0 {c.pad - c.inset}px;">
               <span style="width:{c.node * 2 + 10}px; display:flex; justify-content:center;">
-                <span style="width:{c.node * 1.6}px; height:{c.node * 1.6}px; border-radius:50%; background:var(--sempa-accent);"></span>
+                <span style="width:{c.node * 1.2}px; height:{c.node * 1.2}px; border-radius:50%; background:color-mix(in srgb, var(--sempa-success) 55%, var(--sempa-track));"></span>
               </span>
               <button onclick={() => toggle(t)} aria-label="Mark not done"
-                      style="width:{c.check * 0.78}px; height:{c.check * 0.78}px; border:none; background:none; padding:0; cursor:pointer;">
-                <svg width={c.check * 0.78} height={c.check * 0.78} viewBox="0 0 24 24" fill="none" stroke="var(--sempa-success)" stroke-width="2">
-                  <circle cx="12" cy="12" r="10" /><path stroke-linecap="round" stroke-linejoin="round" d="M7 12.5l3.2 3.2L17 8.5" />
-                </svg>
+                      style="width:{c.check}px; height:{c.check * 0.78}px; border:none; background:none; padding:0; cursor:pointer;
+                             display:flex; align-items:center; justify-content:center;">
+                <span class="check-ring" data-state="done" aria-hidden="true" style="width:{c.ring * 0.82}px; height:{c.ring * 0.82}px;">
+                  <svg width={c.ring * 0.5} height={c.ring * 0.5} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5" />
+                  </svg>
+                </span>
               </button>
               <span style="flex:1; font-size:{c.titleSz - 2}px; color:var(--sempa-text-dim); text-decoration:line-through;
                            overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{t.title}</span>
@@ -289,8 +318,8 @@
 
     <!-- Add button -->
     <button onclick={() => { adding = true; poke(); }}
-            style="margin-top:{c.gap}px; width:100%; background:var(--sempa-btn-bg); color:var(--sempa-btn-fg); border:none;
-                   border-radius:16px; padding:{c.rowH * 0.26}px; font-size:{c.addFont}px; font-weight:700; cursor:pointer;
+            style="margin-top:{c.gap}px; width:100%; background:var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color:var(--sempa-btn-fg); border:none;
+                   border-radius:999px; padding:{c.rowH * 0.26}px; font-size:{c.addFont}px; font-weight:700; cursor:pointer;
                    display:flex; align-items:center; justify-content:center; gap:10px; touch-action:manipulation;">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
       Add a task
@@ -299,38 +328,42 @@
 
   {#if adding}
     <!-- On-screen keyboard overlay; actions pinned at the TOP (Android-keyboard gotcha). -->
-    <div style="position:absolute; left:0; right:0; bottom:0; background:var(--sempa-bg-panel); border-top:1px solid var(--sempa-border);
-                padding:{c.pad}px; box-shadow:0 -20px 40px rgba(0,0,0,0.18); display:flex; flex-direction:column; gap:10px; z-index:5;">
+    <div style="position:absolute; left:0; right:0; bottom:0; background:var(--sempa-bg-main);
+                border-radius:{c.card}px {c.card}px 0 0; padding:{c.pad * 0.8}px {c.pad}px {c.pad}px;
+                box-shadow:0 -18px 44px -12px rgba(0,0,0,0.22), inset 0 1px 0 color-mix(in srgb, var(--sempa-text) 6%, transparent);
+                display:flex; flex-direction:column; gap:10px; z-index:5;">
       <div style="display:flex; gap:10px; align-items:center;">
-        <div style="flex:1; min-height:{c.kbKey}px; display:flex; align-items:center; padding:0 14px; border-radius:12px;
-                    background:var(--sempa-bg-main); border:1px solid var(--sempa-border); font-size:{c.kbFont}px; color:var(--sempa-text);">
+        <div style="flex:1; min-height:{c.kbKey}px; display:flex; align-items:center; padding:0 {c.kbKey * 0.4}px; border-radius:999px;
+                    background:var(--sempa-bg-panel); border:1.5px solid var(--sempa-accent); box-sizing:border-box;
+                    font-size:{c.kbFont}px; color:var(--sempa-text);">
           {#if draft}{draft}{:else}<span style="color:var(--sempa-text-dim);">New task…</span>{/if}
           <span style="width:2px; height:{c.kbFont}px; background:var(--sempa-accent); margin-left:2px; animation:sempaCaret 1.1s steps(1) infinite;"></span>
         </div>
         <button onclick={() => { adding = false; draft = ''; }}
-                style="min-height:{c.kbKey}px; padding:0 18px; border-radius:12px; border:1px solid var(--sempa-border);
-                       background:none; color:var(--sempa-text-soft); font-size:{c.kbFont - 4}px; cursor:pointer;">Cancel</button>
+                style="min-height:{c.kbKey}px; padding:0 {c.kbKey * 0.45}px; border-radius:999px; border:none;
+                       background:var(--sempa-bg-panel); box-shadow:var(--sempa-shadow-1); color:var(--sempa-text);
+                       font-weight:600; font-size:{c.kbFont - 4}px; cursor:pointer;">Cancel</button>
         <button onclick={commitAdd}
-                style="min-height:{c.kbKey}px; padding:0 22px; border-radius:12px; border:none; background:var(--sempa-btn-bg);
+                style="min-height:{c.kbKey}px; padding:0 {c.kbKey * 0.55}px; border-radius:999px; border:none; background:var(--sempa-btn-bg); box-shadow:var(--sempa-shadow-accent);
                        color:var(--sempa-btn-fg); font-weight:700; font-size:{c.kbFont - 4}px; cursor:pointer;">Add</button>
       </div>
       {#each kbRows as row, ri}
         <div style="display:flex; gap:8px; justify-content:center; padding:0 {ri === 1 ? c.kbKey * 0.5 : 0}px;">
           {#if ri === 2}
             <button onpointerdown={(e) => { e.preventDefault(); backspace(); }}
-                    style="flex:1.6; height:{c.kbKey}px; border-radius:10px; border:1px solid var(--sempa-border);
-                           background:var(--sempa-bg-main); color:var(--sempa-text-soft); font-size:{c.kbFont}px; cursor:pointer; touch-action:none;">⌫</button>
+                    style="flex:1.6; height:{c.kbKey}px; border-radius:16px; border:none;
+                           background:var(--sempa-track); color:var(--sempa-text-soft); font-size:{c.kbFont}px; cursor:pointer; touch-action:none;">⌫</button>
           {/if}
           {#each row.split('') as ch}
             <button onpointerdown={(e) => { e.preventDefault(); press(ch); }}
-                    style="flex:1; min-width:{c.kbKey}px; height:{c.kbKey}px; border-radius:10px; border:1px solid var(--sempa-border);
+                    style="flex:1; min-width:{c.kbKey}px; height:{c.kbKey}px; border-radius:16px; border:none; box-shadow:var(--sempa-shadow-1);
                            background:var(--sempa-bg-panel); color:var(--sempa-text); font-size:{c.kbFont}px; font-weight:600;
                            cursor:pointer; touch-action:none; -webkit-tap-highlight-color:transparent;">{ch}</button>
           {/each}
           {#if ri === 2}
             <button onpointerdown={(e) => { e.preventDefault(); press(' '); }}
-                    style="flex:1.6; height:{c.kbKey}px; border-radius:10px; border:1px solid var(--sempa-border);
-                           background:var(--sempa-bg-main); color:var(--sempa-text-soft); font-size:{c.kbFont}px; cursor:pointer; touch-action:none;">space</button>
+                    style="flex:1.6; height:{c.kbKey}px; border-radius:16px; border:none;
+                           background:var(--sempa-track); color:var(--sempa-text-soft); font-size:{c.kbFont - 2}px; font-weight:600; cursor:pointer; touch-action:none;">space</button>
           {/if}
         </div>
       {/each}

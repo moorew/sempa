@@ -150,59 +150,56 @@
 
 <div class="flex h-full flex-col" style="background: var(--sempa-bg-main);">
 
-  <!-- Header -->
-  <header class="sticky top-0 z-[40] px-4 pt-4 pb-2"
-          style="background: var(--sempa-bg-main); padding-top: max(12px, calc(env(safe-area-inset-top, 0px) + 8px)); border-bottom: 1px solid var(--sempa-border);">
-    <div class="flex items-center justify-between">
-      <button onclick={() => navigateDay(-1)} aria-label="Previous day"
-              class="flex h-10 w-10 items-center justify-center rounded-xl transition-colors active:bg-gray-100 dark:active:bg-gray-800"
-              style="color: var(--sempa-text-dim);">
-        <ChevronLeft size={20} />
-      </button>
-      <div class="text-center">
-        <h1 class="flex items-center gap-2" style="font-size: 22px; font-weight: 600; letter-spacing: -0.02em; color: var(--sempa-text);">
-          <CalendarClock size={20} /> {headerLabel}
-        </h1>
+  <!-- Header (1.27): eyebrow + big day title, round day nav, capsule strip -->
+  <header class="sticky top-0 z-[40] px-5 pb-3"
+          style="background: var(--sempa-bg-main); padding-top: max(16px, calc(env(safe-area-inset-top, 0px) + 10px));">
+    <div class="flex items-center gap-3">
+      <div class="min-w-0 flex-1">
+        <p class="flex items-center gap-1.5 text-[13.5px] font-semibold" style="color: var(--sempa-accent-ink);">
+          <CalendarClock size={15} strokeWidth={2.2} /> Schedule
+        </p>
+        <h1 class="type-page truncate" style="color: var(--sempa-text);">{headerLabel}</h1>
         {#if scheduledCount > 0}
-          <p class="text-[11px]" style="color: var(--sempa-text-dim);">{scheduledCount} scheduled</p>
+          <p class="text-[12.5px] font-medium" style="color: var(--sempa-text-soft);">{scheduledCount} scheduled</p>
         {/if}
       </div>
-      <button onclick={() => navigateDay(1)} aria-label="Next day"
-              class="flex h-10 w-10 items-center justify-center rounded-xl transition-colors active:bg-gray-100 dark:active:bg-gray-800"
-              style="color: var(--sempa-text-dim);">
-        <ChevronRight size={20} />
+      <button onclick={() => navigateDay(-1)} aria-label="Previous day" class="btn-icon h-11 w-11">
+        <ChevronLeft size={20} strokeWidth={2.2} />
+      </button>
+      <button onclick={() => navigateDay(1)} aria-label="Next day" class="btn-icon h-11 w-11">
+        <ChevronRight size={20} strokeWidth={2.2} />
       </button>
     </div>
 
-    <!-- Date strip -->
+    <!-- Date strip — capsules -->
     <div bind:this={stripEl}
-         class="no-scrollbar -mx-4 mt-2 flex snap-x snap-proximity gap-1 overflow-x-auto scroll-px-4 px-4"
+         class="no-scrollbar -mx-5 mt-3 flex snap-x snap-proximity gap-1.5 overflow-x-auto scroll-px-5 px-5 pb-2"
          style="-webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;">
       {#each stripDays as day (day.date)}
         {@const isSel = day.date === date}
         <button onclick={() => { hapticTick(); date = day.date; }}
                 data-strip-date={day.date}
                 aria-current={isSel ? 'date' : undefined}
-                class="flex shrink-0 snap-center flex-col items-center gap-0.5 rounded-xl px-2.5 py-1.5 transition-colors"
+                class="flex h-[68px] w-[46px] shrink-0 snap-center flex-col items-center justify-center gap-0.5 rounded-full transition-colors"
                 style={isSel
-                  ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent);'
+                  ? 'background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); box-shadow: var(--sempa-shadow-accent);'
                   : day.isToday
-                    ? 'color: var(--sempa-accent);'
+                    ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);'
                     : day.isWeekend
-                      ? 'color: var(--sempa-text-dim); opacity: 0.7;'
-                      : 'color: var(--sempa-text-dim);'}>
-          <span class="text-[10.5px] font-semibold uppercase">{day.dayName}</span>
-          <span class="flex h-7 w-7 items-center justify-center rounded-full text-[13px] font-semibold"
-                style={day.isToday && !isSel ? 'background: var(--sempa-today-bg); color: var(--sempa-today-fg);' : ''}>
-            {day.dayNum}
-          </span>
+                      ? 'color: var(--sempa-text-dim);'
+                      : 'color: var(--sempa-text-soft);'}>
+          <span class="text-[16px] font-extrabold leading-none">{day.dayNum}</span>
+          <span class="text-[10.5px] font-semibold opacity-85">{day.dayName}</span>
+          <span class="mt-0.5 h-[5px] w-[5px] rounded-full"
+                style="background: {isSel ? 'var(--sempa-btn-fg)' : day.isToday ? 'var(--sempa-accent)' : 'transparent'};"></span>
         </button>
       {/each}
     </div>
   </header>
 
   <!-- Timeline -->
-  <div class="flex-1 overflow-hidden">
+  <div class="mx-4 mb-4 flex-1 overflow-hidden rounded-[26px] pt-3"
+       style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
     {#if error}
       <p class="px-4 py-6 text-sm text-red-500">{error}</p>
     {:else}
@@ -236,12 +233,12 @@
         </p>
       {:else}
         <p class="mt-1 text-xs" style="color: var(--sempa-text-dim);">Pick a task to place on the timeline</p>
-        <ul class="mt-3 space-y-1">
+        <ul class="mt-3 space-y-2">
           {#each unscheduledForDay as t (t.id)}
             <li>
               <button onclick={() => pickTaskForSlot(t.id)}
-                      class="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors active:bg-gray-50 dark:active:bg-gray-800/40"
-                      style="border: 1px solid var(--sempa-border);">
+                      class="flex w-full items-center gap-3 rounded-[18px] px-4 py-3.5 text-left transition-colors active:opacity-80"
+                      style="background: var(--sempa-fill);">
                 <span class="min-w-0 flex-1 truncate text-sm" style="color: var(--sempa-text);">{t.title}</span>
                 {#if t.time_estimate_minutes}
                   <span class="shrink-0 text-xs" style="color: var(--sempa-text-dim);">{formatMinutes(t.time_estimate_minutes)}</span>

@@ -103,146 +103,126 @@
   }
 </script>
 
-<div class="mx-auto flex h-full max-w-xl flex-col" style="padding-top: env(safe-area-inset-top, 0px);">
+<div class="mx-auto flex h-full max-w-[640px] flex-col" style="padding-top: env(safe-area-inset-top, 0px);">
   <!-- Header -->
-  <div class="flex items-center gap-3 px-5 py-4" style="border-bottom: 1px solid var(--sempa-border);">
-    <a href="/settings/accounts"
-       class="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm transition-colors"
-       style="color: var(--sempa-accent);">
-      <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" d="M19 12H5m7-7-7 7 7 7"/>
+  <div class="px-5 pt-6 pb-2 sm:px-8 sm:pt-8">
+    <a href="/settings/accounts" class="set-back">
+      <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="m15 18-6-6 6-6"/>
       </svg>
       Settings
     </a>
-    <h1 class="text-base font-semibold" style="color: var(--sempa-text);">Calendars</h1>
+    <h1 class="set-title type-page">Calendars</h1>
   </div>
 
-  <div class="flex-1 overflow-y-auto px-5 py-6 pb-16">
+  <div class="flex-1 overflow-y-auto px-5 pt-4 pb-16 sm:px-8">
 
       <!-- ── Connected accounts ─────────────────────────────────────────── -->
-      <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-         text-transform:uppercase; color:var(--sempa-text-dim)">Accounts</p>
+      <h2 class="set-heading">Accounts</h2>
 
       {#if accountsLoading}
-        <div class="mb-7 rounded-xl border px-4 py-4 text-sm"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text-dim);">
+        <div class="set-group set-group-pad text-sm" style="color: var(--sempa-text-dim);">
           Loading accounts…
         </div>
       {:else if accounts.length === 0}
-        <div class="mb-7 rounded-xl border px-4 py-4 text-sm"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text-soft);">
+        <div class="set-group set-group-pad text-sm" style="color: var(--sempa-text-soft);">
           No calendar accounts connected yet.
-          <a href="/settings/accounts" style="color: var(--sempa-accent);">Connect one →</a>
+          <a href="/settings/accounts" class="font-semibold" style="color: var(--sempa-accent-ink);">Connect one →</a>
         </div>
       {:else}
-        <section class="mb-7 overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-          {#each accounts as acct, i (acct.id)}
-            <div class="flex items-center gap-3.5 px-4 py-3.5"
-                 style={i < accounts.length - 1 ? 'border-bottom: 1px solid var(--sempa-border);' : ''}>
+        <section class="set-group">
+          {#each accounts as acct (acct.id)}
+            <div class="set-row">
               <!-- Provider icon tile -->
-              <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
-                <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+              <span class="set-icon">
+                <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                   <rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/>
                 </svg>
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="truncate font-semibold" style="font-size:13.5px; color: var(--sempa-text);">{acct.name}</p>
+              </span>
+              <div class="set-row-main">
+                <p class="set-label truncate">{acct.name}</p>
                 {#if acct.email}
-                  <p class="truncate" style="font-size:11px; color: var(--sempa-text-dim);">{acct.email}</p>
+                  <p class="set-desc truncate">{acct.email}</p>
                 {/if}
               </div>
-              <span class="inline-flex shrink-0 items-center gap-1.5" style="font-size:11px; color: var(--sempa-text-soft);">
-                <span class="rounded-full" style="width:7px; height:7px; background: var(--sempa-success);"></span>
-                Connected
-              </span>
+              <span class="set-status">Connected</span>
             </div>
           {/each}
         </section>
       {/if}
 
       <!-- ── Subscribed calendars ───────────────────────────────────────── -->
-      <div class="mb-3 flex items-center justify-between">
-        <p style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-           text-transform:uppercase; color:var(--sempa-text-dim)">Calendars</p>
+      <div class="set-heading-row">
+        <h2 class="set-heading">Calendars</h2>
         <button onclick={openAddFeed}
-                class="rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors"
-                style="border-color: var(--sempa-border); color: var(--sempa-text-soft);">
+                class="btn-soft set-btn-sm">
           + Add feed
         </button>
       </div>
 
       {#if subsLoading}
-        <div class="mb-7 rounded-xl border px-4 py-4 text-sm"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text-dim);">
+        <div class="set-group set-group-pad text-sm" style="color: var(--sempa-text-dim);">
           Loading feeds…
         </div>
       {:else if subsError}
-        <div class="mb-7 rounded-xl border px-4 py-4 text-sm"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text-soft);">
-          <span class="text-red-500 dark:text-red-400">{subsError}</span>
-          <button onclick={loadSubs} class="ml-1 underline" style="color: var(--sempa-accent);">Retry</button>
+        <div class="set-group set-group-pad text-sm" style="color: var(--sempa-text-soft);">
+          <span class="set-error">{subsError}</span>
+          <button onclick={loadSubs} class="ml-1 font-semibold underline" style="color: var(--sempa-accent-ink);">Retry</button>
         </div>
       {:else if subs.length === 0}
-        <div class="mb-7 rounded-xl border px-4 py-4 text-sm"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text-soft);">
+        <div class="set-group set-group-pad text-sm" style="color: var(--sempa-text-soft);">
           No subscribed calendars yet.
-          <button onclick={openAddFeed} style="color: var(--sempa-accent);">Add an iCal or webcal feed →</button>
+          <button onclick={openAddFeed} class="font-semibold" style="color: var(--sempa-accent-ink);">Add an iCal or webcal feed →</button>
         </div>
       {:else}
-        <section class="mb-2 overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-          {#each subs as sub, i (sub.id)}
+        <section class="set-group">
+          {#each subs as sub (sub.id)}
             {@const on = !calendars.isHidden(sub.id)}
             {@const colorKey = calendars.colorKey(sub.id)}
-            <div class="flex items-center gap-3 px-4 py-3 transition-opacity"
-                 style="opacity: {on ? 1 : 0.55}; {i < subs.length - 1 ? 'border-bottom: 1px solid var(--sempa-border);' : ''}">
+            <div class="set-row set-row-compact">
               <!-- Colour swatch — tap to cycle the four brand colours -->
               <button onclick={() => calendars.cycleColor(sub.id)}
-                      class="shrink-0 rounded-[5px] transition-transform active:scale-90"
-                      style="width:14px; height:14px; background: {calFg(colorKey)};"
+                      class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform active:scale-90"
+                      style="background: var(--cal-{colorKey}-bg); opacity: {on ? 1 : 0.55};"
                       title="Colour: {BRAND_CAL_LABEL[colorKey]} — tap to change"
-                      aria-label="Change calendar colour"></button>
-              <span class="min-w-0 flex-1 truncate" style="font-size:13px; color: var(--sempa-text);">{sub.name}</span>
-              <!-- On/off toggle (34×18) -->
-              <button onclick={() => calendars.toggleHidden(sub.id)}
-                      class="relative inline-flex shrink-0 items-center rounded-full transition-colors"
-                      style="width:34px; height:18px; background: {on ? 'var(--sempa-accent)' : 'var(--sempa-border)'};"
-                      aria-label={on ? 'Hide calendar' : 'Show calendar'} aria-pressed={on}>
-                <span class="inline-block rounded-full bg-white shadow transition-transform"
-                      style="width:14px; height:14px; transform: translateX({on ? '18px' : '2px'});"></span>
+                      aria-label="Change calendar colour">
+                <span class="h-3.5 w-3.5 rounded-full" style="background: {calFg(colorKey)};"></span>
               </button>
+              <div class="set-row-main transition-opacity" style="opacity: {on ? 1 : 0.55};">
+                <p class="set-label truncate">{sub.name}</p>
+                <p class="set-desc">{BRAND_CAL_LABEL[colorKey]}</p>
+              </div>
+              <!-- On/off toggle -->
+              <button onclick={() => calendars.toggleHidden(sub.id)}
+                      class="set-switch" data-on={on}
+                      aria-label={on ? 'Hide calendar' : 'Show calendar'} aria-pressed={on}></button>
             </div>
           {/each}
         </section>
-        <p class="mb-7 px-1" style="font-size:11px; color: var(--sempa-text-dim);">
+        <p class="set-meta mt-2.5 px-1.5">
           Each calendar gets its own colour automatically. Tap a swatch to change it
           (Terracotta · Stone · Sage · Amber).
         </p>
       {/if}
 
       <!-- ── Display preferences ────────────────────────────────────────── -->
-      <p class="mb-3" style="font-family:monospace; font-size:10.5px; font-weight:700; letter-spacing:0.12em;
-         text-transform:uppercase; color:var(--sempa-text-dim)">Display preferences</p>
+      <h2 class="set-heading">Display preferences</h2>
 
-      <section class="overflow-hidden rounded-xl border" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+      <section class="set-group">
         {#each [
           { key: 'showDeclined',   label: 'Show declined events',          desc: 'Include events you’ve declined.' },
           { key: 'showAllDayWeek', label: 'Show all-day in week header',   desc: 'Surface all-day events above the week grid.' },
           { key: 'dimPastEvents',  label: 'Dim past events',               desc: 'Fade events earlier than now on today.' },
-        ] as row, i (row.key)}
+        ] as row (row.key)}
           {@const on = calendars.display[row.key as keyof typeof calendars.display]}
-          <div class="flex items-center gap-3 px-4 py-3.5"
-               style={i < 2 ? 'border-bottom: 1px solid var(--sempa-border);' : ''}>
-            <div class="min-w-0 flex-1">
-              <p style="font-size:13px; color: var(--sempa-text);">{row.label}</p>
-              <p style="font-size:11px; color: var(--sempa-text-dim);">{row.desc}</p>
+          <div class="set-row">
+            <div class="set-row-main">
+              <p class="set-label">{row.label}</p>
+              <p class="set-desc">{row.desc}</p>
             </div>
             <button onclick={() => calendars.setDisplay(row.key as 'showDeclined' | 'showAllDayWeek' | 'dimPastEvents', !on)}
-                    class="relative inline-flex shrink-0 items-center rounded-full transition-colors"
-                    style="width:34px; height:18px; background: {on ? 'var(--sempa-accent)' : 'var(--sempa-border)'};"
-                    aria-label={row.label} aria-pressed={on}>
-              <span class="inline-block rounded-full bg-white shadow transition-transform"
-                    style="width:14px; height:14px; transform: translateX({on ? '18px' : '2px'});"></span>
-            </button>
+                    class="set-switch" data-on={on}
+                    aria-label={row.label} aria-pressed={on}></button>
           </div>
         {/each}
       </section>
@@ -256,41 +236,36 @@
   <div class="fixed inset-0 z-[80] flex items-center justify-center bg-black/30 backdrop-blur-sm animate-fade-in"
        onclick={() => (showAddFeed = false)}>
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-    <div class="mx-4 w-full max-w-sm rounded-2xl p-5 shadow-2xl animate-scale-in"
-         style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);"
+    <div class="surface-raised mx-4 w-full max-w-sm p-6 animate-scale-in"
          onclick={(e) => e.stopPropagation()}>
-      <h3 class="mb-1 text-sm font-semibold" style="color: var(--sempa-text);">Add calendar feed</h3>
-      <p class="mb-4 text-xs" style="color: var(--sempa-text-dim);">Subscribe to a read-only ICS or webcal URL.</p>
+      <h3 class="type-section mb-1" style="color: var(--sempa-text);">Add calendar feed</h3>
+      <p class="mb-5 text-[13px]" style="color: var(--sempa-text-soft);">Subscribe to a read-only ICS or webcal URL.</p>
 
-      <label class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);" for="feed-url">
-        ICS / Webcal URL <span class="text-red-400">*</span>
+      <label class="set-field-label" for="feed-url">
+        ICS / Webcal URL <span style="color: var(--set-danger);">*</span>
       </label>
       <!-- svelte-ignore a11y_autofocus -->
       <input id="feed-url" type="url" inputmode="url" bind:value={feedUrl} autofocus
              autocomplete="off" autocapitalize="none" spellcheck="false"
              placeholder="https://example.com/calendar.ics  or  webcal://…"
              onkeydown={(e) => { if (e.key === 'Enter') saveFeed(); }}
-             class="mb-3 w-full rounded-lg border px-3 py-2 text-sm outline-none"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
+             class="set-input mb-4 w-full" />
 
-      <label class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);" for="feed-name">Name (optional)</label>
+      <label class="set-field-label" for="feed-name">Name (optional)</label>
       <input id="feed-name" type="text" bind:value={feedName}
              placeholder="Work calendar"
              onkeydown={(e) => { if (e.key === 'Enter') saveFeed(); }}
-             class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
+             class="set-input w-full" />
 
-      {#if feedError}<p class="mt-3 text-sm text-red-600 dark:text-red-400">{feedError}</p>{/if}
+      {#if feedError}<p class="set-error mt-3">{feedError}</p>{/if}
 
-      <div class="mt-5 flex items-center justify-end gap-2">
+      <div class="mt-6 flex items-center justify-end gap-2">
         <button onclick={() => (showAddFeed = false)}
-                class="rounded-lg border px-4 py-2 text-sm transition-colors"
-                style="border-color: var(--sempa-border); color: var(--sempa-text-soft);">
+                class="set-btn-quiet set-btn">
           Cancel
         </button>
         <button onclick={saveFeed} disabled={feedSaving || !feedUrl.trim()}
-                class="rounded-lg px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-                style="background: var(--sempa-accent);">
+                class="btn-primary set-btn">
           {feedSaving ? 'Saving…' : 'Save'}
         </button>
       </div>

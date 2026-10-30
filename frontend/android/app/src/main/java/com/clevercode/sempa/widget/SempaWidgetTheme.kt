@@ -24,16 +24,18 @@ object SempaWidgetTheme {
         val green: Color,
     )
 
+    // Terracotta light, 1.27 tokens (frontend/src/themes.css): surface is the
+    // raised card (--sempa-bg-panel), surfaceVariant the inset fill on it.
     private val DEFAULT = Palette(
         primary = Color(0xFFB3592E),
-        onPrimary = Color(0xFFF7F3EB),
-        surface = Color(0xFFFAF8F4),
-        surfaceVariant = Color(0xFFF0ECE3),
+        onPrimary = Color(0xFFFFFAF5),
+        surface = Color(0xFFFFFFFF),
+        surfaceVariant = Color(0xFFF6F0E8),
         onSurface = Color(0xFF2B221B),
-        onSurfaceDim = Color(0xFFB0A498),
-        outline = Color(0xFFE2DCD3),
-        accentBg = Color(0xFFEDE5DD),
-        green = Color(0xFF22C55E),
+        onSurfaceDim = Color(0xFF8A7B6E),
+        outline = Color(0xFFE6DDD1),
+        accentBg = Color(0xFFF6E5D9),
+        green = Color(0xFF4A8656),
     )
 
     @Volatile

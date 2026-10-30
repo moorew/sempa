@@ -39,15 +39,18 @@
   <div class="flex flex-col gap-2">
     {#if showIntention}
       {#if hasIntention}
-        <div class="rounded-xl px-4 py-3" style="background: var(--sempa-accent-bg); border: 1px solid var(--sempa-border);">
-          <p class="text-[10.5px] font-semibold uppercase tracking-wider" style="color: var(--sempa-accent);">Today's intention</p>
-          <p class="mt-1 text-sm leading-relaxed" style="color: var(--sempa-text);">{intention}</p>
+        <div class="px-4 py-3.5" style="background: var(--sempa-accent-bg); border-radius: 18px;">
+          <p class="flex items-center gap-1.5 type-label" style="color: var(--sempa-accent-ink);">
+            <ClipboardCheck size={13} strokeWidth={2.25} />
+            Today's intention
+          </p>
+          <p class="mt-1 leading-relaxed" style="font-size: 14.5px; font-weight: 600; color: var(--sempa-text);">{intention}</p>
         </div>
       {:else if promptWhenEmpty}
-        <a href="/plan/{date}"
-           class="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm transition-opacity active:opacity-70"
-           style="border: 1px dashed var(--sempa-border); color: var(--sempa-text-soft);">
-          <ClipboardCheck size={15} strokeWidth={1.75} />
+        <a href="/plan/{date}" class="rc-prompt">
+          <span class="rc-prompt-icon" style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
+            <ClipboardCheck size={15} strokeWidth={2} />
+          </span>
           Set an intention for the day
         </a>
       {/if}
@@ -55,18 +58,38 @@
 
     {#if showReflection}
       {#if hasReflection}
-        <div class="rounded-xl px-4 py-3" style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);">
-          <p class="text-[10.5px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-soft);">Reflection</p>
+        <div class="px-4 py-3.5" style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); border-radius: 18px;">
+          <p class="flex items-center gap-1.5 type-label" style="color: var(--sempa-text-soft);">
+            <Moon size={13} strokeWidth={2.25} />
+            Reflection
+          </p>
           <p class="mt-1 whitespace-pre-line text-sm leading-relaxed" style="color: var(--sempa-text);">{reflection}</p>
         </div>
       {:else if promptWhenEmpty}
-        <a href="/shutdown/{date}"
-           class="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm transition-opacity active:opacity-70"
-           style="border: 1px dashed var(--sempa-border); color: var(--sempa-text-soft);">
-          <Moon size={15} strokeWidth={1.75} />
+        <a href="/shutdown/{date}" class="rc-prompt">
+          <span class="rc-prompt-icon" style="background: var(--sempa-fill); color: var(--sempa-text-soft);">
+            <Moon size={15} strokeWidth={2} />
+          </span>
           Add an end-of-day reflection
         </a>
       {/if}
     {/if}
   </div>
 {/if}
+
+<style>
+  /* Empty-state prompt: a quiet surface pill-row that links to the ritual. */
+  .rc-prompt {
+    display: flex; align-items: center; gap: 10px;
+    min-height: 48px; padding: 6px 16px 6px 8px; border-radius: 18px;
+    background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);
+    font-size: 14px; font-weight: 600; color: var(--sempa-text-soft);
+    transition: color 120ms ease, opacity 120ms ease;
+  }
+  .rc-prompt:hover { color: var(--sempa-text); }
+  .rc-prompt:active { opacity: .75; }
+  .rc-prompt-icon {
+    display: inline-grid; place-items: center; flex: 0 0 auto;
+    width: 32px; height: 32px; border-radius: 11px;
+  }
+</style>

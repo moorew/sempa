@@ -35,54 +35,61 @@
 {#if pc}
   <div class="fixed inset-0 z-[60] flex items-end justify-center p-4 sm:items-center"
     style="background: rgba(0,0,0,0.45);" role="dialog" aria-modal="true">
-    <div class="w-full max-w-sm rounded-2xl p-5 shadow-2xl"
-      style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border); color: var(--sempa-text);">
+    <div class="surface-raised w-full max-w-sm p-5 sm:p-6" style="color: var(--sempa-text);">
 
-      <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--sempa-accent);">
+      <p class="type-label" style="color: var(--sempa-accent-ink);">
         {pc.markDone ? 'Nice work — log your time' : 'How long did that take?'}
       </p>
-      <p class="mt-1 mb-4 truncate text-base font-semibold" title={pc.taskTitle}>{pc.taskTitle}</p>
+      <p class="mb-5 mt-1.5 truncate" style="font-size: 17px; font-weight: 800; letter-spacing: -.015em;" title={pc.taskTitle}>{pc.taskTitle}</p>
 
       <!-- Big editable minutes -->
-      <div class="flex items-center justify-center gap-3">
+      <div class="flex items-center justify-center gap-4 py-4" style="background: var(--sempa-fill); border-radius: 20px;">
         <button onclick={() => bump(-5)}
-          class="flex h-10 w-10 items-center justify-center rounded-full text-lg transition-opacity hover:opacity-80"
-          style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);" aria-label="Subtract 5 minutes">−</button>
+          class="btn-icon"
+          style="width: 44px; height: 44px; font-size: 20px;" aria-label="Subtract 5 minutes">−</button>
         <div class="flex items-baseline gap-1">
           <input type="number" min="0" max="600" bind:value={minutes}
-            class="w-20 bg-transparent text-center font-mono text-4xl font-bold tabular-nums outline-none"
-            style="color: var(--sempa-text);" />
-          <span class="text-sm" style="color: var(--sempa-text-dim);">min</span>
+            aria-label="Minutes"
+            class="w-20 bg-transparent text-center font-mono tabular-nums outline-none"
+            style="font-size: 40px; font-weight: 700; letter-spacing: -.03em; color: var(--sempa-text);" />
+          <span class="text-sm font-medium" style="color: var(--sempa-text-soft);">min</span>
         </div>
         <button onclick={() => bump(5)}
-          class="flex h-10 w-10 items-center justify-center rounded-full text-lg transition-opacity hover:opacity-80"
-          style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);" aria-label="Add 5 minutes">+</button>
+          class="btn-icon"
+          style="width: 44px; height: 44px; font-size: 20px;" aria-label="Add 5 minutes">+</button>
       </div>
 
       <!-- Plan comparison -->
       {#if planned}
-        <p class="mt-3 text-center text-xs" style="color: var(--sempa-text-dim);">
+        <p class="mt-3 flex items-center justify-center gap-1.5 type-meta" style="color: var(--sempa-text-soft);">
           Planned {formatMinutes(planned)}
           {#if delta !== null && delta > 0}
-            · <span style="color: #c0392b;">{delta}m over</span>
+            <span class="chip" style="height: 20px; padding: 0 8px; background: var(--cal-amber-bg); color: var(--cal-amber-fg);">{delta}m over</span>
           {:else if delta !== null && delta < 0}
-            · <span style="color: var(--sempa-success);">{-delta}m under</span>
+            <span class="chip" style="height: 20px; padding: 0 8px; background: var(--sempa-success-bg); color: var(--sempa-success);">{-delta}m under</span>
           {/if}
         </p>
       {/if}
 
       <!-- Actions -->
       <button onclick={save}
-        class="mt-5 w-full rounded-xl py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-        style="background: var(--sempa-accent);">
+        class="btn-primary mt-5 w-full"
+        style="height: 46px; font-size: 14.5px;">
         {pc.markDone ? `Log ${minutes}m & mark done` : `Log ${minutes}m`}
       </button>
       <div class="mt-2 flex items-center justify-between text-xs">
-        <button onclick={none} class="rounded px-2 py-1.5 transition-opacity hover:opacity-70"
-          style="color: var(--sempa-text-dim);">Didn't really work on it</button>
-        <button onclick={cancel} class="rounded px-2 py-1.5 transition-opacity hover:opacity-70"
-          style="color: var(--sempa-text-dim);">Discard</button>
+        <button onclick={none} class="ghost-link">Didn't really work on it</button>
+        <button onclick={cancel} class="ghost-link">Discard</button>
       </div>
     </div>
   </div>
 {/if}
+
+<style>
+  .ghost-link {
+    height: 32px; padding: 0 10px; border-radius: 999px;
+    font-size: 12.5px; font-weight: 600; color: var(--sempa-text-dim);
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+  .ghost-link:hover { background: var(--sempa-fill); color: var(--sempa-text-soft); }
+</style>

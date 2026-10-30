@@ -2,7 +2,7 @@
   import { untrack } from 'svelte';
   import { timeCapture } from '$lib/stores/timeCapture.svelte';
   import { bucketByKey } from '$lib/activityBuckets';
-  import { Sparkles } from 'lucide-svelte';
+  import { Sparkles, Clock } from 'lucide-svelte';
 
   // One-tap-fast time capture shown when a task is completed without tracked
   // time. Seeded with the activity-bucket / estimate default; the AI suggestion
@@ -35,16 +35,16 @@
 {#if p}
   <div class="fixed inset-0 z-[60] flex items-end justify-center p-4 sm:items-center"
     style="background: rgba(0,0,0,0.45);" role="dialog" aria-modal="true">
-    <div class="w-full max-w-sm rounded-2xl p-5 shadow-2xl"
-      style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border); color: var(--sempa-text);">
+    <div class="surface-raised w-full max-w-sm p-5 sm:p-6" style="color: var(--sempa-text);">
 
-      <p class="text-xs font-semibold uppercase tracking-wider" style="color: var(--sempa-accent);">
+      <p class="flex items-center gap-1.5 type-label" style="color: var(--sempa-accent-ink);">
+        <Clock size={13} strokeWidth={2.25} />
         How long did that take?
       </p>
-      <p class="mt-1 truncate text-base font-semibold" title={p.title}>{p.title}</p>
+      <p class="mt-1.5 truncate" style="font-size: 17px; font-weight: 800; letter-spacing: -.015em;" title={p.title}>{p.title}</p>
       {#if bucket}
-        <p class="mt-0.5 text-xs" style="color: var(--sempa-text-dim);">
-          {bucket.emoji} looks like {bucket.label}
+        <p class="mt-1 type-meta" style="color: var(--sempa-text-soft);">
+          Looks like {bucket.label}
         </p>
       {/if}
 
@@ -52,27 +52,26 @@
       <div class="mt-4 flex flex-wrap gap-1.5">
         {#each CHIPS as c}
           <button onclick={() => (minutes = c)}
-            class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
-            style={minutes === c
-              ? 'background: var(--sempa-accent); color: #fff;'
-              : 'background: var(--sempa-bg); color: var(--sempa-text-soft); border: 1px solid var(--sempa-border);'}>
+            class="time-chip"
+            aria-pressed={minutes === c}>
             {c}m
           </button>
         {/each}
       </div>
 
       <!-- Custom + AI suggestion -->
-      <div class="mt-3 flex items-center gap-3">
-        <label class="flex items-center gap-1.5 text-sm" style="color: var(--sempa-text-soft);">
+      <div class="mt-3.5 flex items-center gap-3">
+        <label class="flex items-center gap-2 text-sm" style="color: var(--sempa-text-soft);">
           <input type="number" min="0" max="600" bind:value={minutes}
-            class="w-16 rounded px-2 py-1 text-right text-sm"
-            style="border: 1px solid var(--sempa-border); background: var(--sempa-bg); color: var(--sempa-text);" />
+            class="text-right text-sm"
+            style="width: 72px; height: 36px; padding: 0 10px; border-radius: 12px;
+                   border: 1px solid var(--sempa-border); background: var(--sempa-fill); color: var(--sempa-text);" />
           min
         </label>
         {#if aiSuggestion && aiSuggestion !== minutes}
           <button onclick={() => (minutes = aiSuggestion)}
-            class="flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition-opacity hover:opacity-80"
-            style="background: var(--sempa-accent-bg); color: var(--sempa-accent);"
+            class="btn-soft"
+            style="height: 32px; padding: 0 12px; font-size: 12.5px;"
             title="Estimated from your history">
             <Sparkles size={12} strokeWidth={2} /> AI: ~{aiSuggestion}m
           </button>
@@ -80,16 +79,33 @@
       </div>
 
       <button onclick={log}
-        class="mt-5 w-full rounded-xl py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-        style="background: var(--sempa-accent);">
+        class="btn-primary mt-5 w-full"
+        style="height: 46px; font-size: 14.5px;">
         Log {minutes}m
       </button>
       <div class="mt-2 flex items-center justify-between text-xs">
-        <button onclick={skip} class="rounded px-2 py-1.5 transition-opacity hover:opacity-70"
-          style="color: var(--sempa-text-dim);">Skip</button>
-        <button onclick={disable} class="rounded px-2 py-1.5 transition-opacity hover:opacity-70"
-          style="color: var(--sempa-text-dim);">Don't ask again</button>
+        <button onclick={skip} class="ghost-link">Skip</button>
+        <button onclick={disable} class="ghost-link">Don't ask again</button>
       </div>
     </div>
   </div>
 {/if}
+
+<style>
+  .time-chip {
+    height: 36px; padding: 0 14px; border-radius: 999px;
+    font-size: 13.5px; font-weight: 600;
+    background: var(--sempa-fill); color: var(--sempa-text-soft);
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+  .time-chip:hover { color: var(--sempa-text); }
+  .time-chip[aria-pressed="true"] {
+    background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); box-shadow: var(--sempa-shadow-accent);
+  }
+  .ghost-link {
+    height: 32px; padding: 0 10px; border-radius: 999px;
+    font-size: 12.5px; font-weight: 600; color: var(--sempa-text-dim);
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+  .ghost-link:hover { background: var(--sempa-fill); color: var(--sempa-text-soft); }
+</style>

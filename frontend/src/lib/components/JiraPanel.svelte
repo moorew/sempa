@@ -170,19 +170,20 @@
     {@const meta = parseMeta(cardTask.source_metadata)}
 
     <!-- Card header -->
-    <div class="flex shrink-0 items-center gap-2 px-3 py-2"
+    <div class="flex shrink-0 items-center gap-2 px-3 py-2.5"
          style="border-bottom: 1px solid var(--sempa-border);">
       <button onclick={() => { view = 'list'; cardTask = null; cardDetail = null; }}
-              class="transition-colors" style="color: var(--sempa-text-dim);"
+              class="flex h-8 w-8 items-center justify-center rounded-full transition-colors"
+              style="background: var(--sempa-fill); color: var(--sempa-text-soft);"
               aria-label="Back">
         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" d="M15 19l-7-7 7-7"/>
         </svg>
       </button>
-      <span class="font-mono font-semibold" style="color: var(--sempa-accent);">{meta?.key ?? ''}</span>
+      <span class="font-mono font-semibold" style="color: var(--sempa-accent-ink);">{meta?.key ?? ''}</span>
       {#if cardTask.source_url}
         <a href={cardTask.source_url} target="_blank" rel="noopener noreferrer"
-           class="ml-auto shrink-0 hover:underline" style="color: var(--sempa-accent);">Open ↗</a>
+           class="btn-soft ml-auto h-7 shrink-0 px-3 text-[11.5px]">Open ↗</a>
       {/if}
     </div>
 
@@ -190,21 +191,21 @@
       {#if cardLoading}
         <div class="space-y-3 p-4 animate-pulse">
           {#each Array(5) as _}
-            <div class="h-3 rounded" style="background: var(--sempa-border);"></div>
+            <div class="h-3 rounded-full" style="background: var(--sempa-fill);"></div>
           {/each}
         </div>
       {:else if cardError}
-        <p class="p-4 text-red-500">{cardError}</p>
+        <p class="p-4" style="color: var(--sempa-danger, #c0392b);">{cardError}</p>
       {:else if cardDetail}
         {@const f = cardDetail.fields}
         <div class="divide-y" style="--d: var(--sempa-border);">
 
           <!-- Title + status -->
           <div class="p-4 space-y-2">
-            <h3 class="text-sm font-medium leading-snug" style="color: var(--sempa-text);">{f.summary}</h3>
+            <h3 class="leading-snug" style="font-size: 15px; font-weight: 700; color: var(--sempa-text);">{f.summary}</h3>
             <div class="flex flex-wrap items-center gap-2">
-              <span class="rounded px-2 py-0.5 font-medium"
-                    style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
+              <span class="chip"
+                    style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
                 {f.status?.name}
               </span>
               {#if f.priority?.name}
@@ -249,8 +250,8 @@
               <p class="mb-1.5" style="color: var(--sempa-text-dim);">Labels</p>
               <div class="flex flex-wrap gap-1">
                 {#each f.labels as label}
-                  <span class="rounded px-2 py-0.5"
-                        style="background: var(--sempa-border); color: var(--sempa-text);">{label}</span>
+                  <span class="chip"
+                        style="background: var(--sempa-fill); color: var(--sempa-text-soft);">{label}</span>
                 {/each}
               </div>
             </div>
@@ -277,14 +278,13 @@
             <div class="p-4">
               <p class="mb-2" style="color: var(--sempa-text-dim);">Move to</p>
               {#if cardError && transitioning === false}
-                <p class="mb-2 text-red-500">{cardError}</p>
+                <p class="mb-2" style="color: var(--sempa-danger, #c0392b);">{cardError}</p>
               {/if}
               <div class="flex flex-wrap gap-1.5">
                 {#each cardTransitions as t}
                   <button onclick={() => doTransition(t.id)}
                           disabled={transitioning}
-                          class="rounded-md px-2.5 py-1 font-medium transition-colors disabled:opacity-50"
-                          style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
+                          class="btn-soft h-8 px-3.5 text-xs disabled:opacity-50">
                     {transitioning ? '…' : t.name}
                   </button>
                 {/each}
@@ -321,20 +321,20 @@
     <!-- ── List view ──────────────────────────────────────────────────────── -->
 
     <!-- Filters -->
-    <div class="shrink-0 space-y-1.5 px-3 py-2" style="border-bottom: 1px solid var(--sempa-border);">
+    <div class="shrink-0 space-y-2 px-3 py-2.5" style="border-bottom: 1px solid var(--sempa-border);">
 
       <!-- Quick fuzzy search (key or title) -->
       <div class="relative">
-        <svg class="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2"
+        <svg class="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2"
              style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"/>
         </svg>
         <input bind:value={filterState.query} type="text" placeholder="Search key or title…"
-               class="w-full rounded border py-1 pl-7 pr-6"
-               style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
+               class="w-full rounded-full py-1.5 pl-8 pr-8 outline-none"
+               style="background: var(--sempa-fill); color: var(--sempa-text);" />
         {#if filterState.query}
           <button onclick={() => filterState.query = ''} aria-label="Clear search"
-                  class="absolute right-1.5 top-1/2 -translate-y-1/2" style="color: var(--sempa-text-dim);">
+                  class="absolute right-2.5 top-1/2 -translate-y-1/2" style="color: var(--sempa-text-dim);">
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>
@@ -343,13 +343,12 @@
       </div>
 
       <!-- Sempa-side scope -->
-      <div class="flex gap-1">
+      <div class="segmented" style="padding: 3px;" role="tablist" aria-label="Scope">
         {#each [['unplanned', 'Unplanned'], ['planned', 'Planned'], ['all', 'All']] as [val, label]}
           <button onclick={() => sempaFilter = val as SempaFilter}
-                  class="flex-1 rounded py-1 font-medium transition-colors"
-                  style={sempaFilter === val
-                    ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent);'
-                    : 'color: var(--sempa-text-dim);&:hover{color:var(--sempa-text)}'}>
+                  role="tab" aria-selected={sempaFilter === val}
+                  class="py-1 font-semibold transition-colors"
+                  style="color: {sempaFilter === val ? 'var(--sempa-text)' : 'var(--sempa-text-soft)'};">
             {label}
           </button>
         {/each}
@@ -361,20 +360,14 @@
           {@const on = filterState.toggles[def.id]}
           <button onclick={() => filterState.toggles[def.id] = !on}
                   aria-pressed={on}
-                  class="rounded-full border px-2 py-0.5 font-medium transition-colors"
-                  style={on
-                    ? 'border-color: transparent; background: var(--sempa-accent-bg); color: var(--sempa-accent);'
-                    : 'border-color: var(--sempa-border); color: var(--sempa-text-dim);'}>
+                  class="pchip" data-active={on}>
             {def.label}
           </button>
         {/each}
 
         <!-- More facet selects (Priority, Type, Status, Epic, Sprint) -->
         <button onclick={() => showFilters = !showFilters}
-                class="ml-auto flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium transition-colors"
-                style={activeFilters > 0
-                  ? 'border-color: transparent; background: var(--sempa-accent-bg); color: var(--sempa-accent);'
-                  : 'border-color: var(--sempa-border); color: var(--sempa-text-dim);'}>
+                class="pchip ml-auto flex items-center gap-1" data-active={activeFilters > 0}>
           <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" d="M3 4h18M6 12h12M10 20h4"/>
           </svg>
@@ -390,16 +383,13 @@
             {@const opts = optionsFor(def, allTasks)}
             {#if opts.length}
               <div>
-                <p class="mb-1 text-[10.5px] font-semibold uppercase tracking-wide" style="color: var(--sempa-text-dim);">{def.label}</p>
+                <p class="type-label mb-1" style="color: var(--sempa-text-soft);">{def.label}</p>
                 <div class="flex flex-wrap gap-1">
                   {#each opts as o}
                     {@const active = (filterState.selects[def.id] ?? []).includes(o)}
                     <button onclick={() => toggleSelectValue(filterState, def.id, o)}
                             aria-pressed={active}
-                            class="rounded-full border px-2 py-0.5 font-medium transition-colors"
-                            style={active
-                              ? 'border-color: transparent; background: var(--sempa-accent-bg); color: var(--sempa-accent);'
-                              : 'border-color: var(--sempa-border); color: var(--sempa-text-dim);'}>
+                            class="pchip" data-active={active}>
                       {o}
                     </button>
                   {/each}
@@ -422,7 +412,8 @@
       </span>
       <button onclick={sync} disabled={syncing || loading}
               aria-label="Sync Jira"
-              class="transition-colors disabled:opacity-40" style="color: var(--sempa-text-dim);">
+              class="flex h-7 w-7 items-center justify-center rounded-full transition-colors disabled:opacity-40"
+              style="background: var(--sempa-fill); color: var(--sempa-text-soft);">
         <svg class="h-3.5 w-3.5 {syncing ? 'animate-spin' : ''}" fill="none" stroke="currentColor"
              stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -434,30 +425,30 @@
       {#if !connected}
         <div class="flex flex-col items-center justify-center gap-2 p-6 text-center">
           <p style="color: var(--sempa-text-dim);">Jira not connected</p>
-          <a href="/settings/integrations/jira" class="hover:underline" style="color: var(--sempa-accent);">Set up →</a>
+          <a href="/settings/integrations/jira" class="btn-soft h-8 px-3.5">Set up →</a>
         </div>
 
       {:else if loading}
         <div class="space-y-px">
           {#each Array(4) as _}
             <div class="flex items-start gap-2 px-3 py-2.5 animate-pulse">
-              <div class="h-4 w-12 shrink-0 rounded mt-0.5" style="background: var(--sempa-border);"></div>
+              <div class="h-4 w-12 shrink-0 rounded-full mt-0.5" style="background: var(--sempa-fill);"></div>
               <div class="flex-1 space-y-1.5">
-                <div class="h-2.5 w-full rounded" style="background: var(--sempa-border);"></div>
-                <div class="h-2 w-2/3 rounded" style="background: var(--sempa-border);"></div>
+                <div class="h-2.5 w-full rounded-full" style="background: var(--sempa-fill);"></div>
+                <div class="h-2 w-2/3 rounded-full" style="background: var(--sempa-fill);"></div>
               </div>
             </div>
           {/each}
         </div>
 
       {:else if error}
-        <p class="p-4 text-red-500">{error}</p>
+        <p class="p-4" style="color: var(--sempa-danger, #c0392b);">{error}</p>
 
       {:else if filteredTasks.length === 0}
         <div class="flex h-24 flex-col items-center justify-center gap-1.5">
           <p style="color: var(--sempa-text-dim);">No issues</p>
           {#if allTasks.length === 0}
-            <button onclick={sync} class="hover:underline" style="color: var(--sempa-accent);">Sync now</button>
+            <button onclick={sync} class="btn-soft h-8 px-3.5">Sync now</button>
           {/if}
         </div>
 
@@ -466,9 +457,8 @@
           {#each filteredTasks as task (task.id)}
             {@const meta = parseMeta(task.source_metadata)}
             <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-            <li class="group flex cursor-grab items-start gap-2 px-3 py-2.5 transition-colors
-                       active:cursor-grabbing hover:bg-gray-50 dark:hover:bg-gray-800/40"
-                style="border-bottom: 1px solid var(--sempa-border);"
+            <li class="jira-row group mx-1.5 flex cursor-grab items-start gap-2 rounded-[14px] px-2.5 py-2.5
+                       active:cursor-grabbing"
                 draggable="true"
                 ondragstart={(e) => onDragStart(e, task)}>
 
@@ -477,7 +467,7 @@
                    onkeydown={(e) => e.key === 'Enter' && openCard(task)}>
                 <div class="flex items-baseline gap-1.5">
                   {#if meta?.key}
-                    <span class="shrink-0 font-mono font-semibold" style="color: var(--sempa-accent);">
+                    <span class="shrink-0 font-mono font-semibold" style="color: var(--sempa-accent-ink);">
                       {meta.key}
                     </span>
                   {/if}
@@ -490,7 +480,7 @@
                     {/if}
                     <span class="truncate">{meta.status}</span>
                     {#if meta.issueType}
-                      <span style="color: var(--sempa-border);">·</span>
+                      <span aria-hidden="true">·</span>
                       <span class="truncate">{meta.issueType}</span>
                     {/if}
                   </div>
@@ -512,9 +502,29 @@
     </div>
 
     {#if connected && !loading && filteredTasks.length > 0}
-      <div class="shrink-0 px-3 py-1.5" style="border-top: 1px solid var(--sempa-border); color: var(--sempa-text-dim);">
+      <div class="shrink-0 px-4 py-2.5 text-[11px]" style="border-top: 1px solid var(--sempa-border); color: var(--sempa-text-dim);">
         Drag issues onto a day to plan them
       </div>
     {/if}
   {/if}
 </div>
+
+<style>
+  /* Pill filter chip on the panel surface. */
+  .pchip {
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    white-space: nowrap;
+    background: var(--sempa-fill);
+    color: var(--sempa-text-soft);
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+  .pchip:hover { color: var(--sempa-text); }
+  .pchip[data-active="true"] { background: var(--sempa-accent-bg); color: var(--sempa-accent-ink); }
+  .jira-row { transition: background-color 120ms ease; }
+  .jira-row + .jira-row { box-shadow: 0 -1px 0 var(--sempa-border); }
+  .jira-row:hover { background: var(--sempa-fill); box-shadow: none; }
+  .jira-row:hover + .jira-row { box-shadow: none; }
+</style>

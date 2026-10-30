@@ -35,6 +35,7 @@
     gmail: 'Gmail', fastmail: 'Mail', jira: 'Jira', google_calendar: 'Cal',
   };
   const isDone      = $derived(task.status === 'done');
+  const isActive = $derived(task.status === 'in_progress');
   const isRecurring = $derived(!!task.recurrence_origin_id);
 
   // Reminder marker — a clean bell + time on the card so you can see at a glance
@@ -119,13 +120,14 @@
   onmouseenter={() => onHover?.(task.id)}
   onmouseleave={() => onHover?.(null)}
   oncontextmenu={onContextMenu}
-  class="group relative flex flex-col gap-2 rounded-[10px] shadow-sm cursor-grab
-         active:cursor-grabbing active:scale-[0.98] active:shadow-none
-         transition-all duration-150 hover:shadow-md min-h-[44px]
+  class="task-card group relative flex flex-col gap-2 cursor-grab
+         active:cursor-grabbing active:scale-[0.98]
+         transition-all duration-150 min-h-[44px]
+         {isActive ? 'is-active' : ''} {isDone ? 'is-done' : ''}
          {dragging ? 'is-dragging' : ''}"
-  style="padding: 9px 10px; background: var(--card-bg); border: 1px solid var(--card-border);"
+  style="padding: 12px 12px 11px;"
 >
-  <div class="flex items-start gap-2">
+  <div class="flex items-start gap-2.5">
     <!-- Quick-complete — 44×44 tap target on mobile, compact on desktop so the
          title gets the full column width instead of being squashed (FIX 3) -->
     <button
@@ -133,13 +135,13 @@
       onclick={(e) => { e.stopPropagation(); hapticClick(); onComplete?.(task.id); }}
       title={isDone ? 'Completed' : 'Mark complete'}
       class="shrink-0 flex items-center justify-center cursor-pointer
-             {mobile.value ? 'h-[44px] w-[44px] -ml-1 -my-1' : 'h-[18px] w-[18px] mt-px'}"
+             {mobile.value ? 'h-[44px] w-[44px] -ml-1 -my-1' : 'h-5 w-5'}"
       aria-label="Complete task"
     >
-      <span class="flex h-4 w-4 items-center justify-center rounded-full border-2 transition-all
-                   {isDone ? 'border-green-500 bg-green-500' : 'border-gray-200 hover:border-green-400 hover:bg-green-50 dark:border-gray-600 dark:hover:border-green-500 dark:hover:bg-green-950'}">
+      <span class="check-ring" style="width: 20px; height: 20px;"
+            data-state={isDone ? 'done' : isActive ? 'active' : undefined}>
         {#if isDone}
-          <svg class="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+          <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="3.4" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
           </svg>
         {/if}
@@ -150,7 +152,7 @@
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions a11y_no_static_element_interactions -->
     <div class="min-w-0 flex-1 cursor-pointer" onclick={() => onClick?.(task)}>
       <p class="{isDone ? 'line-through' : ''}"
-         style="font-size: 13px; font-weight: 500; line-height: 1.35; letter-spacing: -0.005em;
+         style="font-size: 14px; font-weight: 600; line-height: 1.35; letter-spacing: -0.01em;
                 text-wrap: pretty; overflow-wrap: anywhere; word-break: break-word;
                 color: {isDone ? 'var(--sempa-text-dim)' : 'var(--sempa-text)'};">
         {#if bareUrl(task.title)}
@@ -172,8 +174,8 @@
     <div class="flex items-center gap-0.5 transition-opacity
                 {mobile.value
                   ? 'shrink-0 opacity-100'
-                  : 'absolute right-1.5 top-1.5 z-10 rounded-md shadow-sm opacity-0 group-hover:opacity-100'}"
-         style={mobile.value ? '' : 'background: var(--card-bg); padding: 1px;'}>
+                  : 'absolute right-2 top-2 z-10 rounded-full opacity-0 group-hover:opacity-100'}"
+         style={mobile.value ? '' : 'background: var(--card-bg); padding: 2px; box-shadow: var(--sempa-shadow-1);'}>
       {#if onFocusMode && !isDone}
         <button onclick={(e) => { e.stopPropagation(); onFocusMode?.(task.id); }}
                 class="{mobile.value ? 'h-[44px] w-[44px] flex items-center justify-center' : 'rounded p-1'}
@@ -233,7 +235,7 @@
        checkbox), so badges flow horizontally instead of stacking. -->
   {#if hasFooter}
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-    <div class="flex flex-wrap items-center cursor-pointer" style="gap: 4px; margin-top: 7px;" onclick={() => onClick?.(task)}>
+    <div class="flex flex-wrap items-center cursor-pointer" style="gap: 5px; margin-top: 4px;" onclick={() => onClick?.(task)}>
 {#if project}
         <!-- Project as a small colour SQUARE (tags are round dots); name on hover. -->
         <span class="shrink-0" title={`Project: ${project.title || 'Untitled project'}`}
@@ -243,18 +245,18 @@
         <!-- Tags as colour dots only — scan the list by colour without label
              clutter. Full names live in the task detail view. Title shows the
              names on hover/long-press for accessibility. -->
-        <span class="inline-flex items-center" style="gap: 3px;" title={(task.tags ?? []).join(', ')}>
+        <span class="inline-flex items-center" style="gap: 3px; margin-right: 2px;" title={(task.tags ?? []).join(', ')}>
           {#each task.tags ?? [] as tag}
-            <span class="shrink-0 rounded-full" style="width: 7px; height: 7px; background-color: {tagStore.colorFor(tag)};"></span>
+            <span class="shrink-0 rounded-full" style="width: 8px; height: 8px; background-color: {tagStore.colorFor(tag)};"></span>
           {/each}
         </span>
       {/if}
       {#if hasReminder}
-        <span class="type-badge inline-flex items-center rounded"
-              style="gap: 3px; padding: 2px 7px;
+        <span class="chip"
+              style="gap: 4px;
                      {remindPast
-                       ? 'background: color-mix(in srgb, var(--sempa-text) 6%, transparent); color: var(--sempa-text-dim);'
-                       : 'background: var(--sempa-accent-bg); color: var(--sempa-accent);'}"
+                       ? 'background: var(--sempa-fill); color: var(--sempa-text-soft);'
+                       : 'background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);'}"
               title={remindPast ? `Reminder was due ${remindLabel}` : `Reminder ${remindLabel}`}>
           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" style="flex: 0 0 auto;">
             <path stroke-linecap="round" stroke-linejoin="round" d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
@@ -263,24 +265,24 @@
         </span>
       {/if}
       {#if task.source && task.source !== 'manual'}
-        <span class="type-badge rounded" style="padding: 2px 7px; background: var(--sempa-accent-bg); color: var(--sempa-accent);">
+        <span class="chip" style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
           {sourceLabel[task.source] ?? task.source}
         </span>
       {/if}
       {#if task.time_estimate_minutes}
-        <span class="type-badge rounded" style="padding: 2px 7px; background: color-mix(in srgb, var(--sempa-text) 6%, transparent); color: var(--sempa-text-soft);">
-          {formatMinutes(task.time_estimate_minutes)}
+        <span class="chip chip-time">
+          {isActive && task.time_actual_minutes ? `${formatMinutes(task.time_actual_minutes)} / ` : ''}{formatMinutes(task.time_estimate_minutes)}
         </span>
       {/if}
       {#if isRecurring}
-        <span class="type-badge rounded" style="padding: 2px 7px; background: var(--sempa-accent-bg); color: var(--sempa-accent);"
+        <span class="chip" style="background: var(--sempa-fill); color: var(--sempa-text-soft);"
               title="Recurring{streak > 0 ? ` · ${streak} in a row` : ''}">
           ↺{#if streak > 0}&thinsp;{streak}🔥{/if}
         </span>
       {/if}
       {#if daysBehind > 0}
-        <span class="type-badge rounded"
-              style="padding: 2px 7px; background: color-mix(in srgb, var(--sempa-amber) 16%, transparent); color: var(--sempa-amber);"
+        <span class="chip"
+              style="background: var(--cal-amber-bg); color: var(--cal-amber-fg);"
               title="{daysBehind} day{daysBehind !== 1 ? 's' : ''} overdue">
           +{daysBehind}d
         </span>
@@ -296,4 +298,11 @@
     opacity: 0.4;
     box-shadow: none;
   }
+  .task-card:hover { box-shadow: var(--sempa-shadow-2); }
+  /* The task in progress carries an accent ring — the board's "now". */
+  .is-active { box-shadow: var(--sempa-shadow-1), 0 0 0 2px var(--sempa-accent); }
+  .is-active:hover { box-shadow: var(--sempa-shadow-2), 0 0 0 2px var(--sempa-accent); }
+  /* Done cards recede: no lift, just an outline on the column. */
+  .is-done { background: transparent; box-shadow: inset 0 0 0 1px var(--sempa-border); }
+  .is-done:hover { box-shadow: inset 0 0 0 1px var(--sempa-track); }
 </style>

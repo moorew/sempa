@@ -6,6 +6,7 @@
   import { appendPosition, formatWeekRange, offsetDate, today, weekStart as calcWeekStart } from '$lib/utils';
   import { projectStore } from '$lib/stores/projects.svelte';
   import SempaSelect from '$lib/components/ui/SempaSelect.svelte';
+  import { Target, Check, ArrowLeft, ArrowRight, Plus, X, Copy } from 'lucide-svelte';
 
   let ws = $derived(page.params.weekStart ?? calcWeekStart(today()));
   const thisWeek = calcWeekStart(today());
@@ -188,138 +189,136 @@
 
 <svelte:head><title>Plan week · {formatWeekRange(ws)} — Sempa</title></svelte:head>
 
-<div class="mx-auto max-w-2xl px-6 py-10 animate-fade-in"
-     style="padding-top: calc(env(safe-area-inset-top, 0px) + 40px);">
+<div class="mx-auto max-w-2xl px-4 pb-28 pt-8 sm:px-6 sm:py-10 animate-page-in"
+     style="padding-top: calc(env(safe-area-inset-top, 0px) + 32px);">
 
   <!-- Header -->
-  <div class="mb-8 flex items-start justify-between">
-    <div>
-      <a href="/week/{ws}" class="text-xs" style="color: var(--sempa-text-dim);">
-        ← Back to week
-      </a>
-      <h1 class="mt-2 text-xl font-bold" style="color: var(--sempa-text);">Plan your week</h1>
-      <!-- Week switcher — plan any week, not just the current one -->
-      <div class="mt-0.5 flex items-center gap-1.5">
-        <button onclick={() => goWeek(-1)} aria-label="Previous week"
-                class="grid h-6 w-6 place-items-center rounded-md transition-colors"
-                style="color: var(--sempa-text-dim);"
-                onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--sempa-accent-bg)'}
-                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-        </button>
-        <p class="text-sm min-w-[9.5rem] text-center" style="color: var(--sempa-text-soft);">{formatWeekRange(ws)}</p>
-        <button onclick={() => goWeek(1)} aria-label="Next week"
-                class="grid h-6 w-6 place-items-center rounded-md transition-colors"
-                style="color: var(--sempa-text-dim);"
-                onmouseenter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--sempa-accent-bg)'}
-                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-        </button>
-        {#if ws !== thisWeek}
-          <button onclick={() => { step = 1; goto(`/week/${thisWeek}/plan`); }}
-                  class="ml-1 rounded-full px-2 py-0.5 text-[11px] transition-colors"
-                  style="background: var(--sempa-accent-bg); color: var(--sempa-text-dim);">
-            This week
+  <div class="mb-6">
+    <a href="/week/{ws}" class="back-link">
+      <ArrowLeft size={14} strokeWidth={2.25} />
+      Back to week
+    </a>
+    <div class="mt-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+      <div class="min-w-0">
+        <h1 class="type-page" style="color: var(--sempa-text);">Plan your week</h1>
+        <!-- Week switcher — plan any week, not just the current one -->
+        <div class="mt-1.5 flex items-center gap-1">
+          <button onclick={() => goWeek(-1)} aria-label="Previous week" class="nav-round">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.25" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
           </button>
-        {/if}
+          <p class="min-w-[9.5rem] text-center type-meta" style="color: var(--sempa-text-soft);">{formatWeekRange(ws)}</p>
+          <button onclick={() => goWeek(1)} aria-label="Next week" class="nav-round">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.25" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          </button>
+          {#if ws !== thisWeek}
+            <button onclick={() => { step = 1; goto(`/week/${thisWeek}/plan`); }}
+                    class="btn-soft ml-1"
+                    style="height: 28px; padding: 0 12px; font-size: 12px;">
+              This week
+            </button>
+          {/if}
+        </div>
       </div>
-    </div>
-    <!-- Step indicator pills -->
-    <div class="flex items-center gap-1.5 pt-1">
-      {#each [{ n: 1, label: 'Objectives' }, { n: 2, label: 'Tasks' }, { n: 3, label: 'Export' }] as s}
-        <button onclick={() => step = s.n}
-                class="transition-colors"
-                style={step === s.n
-                  ? 'background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:9999px; padding:4px 14px; font-size:12px; font-weight:500;'
-                  : step > s.n
-                    ? 'background: var(--sempa-success-soft); color: var(--sempa-success); border-radius:9999px; padding:4px 14px; font-size:12px; font-weight:500;'
-                    : 'background: var(--sempa-accent-bg); color: var(--sempa-text-dim); border-radius:9999px; padding:4px 14px; font-size:12px;'}>
-          {s.n < step ? '✓ ' : ''}{s.label}
-        </button>
-      {/each}
+      <!-- Step indicator: a segmented control -->
+      <div class="segmented on-canvas w-full sm:w-auto" role="tablist" aria-label="Planning steps">
+        {#each [{ n: 1, label: 'Objectives' }, { n: 2, label: 'Tasks' }, { n: 3, label: 'Export' }] as s}
+          <button onclick={() => step = s.n}
+                  role="tab"
+                  aria-selected={step === s.n}
+                  class="seg-step"
+                  style="color: {step === s.n ? 'var(--sempa-text)' : step > s.n ? 'var(--sempa-success)' : 'var(--sempa-text-soft)'};">
+            {#if s.n < step}<Check size={13} strokeWidth={3} />{/if}
+            {s.label}
+          </button>
+        {/each}
+      </div>
     </div>
   </div>
 
   {#if loading}
-    <div class="flex h-40 items-center justify-center text-sm text-gray-400">Loading…</div>
+    <div class="flex h-40 items-center justify-center text-sm" style="color: var(--sempa-text-dim);">Loading…</div>
   {:else if error}
     <p class="rounded-xl bg-red-50 p-4 text-sm text-red-600">{error}</p>
 
   <!-- ── Step 1: Objectives ─────────────────────────────────────────────── -->
   {:else if step === 1}
     <div class="space-y-4">
-      <p class="text-sm" style="color: var(--sempa-text-soft);">
-        What do you want to accomplish this week?
-        Be specific enough to know when you've achieved each one.
-      </p>
+      <div class="intro">
+        <h2 class="type-section" style="color: var(--sempa-text);">What do you want to accomplish?</h2>
+        <p class="mt-1 text-sm" style="color: var(--sempa-text-soft);">
+          Be specific enough to know when you've achieved each one.
+        </p>
+      </div>
 
-      <div class="space-y-2">
+      <div class="space-y-2.5">
         {#each objectives as obj, i (obj.id)}
-          <div class="flex items-center gap-2 rounded-xl px-3 py-2"
-               style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
-            <span class="select-none" style="color: var(--sempa-text-dim);">🎯</span>
+          {@const hasProject = projectStore.open.length > 0 || !!obj.project_id}
+          <!-- On narrow screens the project picker drops to its own line under
+               the title, so the objective text is never squeezed off-screen. -->
+          <div class="obj-row surface py-2.5 pl-4 pr-2" class:has-project={hasProject} style="border-radius: 18px; min-height: 56px;">
+            <span class="obj-icon" style="grid-area: icon;" aria-hidden="true"><Target size={15} strokeWidth={2.25} /></span>
             <input
               bind:value={draftTitles[i]}
               onblur={() => saveTitle(i)}
               onkeydown={(e) => { if (e.key === 'Enter') { saveTitle(i); addingTitle = ''; (document.getElementById('new-obj') as HTMLInputElement)?.focus(); } }}
               type="text"
-              class="flex-1 bg-transparent text-sm font-medium outline-none"
-              style="color: var(--sempa-text);"
+              aria-label="Objective {i + 1}"
+              class="min-w-0 bg-transparent outline-none"
+              style="grid-area: title; font-size: 14.5px; font-weight: 600; color: var(--sempa-text);"
             />
-            {#if projectStore.open.length > 0 || obj.project_id}
-              <div class="w-36 shrink-0">
+            {#if hasProject}
+              <div class="obj-project" style="grid-area: project;">
                 <SempaSelect value={obj.project_id ?? null} placeholder="No project" options={projectOptions}
                   onchange={(v) => setObjectiveProject(obj, typeof v === 'string' ? v : null)} />
               </div>
             {/if}
             <button onclick={() => deleteObjective(obj.id)} aria-label="Delete objective"
-                    class="transition-colors"
-                    style="color: var(--sempa-text-dim);"
+                    class="icon-ghost"
+                    style="grid-area: del; color: var(--sempa-text-dim);"
                     onmouseenter={(e) => (e.currentTarget as HTMLElement).style.color = '#f87171'}
                     onmouseleave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text-dim)'}>
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
+              <X size={16} strokeWidth={2} />
             </button>
           </div>
         {/each}
 
         <!-- Add new objective input -->
-        <div class="flex items-center gap-2 rounded-xl border border-dashed px-3 py-2
-                    focus-within:border-[var(--a500)]"
-             style="border-color: var(--sempa-border); background: var(--sempa-accent-bg);">
-          <span class="select-none" style="color: var(--sempa-text-dim);">🎯</span>
+        <div class="add-obj flex items-center gap-3 py-2.5 pl-4 pr-2" style="min-height: 56px;">
+          <span class="obj-icon is-new" aria-hidden="true"><Plus size={15} strokeWidth={2.5} /></span>
           <input
             id="new-obj"
             bind:value={addingTitle}
             onkeydown={(e) => { if (e.key === 'Enter') addObjective(); }}
             type="text"
             placeholder="Add an objective… (press Enter)"
-            class="flex-1 bg-transparent text-sm outline-none"
+            class="min-w-0 flex-1 bg-transparent text-sm outline-none"
             style="color: var(--sempa-text);"
           />
           {#if addingTitle.trim()}
             <button onclick={addObjective}
-                    class="text-xs" style="color: var(--sempa-accent);">Add</button>
+                    class="btn-primary"
+                    style="height: 34px; padding: 0 16px; font-size: 13px;">Add</button>
           {/if}
         </div>
       </div>
 
       <!-- Active projects — reference only, to inform this week's objectives. -->
       {#if activeProjects.length > 0}
-        <div class="rounded-xl px-4 py-3" style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
-          <p class="mb-2 text-[10.5px] font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">Active projects</p>
-          <div class="flex flex-col gap-1.5">
+        <div class="surface px-4 py-3.5" style="border-radius: 18px;">
+          <p class="mb-2 type-label" style="color: var(--sempa-text-soft);">Active projects</p>
+          <div class="flex flex-col gap-1">
             {#each activeProjects as p (p.id)}
               {@const linked = objectives.filter(o => o.project_id === p.id).length}
-              <a href={`/projects/${p.id}`} class="flex items-center gap-2 text-sm hover:underline" style="color: var(--sempa-text);">
+              <a href={`/projects/${p.id}`} class="proj-row flex items-center gap-2.5 text-sm" style="color: var(--sempa-text);">
                 <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background: {p.color};"></span>
-                <span class="min-w-0 flex-1 truncate">{p.title || 'Untitled project'}</span>
+                <span class="min-w-0 flex-1 truncate font-medium">{p.title || 'Untitled project'}</span>
                 {#if linked > 0}
-                  <span class="shrink-0 text-[11px]" style="color: var(--sempa-text-dim);">🎯 {linked}</span>
+                  <span class="chip tint shrink-0" style="--tint: {p.color};">
+                    <Target size={11} strokeWidth={2.5} /> {linked}
+                  </span>
                 {/if}
                 {#if p.target_date}
-                  <span class="shrink-0 text-[11px]" style="color: var(--sempa-text-dim);">
+                  <span class="shrink-0 type-meta" style="color: var(--sempa-text-dim);">
                     target {new Date(p.target_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </span>
                 {/if}
@@ -331,12 +330,10 @@
 
       <div class="pt-2 flex justify-end">
         <button onclick={() => step = 2} disabled={objectives.length === 0}
-                class="disabled:opacity-40 transition-colors"
-                style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
-                       padding:10px 24px; font-size:14px; font-weight:500; border:none; cursor:pointer;"
-                onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
-                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>
-          Next: add tasks →
+                class="btn-primary disabled:opacity-40"
+                style="height: 44px; padding: 0 24px; font-size: 14px;">
+          Next: add tasks
+          <ArrowRight size={16} strokeWidth={2.25} />
         </button>
       </div>
     </div>
@@ -344,43 +341,46 @@
   <!-- ── Step 2: Tasks per objective ────────────────────────────────────── -->
   {:else if step === 2}
     <div class="space-y-4">
-      <p class="text-sm" style="color: var(--sempa-text-soft);">
-        Break each objective into <strong style="color: var(--sempa-text);">concrete tasks</strong>.
-        Each task counts equally toward the objective's progress.
-      </p>
+      <div class="intro">
+        <h2 class="type-section" style="color: var(--sempa-text);">Break it into tasks</h2>
+        <p class="mt-1 text-sm" style="color: var(--sempa-text-soft);">
+          Give each objective a few <strong style="color: var(--sempa-text);">concrete tasks</strong>.
+          Each task counts equally toward the objective's progress.
+        </p>
+      </div>
 
       {#each objectives as obj (obj.id)}
         {@const linked = objectiveTasks(obj.id)}
         {@const done   = doneTasks(obj.id)}
         {@const p = pct(obj.id)}
-        <div style="border-radius:12px; border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);">
+        <div class="surface" style="border-radius: 20px;">
           <!-- Objective header -->
-          <div class="flex items-center gap-3 px-4 py-3" style="border-bottom: 1px solid var(--sempa-border);">
-            <div class="flex-1">
-              <p class="text-sm font-semibold" style="color: var(--sempa-text);">🎯 {obj.title}</p>
+          <div class="flex items-start gap-3 px-4 pb-3 pt-4">
+            <span class="obj-icon mt-px" aria-hidden="true"><Target size={15} strokeWidth={2.25} /></span>
+            <div class="min-w-0 flex-1">
+              <p style="font-size: 15px; font-weight: 700; letter-spacing: -.01em; color: var(--sempa-text);">{obj.title}</p>
               {#if linked.length > 0}
-                <div class="mt-1.5 flex items-center gap-2">
-                  <div class="h-1.5 w-24 overflow-hidden rounded-full" style="background: var(--sempa-border);">
-                    <div style="width:{p}%; height:100%; border-radius:3px;
-                                background: var(--sempa-accent); transition: width 500ms ease-out;"></div>
+                <div class="mt-2 flex items-center gap-2.5">
+                  <div class="day-bar-track flex-1" style="max-width: 200px;">
+                    <div class="day-bar-fill" style="width:{p}%; background: {p === 100 ? 'var(--sempa-success)' : 'var(--sempa-accent)'};"></div>
                   </div>
-                  <span class="text-xs" style="color: var(--sempa-text-dim);">{done.length}/{linked.length} · {p}%</span>
+                  <span class="type-meta tabular-nums" style="color: var(--sempa-text-soft);">{done.length}/{linked.length} · {p}%</span>
                 </div>
+              {:else}
+                <p class="mt-0.5 type-meta" style="color: var(--sempa-text-dim);">No tasks yet</p>
               {/if}
             </div>
           </div>
 
           <!-- Task list -->
-          <div class="px-4 py-2 space-y-1">
+          <div class="px-4 pb-4 sm:pl-[3.25rem]">
             {#each linked as t (t.id)}
-              <div class="flex items-center gap-2.5 py-1">
+              <div class="flex items-center gap-2.5 py-2" style="border-top: 1px solid var(--sempa-border);">
                 <button onclick={() => toggleTask(t)}
-                        class="h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center transition-all
-                               {t.status === 'done' ? 'border-green-500 bg-green-500' : 'border-gray-300'}"
-                        onmouseenter={(e) => { if (t.status !== 'done') (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-success)'; }}
-                        onmouseleave={(e) => { if (t.status !== 'done') (e.currentTarget as HTMLElement).style.borderColor = ''; }}>
+                        class="check-ring" data-state={t.status === 'done' ? 'done' : undefined}
+                        style="width: 20px; height: 20px;">
                   {#if t.status === 'done'}
-                    <svg class="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                    <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="3.5" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                     </svg>
                   {/if}
@@ -390,7 +390,7 @@
                   {t.title}
                 </span>
                 {#if linked.length > 0}
-                  <span class="ml-auto text-[10.5px] shrink-0" style="color: var(--sempa-text-dim);">
+                  <span class="ml-auto shrink-0 tabular-nums" style="font-size: 11.5px; color: var(--sempa-text-dim);">
                     {Math.round(100 / linked.length)}%
                   </span>
                 {/if}
@@ -398,35 +398,31 @@
             {/each}
 
             <!-- Quick-add -->
-            <div class="space-y-1.5">
-              <div class="flex items-center gap-2 rounded-lg border border-dashed px-2 py-1.5
-                          focus-within:border-[var(--a500)]"
-                   style="border-color: var(--sempa-border);">
-                <svg class="h-3.5 w-3.5 shrink-0" style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" d="M12 4v16m8-8H4"/>
-                </svg>
+            <div class="mt-2 space-y-2">
+              <div class="add-field flex items-center gap-2 px-3" style="min-height: 40px;">
+                <Plus size={14} strokeWidth={2.25} style="color: var(--sempa-text-dim); flex-shrink: 0;" />
                 <input
                   bind:value={taskDrafts[obj.id]}
                   onkeydown={(e) => { if (e.key === 'Enter') addTask(obj.id); }}
                   type="text"
                   placeholder="Add a task… (Enter to save)"
-                  class="flex-1 bg-transparent text-xs outline-none"
+                  class="flex-1 bg-transparent text-sm outline-none"
                   style="color: var(--sempa-text);"
                 />
               </div>
               {#if taskDrafts[obj.id]?.trim()}
-                <div class="flex items-center gap-2 pl-1">
+                <div class="flex items-center gap-2">
                   <select bind:value={taskDays[obj.id]}
-                          class="rounded-md px-2 py-1 text-xs outline-none"
-                          style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);
-                                 color: var(--sempa-text-soft);">
+                          class="px-3 text-sm outline-none"
+                          style="height: 36px; border: 1px solid var(--sempa-border); background: var(--sempa-fill);
+                                 border-radius: 12px; color: var(--sempa-text);">
                     {#each weekDays as d}
                       <option value={d.value}>{d.label}</option>
                     {/each}
                   </select>
                   <button onclick={() => addTask(obj.id)} disabled={addingTask[obj.id]}
-                          class="rounded-md bg-[var(--a500)] px-3 py-1 text-xs font-medium text-white
-                                 hover:bg-[var(--a600)] disabled:opacity-40 transition-colors">
+                          class="btn-primary disabled:opacity-40"
+                          style="height: 36px; padding: 0 16px; font-size: 13px;">
                     Add task
                   </button>
                 </div>
@@ -438,18 +434,16 @@
 
       <div class="pt-2 flex gap-2 justify-end">
         <button onclick={() => step = 1}
-                class="transition-colors"
-                style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);
-                       background: transparent; border-radius: 9px; padding: 7px 14px; font-size: 14px;">
-          ← Back
+                class="btn-surface"
+                style="height: 44px; padding: 0 20px; font-size: 14px; color: var(--sempa-text-soft);">
+          <ArrowLeft size={16} strokeWidth={2.25} />
+          Back
         </button>
         <button onclick={() => step = 3}
-                class="transition-colors"
-                style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
-                       padding:10px 24px; font-size:14px; font-weight:500; border:none; cursor:pointer;"
-                onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
-                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>
-          Preview & export →
+                class="btn-primary"
+                style="height: 44px; padding: 0 24px; font-size: 14px;">
+          Preview & export
+          <ArrowRight size={16} strokeWidth={2.25} />
         </button>
       </div>
     </div>
@@ -457,28 +451,26 @@
   <!-- ── Step 3: Export ──────────────────────────────────────────────────── -->
   {:else if step === 3}
     <div class="space-y-4">
-      <p class="text-sm" style="color: var(--sempa-text-soft);">
-        Your week is set. Copy this as markdown to paste into any doc or report.
-      </p>
+      <div class="intro">
+        <h2 class="type-section" style="color: var(--sempa-text);">Your week is set</h2>
+        <p class="mt-1 text-sm" style="color: var(--sempa-text-soft);">
+          Copy this as markdown to paste into any doc or report.
+        </p>
+      </div>
 
       <!-- Markdown preview -->
-      <div class="relative">
-        <pre class="text-xs leading-relaxed"
-             style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel);
-                    border-radius:12px; padding:16px; overflow-x:auto; color: var(--sempa-text);">{generateMarkdown()}</pre>
+      <div class="surface relative" style="border-radius: 20px; padding: 8px;">
+        <pre class="font-mono text-xs leading-relaxed"
+             style="background: var(--sempa-fill); border-radius: 14px; padding: 16px 18px; padding-right: 150px;
+                    overflow-x: auto; color: var(--sempa-text); min-height: 64px;">{generateMarkdown()}</pre>
         <button onclick={copyMarkdown}
-                class="absolute right-3 top-3 flex items-center gap-1.5 font-medium transition-colors"
-                style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);
-                       background: var(--sempa-bg-panel); border-radius: 9px; padding: 7px 14px; font-size: 12px;">
+                class="btn-surface absolute right-4 top-4"
+                style="height: 34px; padding: 0 14px; font-size: 12.5px; {copied ? 'color: var(--sempa-success);' : 'color: var(--sempa-text-soft);'}">
           {#if copied}
-            <svg class="h-3.5 w-3.5 text-green-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-            </svg>
+            <Check size={14} strokeWidth={2.75} />
             Copied!
           {:else}
-            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-            </svg>
+            <Copy size={14} strokeWidth={2} />
             Copy markdown
           {/if}
         </button>
@@ -486,20 +478,100 @@
 
       <div class="flex gap-2 justify-end">
         <button onclick={() => step = 2}
-                class="transition-colors"
-                style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);
-                       background: transparent; border-radius: 9px; padding: 7px 14px; font-size: 14px;">
-          ← Back
+                class="btn-surface"
+                style="height: 44px; padding: 0 20px; font-size: 14px; color: var(--sempa-text-soft);">
+          <ArrowLeft size={16} strokeWidth={2.25} />
+          Back
         </button>
         <button onclick={() => goto(`/week/${ws}`)}
-                class="transition-colors"
-                style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
-                       padding:10px 24px; font-size:14px; font-weight:500; border:none; cursor:pointer;"
-                onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
-                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>
-          Start the week →
+                class="btn-primary"
+                style="height: 44px; padding: 0 24px; font-size: 14px;">
+          Start the week
+          <ArrowRight size={16} strokeWidth={2.25} />
         </button>
       </div>
     </div>
   {/if}
 </div>
+
+<style>
+  .back-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; color: var(--sempa-text-soft);
+    transition: color 120ms ease;
+  }
+  .back-link:hover { color: var(--sempa-accent-ink); }
+
+  .nav-round {
+    display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px;
+    color: var(--sempa-text-soft); transition: background-color 120ms ease, color 120ms ease;
+  }
+  .nav-round:hover { background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text); }
+
+  /* The segmented track normally sits on a surface; here it sits on the
+     canvas, so recess it a notch so the raised selected pill reads. */
+  .on-canvas { background: color-mix(in srgb, var(--sempa-text) 6%, var(--sempa-bg-main)); }
+
+  .seg-step {
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    height: 34px; padding: 0 16px; font-size: 13px; font-weight: 600; white-space: nowrap;
+  }
+  .seg-step[aria-selected="true"] { font-weight: 700; }
+
+  .intro { padding: 0 2px; }
+
+  /* Objective row: icon · title · project · delete on one line; on narrow
+     screens the project picker wraps under the title. */
+  .obj-row {
+    display: grid; align-items: center; column-gap: 12px; row-gap: 8px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "icon title del";
+  }
+  .obj-row.has-project {
+    grid-template-columns: auto minmax(0, 1fr) 9rem auto;
+    grid-template-areas: "icon title project del";
+  }
+  @media (max-width: 560px) {
+    .obj-row.has-project {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-areas: "icon title del" ". project project";
+      padding-bottom: 12px;
+    }
+    .obj-row.has-project .obj-project { max-width: 14rem; }
+  }
+
+  /* Objective marker: a small accent-tinted rounded square. */
+  .obj-icon {
+    display: inline-grid; place-items: center; flex: 0 0 auto;
+    width: 28px; height: 28px; border-radius: 10px;
+    background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);
+  }
+  .obj-icon.is-new { background: var(--sempa-fill); color: var(--sempa-text-soft); }
+
+  /* The add-objective row sits on the canvas as a soft dashed slot that
+     firms up on focus, so it reads as "the next card goes here". */
+  .add-obj {
+    border-radius: 18px;
+    border: 1.5px dashed color-mix(in srgb, var(--sempa-text) 16%, transparent);
+    transition: border-color 120ms ease, background-color 120ms ease;
+  }
+  .add-obj:focus-within { border-style: solid; border-color: var(--sempa-accent); background: var(--sempa-bg-panel); }
+
+  .add-field {
+    background: var(--sempa-fill);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    transition: border-color 120ms ease;
+  }
+  .add-field:focus-within { border-color: var(--sempa-accent); }
+
+  .icon-ghost {
+    display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+    width: 36px; height: 36px; border-radius: 999px;
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+  .icon-ghost:hover { background: var(--sempa-fill); }
+
+  .proj-row { min-height: 36px; border-radius: 10px; padding: 0 6px; margin: 0 -6px; }
+  .proj-row:hover { background: var(--sempa-fill); }
+</style>

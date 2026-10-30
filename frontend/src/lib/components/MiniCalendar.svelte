@@ -87,7 +87,7 @@
 </script>
 
 <div class="select-none px-4 py-3"
-     style={dragActive && onDateDrop ? 'box-shadow: inset 0 0 0 1.5px var(--sempa-accent); border-radius: 12px;' : ''}>
+     style={dragActive && onDateDrop ? 'box-shadow: inset 0 0 0 1.5px var(--sempa-accent); border-radius: 18px;' : ''}>
   {#if dragActive && onDateDrop}
     <div class="mb-2 flex items-center justify-center gap-1.5 rounded-md py-1 text-[10.5px] font-medium"
          style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
@@ -99,26 +99,26 @@
   {/if}
   <!-- Month header -->
   <div class="mb-3 flex items-center justify-between">
-    <span class="text-xs font-semibold text-gray-700 dark:text-gray-200">
+    <span class="text-[15px] font-extrabold tracking-[-0.02em]" style="color: var(--sempa-text);">
       {MONTHS[viewMonth]} {viewYear}
     </span>
-    <div class="flex gap-0.5">
+    <div class="flex gap-1">
       <button onclick={prev} aria-label="Previous month"
               ondragover={(e) => dragPage(e, -1)}
-              class="rounded p-0.5 transition-colors"
-              style="color: var(--sempa-text-dim);"
+              class="flex h-7 w-7 items-center justify-center rounded-full transition-colors"
+              style="background: var(--sempa-fill); color: var(--sempa-text-soft);"
               onmouseenter={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text)'}
-              onmouseleave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text-dim)'}>
+              onmouseleave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text-soft)'}>
         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" d="M15 19l-7-7 7-7"/>
         </svg>
       </button>
       <button onclick={next} aria-label="Next month"
               ondragover={(e) => dragPage(e, 1)}
-              class="rounded p-0.5 transition-colors"
-              style="color: var(--sempa-text-dim);"
+              class="flex h-7 w-7 items-center justify-center rounded-full transition-colors"
+              style="background: var(--sempa-fill); color: var(--sempa-text-soft);"
               onmouseenter={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text)'}
-              onmouseleave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text-dim)'}>
+              onmouseleave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text-soft)'}>
         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" d="M9 5l7 7-7 7"/>
         </svg>
@@ -129,8 +129,8 @@
   <!-- Day-of-week headers -->
   <div class="mb-1 grid grid-cols-7">
     {#each DAYS as day}
-      <div class="flex items-center justify-center py-0.5 text-center text-[10.5px] font-medium
-                  text-gray-400 dark:text-gray-600">{day}</div>
+      <div class="flex items-center justify-center py-0.5 text-center text-[11px] font-semibold"
+           style="color: var(--sempa-text-dim);">{day}</div>
     {/each}
   </div>
 
@@ -150,17 +150,16 @@
              ondragleave={() => { if (dragOver === ds) dragOver = null; }}
              ondrop={(e) => onDayDrop(e, ds)}>
           <button onclick={() => onDateClick?.(ds)}
-                  class="flex h-6 w-6 items-center justify-center rounded-full text-[11px] transition-colors
-                         {!isToday && !isSel && !isDragOver ? 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800' : ''}"
+                  class="mini-day flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-medium transition-colors"
                   style={isDragOver
-                    ? 'background:var(--sempa-accent);color:var(--sempa-btn-fg);font-weight:700;box-shadow:0 0 0 2px var(--sempa-accent-bg);'
+                    ? 'background: var(--sempa-btn-bg);color:var(--sempa-btn-fg);font-weight:700;box-shadow:0 0 0 2px var(--sempa-accent-bg);'
                     : isToday && isSel
-                    ? 'background:var(--sempa-today-bg);color:var(--sempa-today-fg);font-weight:700;'
+                    ? 'background:var(--sempa-today-bg);color:var(--sempa-today-fg);font-weight:800;box-shadow:var(--sempa-shadow-accent);'
                     : isToday
-                      ? 'background:var(--sempa-accent-bg);color:var(--sempa-accent);font-weight:600;'
+                      ? 'background:var(--sempa-accent-bg);color:var(--sempa-accent-ink);font-weight:800;'
                       : isSel
-                        ? 'background:var(--sempa-accent-bg);color:var(--sempa-text);font-weight:500;'
-                        : ''}>
+                        ? 'background:var(--sempa-fill);color:var(--sempa-text);font-weight:700;box-shadow:inset 0 0 0 1.5px var(--sempa-accent);'
+                        : 'color: var(--sempa-text-soft);'}>
             {cell}
           </button>
         </div>
@@ -168,3 +167,7 @@
     {/each}
   </div>
 </div>
+
+<style>
+  .mini-day:hover { background: var(--sempa-fill); }
+</style>

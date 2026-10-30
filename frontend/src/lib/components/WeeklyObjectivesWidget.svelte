@@ -51,25 +51,24 @@
 </script>
 
 {#if total > 0}
-  <div class="border-b border-gray-100 dark:border-gray-800/60">
+  <div style="border-bottom: 1px solid var(--sempa-border);">
     <!-- Header row -->
     <button onclick={() => collapsed = !collapsed}
-            class="flex w-full items-center justify-between px-4 py-2.5 text-left
-                   hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+            class="wow-head flex w-full items-center justify-between px-4 py-3 text-left transition-colors">
       <div class="flex items-center gap-2">
-        <span class="text-[10.5px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-600">
+        <span class="type-label" style="color: var(--sempa-text-soft);">
           This week
         </span>
-        <span class="text-[10.5px] text-gray-400 dark:text-gray-600">
+        <span class="tabular-nums" style="font-size: 11.5px; font-weight: 600; color: var(--sempa-text-dim);">
           {totalDone}/{total}
         </span>
       </div>
       <div class="flex items-center gap-2">
-        <div class="h-1 w-14 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-          <div class="h-full rounded-full transition-all"
-               style="width:{overallPct}%; background: var(--sempa-accent);"></div>
+        <div class="day-bar-track" style="width: 56px;">
+          <div class="day-bar-fill"
+               style="width:{overallPct}%; background: {overallPct === 100 ? 'var(--sempa-success)' : 'var(--sempa-accent)'};"></div>
         </div>
-        <svg class="h-3 w-3 text-gray-300 transition-transform dark:text-gray-600 {collapsed ? '-rotate-90' : ''}"
+        <svg class="h-3.5 w-3.5 transition-transform {collapsed ? '-rotate-90' : ''}" style="color: var(--sempa-text-dim);"
              fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" d="M19 9l-7 7-7-7"/>
         </svg>
@@ -82,33 +81,37 @@
           {@const p = objPct(obj.id)}
           {@const done = obj.status === 'completed'}
           {@const total = objTotal(obj.id)}
+          {@const full = done || p === 100}
           <a href="/week/{ws}"
              draggable="true"
              ondragstart={(e) => onObjDragStart(e, obj)}
              title="Drag onto a day to add a linked task"
-             class="block cursor-grab rounded-xl px-3 py-2.5 transition-colors active:cursor-grabbing"
-             style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main);"
-             onmouseenter={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'}
-             onmouseleave={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'}>
-            <div class="flex items-center gap-2">
-              <div class="h-2 w-2 shrink-0 rounded-full"
-                   style="background: {done || p === 100 ? 'var(--sempa-success)' : 'var(--sempa-accent)'};"></div>
-              <span class="flex-1 truncate text-[13px] {done ? 'line-through' : ''}"
-                    style="color: {done ? 'var(--sempa-text-dim)' : 'var(--sempa-text)'};">
+             class="wow-row block cursor-grab px-3 py-2.5 active:cursor-grabbing">
+            <div class="flex items-center gap-2.5">
+              <!-- Round status check (display only — the row is a link/drag source) -->
+              <span class="check-ring" data-state={done ? 'done' : p > 0 ? 'active' : undefined}
+                    style="width: 18px; height: 18px; border-width: 2px;" aria-hidden="true">
+                {#if done}
+                  <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="3.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                  </svg>
+                {/if}
+              </span>
+              <span class="flex-1 truncate {done ? 'line-through' : ''}"
+                    style="font-size: 13.5px; font-weight: 600; color: {done ? 'var(--sempa-text-dim)' : 'var(--sempa-text)'};">
                 {obj.title}
               </span>
-              <span class="shrink-0 text-[11px] font-medium tabular-nums"
-                    style="color: {done || p === 100 ? 'var(--sempa-success)' : 'var(--sempa-text-dim)'};">
+              <span class="shrink-0 tabular-nums"
+                    style="font-size: 11.5px; font-weight: 700; color: {full ? 'var(--sempa-success)' : 'var(--sempa-text-soft)'};">
                 {p}%
               </span>
             </div>
-            <div class="mt-2 flex items-center gap-2">
-              <div class="h-1 flex-1 overflow-hidden rounded-full" style="background: var(--sempa-border);">
-                <div style="width:{p}%; height:100%; border-radius:9999px;
-                            background: {done || p === 100 ? 'var(--sempa-success)' : 'var(--sempa-accent)'};
-                            transition: width 400ms ease-out;"></div>
+            <div class="mt-2 flex items-center gap-2 pl-[28px]">
+              <div class="day-bar-track flex-1">
+                <div class="day-bar-fill"
+                     style="width:{p}%; background: {full ? 'var(--sempa-success)' : 'var(--sempa-accent)'};"></div>
               </div>
-              <span class="shrink-0 text-[10px]" style="color: var(--sempa-text-dim);">
+              <span class="shrink-0 tabular-nums" style="font-size: 11px; color: var(--sempa-text-dim);">
                 {total === 0 ? 'No tasks' : `${objDone(obj.id)}/${total}`}
               </span>
             </div>
@@ -118,3 +121,15 @@
     {/if}
   </div>
 {/if}
+
+<style>
+  .wow-head:hover { background: var(--sempa-fill); }
+  /* Nested block inside the panel: a soft fill, an accent edge on hover. */
+  .wow-row {
+    background: var(--sempa-fill);
+    border-radius: 14px;
+    box-shadow: inset 0 0 0 1px transparent;
+    transition: box-shadow 120ms ease;
+  }
+  .wow-row:hover { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--sempa-accent) 55%, transparent); }
+</style>

@@ -88,8 +88,7 @@
     display: flex;
     align-items: center;
     justify-content: {windowChrome.controlsSide === 'left' ? 'flex-start' : 'flex-end'};
-    background: var(--sempa-bg-panel);
-    border-bottom: 1px solid var(--sempa-border);
+    background: var(--sempa-bg-nav);
     user-select: none;
     flex-shrink: 0;
   ">
@@ -105,37 +104,48 @@
 {#if menu}
   <div role="menu" tabindex="-1"
        style="position: fixed; left: {menu.x}px; top: {menu.y}px; z-index: 9999;
-              min-width: 160px; padding: 4px; border-radius: 8px;
-              background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);
-              box-shadow: 0 8px 24px rgba(0,0,0,0.28);">
+              min-width: 168px; padding: 6px; border-radius: 18px;
+              background: var(--sempa-bg-panel);
+              box-shadow: var(--sempa-shadow-2);">
     {#if isMaximized}
       <button role="menuitem" class="tb-menu-item" onclick={() => runMenu(toggleMax)}>Restore</button>
     {:else}
       <button role="menuitem" class="tb-menu-item" onclick={() => runMenu(toggleMax)}>Maximize</button>
     {/if}
     <button role="menuitem" class="tb-menu-item" onclick={() => runMenu(minimize)}>Minimize</button>
-    <div style="height:1px; margin:4px 6px; background: var(--sempa-border);"></div>
+    <div style="height:1px; margin:4px 10px; background: var(--sempa-border);"></div>
     <button role="menuitem" class="tb-menu-item" onclick={() => runMenu(close)}>Close</button>
   </div>
 {/if}
 {/if}
 
 <style>
+  /* The full 46×38 strip cell stays the hit target (edge-of-screen Fitts when
+     maximised); the visible hover is a round pill inside it (1.27 controls). */
   .tb-btn {
+    position: relative;
     width: 46px; height: 38px; border: none; background: transparent; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     color: var(--sempa-text-soft); font-size: 12px; line-height: 1;
-    transition: background 100ms, color 100ms;
+    transition: color 100ms;
   }
-  .tb-btn:hover { background: color-mix(in srgb, var(--sempa-text) 10%, transparent); }
-  .tb-close:hover { background: #c42b1c; color: #fff; }
+  .tb-btn::before {
+    content: ''; position: absolute; left: 50%; top: 50%;
+    width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: 999px;
+    background: transparent; transition: background 100ms;
+  }
+  .tb-btn > :global(svg) { position: relative; }
+  .tb-btn:hover { color: var(--sempa-text); }
+  .tb-btn:hover::before { background: color-mix(in srgb, var(--sempa-text) 10%, transparent); }
+  .tb-close:hover { color: #fff; }
+  .tb-close:hover::before { background: #c42b1c; }
   .tb-btn:active { transform: none !important; } /* override global scale(0.97) */
 
   .tb-menu-item {
-    display: block; width: 100%; text-align: left; padding: 7px 12px;
-    font-size: 13px; border: none; background: transparent; cursor: pointer;
-    border-radius: 5px; color: var(--sempa-text);
+    display: block; width: 100%; text-align: left; padding: 8px 12px;
+    font-size: 13px; font-weight: 500; border: none; background: transparent; cursor: pointer;
+    border-radius: 12px; color: var(--sempa-text);
   }
-  .tb-menu-item:hover { background: var(--sempa-accent-bg); color: var(--sempa-accent); }
+  .tb-menu-item:hover { background: var(--sempa-accent-bg); color: var(--sempa-accent-ink); }
   .tb-menu-item:active { transform: none !important; }
 </style>

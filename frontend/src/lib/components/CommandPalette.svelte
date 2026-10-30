@@ -117,31 +117,42 @@
 
 {#if commandPalette.open}
   <div class="fixed inset-0 z-[110] flex items-start justify-center p-4"
-       style="background: rgba(0,0,0,0.45);"
+       style="background: color-mix(in srgb, var(--sempa-bg-rail) 30%, rgba(0,0,0,0.42));"
        onclick={(e) => { if (e.target === e.currentTarget) commandPalette.close(); }}
        role="presentation">
-    <div class="mt-[10vh] flex w-full max-w-lg flex-col overflow-hidden rounded-2xl shadow-2xl"
-         style="max-height: 70vh; background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);"
+    <div class="surface-raised mt-[10vh] flex w-full max-w-lg flex-col overflow-hidden p-2.5"
+         style="max-height: 70vh;"
          role="dialog" aria-modal="true" aria-label="Command palette">
-      <div class="flex items-center gap-2.5 px-4 py-3" style="border-bottom: 1px solid var(--sempa-border);">
-        <Search size={16} style="color: var(--sempa-text-dim);" />
+      <div class="palette-field flex items-center gap-2.5 rounded-full px-4" style="height: 46px; background: var(--sempa-fill);">
+        <Search size={17} style="color: var(--sempa-text-dim);" />
         <!-- svelte-ignore a11y_autofocus -->
         <input bind:this={inputEl} bind:value={query} onkeydown={onKeydown}
                placeholder="Search commands… (↑↓ to move, ↵ to run)"
-               class="flex-1 bg-transparent text-sm outline-none" style="color: var(--sempa-text);" />
+               class="min-w-0 flex-1 bg-transparent text-sm outline-none" style="color: var(--sempa-text);" />
+        <kbd class="hidden shrink-0 rounded-full px-2 py-0.5 text-[10.5px] sm:inline-block"
+             style="background: var(--sempa-bg-panel); color: var(--sempa-text-dim); box-shadow: var(--sempa-shadow-1);">Esc</kbd>
       </div>
-      <div class="flex-1 overflow-y-auto py-1.5">
+      <div class="flex-1 overflow-y-auto px-0.5 pb-0.5 pt-2">
         {#each shown as c, i (c.id)}
           <button onclick={c.run} onmouseenter={() => (selected = i)}
-                  class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition-colors"
+                  class="flex w-full items-center gap-3 rounded-[14px] px-3 py-2 text-left text-sm transition-colors"
                   style="background: {i === selected ? 'var(--sempa-accent-bg)' : 'transparent'};
-                         color: {i === selected ? 'var(--sempa-accent)' : 'var(--sempa-text)'};">
-            <c.icon size={16} class="shrink-0" style="opacity: 0.85;" />
+                         color: {i === selected ? 'var(--sempa-accent-ink)' : 'var(--sempa-text)'};
+                         font-weight: {i === selected ? 600 : 500};">
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]"
+                  style="background: {i === selected ? 'var(--sempa-bg-panel)' : 'var(--sempa-fill)'};
+                         color: {i === selected ? 'var(--sempa-accent-ink)' : 'var(--sempa-text-soft)'};">
+              <c.icon size={16} />
+            </span>
             <span class="flex-1 truncate">{c.label}</span>
-            {#if c.hint}<span class="shrink-0 text-[11px]" style="color: var(--sempa-text-dim);">{c.hint}</span>{/if}
+            {#if c.hint}<span class="shrink-0 text-[11.5px] font-medium" style="color: var(--sempa-text-dim);">{c.hint}</span>{/if}
           </button>
         {/each}
       </div>
     </div>
   </div>
 {/if}
+
+<style>
+  .palette-field input:focus-visible { box-shadow: none; }
+</style>

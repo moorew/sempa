@@ -290,35 +290,33 @@
   }
 </script>
 
-<div class="mx-auto max-w-2xl px-4 py-6 pb-24">
-  <a href="/settings/accounts" class="mb-6 inline-flex items-center gap-1.5 text-sm transition-colors"
-     style="color: var(--sempa-text-dim);">
-    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path stroke-linecap="round" d="m15 18-6-6 6-6"/>
+<div class="mx-auto max-w-[640px] px-5 pt-6 pb-24 sm:px-8 sm:pt-8">
+  <a href="/settings/accounts" class="set-back">
+    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="m15 18-6-6 6-6"/>
     </svg>
     Settings
   </a>
 
-  <h1 class="mb-1 text-xl font-bold" style="color: var(--sempa-text);">Backup &amp; Restore</h1>
-  <p class="mb-6 text-sm" style="color: var(--sempa-text-soft);">
+  <h1 class="set-title type-page">Backup &amp; restore</h1>
+  <p class="set-lede mb-6">
     Bundle everything — tasks, objectives, plans, and attached files — into one file you can restore anywhere.
-    <a href="https://sempa.ca/docs.html#backup" target="_blank" rel="noopener"
-       style="color: var(--sempa-accent); text-decoration: underline;">Full setup &amp; restore guide →</a>
+    <a href="https://sempa.ca/docs.html#backup" target="_blank" rel="noopener">Full setup &amp; restore guide →</a>
   </p>
 
   {#if loading}
     <p class="text-sm" style="color: var(--sempa-text-dim);">Loading…</p>
   {:else}
     <!-- Status -->
-    <section class="mb-6 rounded-xl border px-5 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-      <div class="flex items-center justify-between gap-3">
-        <div>
-          <p class="text-sm font-semibold" style="color: var(--sempa-text);">Last backup</p>
-          <p class="text-xs" style="color: var(--sempa-text-soft);">
+    <section class="set-group">
+      <div class="set-row set-row-wrap" style="min-height: 68px;">
+        <div class="set-row-main min-w-[160px]">
+          <p class="set-label">Last backup</p>
+          <p class="set-desc">
             {#if lastStatus === 'error'}
-              <span class="text-red-500">Failed</span> · {fmtDate(lastRunAt)}
+              <span class="font-bold" style="color: var(--set-danger);">Failed</span> · {fmtDate(lastRunAt)}
             {:else if lastRunAt}
-              <span class="text-green-600">Success</span> · {fmtDate(lastRunAt)}
+              <span class="font-bold" style="color: var(--sempa-success);">Success</span> · {fmtDate(lastRunAt)}
             {:else}
               No backups yet
             {/if}
@@ -326,13 +324,11 @@
         </div>
         <div class="flex gap-2">
           <button onclick={downloadBackup}
-                  class="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
-                  style="border-color: var(--sempa-border); color: var(--sempa-text);">
+                  class="set-btn-quiet set-btn">
             Download now
           </button>
           <button onclick={runNow} disabled={runningNow}
-                  class="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-50"
-                  style="background: var(--sempa-accent);">
+                  class="btn-primary set-btn">
             {runningNow ? 'Running…' : 'Back up now'}
           </button>
         </div>
@@ -340,245 +336,253 @@
     </section>
 
     <!-- Schedule -->
-    <section class="mb-6 rounded-xl border px-5 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-      <label class="flex items-center justify-between">
-        <span class="text-sm font-semibold" style="color: var(--sempa-text);">Automatic daily backup</span>
-        <input type="checkbox" bind:checked={enabled} class="h-4 w-4 accent-[var(--sempa-accent)]" />
+    <h2 class="set-heading">Schedule</h2>
+    <section class="set-group">
+      <label class="set-row cursor-pointer">
+        <span class="set-row-main">
+          <span class="set-label block">Automatic daily backup</span>
+          <span class="set-desc block">Runs once a day and keeps the most recent copies.</span>
+        </span>
+        <input type="checkbox" bind:checked={enabled} class="set-switch-input" />
+        <span class="set-switch" aria-hidden="true"></span>
       </label>
-      <div class="mt-4 grid grid-cols-2 gap-4">
-        <div>
-          <label class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);" for="hour">Run at</label>
+      <div class="set-row set-row-compact">
+        <label class="set-row-main set-label" for="hour">Run at</label>
+        <span class="set-select">
           <select id="hour" bind:value={scheduleHour}
-                  class="w-full rounded-lg border px-2 py-1.5 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);">
+                  class="set-input w-[128px]">
             {#each HOURS as h}<option value={h.value}>{h.label}</option>{/each}
           </select>
-        </div>
-        <div>
-          <label class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);" for="ret">Keep last</label>
-          <div class="flex items-center gap-2">
-            <input id="ret" type="number" min="1" bind:value={retention}
-                   class="w-20 rounded-lg border px-2 py-1.5 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);" />
-            <span class="text-xs" style="color: var(--sempa-text-soft);">backups</span>
-          </div>
+        </span>
+      </div>
+      <div class="set-row set-row-compact">
+        <label class="set-row-main set-label" for="ret">Keep last</label>
+        <div class="flex items-center gap-2">
+          <input id="ret" type="number" min="1" bind:value={retention}
+                 class="set-input set-input-num" />
+          <span class="set-meta">backups</span>
         </div>
       </div>
     </section>
 
     <!-- Security -->
-    <section class="mb-6 rounded-xl border px-5 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-      <p class="mb-3 text-sm font-semibold" style="color: var(--sempa-text);">Security</p>
-      <div class="space-y-2">
-        {#each [
-          { v: 'none', t: 'Standard', d: 'Plain bundle. Includes your integration tokens.' },
-          { v: 'encrypt', t: 'Encrypt with passphrase', d: 'AES-256. You need the passphrase to restore — store it safely.' },
-          { v: 'exclude_secrets', t: 'Exclude integration secrets', d: 'Everything except Gmail/Jira/Fastmail tokens. Re-link them after a restore.' },
-        ] as opt}
-          <label class="flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2.5"
-                 style="border-color: {securityMode === opt.v ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
-            <input type="radio" name="security" value={opt.v} bind:group={securityMode} class="mt-0.5 accent-[var(--sempa-accent)]" />
-            <span>
-              <span class="block text-sm font-medium" style="color: var(--sempa-text);">{opt.t}</span>
-              <span class="block text-xs" style="color: var(--sempa-text-soft);">{opt.d}</span>
-            </span>
-          </label>
-        {/each}
-      </div>
+    <h2 class="set-heading">Security</h2>
+    <section class="set-group">
+      {#each [
+        { v: 'none', t: 'Standard', d: 'Plain bundle. Includes your integration tokens.' },
+        { v: 'encrypt', t: 'Encrypt with passphrase', d: 'AES-256. You need the passphrase to restore — store it safely.' },
+        { v: 'exclude_secrets', t: 'Exclude integration secrets', d: 'Everything except Gmail/Jira/Fastmail tokens. Re-link them after a restore.' },
+      ] as opt}
+        <label class="set-row cursor-pointer"
+               style={securityMode === opt.v ? 'background: color-mix(in srgb, var(--sempa-accent-bg) 55%, transparent);' : ''}>
+          <input type="radio" name="security" value={opt.v} bind:group={securityMode} class="set-radio" />
+          <span class="set-row-main">
+            <span class="set-label block">{opt.t}</span>
+            <span class="set-desc block">{opt.d}</span>
+          </span>
+        </label>
+      {/each}
       {#if securityMode === 'encrypt'}
-        <div class="mt-3">
-          <label class="mb-1 block text-xs font-medium" style="color: var(--sempa-text-soft);" for="pass">
-            Passphrase {#if hasPassphrase}<span style="color: var(--sempa-text-dim);">— leave blank to keep current</span>{/if}
+        <div class="set-block">
+          <label class="set-field-label" for="pass">
+            Passphrase {#if hasPassphrase}<span class="font-medium" style="color: var(--sempa-text-dim);">— leave blank to keep current</span>{/if}
           </label>
           <input id="pass" type="password" bind:value={passphrase} autocomplete="new-password"
                  placeholder={hasPassphrase ? '••••••••' : 'Enter a passphrase'}
-                 class="w-full rounded-lg border px-3 py-2 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);" />
+                 class="set-input w-full" />
         </div>
       {/if}
     </section>
 
     <!-- Destinations -->
-    <section class="mb-6 rounded-xl border px-5 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-      <p class="mb-1 text-sm font-semibold" style="color: var(--sempa-text);">Destinations</p>
-      <p class="mb-3 text-xs" style="color: var(--sempa-text-soft);">Where automatic backups are sent. Manual downloads always work without one.</p>
-
-      <div class="space-y-3">
+    <h2 class="set-heading">Destinations</h2>
+    <p class="set-desc -mt-1 mb-3 px-1.5">Where automatic backups are sent. Manual downloads always work without one.</p>
+    {#if destinations.length}
+      <div class="flex flex-col gap-3">
         {#each destinations as dest (dest.id)}
-          <div class="rounded-lg border p-3" style="border-color: var(--sempa-border);">
-            <div class="mb-2 flex items-center justify-between gap-2">
-              <span class="rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide"
-                    style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">{destTypeLabel[dest.type]}</span>
-              <div class="flex items-center gap-2">
-                <label class="flex items-center gap-1.5 text-xs" style="color: var(--sempa-text-soft);">
-                  <input type="checkbox" bind:checked={dest.enabled} class="h-3.5 w-3.5 accent-[var(--sempa-accent)]" /> Enabled
-                </label>
-                <button onclick={() => removeDestination(dest.id)} class="text-xs text-red-400 hover:text-red-500">Remove</button>
-              </div>
+          <section class="set-group">
+            <div class="set-row set-row-compact">
+              <span class="tint chip" style="--tint: var(--sempa-accent);">{destTypeLabel[dest.type]}</span>
+              <span class="flex-1"></span>
+              <label class="flex cursor-pointer items-center gap-2 text-[12.5px] font-semibold" style="color: var(--sempa-text-soft);">
+                Enabled
+                <input type="checkbox" bind:checked={dest.enabled} class="set-switch-input" />
+                <span class="set-switch" aria-hidden="true"></span>
+              </label>
+              <button onclick={() => removeDestination(dest.id)} class="set-danger set-btn-sm">Remove</button>
             </div>
 
-            <input bind:value={dest.name} placeholder="Name"
-                   class="mb-2 w-full rounded-md border px-2 py-1.5 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);" />
+            <div class="set-block space-y-2">
+              <input bind:value={dest.name} placeholder="Name" aria-label="Destination name"
+                     class="set-input w-full" />
 
-            {#if dest.type === 'local'}
-              <input bind:value={dest.path} placeholder="/path/on/server (e.g. /data/backups)"
-                     class="w-full rounded-md border px-2 py-1.5 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);" />
-            {:else if dest.type === 'webdav'}
-              <div class="grid gap-2">
-                <input bind:value={dest.url} placeholder="https://nextcloud.example.com/remote.php/dav/files/me/Backups"
-                       class="rounded-md border px-2 py-1.5 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);" />
-                <div class="grid grid-cols-2 gap-2">
-                  <input bind:value={dest.username} placeholder="Username"
-                         class="rounded-md border px-2 py-1.5 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);" />
-                  <input bind:value={dest.password} type="password" placeholder="Password / app token"
-                         class="rounded-md border px-2 py-1.5 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);" />
-                </div>
-              </div>
-            {:else if dest.type === 's3'}
-              <div class="grid gap-2">
-                <div class="grid grid-cols-2 gap-2">
-                  <input bind:value={dest.bucket} placeholder="Bucket"
-                         class="rounded-md border px-2 py-1.5 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);" />
-                  <input bind:value={dest.region} placeholder="Region (us-east-1)"
-                         class="rounded-md border px-2 py-1.5 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);" />
-                </div>
-                <input bind:value={dest.endpoint} placeholder="Endpoint (blank for AWS; e.g. https://s3.us-west-002.backblazeb2.com)"
-                       class="rounded-md border px-2 py-1.5 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);" />
-                <input bind:value={dest.prefix} placeholder="Key prefix (optional, e.g. sempa/)"
-                       class="rounded-md border px-2 py-1.5 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);" />
-                <div class="grid grid-cols-2 gap-2">
-                  <input bind:value={dest.access_key_id} placeholder="Access key ID"
-                         class="rounded-md border px-2 py-1.5 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);" />
-                  <input bind:value={dest.secret_access_key} type="password" placeholder="Secret access key"
-                         class="rounded-md border px-2 py-1.5 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);" />
-                </div>
-              </div>
-            {:else if dest.type === 'drive'}
-              <div class="space-y-2">
-                {#if driveConnected && driveNeedsReconnect}
-                  <div class="rounded-lg border px-3 py-2" style="border-color: color-mix(in srgb, var(--sempa-amber) 40%, transparent); background: color-mix(in srgb, var(--sempa-amber) 8%, transparent);">
-                    <p class="text-xs" style="color: var(--sempa-amber);">
-                      Google access expired — backups are failing. Reconnect to restore them.
-                      <span class="mt-1 block" style="color: var(--sempa-text-dim);">This happens because the Google OAuth app is in “Testing”, which expires tokens after 7 days.
-                        <a href="https://console.cloud.google.com/auth/audience" target="_blank" rel="noopener"
-                           style="color: var(--sempa-accent); text-decoration: underline;">Publish it to Production</a>
-                        to fix it permanently.</span>
-                    </p>
-                    <button onclick={connectDrive}
-                            class="mt-2 rounded-md px-3 py-1.5 text-xs font-medium text-white" style="background: var(--sempa-amber);">
-                      Reconnect Google Drive
-                    </button>
+              {#if dest.type === 'local'}
+                <input bind:value={dest.path} placeholder="/path/on/server (e.g. /data/backups)"
+                       class="set-input set-input-mono w-full" />
+              {:else if dest.type === 'webdav'}
+                <div class="grid gap-2">
+                  <input bind:value={dest.url} placeholder="https://nextcloud.example.com/remote.php/dav/files/me/Backups"
+                         class="set-input w-full" />
+                  <div class="grid grid-cols-2 gap-2">
+                    <input bind:value={dest.username} placeholder="Username"
+                           class="set-input min-w-0" />
+                    <input bind:value={dest.password} type="password" placeholder="Password / app token"
+                           class="set-input min-w-0" />
                   </div>
-                {:else if driveConnected}
-                  <p class="text-xs" style="color: var(--sempa-text-soft);">
-                    <span style="color: var(--sempa-success);">Connected.</span> Backups go to a “Sempa Backups” folder.
-                    <button onclick={disconnectDrive} class="ml-1 text-red-400 hover:text-red-500">Disconnect</button>
+                </div>
+              {:else if dest.type === 's3'}
+                <div class="grid gap-2">
+                  <div class="grid grid-cols-2 gap-2">
+                    <input bind:value={dest.bucket} placeholder="Bucket"
+                           class="set-input min-w-0" />
+                    <input bind:value={dest.region} placeholder="Region (us-east-1)"
+                           class="set-input min-w-0" />
+                  </div>
+                  <input bind:value={dest.endpoint} placeholder="Endpoint (blank for AWS; e.g. https://s3.us-west-002.backblazeb2.com)"
+                         class="set-input w-full" />
+                  <input bind:value={dest.prefix} placeholder="Key prefix (optional, e.g. sempa/)"
+                         class="set-input w-full" />
+                  <div class="grid grid-cols-2 gap-2">
+                    <input bind:value={dest.access_key_id} placeholder="Access key ID"
+                           class="set-input min-w-0" />
+                    <input bind:value={dest.secret_access_key} type="password" placeholder="Secret access key"
+                           class="set-input min-w-0" />
+                  </div>
+                </div>
+              {:else if dest.type === 'drive'}
+                <div class="space-y-2.5">
+                  {#if driveConnected && driveNeedsReconnect}
+                    <div class="tint rounded-2xl px-4 py-3" style="--tint: var(--sempa-amber);">
+                      <p class="text-[13px] font-bold">
+                        Google access expired — backups are failing. Reconnect to restore them.
+                      </p>
+                      <p class="mt-1 text-[12.5px] leading-relaxed" style="color: var(--sempa-text-soft);">
+                        This happens because the Google OAuth app is in “Testing”, which expires tokens after 7 days.
+                        <a href="https://console.cloud.google.com/auth/audience" target="_blank" rel="noopener"
+                           class="font-semibold underline" style="color: var(--sempa-accent-ink);">Publish it to Production</a>
+                        to fix it permanently.
+                      </p>
+                      <button onclick={connectDrive}
+                              class="btn-primary set-btn-sm mt-2.5">
+                        Reconnect Google Drive
+                      </button>
+                    </div>
+                  {:else if driveConnected}
+                    <div class="flex flex-wrap items-center gap-2 text-[13px]" style="color: var(--sempa-text-soft);">
+                      <span class="set-status">Connected</span>
+                      <span>Backups go to a “Sempa Backups” folder.</span>
+                      <button onclick={disconnectDrive} class="set-ghost set-btn-sm" style="color: var(--set-danger);">Disconnect</button>
+                    </div>
+                  {:else if googleOAuth}
+                    <button onclick={connectDrive}
+                            class="btn-soft set-btn">
+                      Connect Google Drive
+                    </button>
+                  {:else}
+                    <p class="text-[12.5px] font-semibold" style="color: var(--sempa-text-soft);">Google OAuth isn’t configured on this server (set GMAIL_CLIENT_ID/SECRET).</p>
+                  {/if}
+                  <p class="text-[12px]">
+                    <a href="https://sempa.ca/docs.html#backup" target="_blank" rel="noopener"
+                       class="font-semibold underline" style="color: var(--sempa-accent-ink);">Google Drive setup &amp; reconnect guide →</a>
                   </p>
-                {:else if googleOAuth}
-                  <button onclick={connectDrive}
-                          class="rounded-md border px-3 py-1.5 text-xs font-medium" style="border-color: var(--sempa-border); color: var(--sempa-text);">
-                    Connect Google Drive
-                  </button>
-                {:else}
-                  <p class="text-xs" style="color: var(--sempa-amber);">Google OAuth isn’t configured on this server (set GMAIL_CLIENT_ID/SECRET).</p>
-                {/if}
-                <p class="text-[11px]" style="color: var(--sempa-text-dim);">
-                  <a href="https://sempa.ca/docs.html#backup" target="_blank" rel="noopener"
-                     style="color: var(--sempa-accent); text-decoration: underline;">Google Drive setup &amp; reconnect guide →</a>
-                </p>
-                <input bind:value={dest.folder_id} placeholder="Advanced: specific Drive folder ID (blank = auto “Sempa Backups” folder)"
-                       class="w-full rounded-md border px-2 py-1.5 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);" />
+                  <input bind:value={dest.folder_id} placeholder="Advanced: specific Drive folder ID (blank = auto “Sempa Backups” folder)"
+                         class="set-input w-full" />
+                </div>
+              {/if}
+
+              <div class="flex flex-wrap items-center gap-3 pt-1">
+                <button onclick={() => testDestination(dest.id)} class="set-btn-quiet set-btn-sm">Test connection</button>
+                {#if testResults[dest.id]}<span class="set-meta">{testResults[dest.id]}</span>{/if}
               </div>
-            {/if}
-
-            <div class="mt-2 flex items-center gap-3">
-              <button onclick={() => testDestination(dest.id)} class="text-xs font-medium text-blue-500 hover:text-blue-600">Test connection</button>
-              {#if testResults[dest.id]}<span class="text-xs" style="color: var(--sempa-text-soft);">{testResults[dest.id]}</span>{/if}
             </div>
-          </div>
+          </section>
         {/each}
       </div>
+    {/if}
 
-      <div class="mt-3 flex flex-wrap gap-2">
-        {#each (['local','drive','s3','webdav'] as BackupDestinationType[]) as t}
-          <button onclick={() => addDestination(t)}
-                  class="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
-                  style="border-color: var(--sempa-border); color: var(--sempa-text-soft);">
-            + {destTypeLabel[t]}
-          </button>
-        {/each}
-      </div>
-    </section>
+    <div class="mt-3 flex flex-wrap gap-2">
+      {#each (['local','drive','s3','webdav'] as BackupDestinationType[]) as t}
+        <button onclick={() => addDestination(t)}
+                class="btn-surface set-btn-sm">
+          + {destTypeLabel[t]}
+        </button>
+      {/each}
+    </div>
 
     <!-- Restore -->
-    <section class="mb-6 rounded-xl border px-5 py-4" style="border-color: color-mix(in srgb, var(--sempa-amber) 33%, transparent); background: color-mix(in srgb, var(--sempa-amber) 6%, var(--sempa-bg-panel));">
-      <p class="mb-1 text-sm font-semibold" style="color: var(--sempa-text);">Restore from a backup</p>
-      <p class="mb-3 text-xs" style="color: var(--sempa-text-soft);">
-        This <strong>erases all current data</strong> and replaces it with the backup. Encrypted backups need their passphrase.
-      </p>
-      <label class="mb-2 inline-flex max-w-full cursor-pointer items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
-             style="border-color: var(--sempa-border); color: var(--sempa-text);">
-        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0L8 8m4-4 4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
-        </svg>
-        <span class="truncate">{restoreFile ? restoreFile.name : 'Choose backup file…'}</span>
-        <input type="file" accept=".zip,.enc" onchange={onRestorePick} class="hidden" />
-      </label>
-      {#if restoreFile}
-        <input type="password" bind:value={restorePassphrase} placeholder="Passphrase (only if encrypted)"
-               class="mb-2 w-full rounded-md border px-2 py-1.5 text-sm" style="border-color: var(--sempa-border); background: var(--sempa-bg);" />
-        {#if restorePct !== null}
-          <div class="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-            <div class="h-full rounded-full transition-all" style="width: {restorePct}%; background: var(--sempa-amber);"></div>
+    <h2 class="set-heading">Restore</h2>
+    <section class="set-group" style="background: color-mix(in srgb, var(--sempa-amber) 9%, var(--sempa-bg-panel));">
+      <div class="set-block">
+        <p class="set-label">Restore from a backup</p>
+        <p class="set-desc">
+          This <strong style="color: var(--sempa-text);">erases all current data</strong> and replaces it with the backup. Encrypted backups need their passphrase.
+        </p>
+        <label class="btn-surface set-btn mt-3 max-w-full cursor-pointer">
+          <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0L8 8m4-4 4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+          </svg>
+          <span class="truncate">{restoreFile ? restoreFile.name : 'Choose backup file…'}</span>
+          <input type="file" accept=".zip,.enc" onchange={onRestorePick} class="hidden" />
+        </label>
+        {#if restoreFile}
+          <input type="password" bind:value={restorePassphrase} placeholder="Passphrase (only if encrypted)"
+                 class="set-input set-input-raised mt-3 w-full" />
+          {#if restorePct !== null}
+            <div class="day-bar-track mt-3">
+              <div class="day-bar-fill" style="width: {restorePct}%; background: var(--sempa-amber);"></div>
+            </div>
+          {/if}
+          <div class="mt-3">
+            {#if !restoreConfirm}
+              <button onclick={() => restoreConfirm = true} disabled={restoring}
+                      class="set-danger set-btn">
+                Restore “{restoreFile.name}”
+              </button>
+            {:else}
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-semibold" style="color: var(--sempa-text);">Erase everything and restore?</span>
+                <button onclick={doRestore} disabled={restoring}
+                        class="set-btn inline-flex items-center rounded-full font-bold text-white disabled:opacity-50"
+                        style="background: var(--set-danger-solid);">
+                  {restoring ? 'Restoring…' : 'Yes, restore'}
+                </button>
+                <button onclick={() => restoreConfirm = false} class="set-ghost set-btn">Cancel</button>
+              </div>
+            {/if}
           </div>
         {/if}
-        {#if !restoreConfirm}
-          <button onclick={() => restoreConfirm = true} disabled={restoring}
-                  class="rounded-lg px-4 py-2 text-sm font-medium text-white" style="background: var(--sempa-amber);">
-            Restore “{restoreFile.name}”
-          </button>
-        {:else}
-          <div class="flex items-center gap-2">
-            <span class="text-sm" style="color: var(--sempa-text);">Erase everything and restore?</span>
-            <button onclick={doRestore} disabled={restoring}
-                    class="rounded-lg px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50" style="background: #dc2626;">
-              {restoring ? 'Restoring…' : 'Yes, restore'}
-            </button>
-            <button onclick={() => restoreConfirm = false} class="text-sm" style="color: var(--sempa-text-dim);">Cancel</button>
-          </div>
-        {/if}
-      {/if}
+      </div>
     </section>
 
     <!-- History -->
     {#if runs.length}
-      <section class="rounded-xl border px-5 py-4" style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
-        <p class="mb-3 text-sm font-semibold" style="color: var(--sempa-text);">Recent backups</p>
-        <div class="space-y-1.5">
-          {#each runs as run}
-            <div class="flex items-center justify-between gap-2 text-xs">
-              <span class="flex items-center gap-2">
-                <span class="h-1.5 w-1.5 rounded-full {run.status === 'success' ? 'bg-green-500' : 'bg-red-500'}"></span>
-                <span style="color: var(--sempa-text);">{fmtDate(run.started_at)}</span>
-                <span style="color: var(--sempa-text-dim);">· {run.trigger}</span>
-              </span>
-              <span style="color: var(--sempa-text-soft);">
-                {run.status === 'error' ? (run.error ?? 'error') : fmtBytes(run.size_bytes)}
-              </span>
-            </div>
-          {/each}
-        </div>
+      <h2 class="set-heading">Recent backups</h2>
+      <section class="set-group">
+        {#each runs as run}
+          <div class="set-row set-row-compact" style="min-height: 48px;">
+            <span class="h-2 w-2 shrink-0 rounded-full" style="background: {run.status === 'success' ? 'var(--sempa-success)' : 'var(--set-danger)'};"></span>
+            <span class="set-row-main text-[13px]">
+              <span class="font-semibold" style="color: var(--sempa-text);">{fmtDate(run.started_at)}</span>
+              <span style="color: var(--sempa-text-dim);"> · {run.trigger}</span>
+            </span>
+            <span class="font-mono text-[12px]" style="color: {run.status === 'error' ? 'var(--set-danger)' : 'var(--sempa-text-soft)'};">
+              {run.status === 'error' ? (run.error ?? 'error') : fmtBytes(run.size_bytes)}
+            </span>
+          </div>
+        {/each}
       </section>
     {/if}
 
     <!-- Sticky save bar — feedback shows right next to the button -->
-    <div class="sticky bottom-0 -mx-4 mt-6 flex items-center justify-end gap-3 border-t px-4 py-3"
-         style="border-color: var(--sempa-border); background: color-mix(in srgb, var(--sempa-bg) 92%, transparent); backdrop-filter: blur(6px);">
+    <div class="sticky bottom-3 mt-6 ml-auto flex w-fit max-w-full items-center gap-3 rounded-full p-1.5 {notice || error ? 'pl-5' : ''}"
+         style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-2);">
       {#if notice}
-        <span class="mr-auto text-sm" style="color: var(--sempa-success);">{notice}</span>
+        <span class="set-ok min-w-0 truncate">{notice}</span>
       {:else if error}
-        <span class="mr-auto text-sm" style="color: #dc2626;">{error}</span>
+        <span class="set-error min-w-0 truncate">{error}</span>
       {/if}
       <button onclick={save} disabled={saving}
-              class="rounded-lg px-5 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
-              style="background: var(--sempa-accent);">
+              class="btn-primary set-btn h-10 px-5 disabled:opacity-50">
         {saving ? 'Saving…' : 'Save settings'}
       </button>
     </div>

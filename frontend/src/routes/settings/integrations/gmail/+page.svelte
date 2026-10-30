@@ -78,40 +78,40 @@
   }
 </script>
 
-<div class="mx-auto max-w-xl px-6 py-8">
+<div class="mx-auto max-w-[640px] px-5 pt-6 pb-16 sm:px-8 sm:pt-8">
   <!-- Back -->
-  <a href="/settings/integrations" class="mb-6 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700">
-    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path stroke-linecap="round" d="m15 18-6-6 6-6"/>
+  <a href="/settings/integrations" class="set-back">
+    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="m15 18-6-6 6-6"/>
     </svg>
     Integrations
   </a>
 
-  <div class="mb-6 flex items-center gap-3">
-    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50">
-      <svg class="h-5 w-5 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+  <div class="mt-5 mb-6 flex items-center gap-3.5">
+    <span class="set-icon tint" style="--tint: #ea4335; width: 48px; height: 48px; border-radius: 16px;">
+      <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
         <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/>
       </svg>
-    </div>
-    <div>
-      <h1 class="text-xl font-semibold text-gray-900">Gmail</h1>
+    </span>
+    <div class="min-w-0">
+      <h1 class="type-page" style="color: var(--sempa-text);">Gmail</h1>
       {#if connected}
-        <p class="text-sm text-green-600">{email}</p>
+        <p class="set-desc truncate">{email}</p>
       {:else}
-        <p class="text-sm text-gray-400">Not connected</p>
+        <p class="set-desc">Not connected</p>
       {/if}
     </div>
   </div>
 
   {#if !connected}
     <!-- Connect flow -->
-    <div class="rounded-xl border border-gray-200 bg-white p-6 text-center">
-      <p class="mb-4 text-sm text-gray-600">
+    <div class="set-group px-6 py-8 text-center">
+      <p class="mx-auto mb-5 max-w-sm text-[13.5px] leading-relaxed" style="color: var(--sempa-text-soft);">
         Connect your Gmail account to automatically import starred emails as tasks.
         Sempa only requests read-only access.
       </p>
       <a href={api.integrations.gmail.authUrl()}
-         class="inline-flex items-center gap-2 rounded-lg bg-white border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50">
+         class="btn-primary set-btn h-10 px-5">
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
           <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/>
         </svg>
@@ -120,86 +120,102 @@
     </div>
   {:else}
     <!-- Label configuration -->
-    <div class="rounded-xl border border-gray-200 bg-white p-5">
-      <p class="mb-3 text-sm font-medium text-gray-700">Labels to sync</p>
-      <p class="mb-3 text-xs text-gray-400">
-        Only emails with these Gmail labels will be imported as tasks.
-      </p>
+    <h2 class="set-heading">Labels to sync</h2>
+    <div class="set-group">
+      <div class="set-block">
+        <p class="set-desc" style="margin-top: 0;">
+          Only emails with these Gmail labels will be imported as tasks.
+        </p>
 
-      <!-- Quick-add common labels -->
-      <div class="mb-3 flex flex-wrap gap-2">
-        {#each COMMON_LABELS as l}
-          <button type="button"
-                  onclick={() => { if (!labels.includes(l)) labels = [...labels, l]; }}
-                  class="rounded-full border px-2.5 py-0.5 text-xs transition-colors
-                         {labels.includes(l)
-                           ? 'border-blue-300 bg-blue-50 text-blue-700'
-                           : 'border-gray-200 text-gray-500 hover:border-gray-300'}">
-            {l}
-          </button>
-        {/each}
-      </div>
-
-      <!-- Current labels (custom ones too) -->
-      <div class="mb-3 flex flex-wrap gap-2">
-        {#each labels as l}
-          {#if !COMMON_LABELS.includes(l)}
-            <span class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-700">
+        <!-- Quick-add common labels -->
+        <div class="mt-3 flex flex-wrap gap-2">
+          {#each COMMON_LABELS as l}
+            <button type="button"
+                    onclick={() => { if (!labels.includes(l)) labels = [...labels, l]; }}
+                    aria-pressed={labels.includes(l)}
+                    class="h-8 rounded-full px-3.5 text-[12.5px] font-bold transition-colors"
+                    style={labels.includes(l)
+                      ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);'
+                      : 'background: var(--sempa-fill); color: var(--sempa-text-soft);'}>
               {l}
-              <button type="button" onclick={() => removeLabel(l)} class="hover:text-red-500">×</button>
-            </span>
-          {/if}
-        {/each}
-      </div>
+            </button>
+          {/each}
+        </div>
 
-      <!-- Custom label input -->
-      <div class="flex gap-2">
-        <input type="text" bind:value={labelInput}
-               onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), addLabel())}
-               placeholder="Custom label ID (e.g. Label_12345)"
-               class="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
-        <button type="button" onclick={addLabel}
-                class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
-          Add
-        </button>
-      </div>
+        <!-- Current labels (custom ones too) -->
+        {#if labels.some((l) => !COMMON_LABELS.includes(l))}
+          <div class="mt-2 flex flex-wrap gap-2">
+            {#each labels as l}
+              {#if !COMMON_LABELS.includes(l)}
+                <span class="set-chip">
+                  {l}
+                  <button type="button" onclick={() => removeLabel(l)} aria-label="Remove {l}">
+                    <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </span>
+              {/if}
+            {/each}
+          </div>
+        {/if}
 
-      <div class="mt-4 flex items-center gap-3">
-        <button type="button" onclick={saveLabels} disabled={savingLabels}
-                class="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50">
-          {savingLabels ? 'Saving…' : 'Save labels'}
-        </button>
+        <!-- Custom label input -->
+        <div class="mt-3 flex gap-2">
+          <input type="text" bind:value={labelInput}
+                 onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), addLabel())}
+                 placeholder="Custom label ID (e.g. Label_12345)"
+                 aria-label="Custom label ID"
+                 class="set-input min-w-0 flex-1" />
+          <button type="button" onclick={addLabel}
+                  class="set-btn-quiet set-btn">
+            Add
+          </button>
+        </div>
 
-        <button type="button" onclick={sync} disabled={syncing}
-                class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50">
-          {syncing ? 'Syncing…' : 'Sync now'}
-        </button>
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+          <button type="button" onclick={saveLabels} disabled={savingLabels}
+                  class="btn-primary set-btn">
+            {savingLabels ? 'Saving…' : 'Save labels'}
+          </button>
+
+          <button type="button" onclick={sync} disabled={syncing}
+                  class="set-btn-quiet set-btn">
+            {syncing ? 'Syncing…' : 'Sync now'}
+          </button>
+        </div>
       </div>
     </div>
 
     <!-- Sync result -->
     {#if syncResult}
-      <div class="mt-4 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-700">
+      <div class="mt-4 rounded-2xl px-4 py-3 text-[13px] font-semibold" style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
         Sync complete — {syncResult.new} new, {syncResult.updated} updated, {syncResult.errors} errors
         (total: {syncResult.total})
       </div>
     {/if}
 
     {#if syncError}
-      <div class="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{syncError}</div>
+      <div class="set-banner-error mt-4">{syncError}</div>
     {/if}
 
     {#if lastSynced}
-      <p class="mt-4 text-xs text-gray-400">Last synced: {new Date(lastSynced).toLocaleString()}</p>
+      <p class="set-meta mt-4 px-1.5">Last synced: {new Date(lastSynced).toLocaleString()}</p>
     {/if}
 
     <!-- Danger zone -->
-    <div class="mt-10 rounded-xl border border-red-100 bg-red-50 px-5 py-4">
-      <p class="mb-3 text-sm font-medium text-red-800">Danger zone</p>
-      <button onclick={disconnect}
-              class="rounded-lg border border-red-300 px-3 py-1.5 text-sm text-red-700 transition-colors hover:bg-red-100">
-        Disconnect Gmail
-      </button>
+    <h2 class="set-heading">Danger zone</h2>
+    <div class="set-group">
+      <div class="set-row">
+        <div class="set-row-main">
+          <p class="set-label">Disconnect Gmail</p>
+          <p class="set-desc">Imported tasks will be kept.</p>
+        </div>
+        <button onclick={disconnect}
+                class="set-danger set-btn">
+          Disconnect
+        </button>
+      </div>
     </div>
   {/if}
 </div>

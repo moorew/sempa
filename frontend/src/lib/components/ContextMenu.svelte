@@ -30,12 +30,12 @@
   <div class="fixed inset-0 z-[95]"
        onclick={() => contextMenu.close()}
        oncontextmenu={(e) => { e.preventDefault(); contextMenu.close(); }}></div>
-  <div class="fixed z-[96] w-52 overflow-hidden rounded-lg py-1 shadow-2xl animate-scale-in"
-       style="left:{clampX(m.x)}px; top:{clampY(m.y, m.items.length)}px;
-              background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);">
+  <div class="fixed z-[96] w-52 overflow-hidden p-1.5 animate-scale-in"
+       style="left:{clampX(m.x)}px; top:{clampY(m.y, m.items.length)}px; border-radius: 16px;
+              background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-2);">
     {#each m.items as item}
       {#if item === 'separator'}
-        <div class="my-1 h-px" style="background: var(--sempa-border);"></div>
+        <div class="mx-2 my-1 h-px" style="background: var(--sempa-border);"></div>
       {:else}
         <button class="ctx-item" class:danger={item.danger} disabled={item.disabled}
                 onclick={() => { item.onClick(); contextMenu.close(); }}>
@@ -51,13 +51,16 @@
     display: block;
     width: 100%;
     text-align: left;
-    padding: 6px 12px;
-    font-size: 12.5px;
-    color: var(--sempa-text-soft);
+    padding: 7px 10px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--sempa-text);
     transition: background-color 120ms ease;
   }
-  .ctx-item:hover { background: var(--sempa-accent-bg); color: var(--sempa-accent); }
+  .ctx-item:hover { background: var(--sempa-accent-bg); color: var(--sempa-accent-ink); }
   .ctx-item:disabled { opacity: 0.4; cursor: default; }
-  .ctx-item:disabled:hover { background: transparent; color: var(--sempa-text-soft); }
-  .ctx-item.danger:hover { background: color-mix(in srgb, #ef4444 14%, transparent); color: #ef4444; }
+  .ctx-item:disabled:hover { background: transparent; color: var(--sempa-text); }
+  .ctx-item.danger { color: var(--sempa-danger, #c0392b); }
+  .ctx-item.danger:hover { background: color-mix(in srgb, var(--sempa-danger, #c0392b) 12%, transparent); color: var(--sempa-danger, #c0392b); }
 </style>

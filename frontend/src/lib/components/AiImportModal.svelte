@@ -164,70 +164,69 @@
 {#if importModal.open}
   <!-- Backdrop -->
   <div class="fixed inset-0 z-[100] flex items-start justify-center p-4 sm:p-6"
-       style="background: rgba(0,0,0,0.45);"
+       style="background: color-mix(in srgb, var(--sempa-bg-rail) 30%, rgba(0,0,0,0.42));"
        onclick={(e) => { if (e.target === e.currentTarget) close(); }}
        role="presentation">
-    <div class="mt-[6vh] flex w-full max-w-lg flex-col overflow-hidden rounded-2xl shadow-2xl"
-         style="max-height: 84vh; background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);"
+    <div class="surface-raised mt-[6vh] flex w-full max-w-lg flex-col overflow-hidden"
+         style="max-height: 84vh;"
          role="dialog" aria-modal="true" aria-label="Import with AI">
 
       <!-- Header (actions anchored at the top for mobile keyboard safety) -->
-      <div class="flex items-center gap-2.5 px-5 py-3.5" style="border-bottom: 1px solid var(--sempa-border);">
-        <Sparkles size={18} style="color: var(--sempa-accent);" />
-        <h2 class="flex-1 text-sm font-semibold" style="color: var(--sempa-text);">
+      <div class="flex items-center gap-3 px-5 pb-3 pt-5">
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px]" style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
+          <Sparkles size={17} />
+        </span>
+        <h2 class="flex-1" style="font-size: 17px; font-weight: 800; letter-spacing: -.02em; color: var(--sempa-text);">
           {phase === 'preview' || phase === 'creating' ? 'Review before creating' : 'Import with AI'}
         </h2>
         <button onclick={close} disabled={phase === 'creating'} aria-label="Close"
-                class="rounded-lg p-1 transition-opacity hover:opacity-70 disabled:opacity-40" style="color: var(--sempa-text-dim);">
-          <X size={18} />
+                class="flex h-9 w-9 items-center justify-center rounded-full transition-opacity hover:opacity-70 disabled:opacity-40"
+                style="background: var(--sempa-fill); color: var(--sempa-text-soft);">
+          <X size={17} />
         </button>
       </div>
 
-      <div class="flex-1 overflow-y-auto px-5 py-4">
+      <div class="flex-1 overflow-y-auto px-5 py-3">
         {#if phase === 'input' || phase === 'loading'}
-          <p class="mb-2 text-xs" style="color: var(--sempa-text-soft);">
+          <p class="mb-3 text-[13px] leading-relaxed" style="color: var(--sempa-text-soft);">
             Paste a link or text — a recipe, an itinerary, a brief. Sempa will draft a task with
             steps as subtasks and, when there are things to buy or gather, a shopping list.
           </p>
           <textarea bind:value={input} rows={6} disabled={phase === 'loading'}
                     placeholder="https://example.com/recipe   —or—   paste the full text here…"
-                    class="w-full resize-none rounded-xl px-3 py-2.5 text-sm outline-none disabled:opacity-60"
-                    style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);"></textarea>
+                    class="w-full resize-none rounded-[14px] px-3.5 py-3 text-sm outline-none disabled:opacity-60"
+                    style="border: 1px solid var(--sempa-border); background: var(--sempa-fill); color: var(--sempa-text);"></textarea>
           {#if error}
-            <p class="mt-2 text-xs" style="color: #dc2626;">{error}</p>
+            <p class="mt-2 text-xs" style="color: var(--sempa-danger, #c0392b);">{error}</p>
           {/if}
         {:else if phase === 'preview' || phase === 'creating'}
           {#if error}
-            <p class="mb-3 text-xs" style="color: #dc2626;">{error}</p>
+            <p class="mb-3 text-xs" style="color: var(--sempa-danger, #c0392b);">{error}</p>
           {/if}
 
           <!-- Task title -->
-          <label class="mb-1 block text-[11px] font-medium uppercase tracking-wide" style="color: var(--sempa-text-dim);" for="imp-title">Task</label>
+          <label class="type-label mb-1 block" style="color: var(--sempa-text-soft);" for="imp-title">Task</label>
           <input id="imp-title" bind:value={title} placeholder="Task title"
-                 class="mb-4 w-full rounded-xl px-3 py-2.5 text-sm font-medium outline-none"
-                 style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
+                 class="mb-4 w-full rounded-[12px] px-3 py-2.5 text-sm font-semibold outline-none"
+                 style="border: 1px solid var(--sempa-border); background: var(--sempa-fill); color: var(--sempa-text);" />
 
           <!-- Placement -->
-          <div class="mb-4 flex gap-2">
-            <button onclick={() => (placement = 'today')}
-                    class="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors"
-                    style="border: 1px solid {placement === 'today' ? 'var(--sempa-accent)' : 'var(--sempa-border)'};
-                           background: {placement === 'today' ? 'var(--sempa-accent-bg)' : 'transparent'};
-                           color: {placement === 'today' ? 'var(--sempa-accent)' : 'var(--sempa-text-soft)'};">
+          <div class="segmented mb-4">
+            <button onclick={() => (placement = 'today')} data-active={placement === 'today'}
+                    class="flex items-center justify-center gap-1.5 px-3 py-2 text-[12.5px] font-semibold transition-colors"
+                    style="color: {placement === 'today' ? 'var(--sempa-text)' : 'var(--sempa-text-soft)'};">
               <ListTodo size={14} /> Today
             </button>
-            <button onclick={() => (placement = 'backlog')}
-                    class="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors"
-                    style="border: 1px solid {placement === 'backlog' ? 'var(--sempa-accent)' : 'var(--sempa-border)'};
-                           background: {placement === 'backlog' ? 'var(--sempa-accent-bg)' : 'transparent'};
-                           color: {placement === 'backlog' ? 'var(--sempa-accent)' : 'var(--sempa-text-soft)'};">
+            <button onclick={() => (placement = 'backlog')} data-active={placement === 'backlog'}
+                    class="flex items-center justify-center gap-1.5 px-3 py-2 text-[12.5px] font-semibold transition-colors"
+                    style="color: {placement === 'backlog' ? 'var(--sempa-text)' : 'var(--sempa-text-soft)'};">
               Backlog
             </button>
           </div>
 
           <!-- Steps → subtasks -->
           {#if steps.length > 0}
-            <p class="mb-1.5 text-[11px] font-medium uppercase tracking-wide" style="color: var(--sempa-text-dim);">
+            <p class="type-label mb-1.5" style="color: var(--sempa-text-soft);">
               Steps ({steps.length} subtasks)
             </p>
             <div class="mb-4 flex flex-col gap-2.5">
@@ -236,14 +235,14 @@
                   <span class="w-5 shrink-0 pt-2 text-right text-xs" style="color: var(--sempa-text-dim);">{i + 1}.</span>
                   <div class="min-w-0 flex-1 space-y-1">
                     <input bind:value={steps[i].title} placeholder="Step"
-                           class="w-full rounded-lg px-2.5 py-1.5 text-sm font-medium outline-none"
-                           style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
+                           class="w-full rounded-[12px] px-3 py-1.5 text-sm font-medium outline-none"
+                           style="border: 1px solid var(--sempa-border); background: var(--sempa-fill); color: var(--sempa-text);" />
                     <textarea bind:value={steps[i].detail} rows={2} placeholder="Details (optional)"
-                              class="w-full resize-none rounded-lg px-2.5 py-1.5 text-xs outline-none"
-                              style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text-soft);"></textarea>
+                              class="w-full resize-none rounded-[12px] px-3 py-1.5 text-xs outline-none"
+                              style="border: 1px solid var(--sempa-border); background: var(--sempa-fill); color: var(--sempa-text-soft);"></textarea>
                   </div>
                   <button onclick={() => removeStep(i)} aria-label="Remove step"
-                          class="mt-1 shrink-0 rounded p-1 transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);">
+                          class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -254,7 +253,7 @@
           <!-- Items → list -->
           {#if items.length > 0}
             <div class="mb-1.5 flex items-center justify-between">
-              <p class="text-[11px] font-medium uppercase tracking-wide" style="color: var(--sempa-text-dim);">
+              <p class="type-label" style="color: var(--sempa-text-soft);">
                 <ListChecks size={12} class="mb-0.5 inline" /> Shopping list ({chosenItems.length})
               </p>
               <label class="flex items-center gap-1.5 text-xs" style="color: var(--sempa-text-soft);">
@@ -264,17 +263,17 @@
             </div>
             {#if makeList}
               <input bind:value={listName} placeholder="List name"
-                     class="mb-2 w-full rounded-lg px-2.5 py-1.5 text-xs outline-none"
-                     style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
+                     class="mb-2 w-full rounded-[12px] px-3 py-1.5 text-xs outline-none"
+                     style="border: 1px solid var(--sempa-border); background: var(--sempa-fill); color: var(--sempa-text);" />
               <div class="flex flex-col gap-1.5">
                 {#each items as item, i (i)}
                   <div class="flex items-center gap-2">
                     <input type="checkbox" bind:checked={item.include} style="accent-color: var(--sempa-accent);" />
                     <input bind:value={item.text}
-                           class="flex-1 rounded-lg px-2.5 py-1.5 text-sm outline-none"
-                           style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text); {item.include ? '' : 'opacity:0.5;'}" />
+                           class="flex-1 rounded-[12px] px-3 py-1.5 text-sm outline-none"
+                           style="border: 1px solid var(--sempa-border); background: var(--sempa-fill); color: var(--sempa-text); {item.include ? '' : 'opacity:0.5;'}" />
                     <button onclick={() => removeItem(i)} aria-label="Remove item"
-                            class="shrink-0 rounded p-1 transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);">
+                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);">
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -286,22 +285,20 @@
       </div>
 
       <!-- Footer actions -->
-      <div class="flex items-center justify-end gap-2 px-5 py-3.5" style="border-top: 1px solid var(--sempa-border);">
+      <div class="flex items-center justify-end gap-2 px-5 pb-5 pt-3">
         {#if phase === 'input' || phase === 'loading'}
           <button onclick={generate} disabled={!input.trim() || phase === 'loading'}
-                  class="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-                  style="background: var(--sempa-accent);">
+                  class="btn-primary h-10 gap-1.5 px-5 text-sm disabled:opacity-40">
             {#if phase === 'loading'}<Loader2 size={15} class="animate-spin" /> Reading…{:else}<Sparkles size={15} /> Generate{/if}
           </button>
         {:else}
           <button onclick={reset} disabled={phase === 'creating'}
-                  class="rounded-xl px-3 py-2 text-sm font-medium transition-opacity hover:opacity-70 disabled:opacity-40"
-                  style="color: var(--sempa-text-soft);">
+                  class="btn-soft h-10 px-4 text-sm disabled:opacity-40"
+                  style="background: var(--sempa-fill); color: var(--sempa-text-soft);">
             Start over
           </button>
           <button onclick={create} disabled={!canCreate || phase === 'creating'}
-                  class="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-                  style="background: var(--sempa-accent);">
+                  class="btn-primary h-10 gap-1.5 px-5 text-sm disabled:opacity-40">
             {#if phase === 'creating'}<Loader2 size={15} class="animate-spin" /> Creating…{:else}Create task{makeList && chosenItems.length > 0 ? ' + list' : ''}{/if}
           </button>
         {/if}

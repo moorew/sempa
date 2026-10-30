@@ -84,119 +84,120 @@
   }
 </script>
 
-<div class="mx-auto max-w-xl px-6 py-8">
+<div class="mx-auto max-w-[640px] px-5 pt-6 pb-16 sm:px-8 sm:pt-8">
   <!-- Back -->
-  <a href="/settings/accounts" class="mb-6 inline-flex items-center gap-1.5 text-sm transition-colors"
-     style="color: var(--sempa-text-soft);">
-    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path stroke-linecap="round" d="m15 18-6-6 6-6"/>
+  <a href="/settings/accounts" class="set-back">
+    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="m15 18-6-6 6-6"/>
     </svg>
     Settings
   </a>
 
-  <div class="mb-6 flex items-center gap-3">
-    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
-      <svg class="h-5 w-5" style="color: var(--sempa-accent);" viewBox="0 0 24 24" fill="currentColor">
+  <div class="mt-5 mb-6 flex items-center gap-3.5">
+    <span class="set-icon" style="width: 48px; height: 48px; border-radius: 16px;">
+      <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
         <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.757a5.215 5.215 0 0 0 5.214 5.214h2.129v2.058A5.218 5.218 0 0 0 18.313 18.3V6.763a1.006 1.006 0 0 0-1.019-1.006zM23.277.007H11.749a5.215 5.215 0 0 0 5.214 5.214h2.129v2.058A5.218 5.218 0 0 0 24.282 12.5V1.012A1.005 1.005 0 0 0 23.277.007z"/>
       </svg>
-    </div>
+    </span>
     <div>
-      <h1 class="text-xl font-semibold" style="color: var(--sempa-text);">Jira</h1>
+      <h1 class="type-page" style="color: var(--sempa-text);">Jira</h1>
       {#if connected}
-        <p class="text-sm text-green-600 dark:text-green-400">Connected</p>
+        <span class="set-status mt-1">Connected</span>
       {:else}
-        <p class="text-sm" style="color: var(--sempa-text-dim);">Not connected</p>
+        <p class="set-desc">Not connected</p>
       {/if}
     </div>
   </div>
 
-  <form onsubmit={(e) => { e.preventDefault(); save(); }} class="flex flex-col gap-4">
-    <div>
-      <label class="mb-1.5 block text-sm font-medium" style="color: var(--sempa-text-soft);" for="host">Jira Host</label>
-      <input id="host" type="url" bind:value={host} placeholder="https://yourcompany.atlassian.net"
-             class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
-    </div>
+  <form onsubmit={(e) => { e.preventDefault(); save(); }} class="set-group">
+    <div class="set-block flex flex-col gap-4" style="padding-top: 18px;">
+      <div>
+        <label class="set-field-label" for="host">Jira host</label>
+        <input id="host" type="url" bind:value={host} placeholder="https://yourcompany.atlassian.net"
+               class="set-input w-full" />
+      </div>
 
-    <div>
-      <label class="mb-1.5 block text-sm font-medium" style="color: var(--sempa-text-soft);" for="email">Email</label>
-      <input id="email" type="email" bind:value={email} placeholder="you@company.com"
-             class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
-    </div>
+      <div>
+        <label class="set-field-label" for="email">Email</label>
+        <input id="email" type="email" bind:value={email} placeholder="you@company.com"
+               class="set-input w-full" />
+      </div>
 
-    <div>
-      <label class="mb-1.5 block text-sm font-medium" style="color: var(--sempa-text-soft);" for="token">API Token</label>
-      <input id="token" type="password" bind:value={apiToken} placeholder="Paste your Atlassian API token"
-             class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
-      <p class="mt-1 text-xs" style="color: var(--sempa-text-dim);">
-        Generate at <span class="font-mono">id.atlassian.com/manage-profile/security/api-tokens</span>
-      </p>
-    </div>
+      <div>
+        <label class="set-field-label" for="token">API token</label>
+        <input id="token" type="password" bind:value={apiToken} placeholder="Paste your Atlassian API token"
+               class="set-input w-full" />
+        <p class="set-meta mt-1.5 px-0.5">
+          Generate at <span class="font-mono text-[12px]">id.atlassian.com/manage-profile/security/api-tokens</span>
+        </p>
+      </div>
 
-    <div>
-      <label class="mb-1.5 block text-sm font-medium" style="color: var(--sempa-text-soft);" for="jql">
-        JQL Filter <span class="font-normal" style="color: var(--sempa-text-dim);">(optional)</span>
-      </label>
-      <input id="jql" type="text" bind:value={jql}
-             placeholder="assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC"
-             class="w-full rounded-lg border px-3 py-2 text-sm outline-none"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-main); color: var(--sempa-text);" />
-    </div>
+      <div>
+        <label class="set-field-label" for="jql">
+          JQL filter <span class="font-medium" style="color: var(--sempa-text-dim);">(optional)</span>
+        </label>
+        <input id="jql" type="text" bind:value={jql}
+               placeholder="assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC"
+               class="set-input set-input-mono w-full" />
+      </div>
 
-    {#if saveError}
-      <p class="text-sm text-red-600 dark:text-red-400">{saveError}</p>
-    {/if}
-
-    <div class="flex items-center gap-3 pt-1">
-      <button type="submit" disabled={saving}
-              class="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
-              style="background: var(--sempa-accent);">
-        {saving ? 'Saving…' : 'Save'}
-      </button>
-
-      {#if connected}
-        <button type="button" onclick={test} disabled={testing}
-                class="rounded-lg border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
-                style="border-color: var(--sempa-border); color: var(--sempa-text-soft);">
-          {testing ? 'Testing…' : 'Test connection'}
-        </button>
-
-        <button type="button" onclick={sync} disabled={syncing}
-                class="rounded-lg border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
-                style="border-color: var(--sempa-border); color: var(--sempa-text-soft);">
-          {syncing ? 'Syncing…' : 'Sync now'}
-        </button>
+      {#if saveError}
+        <p class="set-error">{saveError}</p>
       {/if}
+
+      <div class="flex flex-wrap items-center gap-2 pt-1">
+        <button type="submit" disabled={saving}
+                class="btn-primary set-btn">
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+
+        {#if connected}
+          <button type="button" onclick={test} disabled={testing}
+                  class="set-btn-quiet set-btn">
+            {testing ? 'Testing…' : 'Test connection'}
+          </button>
+
+          <button type="button" onclick={sync} disabled={syncing}
+                  class="set-btn-quiet set-btn">
+            {syncing ? 'Syncing…' : 'Sync now'}
+          </button>
+        {/if}
+      </div>
     </div>
   </form>
 
   {#if testStatus !== 'idle'}
-    <div class="mt-4 rounded-lg px-4 py-3 text-sm
-                {testStatus === 'ok' ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300' : 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300'}">
+    <div class="mt-4 rounded-2xl px-4 py-3 text-[13px] font-semibold"
+         style="background: {testStatus === 'ok' ? 'var(--sempa-success-bg)' : 'color-mix(in srgb, var(--set-danger) 10%, var(--sempa-bg-panel))'};
+                color: {testStatus === 'ok' ? 'var(--sempa-success)' : 'var(--set-danger)'};">
       {testMsg}
     </div>
   {/if}
 
   {#if syncResult}
-    <div class="mt-4 rounded-lg px-4 py-3 text-sm" style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
+    <div class="mt-4 rounded-2xl px-4 py-3 text-[13px] font-semibold" style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
       Sync complete — {syncResult.new} new, {syncResult.updated} updated, {syncResult.errors} errors
       (total: {syncResult.total})
     </div>
   {/if}
 
   {#if lastSynced}
-    <p class="mt-4 text-xs" style="color: var(--sempa-text-dim);">Last synced: {new Date(lastSynced).toLocaleString()}</p>
+    <p class="set-meta mt-4 px-1.5">Last synced: {new Date(lastSynced).toLocaleString()}</p>
   {/if}
 
   {#if connected}
-    <div class="mt-10 rounded-xl border border-red-100 bg-red-50 px-5 py-4 dark:border-red-900 dark:bg-red-950">
-      <p class="mb-3 text-sm font-medium text-red-800 dark:text-red-300">Danger zone</p>
-      <button onclick={disconnect}
-              class="rounded-lg border border-red-300 px-3 py-1.5 text-sm text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900">
-        Disconnect Jira
-      </button>
+    <h2 class="set-heading">Danger zone</h2>
+    <div class="set-group">
+      <div class="set-row">
+        <div class="set-row-main">
+          <p class="set-label">Disconnect Jira</p>
+          <p class="set-desc">Imported tasks will be kept.</p>
+        </div>
+        <button onclick={disconnect}
+                class="set-danger set-btn">
+          Disconnect
+        </button>
+      </div>
     </div>
   {/if}
 </div>

@@ -17,27 +17,26 @@
 
 {#if confirmDialog.open}
   <div class="fixed inset-0 z-[120] flex items-center justify-center p-4"
-       style="background: rgba(0,0,0,0.45);"
+       style="background: color-mix(in srgb, var(--sempa-bg-rail) 30%, rgba(0,0,0,0.42));"
        onclick={(e) => { if (e.target === e.currentTarget) confirmDialog.cancel(); }}
        role="presentation">
-    <div class="w-full max-w-sm overflow-hidden rounded-2xl shadow-2xl"
-         style="background: var(--sempa-bg-panel); border: 1px solid var(--sempa-border);"
+    <div class="surface-raised w-full max-w-sm overflow-hidden p-6"
          role="alertdialog" aria-modal="true" aria-label={confirmDialog.opts.title}>
-      <div class="px-5 pt-5 pb-4">
-        <h2 class="text-sm font-semibold" style="color: var(--sempa-text);">{confirmDialog.opts.title}</h2>
-        {#if confirmDialog.opts.message}
-          <p class="mt-1.5 text-xs leading-relaxed" style="color: var(--sempa-text-soft);">{confirmDialog.opts.message}</p>
-        {/if}
-      </div>
-      <div class="flex justify-end gap-2 px-5 py-3.5" style="border-top: 1px solid var(--sempa-border);">
+      <h2 style="font-size: 17px; font-weight: 800; letter-spacing: -.02em; line-height: 1.3; color: var(--sempa-text);">{confirmDialog.opts.title}</h2>
+      {#if confirmDialog.opts.message}
+        <p class="mt-2 text-[13px] leading-relaxed" style="color: var(--sempa-text-soft);">{confirmDialog.opts.message}</p>
+      {/if}
+      <div class="mt-6 flex justify-end gap-2">
         <button onclick={() => confirmDialog.cancel()}
-                class="rounded-xl px-3.5 py-2 text-sm font-medium transition-opacity hover:opacity-70"
-                style="color: var(--sempa-text-soft);">
+                class="btn-soft h-10 px-5 text-sm"
+                style="background: var(--sempa-fill); color: var(--sempa-text-soft);">
           {confirmDialog.opts.cancelLabel ?? 'Cancel'}
         </button>
         <button onclick={() => confirmDialog.confirm()}
-                class="rounded-xl px-3.5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                style="background: {confirmDialog.opts.danger ? '#dc2626' : 'var(--sempa-accent)'};">
+                class="btn-primary h-10 px-5 text-sm"
+                style={confirmDialog.opts.danger
+                  ? 'background: var(--sempa-danger, #c0392b); color: #fff; box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--sempa-danger, #c0392b) 70%, transparent);'
+                  : ''}>
           {confirmDialog.opts.confirmLabel ?? 'Confirm'}
         </button>
       </div>

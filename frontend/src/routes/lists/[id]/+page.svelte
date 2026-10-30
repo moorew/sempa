@@ -9,7 +9,7 @@
   import { household } from '$lib/stores/household.svelte';
   import { projectStore } from '$lib/stores/projects.svelte';
   import SempaSelect from '$lib/components/ui/SempaSelect.svelte';
-  import { Sparkles, Download, Trash2, GripVertical, X } from 'lucide-svelte';
+  import { Sparkles, Download, Trash2, GripVertical, X, Plus } from 'lucide-svelte';
 
   const listId = $derived(page.params.id ?? '');
 
@@ -160,34 +160,38 @@
 
 <div class="mx-auto flex h-full max-w-2xl flex-col" style="padding-top: env(safe-area-inset-top, 0px);">
   <!-- Header -->
-  <div class="flex items-center gap-3 px-5 py-4" style="border-bottom: 1px solid var(--sempa-border);">
-    <a href="/lists" class="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm transition-colors" style="color: var(--sempa-accent);">
+  <div class="flex items-center gap-3 px-5 pb-1 pt-5">
+    <a href="/lists" class="btn-surface h-9 gap-1.5 pl-3 pr-4 text-[13px]">
       <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M19 12H5m7-7-7 7 7 7"/></svg>
       Lists
     </a>
   </div>
 
-  <div class="flex-1 overflow-y-auto px-5 py-6 pb-24">
+  <div class="flex-1 overflow-y-auto px-5 pb-24 pt-5">
     {#if loading && !list}
       <p class="text-sm" style="color: var(--sempa-text-dim);">Loading…</p>
     {:else if !list}
       <p class="text-sm" style="color: var(--sempa-text-dim);">List not found.</p>
     {:else}
+      {@const doneCount = items.filter((i) => i.done).length}
       <!-- Name -->
       <input value={list.name} onblur={(e) => rename((e.currentTarget as HTMLInputElement).value.trim())}
         onkeydown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }}
         placeholder="List name"
-        class="mb-2 w-full bg-transparent text-2xl font-bold outline-none" style="color: var(--sempa-text);" />
+        class="type-page mb-1 w-full bg-transparent outline-none" style="color: var(--sempa-text);" />
+      {#if items.length}
+        <p class="type-meta mb-3" style="color: var(--sempa-text-dim);">{doneCount} of {items.length} done</p>
+      {/if}
 
       <!-- Linked task + options -->
-      <div class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs" style="color: var(--sempa-text-dim);">
+      <div class="type-meta mb-4 flex flex-wrap items-center gap-x-4 gap-y-2" style="color: var(--sempa-text-dim);">
         {#if linkedTask}
-          <span class="inline-flex items-center gap-1.5">
-            Linked to <span style="color: var(--sempa-text-soft);">“{linkedTask.title}”</span>
-            <button onclick={unlinkTask} aria-label="Unlink" class="transition-opacity hover:opacity-70"><X size={12} /></button>
+          <span class="chip" style="height: 28px; padding: 0 6px 0 12px; background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-soft); font-size: 12px;">
+            Linked to <span class="max-w-[14rem] truncate" style="color: var(--sempa-text);">“{linkedTask.title}”</span>
+            <button onclick={unlinkTask} aria-label="Unlink" class="flex h-5 w-5 items-center justify-center rounded-full transition-opacity hover:opacity-70"><X size={12} /></button>
           </span>
           <label class="inline-flex cursor-pointer items-center gap-1.5">
-            <input type="checkbox" checked={list.archive_on_complete} onchange={toggleArchiveOnComplete} />
+            <input type="checkbox" checked={list.archive_on_complete} onchange={toggleArchiveOnComplete} style="accent-color: var(--sempa-accent);" />
             Archive this list when the task is done
           </label>
         {:else}
@@ -197,34 +201,33 @@
 
       <!-- Project -->
       {#if projectStore.projects.length > 0 || list.project_id}
-        <div class="mb-4 flex items-center gap-2 text-xs" style="color: var(--sempa-text-dim);">
+        <div class="type-meta mb-4 flex items-center gap-2" style="color: var(--sempa-text-dim);">
           <span>Project</span>
           <div class="w-56">
             <SempaSelect value={list.project_id ?? null} placeholder="No project" options={projectOptions}
               onchange={(v) => setProject(typeof v === 'string' ? v : null)} />
           </div>
           {#if list.project_id && projectStore.get(list.project_id)}
-            <a href={`/projects/${list.project_id}`} class="hover:underline" style="color: var(--sempa-accent);">Open</a>
+            <a href={`/projects/${list.project_id}`} class="btn-soft h-8 px-3 text-[12px]">Open</a>
           {/if}
         </div>
       {/if}
 
       <!-- Private / Shared (multi-user household only) -->
       {#if household.multiUser}
-        <div class="mb-4 flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5"
-             style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <div class="surface mb-4 flex items-center justify-between gap-3 px-4 py-3">
           <div class="min-w-0">
-            <p class="text-[13px] font-medium" style="color: var(--sempa-text);">{list.shared ? 'Shared' : 'Private'}</p>
-            <p class="text-[11.5px]" style="color: var(--sempa-text-soft);">
+            <p class="text-[13.5px] font-semibold" style="color: var(--sempa-text);">{list.shared ? 'Shared' : 'Private'}</p>
+            <p class="type-meta" style="color: var(--sempa-text-soft);">
               {list.shared ? 'Everyone can see and edit this list.' : 'Only you can see this list.'}
             </p>
           </div>
           <button type="button" role="switch" aria-checked={list.shared} aria-label="Share list"
                   onclick={toggleShared}
                   class="relative h-[26px] w-[44px] shrink-0 rounded-full transition-colors"
-                  style="background: {list.shared ? 'var(--sempa-accent)' : 'var(--sempa-border)'};">
-            <span class="absolute top-[3px] h-[20px] w-[20px] rounded-full bg-white transition-all"
-                  style="left: {list.shared ? '21px' : '3px'};"></span>
+                  style="background: {list.shared ? 'var(--sempa-btn-bg)' : 'var(--sempa-track)'};">
+            <span class="absolute top-[3px] h-[20px] w-[20px] rounded-full transition-all"
+                  style="left: {list.shared ? '21px' : '3px'}; background: var(--sempa-bg-panel); box-shadow: 0 1px 2px rgba(0,0,0,.2);"></span>
           </button>
         </div>
       {/if}
@@ -233,73 +236,81 @@
       <div class="mb-4 flex flex-wrap gap-2">
         {#if aiOrganizeOn}
           <button onclick={organize} disabled={organizing || items.length === 0}
-            class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
-            style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
+            class="btn-soft h-9 gap-1.5 px-4 text-[12.5px] disabled:opacity-40">
             <Sparkles size={13} /> {organizing ? 'Organizing…' : 'Organize with AI'}
           </button>
         {/if}
         {#if grouped}
-          <button onclick={clearGrouping} class="rounded-lg px-3 py-1.5 text-xs transition-opacity hover:opacity-70"
-            style="color: var(--sempa-text-soft); border: 1px solid var(--sempa-border);">Clear grouping</button>
+          <button onclick={clearGrouping} class="btn-surface h-9 px-4 text-[12.5px]"
+            style="color: var(--sempa-text-soft);">Clear grouping</button>
         {/if}
         <button onclick={exportMarkdown} disabled={items.length === 0}
-          class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-opacity hover:opacity-80 disabled:opacity-40"
-          style="color: var(--sempa-text-soft); border: 1px solid var(--sempa-border);">
+          class="btn-surface h-9 gap-1.5 px-4 text-[12.5px] disabled:opacity-40"
+          style="color: var(--sempa-text-soft);">
           <Download size={13} /> Export Markdown
         </button>
       </div>
 
-      <!-- Add item -->
-      <form class="mb-4 flex gap-2" onsubmit={(e) => { e.preventDefault(); addItem(); }}>
-        <input bind:value={newText} bind:this={newItemInput} placeholder="Add an item…"
-          enterkeyhint="enter" autocapitalize="sentences"
-          class="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
-          style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text);" />
-        <button type="submit" disabled={!newText.trim()}
-          class="rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-          style="background: var(--sempa-accent);">Add</button>
-      </form>
+      <!-- The list itself: one raised surface, add-row on top, rows divided. -->
+      <div class="surface p-2" style="border-radius: 24px;">
+        <!-- Add item -->
+        <form class="add-pill flex items-center gap-2 rounded-full py-1 pl-4 pr-1"
+              style="background: var(--sempa-fill);"
+              onsubmit={(e) => { e.preventDefault(); addItem(); }}>
+          <Plus size={16} class="shrink-0" style="color: var(--sempa-text-dim);" />
+          <input bind:value={newText} bind:this={newItemInput} placeholder="Add an item…"
+            enterkeyhint="enter" autocapitalize="sentences"
+            class="min-w-0 flex-1 bg-transparent py-1.5 text-sm outline-none"
+            style="color: var(--sempa-text);" />
+          <button type="submit" disabled={!newText.trim()}
+            class="btn-primary h-9 shrink-0 px-4 text-[13px] disabled:opacity-40">Add</button>
+        </form>
 
-      <!-- Items -->
-      {#if items.length === 0}
-        <p class="text-sm" style="color: var(--sempa-text-dim);">No items yet.</p>
-      {:else if grouped}
-        {#each groups as [cat, its]}
-          <p class="mb-2 mt-4 text-xs font-semibold uppercase tracking-wider first:mt-0" style="color: var(--sempa-text-dim);">{cat || 'Other'}</p>
-          <div class="flex flex-col gap-1.5">
-            {#each its as it (it.id)}{@render itemRow(it, false)}{/each}
+        <!-- Items -->
+        {#if items.length === 0}
+          <p class="px-3 pb-2 pt-4 text-sm" style="color: var(--sempa-text-dim);">No items yet.</p>
+        {:else if grouped}
+          {#each groups as [cat, its]}
+            <p class="type-label mb-0.5 mt-4 px-3" style="color: var(--sempa-text-soft);">{cat || 'Other'}</p>
+            <div class="flex flex-col">
+              {#each its as it, i (it.id)}{@render itemRow(it, false, i)}{/each}
+            </div>
+          {/each}
+        {:else}
+          <div class="mt-1 flex flex-col">
+            {#each items as it, i (it.id)}{@render itemRow(it, true, i)}{/each}
           </div>
-        {/each}
-      {:else}
-        <div class="flex flex-col gap-1.5">
-          {#each items as it (it.id)}{@render itemRow(it, true)}{/each}
-        </div>
-      {/if}
+        {/if}
+      </div>
     {/if}
   </div>
 </div>
 
-{#snippet itemRow(it: ListItem, draggable: boolean)}
+{#snippet itemRow(it: ListItem, draggable: boolean, i: number)}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="flex items-center gap-2.5 rounded-xl px-3 py-2.5"
-    style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); {dragId === it.id ? 'opacity:0.4;' : ''}"
+  <div class="mx-1 flex items-center gap-3 px-2"
+    style="min-height: 46px; {i > 0 ? 'border-top: 1px solid var(--sempa-border);' : ''} {dragId === it.id ? 'opacity:0.4;' : ''}"
     draggable={draggable}
     ondragstart={() => (dragId = it.id)}
     ondragover={(e) => { if (draggable) e.preventDefault(); }}
     ondrop={() => onDrop(it.id)}>
     {#if draggable}
-      <span class="cursor-grab" style="color: var(--sempa-text-dim);"><GripVertical size={15} /></span>
+      <span class="-ml-1 cursor-grab" style="color: var(--sempa-text-dim);"><GripVertical size={15} /></span>
     {/if}
     <button onclick={() => toggleDone(it)} aria-label="Toggle done"
-      class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors"
-      style="border-color: {it.done ? 'var(--sempa-success)' : 'var(--sempa-border)'}; background: {it.done ? 'var(--sempa-success)' : 'transparent'};">
+      class="check-ring" data-state={it.done ? 'done' : undefined}>
       {#if it.done}
-        <svg class="h-3 w-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
       {/if}
     </button>
     <span class="min-w-0 flex-1 text-sm" style="color: var(--sempa-text); {it.done ? 'text-decoration: line-through; opacity: 0.5;' : ''}">{it.text}</span>
-    <button onclick={() => removeItem(it)} aria-label="Delete item" class="shrink-0 rounded p-1 transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);">
+    <button onclick={() => removeItem(it)} aria-label="Delete item" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);">
       <Trash2 size={14} />
     </button>
   </div>
 {/snippet}
+
+<style>
+  .add-pill input:focus-visible { box-shadow: none; }
+  .add-pill:focus-within { box-shadow: 0 0 0 2px color-mix(in srgb, var(--sempa-accent) 30%, transparent); }
+</style>

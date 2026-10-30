@@ -5,7 +5,7 @@
   import { api } from '$lib/api';
   import type { Task } from '$lib/types';
   import { formatDate, formatMinutes, isToday, today } from '$lib/utils';
-  import { Moon, Star, MessageSquare, Sparkles } from 'lucide-svelte';
+  import { Moon, Star, MessageSquare, Sparkles, ArrowLeft, ArrowRight, Check, Plus, ChevronRight } from 'lucide-svelte';
   import { prefs } from '$lib/stores/prefs.svelte';
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
 
@@ -110,80 +110,76 @@
 
 <svelte:head><title>Shutdown {isToday(date) ? 'Today' : date} — Sempa</title></svelte:head>
 
-<div class="flex min-h-full flex-col items-center justify-center px-4 py-12 animate-fade-in">
-  <!-- Step indicators -->
-  <div class="mb-10 flex items-center gap-2">
+<div class="flex min-h-full flex-col items-center justify-center px-4 py-10 sm:py-12 animate-page-in">
+  <!-- Step indicators: a quiet pill stepper -->
+  <ol class="ritual-steps mb-8" aria-label="Shutdown steps">
     {#each ['Review', 'Wins', 'Reflect'] as label, i}
-      <div class="flex items-center gap-2">
-        <div class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold"
-             style={i + 1 <= step
-               ? 'background: var(--sempa-accent); color: var(--sempa-btn-fg);'
-               : 'background: transparent; border: 1.5px solid var(--sempa-text-dim); color: var(--sempa-text-dim);'}>
-          {#if i + 1 < step}
-            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-            </svg>
+      {@const n = i + 1}
+      <li class="ritual-step" data-state={n < step ? 'done' : n === step ? 'current' : 'todo'}
+          aria-current={n === step ? 'step' : undefined}>
+        <span class="ritual-step-dot">
+          {#if n < step}
+            <Check size={12} strokeWidth={3.25} />
           {:else}
-            {i + 1}
+            {n}
           {/if}
-        </div>
-        <span class="text-xs {i + 1 === step ? 'font-medium' : ''}"
-              style="color: {i + 1 === step ? 'var(--sempa-text)' : 'var(--sempa-text-dim)'};">{label}</span>
-        {#if i < 2}
-          <div class="h-px w-8" style="background: var(--sempa-border);"></div>
-        {/if}
-      </div>
+        </span>
+        <span class="ritual-step-label">{label}</span>
+      </li>
     {/each}
-  </div>
+  </ol>
 
   <div class="w-full max-w-md">
     <!-- ── Step 1: Review ───────────────────────────────────────────────── -->
     {#if step === 1}
       {#key step}
-      <div class="animate-fade-in"
-           style="border-radius:16px; border: 1px solid var(--sempa-border);
-                  background: var(--sempa-bg-panel); padding:28px 28px 24px;">
-        <div>
-        <Moon size={28} style="color:var(--sempa-accent);margin-bottom:8px"/>
-        <h1 class="mb-1 text-xl font-semibold" style="color: var(--sempa-text);">
-          {doneTasks.length > 0 ? 'Great work today!' : 'Wrapping up…'}
-        </h1>
-        <p class="mb-6 text-sm" style="color: var(--sempa-text-soft);">
-          {doneTasks.length} task{doneTasks.length !== 1 ? 's' : ''} completed
-          {#if totalMinutes > 0}· {formatMinutes(totalMinutes)} logged{/if}
-        </p>
+      <div class="ritual-card animate-fade-in">
+        <div class="ritual-head">
+          <span class="ritual-icon" style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
+            <Moon size={22} strokeWidth={2} />
+          </span>
+          <h1 class="type-date" style="color: var(--sempa-text);">
+            {doneTasks.length > 0 ? 'Great work today!' : 'Wrapping up…'}
+          </h1>
+          <p class="mt-1 text-sm" style="color: var(--sempa-text-soft);">
+            {doneTasks.length} task{doneTasks.length !== 1 ? 's' : ''} completed
+            {#if totalMinutes > 0}· {formatMinutes(totalMinutes)} logged{/if}
+          </p>
+        </div>
 
         {#if doneTasks.length > 0}
-          <div class="mb-4 flex flex-col gap-1.5">
+          <div class="mb-4 flex flex-col gap-2">
             {#each doneTasks as t (t.id)}
-              <div style="display:flex; align-items:center; gap:10px; border-radius:9px;
-                          background: var(--sempa-accent-bg); padding:9px 12px; margin-bottom:6px;">
-                <svg class="h-3.5 w-3.5 shrink-0" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span class="text-sm" style="color: var(--sempa-text);">{t.title}</span>
+              <div class="done-row">
+                <span class="check-ring" data-state="done" style="width: 20px; height: 20px;" aria-hidden="true">
+                  <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="3.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                  </svg>
+                </span>
+                <span class="min-w-0 flex-1 text-sm font-medium" style="color: var(--sempa-text);">{t.title}</span>
+                {#if t.time_actual_minutes}
+                  <span class="chip chip-time shrink-0" style="background: var(--sempa-bg-panel);">{formatMinutes(t.time_actual_minutes)}</span>
+                {/if}
               </div>
             {/each}
           </div>
         {/if}
 
         {#if pendingTasks.length > 0}
-          <div class="mb-4">
+          <div class="mb-5">
             <button type="button" onclick={() => pendingOpen = !pendingOpen}
-                    class="flex items-center gap-1.5 transition-colors"
-                    style="color: var(--sempa-text-dim); font-size:12px;"
-                    onmouseenter={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text-soft)'}
-                    onmouseleave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text-dim)'}>
-              <svg class="h-3.5 w-3.5 transition-transform" style="transform: rotate({pendingOpen ? 90 : 0}deg);"
-                   fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-              </svg>
+                    aria-expanded={pendingOpen}
+                    class="pending-toggle">
+              <ChevronRight size={14} strokeWidth={2.25} style="transition: transform 150ms ease; transform: rotate({pendingOpen ? 90 : 0}deg);" />
               {pendingTasks.length} task{pendingTasks.length !== 1 ? 's' : ''} not completed
             </button>
             {#if pendingOpen}
-              <div class="mt-2 flex flex-col gap-1 pl-5">
+              <div class="mt-1 flex flex-col pl-3">
                 {#each pendingTasks as t (t.id)}
-                  <p style="color: var(--sempa-text-dim); font-size:12px;">· {t.title}</p>
+                  <p class="flex items-center gap-2.5 py-1.5" style="color: var(--sempa-text-soft); font-size: 13px;">
+                    <span class="check-ring" style="width: 16px; height: 16px;" aria-hidden="true"></span>
+                    {t.title}
+                  </p>
                 {/each}
               </div>
             {/if}
@@ -191,121 +187,100 @@
         {/if}
 
         <div class="flex justify-end">
-          <button
-            onclick={() => step = 2}
-            style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
-                   padding:10px 20px; font-size:14px; font-weight:500; border:none; cursor:pointer;
-                   display:inline-flex; align-items:center; gap:8px;"
-            onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
-            onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}
-          >
+          <button onclick={() => step = 2} class="btn-primary ritual-cta">
             Continue
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-            </svg>
+            <ArrowRight size={16} strokeWidth={2.25} />
           </button>
         </div>
-        </div><!-- end z-10 -->
       </div>
       {/key}
 
     <!-- ── Step 2: Wins ──────────────────────────────────────────────────── -->
     {:else if step === 2}
       {#key step}
-      <div class="animate-fade-in"
-           style="border-radius:16px; border: 1px solid var(--sempa-border);
-                  background: var(--sempa-bg-panel); padding:28px 28px 24px;">
-        <div>
-        <Star size={28} style="color:var(--sempa-amber);margin-bottom:8px"/>
-        <h1 class="mb-1 text-xl font-semibold" style="color: var(--sempa-text);">What went well?</h1>
-        <p class="mb-6 text-sm" style="color: var(--sempa-text-soft);">Write down your wins — big or small.</p>
+      <div class="ritual-card animate-fade-in">
+        <div class="ritual-head">
+          <span class="ritual-icon" style="background: var(--cal-amber-bg); color: var(--cal-amber-fg);">
+            <Star size={22} strokeWidth={2} />
+          </span>
+          <h1 class="type-date" style="color: var(--sempa-text);">What went well?</h1>
+          <p class="mt-1 text-sm" style="color: var(--sempa-text-soft);">Write down your wins — big or small.</p>
+        </div>
 
-        <div class="flex flex-col gap-2 mb-4">
+        <div class="mb-2 flex flex-col gap-2">
           {#each wins as win, i}
-            <div class="flex items-center gap-2">
-              <span class="text-sm" style="color: var(--sempa-text-dim);">·</span>
-              <input
-                bind:this={winInputs[i]}
-                value={win}
-                oninput={(e) => updateWin(i, (e.target as HTMLInputElement).value)}
-                onkeydown={(e) => handleWinKeydown(e, i)}
-                onfocus={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'}
-                onblur={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'}
-                type="text"
-                placeholder="e.g. Fixed the auth bug faster than expected"
-                class="flex-1 outline-none"
-                style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main);
-                       border-radius:9px; padding:9px 13px; font-size:14px; color:var(--sempa-text);"
-              />
-            </div>
+            <input
+              bind:this={winInputs[i]}
+              value={win}
+              oninput={(e) => updateWin(i, (e.target as HTMLInputElement).value)}
+              onkeydown={(e) => handleWinKeydown(e, i)}
+              onfocus={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'}
+              onblur={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'transparent'}
+              type="text"
+              aria-label="Win {i + 1}"
+              placeholder="e.g. Fixed the auth bug faster than expected"
+              class="ritual-input"
+              style="height: 46px; font-size: 14px; border-radius: 14px; padding: 0 14px;"
+            />
           {/each}
         </div>
 
-        <button onclick={addWin} class="text-xs transition-colors" style="color: var(--sempa-text-dim);">
-          + Add win (or press Enter)
+        <button onclick={addWin} class="add-link">
+          <Plus size={13} strokeWidth={2.5} />
+          Add win (or press Enter)
         </button>
 
-        <div class="mt-6 flex justify-between">
-          <button onclick={() => step = 1} class="px-4 py-2 text-sm transition-colors" style="color: var(--sempa-text-dim);">
-            ← Back
+        <div class="mt-6 flex items-center justify-between">
+          <button onclick={() => step = 1} class="ritual-back">
+            <ArrowLeft size={16} strokeWidth={2.25} />
+            Back
           </button>
-          <button
-            onclick={() => step = 3}
-            style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
-                   padding:10px 20px; font-size:14px; font-weight:500; border:none; cursor:pointer;
-                   display:inline-flex; align-items:center; gap:8px;"
-            onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
-            onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}
-          >
+          <button onclick={() => step = 3} class="btn-primary ritual-cta">
             Continue
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-            </svg>
+            <ArrowRight size={16} strokeWidth={2.25} />
           </button>
         </div>
-        </div><!-- end z-10 -->
       </div>
       {/key}
 
     <!-- ── Step 3: Reflect ───────────────────────────────────────────────── -->
     {:else}
       {#key step}
-      <div class="animate-fade-in"
-           style="border-radius:16px; border: 1px solid var(--sempa-border);
-                  background: var(--sempa-bg-panel); padding:28px 28px 24px;">
-        <div>
-        <MessageSquare size={28} style="color:var(--sempa-text-soft);margin-bottom:8px"/>
-        <h1 class="mb-1 text-xl font-semibold" style="color: var(--sempa-text);">Any reflections?</h1>
-        <p class="mb-6 text-sm" style="color: var(--sempa-text-soft);">Blockers, learnings, or things to improve tomorrow.</p>
+      <div class="ritual-card animate-fade-in">
+        <div class="ritual-head">
+          <span class="ritual-icon" style="background: var(--cal-stone-bg); color: var(--cal-stone-fg);">
+            <MessageSquare size={22} strokeWidth={2} />
+          </span>
+          <h1 class="type-date" style="color: var(--sempa-text);">Any reflections?</h1>
+          <p class="mt-1 text-sm" style="color: var(--sempa-text-soft);">Blockers, learnings, or things to improve tomorrow.</p>
+        </div>
 
         <textarea
           bind:value={reflection}
           rows="4"
+          aria-label="Reflection"
           placeholder="Optional — what would you do differently?"
           onfocus={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'}
-          onblur={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'}
-          style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main);
-                 border-radius:12px; padding:14px; resize:none; width:100%;
-                 font-size:14px; color: var(--sempa-text); outline:none;"
+          onblur={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'transparent'}
+          class="ritual-input"
+          style="font-size: 14px; line-height: 1.6;"
         ></textarea>
 
         {#if showAiPrompts}
           <div class="mt-3 text-left">
             {#if aiPrompts.length === 0}
               <button onclick={suggestPrompts} disabled={aiPromptsLoading}
-                      class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
-                      style="border: 1px solid var(--sempa-border); color: var(--sempa-accent);"
+                      class="btn-soft disabled:opacity-50"
+                      style="height: 34px; padding: 0 14px; font-size: 12.5px;"
                       title="Suggest reflection questions from today">
                 <Sparkles size={13} strokeWidth={2} />
                 {aiPromptsLoading ? 'Thinking…' : 'Suggest prompts'}
               </button>
             {:else}
-              <p class="mb-1.5 text-[11px]" style="color: var(--sempa-text-dim);">Tap a prompt to add it:</p>
+              <p class="mb-1.5 type-label" style="color: var(--sempa-text-soft);">Tap a prompt to add it</p>
               <div class="flex flex-col gap-1.5">
                 {#each aiPrompts as p}
-                  <button onclick={() => usePrompt(p)}
-                          class="rounded-lg px-3 py-2 text-left text-xs transition-colors"
-                          style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft); background: var(--sempa-bg-panel);">
+                  <button onclick={() => usePrompt(p)} class="prompt-chip">
                     {p}
                   </button>
                 {/each}
@@ -316,29 +291,99 @@
 
         {#if error}<p class="mt-2 text-xs text-red-500">{error}</p>{/if}
 
-        <div class="mt-6 flex justify-between">
-          <button onclick={() => step = 2} class="px-4 py-2 text-sm transition-colors" style="color: var(--sempa-text-dim);">
-            ← Back
+        <div class="mt-6 flex items-center justify-between">
+          <button onclick={() => step = 2} class="ritual-back">
+            <ArrowLeft size={16} strokeWidth={2.25} />
+            Back
           </button>
-          <button
-            onclick={finish}
-            disabled={saving}
-            class="disabled:opacity-50"
-            style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); border-radius:12px;
-                   padding:10px 20px; font-size:14px; font-weight:500; border:none; cursor:pointer;
-                   display:inline-flex; align-items:center; gap:8px;"
-            onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
-            onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}
-          >
+          <button onclick={finish} disabled={saving} class="btn-primary ritual-cta disabled:opacity-50">
             {saving ? 'Saving…' : 'Finish day'}
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-            </svg>
+            <Check size={16} strokeWidth={2.5} />
           </button>
         </div>
-        </div><!-- end z-10 -->
       </div>
       {/key}
     {/if}
   </div>
 </div>
+
+<style>
+  /* ── Ritual shell (shared look with the plan-day ritual) ───────────────── */
+  .ritual-steps { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; list-style: none; padding: 0; margin-top: 0; }
+  .ritual-step {
+    display: inline-flex; align-items: center; gap: 7px;
+    height: 34px; padding: 0 14px 0 5px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; color: var(--sempa-text-soft);
+  }
+  .ritual-step-dot {
+    display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 999px;
+    font-size: 12px; font-weight: 700; background: var(--sempa-track); color: var(--sempa-text-soft);
+  }
+  .ritual-step[data-state="current"] { background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text); font-weight: 700; }
+  .ritual-step[data-state="current"] .ritual-step-dot { background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); }
+  .ritual-step[data-state="done"] { color: var(--sempa-success); }
+  .ritual-step[data-state="done"] .ritual-step-dot { background: var(--sempa-success); color: var(--sempa-on-accent); }
+  @media (max-width: 400px) {
+    .ritual-step { padding-right: 11px; font-size: 12.5px; }
+  }
+
+  .ritual-card {
+    background: var(--sempa-bg-panel);
+    border-radius: var(--radius-sheet);
+    box-shadow: var(--sempa-shadow-1);
+    padding: 32px 28px 24px;
+  }
+  @media (max-width: 480px) { .ritual-card { padding: 26px 20px 20px; } }
+
+  .ritual-head { display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 22px; }
+  .ritual-icon {
+    display: grid; place-items: center; width: 52px; height: 52px; border-radius: 16px;
+    margin-bottom: 14px;
+  }
+
+  .ritual-input {
+    display: block; width: 100%; resize: none; outline: none;
+    background: var(--sempa-fill); border: 1px solid transparent; border-radius: 16px;
+    padding: 14px 16px; color: var(--sempa-text);
+    transition: border-color 120ms ease;
+  }
+
+  .ritual-cta { height: 44px; padding: 0 22px; font-size: 14px; }
+  .ritual-back {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 44px; padding: 0 16px 0 12px; border-radius: 999px;
+    font-size: 14px; font-weight: 600; color: var(--sempa-text-soft);
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+  .ritual-back:hover { background: var(--sempa-fill); color: var(--sempa-text); }
+
+  /* Completed task: a soft success block. */
+  .done-row {
+    display: flex; align-items: center; gap: 12px;
+    min-height: 48px; padding: 9px 14px; border-radius: 16px;
+    background: var(--sempa-success-bg);
+  }
+
+  .pending-toggle {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 32px; padding: 0 12px 0 8px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; color: var(--sempa-text-soft);
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+  .pending-toggle:hover { background: var(--sempa-fill); color: var(--sempa-text); }
+
+  .add-link {
+    display: inline-flex; align-items: center; gap: 5px;
+    height: 32px; padding: 0 12px 0 8px; border-radius: 999px;
+    font-size: 12.5px; font-weight: 600; color: var(--sempa-accent-ink);
+  }
+  .add-link:hover { background: var(--sempa-accent-bg); }
+
+  .prompt-chip {
+    text-align: left; padding: 10px 14px; border-radius: 14px;
+    font-size: 13px; line-height: 1.45; color: var(--sempa-text-soft);
+    background: var(--sempa-fill);
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+  .prompt-chip:hover { background: var(--sempa-accent-bg); color: var(--sempa-accent-ink); }
+</style>
