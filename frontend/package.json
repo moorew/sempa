@@ -44,14 +44,14 @@
     "@capacitor/splash-screen": "^8.0.2",
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-autostart": "^2.7.0",
-    "@tauri-apps/plugin-deep-link": "^2.6.2",
+    "@tauri-apps/plugin-deep-link": "^2.6.1",
     "@tauri-apps/plugin-notification": "^2.7.0",
     "@tauri-apps/plugin-sql": "^2.6.0",
     "@tauri-apps/plugin-store": "^2.5.0",
     "lucide-svelte": "^1.0.1"
   },
   "comments": {
-    "overrides": "Force patched versions of vulnerable transitive deps (all in dev/build-time tooling \u2014 Capacitor CLI, xcode project tooling, jsdom's undici under vitest, vite's postcss \u2014 none ship in the server or web bundle). Scoped to the offending parent where possible so tools needing newer majors are untouched. postcss, brace-expansion and devalue are unscoped because the vulnerable copy is nested several levels deep (vite > postcss; @capacitor/cli > rimraf > glob > minimatch > brace-expansion) and devalue is shared by svelte + @sveltejs/kit; all are backwards-compatible patch/minor bumps."
+    "overrides": "Force patched versions of vulnerable transitive deps (all in dev/build-time tooling — Capacitor CLI, xcode project tooling, jsdom's undici under vitest, vite's postcss — none ship in the server or web bundle). Scoped to the offending parent where possible so tools needing newer majors are untouched. postcss, brace-expansion and devalue are unscoped because the vulnerable copy is nested several levels deep (vite > postcss; @capacitor/cli > rimraf > glob > minimatch > brace-expansion) and devalue is shared by svelte + @sveltejs/kit; all are backwards-compatible patch/minor bumps."
   },
   "overrides": {
     "@capacitor/cli": {

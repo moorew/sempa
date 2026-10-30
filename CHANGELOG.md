@@ -23,7 +23,8 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 - **vite unpinned.** The 8.1+ rolldown build failure that forced the 8.0.x pin
   no longer reproduces: a cache-cold `docker build --no-cache` succeeds on 8.3.5.
 - **Dependency refresh.** Tauri 2.12 plugins bumped on both the npm and cargo
-  sides in lockstep, Capacitor 8.5.3, vitest 5.0.5, and the GitHub Actions
+  sides in lockstep (deep-link stays at 2.6.1: 2.6.2 fails to compile on
+  Linux), Capacitor 8.5.3, vitest 5.0.5, and the GitHub Actions
   group. No user-visible behaviour change.
 
 ## [1.25.6] - 2026-10-06
