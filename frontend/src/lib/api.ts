@@ -2,6 +2,11 @@ import { isTauri } from './tauri/bridge';
 
 import type {
   Attachment,
+  CreateProjectInput,
+  Project,
+  ProjectCategory,
+  ProjectStatus,
+  UpdateProjectInput,
   BackupRun,
   BackupHealth,
   DurationSample,
@@ -365,6 +370,9 @@ const httpApi = {
       uploadFile<Attachment>(`/api/v1/tasks/${taskId}/attachments`, file, onProgress),
     uploadToObjective: (objId: string, file: File, onProgress?: (pct: number) => void) =>
       uploadFile<Attachment>(`/api/v1/objectives/${objId}/attachments`, file, onProgress),
+    listForProject: (projectId: string) => req<Attachment[]>(`/api/v1/projects/${projectId}/attachments`),
+    uploadToProject: (projectId: string, file: File, onProgress?: (pct: number) => void) =>
+      uploadFile<Attachment>(`/api/v1/projects/${projectId}/attachments`, file, onProgress),
     delete:      (id: string) => req<void>(`/api/v1/attachments/${id}`, { method: 'DELETE' }),
     downloadUrl: (id: string) => authedFileUrl(`/api/v1/attachments/${id}/download`),
   },
@@ -475,17 +483,19 @@ const httpApi = {
   // Lists — local-first (in LOCAL_CORE): reads/writes the local DB on Tauri/
   // Capacitor and syncs; this httpApi path serves server-configured web clients.
   lists: {
-    list: (taskId?: string, archived = false) => {
+    list: (taskId?: string, archived = false, projectId?: string) => {
       const qs = new URLSearchParams();
       if (taskId) qs.set('task_id', taskId);
       if (archived) qs.set('archived', '1');
+      if (projectId) qs.set('project_id', projectId);
       const q = qs.toString();
       return req<List[]>(`/api/v1/lists${q ? `?${q}` : ''}`);
     },
     get: (id: string) => req<List>(`/api/v1/lists/${id}`),
-    create: (input: { name: string; task_id?: string | null; shared?: boolean }) =>
+    create: (input: { name: string; task_id?: string | null; shared?: boolean; project_id?: string }) =>
       req<List>('/api/v1/lists', { method: 'POST', body: body(input) }),
-    update: (id: string, patch: { name?: string; task_id?: string | null; position?: number; archived?: boolean; archive_on_complete?: boolean; shared?: boolean }) =>
+    // project_id: '' unlinks, an id links.
+    update: (id: string, patch: { name?: string; task_id?: string | null; position?: number; archived?: boolean; archive_on_complete?: boolean; shared?: boolean; project_id?: string }) =>
       req<List>(`/api/v1/lists/${id}`, { method: 'PATCH', body: body(patch) }),
     delete: (id: string) => req<{ status: string }>(`/api/v1/lists/${id}`, { method: 'DELETE' }),
     items: (id: string) => req<ListItem[]>(`/api/v1/lists/${id}/items`),
@@ -496,6 +506,32 @@ const httpApi = {
     updateItem: (id: string, patch: { text?: string; done?: boolean; position?: number; category?: string | null }) =>
       req<ListItem>(`/api/v1/list-items/${id}`, { method: 'PATCH', body: body(patch) }),
     deleteItem: (id: string) => req<{ status: string }>(`/api/v1/list-items/${id}`, { method: 'DELETE' }),
+  },
+
+  // Projects — local-first (in LOCAL_CORE), like lists.
+  projects: {
+    list: () => req<Project[]>('/api/v1/projects'),
+    get: (id: string) => req<Project>(`/api/v1/projects/${id}`),
+    create: (input: CreateProjectInput) =>
+      req<Project>('/api/v1/projects', { method: 'POST', body: body(input) }),
+    update: (id: string, patch: UpdateProjectInput) =>
+      req<Project>(`/api/v1/projects/${id}`, { method: 'PATCH', body: body(patch) }),
+    delete: (id: string) => req<{ status: string }>(`/api/v1/projects/${id}`, { method: 'DELETE' }),
+    // Top-level tasks only (no sub-tasks / recurring instances), all statuses but cancelled.
+    tasks: (id: string) => req<Task[]>(`/api/v1/projects/${id}/tasks`),
+    objectives: (id: string) => req<Objective[]>(`/api/v1/projects/${id}/objectives`),
+  },
+
+  // User-customisable project statuses (Settings → Projects). Global, like tags.
+  projectStatuses: {
+    list: () => req<ProjectStatus[]>('/api/v1/project-statuses'),
+    create: (input: { name: string; color?: string; category: ProjectCategory }) =>
+      req<ProjectStatus>('/api/v1/project-statuses', { method: 'POST', body: body(input) }),
+    update: (id: string, patch: { name?: string; color?: string; category?: ProjectCategory; position?: number }) =>
+      req<ProjectStatus>(`/api/v1/project-statuses/${id}`, { method: 'PATCH', body: body(patch) }),
+    delete: (id: string) => req<{ status: string; replacement: string }>(`/api/v1/project-statuses/${id}`, { method: 'DELETE' }),
+    reorder: (ids: string[]) =>
+      req<{ status: string }>('/api/v1/project-statuses/reorder', { method: 'POST', body: body({ ids }) }),
   },
 
   tags: {
@@ -671,7 +707,7 @@ import { localApi } from './tauri/local-api';
 import { hasLocalDb } from './tauri/bridge';
 
 // Namespaces served from the local DB when one exists.
-const LOCAL_CORE = ['setup', 'tasks', 'objectives', 'plans', 'pomodoros', 'tags', 'recurring', 'weeks', 'lists'] as const;
+const LOCAL_CORE = ['setup', 'tasks', 'objectives', 'plans', 'pomodoros', 'tags', 'recurring', 'weeks', 'lists', 'projects', 'projectStatuses'] as const;
 
 let _api: typeof httpApi | null = null;
 export function resetApiResolver() {

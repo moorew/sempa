@@ -14,6 +14,7 @@ import type {
     DailyPlan, UpsertPlanInput,
     PomodoroSession, TagDefinition, WeekReview,
     List, ListItem,
+    Project, ProjectStatus, ProjectCategory, CreateProjectInput, UpdateProjectInput,
 } from '$lib/types';
 import { weekStart as computeWeekStart } from '$lib/utils';
 
@@ -23,6 +24,33 @@ function uuid(): string {
 
 function now(): string {
     return new Date().toISOString().replace('T', ' ').replace('Z', '').slice(0, 19);
+}
+
+// Mirrors the server's TaskStore.SetDescendantsProject: a task's sub-tasks and
+// recurring instances (and their sub-tasks) follow it between projects. Local
+// only — the server applies the same cascade when it replays the parent update.
+async function setDescendantsProjectLocal(rootId: string, projectId: string | null): Promise<void> {
+    await execute(
+        `WITH RECURSIVE fam(id) AS (
+            SELECT id FROM tasks WHERE parent_task_id = ? OR recurrence_origin_id = ?
+            UNION
+            SELECT t.id FROM tasks t JOIN fam ON t.parent_task_id = fam.id
+         )
+         UPDATE tasks SET project_id = ?, updated_at = ?
+         WHERE id IN (SELECT id FROM fam) AND project_id IS NOT ?`,
+        [rootId, rootId, projectId, now(), projectId],
+    );
+}
+
+function parseProjectRow(row: Record<string, unknown>): Project {
+    return { ...row, shared: Boolean(row.shared) } as Project;
+}
+
+// Same rule as the server's defaultStatusID: first 'active' status, else first.
+async function defaultProjectStatusId(): Promise<string> {
+    const rows = await query<{ id: string }[]>(
+        `SELECT id FROM project_statuses ORDER BY (category = 'active') DESC, position, created_at LIMIT 1`);
+    return rows[0]?.id ?? 'active';
 }
 
 function parseTaskRow(row: Record<string, unknown>): Task {
@@ -132,18 +160,25 @@ export const localApi = {
             const id = uuid();
             const ts = now();
             const ws = input.week_start ?? (input.planned_date ? computeWeekStart(input.planned_date) : null);
+            // A sub-task lives in its parent's project (mirrors the server).
+            let projectId: string | null = input.project_id || null;
+            if (input.parent_task_id) {
+                const parent = await query<{ project_id: string | null }[]>(
+                    `SELECT project_id FROM tasks WHERE id = ?`, [input.parent_task_id]);
+                if (parent.length > 0) projectId = parent[0].project_id ?? null;
+            }
             await execute(
                 `INSERT INTO tasks (id, title, description, planned_date, week_start, status, position,
                  time_estimate_minutes, weekly_objective_id, parent_task_id, source_url, tags,
-                 recurrence_rule, scheduled_start, scheduled_end, created_at, updated_at, shared)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                 recurrence_rule, scheduled_start, scheduled_end, created_at, updated_at, shared, project_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     id, input.title, input.description ?? null, input.planned_date ?? null,
                     ws, input.status ?? 'planned', input.position ?? 0,
                     input.time_estimate_minutes ?? null, input.weekly_objective_id ?? null,
                     input.parent_task_id ?? null, input.source_url ?? null, JSON.stringify(input.tags ?? []),
                     input.recurrence_rule ?? null, input.scheduled_start ?? null,
-                    input.scheduled_end ?? null, ts, ts, input.shared ? 1 : 0,
+                    input.scheduled_end ?? null, ts, ts, input.shared ? 1 : 0, projectId,
                 ],
             );
             // Log the full created row (not just input) so server-side computed
@@ -156,7 +191,9 @@ export const localApi = {
         update: async (id: string, patch: UpdateTaskInput): Promise<Task> => {
             const sets: string[] = [];
             const vals: unknown[] = [];
-            const entries = Object.entries(patch).filter(([, v]) => v !== undefined);
+            // project_id: null means "unchanged" (the server's *string semantics).
+            const entries = Object.entries(patch)
+                .filter(([k, v]) => v !== undefined && !(k === 'project_id' && v === null));
             for (const [key, val] of entries) {
                 if (key === 'tags') {
                     sets.push('tags = ?');
@@ -164,6 +201,9 @@ export const localApi = {
                 } else if (key === 'shared') {
                     sets.push('shared = ?');
                     vals.push(val ? 1 : 0);  // SQLite wants 0/1, not a JS boolean
+                } else if (key === 'project_id') {
+                    sets.push('project_id = ?');
+                    vals.push(val || null);  // '' unlinks
                 } else {
                     sets.push(`${key} = ?`);
                     vals.push(val);
@@ -174,6 +214,7 @@ export const localApi = {
             vals.push(now());
             vals.push(id);
             await execute(`UPDATE tasks SET ${sets.join(', ')} WHERE id = ?`, vals);
+            if (typeof patch.project_id === 'string') await setDescendantsProjectLocal(id, patch.project_id || null);
             await logMutation('tasks', id, 'update', patch as unknown as Record<string, unknown>);
             flushSoon();
             return localApi.tasks.get(id);
@@ -219,6 +260,8 @@ export const localApi = {
         listForObjective: async () => [],
         uploadToTask: async () => { throw new Error('Attachments need a server connection'); },
         uploadToObjective: async () => { throw new Error('Attachments need a server connection'); },
+        listForProject: async () => [],
+        uploadToProject: async () => { throw new Error('Attachments need a server connection'); },
         delete: async () => {},
         downloadUrl: () => '',
     },
@@ -252,9 +295,10 @@ export const localApi = {
             const id = uuid();
             const ts = now();
             await execute(
-                `INSERT INTO weekly_objectives (id, week_start, title, description, status, position, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                [id, input.week_start, input.title, input.description ?? null, 'active', input.position ?? 0, ts, ts],
+                `INSERT INTO weekly_objectives (id, week_start, title, description, status, position, created_at, updated_at, project_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [id, input.week_start, input.title, input.description ?? null, 'active', input.position ?? 0, ts, ts,
+                 input.project_id || null],
             );
             const created = await localApi.objectives.get(id);
             await logMutation('objectives', id, 'create', created as unknown as Record<string, unknown>);
@@ -268,6 +312,9 @@ export const localApi = {
                 if (key === 'shared') {
                     sets.push('shared = ?');
                     vals.push(val ? 1 : 0); // SQLite wants 0/1, not a JS boolean
+                } else if (key === 'project_id') {
+                    sets.push('project_id = ?');
+                    vals.push(val || null); // '' unlinks
                 } else {
                     sets.push(`${key} = ?`);
                     vals.push(val);
@@ -374,27 +421,30 @@ export const localApi = {
     // Lists — local-first like tasks: reads/writes local SQLite and queues each
     // mutation for replay. Mirrors httpApi.lists exactly so the resolver can swap.
     lists: {
-        list: async (taskId?: string, archived = false): Promise<List[]> => {
+        list: async (taskId?: string, archived = false, projectId?: string): Promise<List[]> => {
             const conds: string[] = [];
             const args: unknown[] = [];
             if (!archived) conds.push('archived_at IS NULL');
             if (taskId) { conds.push('task_id = ?'); args.push(taskId); }
+            if (projectId) { conds.push('project_id = ?'); args.push(projectId); }
             const where = conds.length ? ` WHERE ${conds.join(' AND ')}` : '';
             return query<List[]>(`SELECT * FROM lists${where} ORDER BY position, created_at`, args);
         },
         get: async (id: string): Promise<List> =>
             (await query<List[]>(`SELECT * FROM lists WHERE id = ?`, [id]))[0],
-        create: async (input: { name: string; task_id?: string | null }): Promise<List> => {
+        create: async (input: { name: string; task_id?: string | null; project_id?: string }): Promise<List> => {
             const id = uuid(); const ts = now();
             await execute(
-                `INSERT INTO lists (id, name, task_id, position, archive_on_complete, created_at, updated_at)
-                 VALUES (?, ?, ?, COALESCE((SELECT MAX(position)+1 FROM lists), 0), 0, ?, ?)`,
-                [id, input.name, input.task_id ?? null, ts, ts]);
-            await logMutation('lists', id, 'create', { name: input.name, task_id: input.task_id ?? null });
+                `INSERT INTO lists (id, name, task_id, position, archive_on_complete, created_at, updated_at, project_id)
+                 VALUES (?, ?, ?, COALESCE((SELECT MAX(position)+1 FROM lists), 0), 0, ?, ?, ?)`,
+                [id, input.name, input.task_id ?? null, ts, ts, input.project_id || null]);
+            await logMutation('lists', id, 'create', {
+                name: input.name, task_id: input.task_id ?? null, project_id: input.project_id ?? '',
+            });
             flushSoon();
             return (await query<List[]>(`SELECT * FROM lists WHERE id = ?`, [id]))[0];
         },
-        update: async (id: string, patch: { name?: string; task_id?: string | null; position?: number; archived?: boolean; archive_on_complete?: boolean; shared?: boolean }): Promise<List> => {
+        update: async (id: string, patch: { name?: string; task_id?: string | null; position?: number; archived?: boolean; archive_on_complete?: boolean; shared?: boolean; project_id?: string }): Promise<List> => {
             const sets: string[] = []; const args: unknown[] = [];
             const log: Record<string, unknown> = {};
             if (patch.name !== undefined) { sets.push('name = ?'); args.push(patch.name); log.name = patch.name; }
@@ -403,6 +453,7 @@ export const localApi = {
             if (patch.archived !== undefined) { sets.push('archived_at = ?'); args.push(patch.archived ? now() : null); log.archived = patch.archived; }
             if (patch.archive_on_complete !== undefined) { sets.push('archive_on_complete = ?'); args.push(patch.archive_on_complete ? 1 : 0); log.archive_on_complete = patch.archive_on_complete; }
             if (patch.shared !== undefined) { sets.push('shared = ?'); args.push(patch.shared ? 1 : 0); log.shared = patch.shared; }
+            if (patch.project_id !== undefined) { sets.push('project_id = ?'); args.push(patch.project_id || null); log.project_id = patch.project_id; }
             sets.push('updated_at = ?'); args.push(now());
             args.push(id);
             await execute(`UPDATE lists SET ${sets.join(', ')} WHERE id = ?`, args);
@@ -465,6 +516,125 @@ export const localApi = {
             await logMutation('list_items', id, 'delete', {});
             flushSoon();
             return { status: 'deleted' };
+        },
+    },
+
+    projects: {
+        list: async (): Promise<Project[]> =>
+            (await query<Record<string, unknown>[]>(`SELECT * FROM projects ORDER BY position, created_at`)).map(parseProjectRow),
+        get: async (id: string): Promise<Project> => {
+            const rows = await query<Record<string, unknown>[]>(`SELECT * FROM projects WHERE id = ?`, [id]);
+            if (rows.length === 0) throw new Error('Project not found');
+            return parseProjectRow(rows[0]);
+        },
+        create: async (input: CreateProjectInput): Promise<Project> => {
+            const id = uuid(); const ts = now();
+            const statusId = input.status_id || await defaultProjectStatusId();
+            await execute(
+                `INSERT INTO projects (id, title, description, status_id, color, start_date, target_date, position,
+                    created_at, updated_at, shared)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT MAX(position)+1 FROM projects), 0), ?, ?, ?)`,
+                [id, input.title, input.description ?? null, statusId, input.color || '#b3592e',
+                 input.start_date || null, input.target_date || null, ts, ts, input.shared ? 1 : 0]);
+            const created = await localApi.projects.get(id);
+            await logMutation('projects', id, 'create', created as unknown as Record<string, unknown>);
+            flushSoon();
+            return created;
+        },
+        update: async (id: string, patch: UpdateProjectInput): Promise<Project> => {
+            const sets: string[] = []; const vals: unknown[] = [];
+            for (const [key, val] of Object.entries(patch).filter(([, v]) => v !== undefined)) {
+                if (key === 'shared') { sets.push('shared = ?'); vals.push(val ? 1 : 0); }
+                else if (key === 'start_date' || key === 'target_date') { sets.push(`${key} = ?`); vals.push(val || null); } // '' clears
+                else { sets.push(`${key} = ?`); vals.push(val); }
+            }
+            if (sets.length === 0) return localApi.projects.get(id);
+            sets.push('updated_at = ?'); vals.push(now());
+            vals.push(id);
+            await execute(`UPDATE projects SET ${sets.join(', ')} WHERE id = ?`, vals);
+            await logMutation('projects', id, 'update', patch as unknown as Record<string, unknown>);
+            flushSoon();
+            return localApi.projects.get(id);
+        },
+        delete: async (id: string): Promise<{ status: string }> => {
+            // Unlink (never delete) the project's rows, as the server does. Not
+            // logged: the server applies the same unlink when it replays the delete.
+            const ts = now();
+            for (const table of ['tasks', 'weekly_objectives', 'lists']) {
+                await execute(`UPDATE ${table} SET project_id = NULL, updated_at = ? WHERE project_id = ?`, [ts, id]);
+            }
+            await execute(`DELETE FROM projects WHERE id = ?`, [id]);
+            await recordLocalTombstone('project', id);
+            await logMutation('projects', id, 'delete', {});
+            flushSoon();
+            return { status: 'deleted' };
+        },
+        tasks: async (id: string): Promise<Task[]> => {
+            const rows = await query<Record<string, unknown>[]>(
+                `SELECT * FROM tasks
+                 WHERE project_id = ? AND parent_task_id IS NULL AND recurrence_origin_id IS NULL
+                   AND status != 'cancelled'
+                 ORDER BY (planned_date IS NULL), planned_date, position`, [id]);
+            return rows.map(parseTaskRow);
+        },
+        objectives: async (id: string): Promise<Objective[]> =>
+            query<Objective[]>(
+                `SELECT * FROM weekly_objectives WHERE project_id = ? ORDER BY week_start, position`, [id]),
+    },
+
+    projectStatuses: {
+        list: async (): Promise<ProjectStatus[]> =>
+            query<ProjectStatus[]>(`SELECT * FROM project_statuses ORDER BY position, created_at`),
+        create: async (input: { name: string; color?: string; category: ProjectCategory }): Promise<ProjectStatus> => {
+            const id = uuid(); const ts = now();
+            const color = input.color || '#8a8178';
+            await execute(
+                `INSERT INTO project_statuses (id, name, color, category, position, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, COALESCE((SELECT MAX(position)+1 FROM project_statuses), 0), ?, ?)`,
+                [id, input.name, color, input.category, ts, ts]);
+            await logMutation('project_statuses', id, 'create', { name: input.name, color, category: input.category });
+            flushSoon();
+            return (await query<ProjectStatus[]>(`SELECT * FROM project_statuses WHERE id = ?`, [id]))[0];
+        },
+        update: async (id: string, patch: { name?: string; color?: string; category?: ProjectCategory; position?: number }): Promise<ProjectStatus> => {
+            const sets: string[] = []; const vals: unknown[] = [];
+            for (const [key, val] of Object.entries(patch).filter(([, v]) => v !== undefined)) {
+                sets.push(`${key} = ?`); vals.push(val);
+            }
+            if (sets.length > 0) {
+                sets.push('updated_at = ?'); vals.push(now());
+                vals.push(id);
+                await execute(`UPDATE project_statuses SET ${sets.join(', ')} WHERE id = ?`, vals);
+                await logMutation('project_statuses', id, 'update', patch as Record<string, unknown>);
+                flushSoon();
+            }
+            return (await query<ProjectStatus[]>(`SELECT * FROM project_statuses WHERE id = ?`, [id]))[0];
+        },
+        delete: async (id: string): Promise<{ status: string; replacement: string }> => {
+            // Mirror the server: projects move to the first remaining status in the
+            // same category, else the first remaining status. The last can't go.
+            const cur = await query<{ category: string }[]>(`SELECT category FROM project_statuses WHERE id = ?`, [id]);
+            if (cur.length === 0) return { status: 'deleted', replacement: '' };
+            const repl = await query<{ id: string }[]>(
+                `SELECT id FROM project_statuses WHERE id != ?
+                 ORDER BY (category = ?) DESC, position, created_at LIMIT 1`, [id, cur[0].category]);
+            if (repl.length === 0) throw new Error('cannot delete the last project status');
+            await execute(`UPDATE projects SET status_id = ?, updated_at = ? WHERE status_id = ?`, [repl[0].id, now(), id]);
+            await execute(`DELETE FROM project_statuses WHERE id = ?`, [id]);
+            await recordLocalTombstone('project_status', id);
+            await logMutation('project_statuses', id, 'delete', {});
+            flushSoon();
+            return { status: 'deleted', replacement: repl[0].id };
+        },
+        // Replayed as per-status position updates, so it rides the update path.
+        reorder: async (ids: string[]): Promise<{ status: string }> => {
+            const ts = now();
+            for (let i = 0; i < ids.length; i++) {
+                await execute(`UPDATE project_statuses SET position = ?, updated_at = ? WHERE id = ?`, [i, ts, ids[i]]);
+                await logMutation('project_statuses', ids[i], 'update', { position: i });
+            }
+            flushSoon();
+            return { status: 'ok' };
         },
     },
 

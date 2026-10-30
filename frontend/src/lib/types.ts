@@ -284,8 +284,9 @@ export interface UpdateTaskInput {
   recurrence_rule?: string | null;
   // Private/Shared toggle (multi-user). Cascades to sub-tasks server-side.
   shared?: boolean;
-  // '' unlinks; an id links. Cascades to sub-tasks + recurring instances.
-  project_id?: string;
+  // '' unlinks; an id links; null/omitted = unchanged (as on the server).
+  // Cascades to sub-tasks + recurring instances.
+  project_id?: string | null;
 }
 
 // ── Notifications ────────────────────────────────────────────────────────────
