@@ -5,7 +5,7 @@
   import { plannedMinutes } from '$lib/dayCapacity';
   import { flip } from 'svelte/animate';
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { api } from '$lib/api';
   import type { Task, TaskStatus, UpdateTaskInput } from '$lib/types';
   import { appendPosition, compareTasksForDay, formatMinutes, isToday, offsetDate, weekStart } from '$lib/utils';
@@ -37,7 +37,7 @@
   import type { DailyPlan } from '$lib/types';
 
   // "date" is used to anchor the week and mark today
-  let date      = $derived($page.params.date ?? clock.today);
+  let date      = $derived(page.params.date ?? clock.today);
   let ws        = $derived(weekStart(date));
   // Reactive so the "today" highlight, greeting and rollover roll over at
   // midnight instead of staying frozen on the day the page was opened.
@@ -310,13 +310,13 @@
   // Handle FAB deep link — runs on mount AND whenever search params change
   // (same-page goto('/day/today?new=1') doesn't re-trigger onMount)
   $effect(() => {
-    const newParam = $page.url.searchParams.get('new');
+    const newParam = page.url.searchParams.get('new');
     if (!newParam) return;
     // Optional prefill, e.g. from a Share-to-Sempa intent (title + notes/URL).
-    const t = $page.url.searchParams.get('title') ?? '';
-    const n = $page.url.searchParams.get('notes') ?? '';
+    const t = page.url.searchParams.get('title') ?? '';
+    const n = page.url.searchParams.get('notes') ?? '';
     openCreate(date, t, n);
-    history.replaceState({}, '', $page.url.pathname);
+    history.replaceState({}, '', page.url.pathname);
   });
 
   async function rolloverAll() {

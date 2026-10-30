@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { api } from '$lib/api';
   import type { Task } from '$lib/types';
   import { formatDate, formatMinutes, isToday, today } from '$lib/utils';
@@ -9,7 +9,7 @@
   import { prefs } from '$lib/stores/prefs.svelte';
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
 
-  let date = $derived($page.params.date ?? today());
+  let date = $derived(page.params.date ?? today());
 
   let step       = $state<1 | 2 | 3>(1);
   let doneTasks  = $state<Task[]>([]);

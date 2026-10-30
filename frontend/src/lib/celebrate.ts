@@ -10,7 +10,7 @@
 // All tiers are reduced-motion aware inside the engine. Sound defaults off and
 // is wired to a Settings preference via setSound().
 
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 
 interface Engine {
   task(el?: Element | null): void;

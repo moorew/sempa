@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { api } from '$lib/api';
   import type { Objective, Task, WeekReview } from '$lib/types';
   import { appendPosition, insertPosition, formatWeekRange, offsetDate, today, weekStart as calcWeekStart } from '$lib/utils';
@@ -19,7 +19,7 @@
   import { contextMenu, type MenuItem } from '$lib/stores/contextMenu.svelte';
   import { celebrate } from '$lib/celebrate';
 
-  let weekStartDate = $derived($page.params.weekStart ?? calcWeekStart(today()));
+  let weekStartDate = $derived(page.params.weekStart ?? calcWeekStart(today()));
 
   // ── Tag filter (shared with the day view via the same localStorage key) ────
   let filterTags  = $state<string[]>([]);

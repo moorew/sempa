@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { api } from '$lib/api';
 
   let connected  = $state(false);
@@ -24,7 +24,7 @@
     lastSynced = cfg.last_synced_at ?? null;
 
     // Show success banner if returning from OAuth flow
-    const connected_param = $page.url.searchParams.get('connected');
+    const connected_param = page.url.searchParams.get('connected');
     if (connected_param === '1' && !connected) {
       // reload after redirect
       const fresh = await api.integrations.gmail.get();

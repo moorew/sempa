@@ -1,6 +1,6 @@
 <script lang="ts">
   import '../app.css';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { goto, afterNavigate } from '$app/navigation';
   import { today, weekStart, offsetDate } from '$lib/utils';
@@ -78,25 +78,25 @@
   const todayDate = today();
   const thisWeek  = weekStart(todayDate);
 
-  let isLoginPage      = $derived(($page.url.pathname as string) === '/login');
-  let isSetupPage      = $derived(($page.url.pathname as string) === '/setup');
+  let isLoginPage      = $derived((page.url.pathname as string) === '/login');
+  let isSetupPage      = $derived((page.url.pathname as string) === '/setup');
   // The reminder popup is a separate, chromeless Tauri window (top-right floating
   // card). It must NOT render the app shell or run the heavy auth/sync onMount.
-  let isReminderPopup  = $derived(($page.url.pathname as string) === '/reminder-popup');
+  let isReminderPopup  = $derived((page.url.pathname as string) === '/reminder-popup');
   // The floating widget and sticky-note windows are likewise standalone, chromeless
   // Tauri windows — they own their entire UI and must never render the app shell
   // (sidebar / mobile bottom nav), which was bleeding into the narrow widget.
   // The standalone Pomodoro widget is its own chromeless Tauri window that owns the
   // whole surface (its own full-window timer + inline confirm); the global corner
   // timer and confirm modal are suppressed on it (see below).
-  let isPomodoroWidget = $derived(($page.url.pathname as string) === '/pomodoro-widget');
+  let isPomodoroWidget = $derived((page.url.pathname as string) === '/pomodoro-widget');
   let isStandaloneWindow = $derived(
     isReminderPopup ||
     isPomodoroWidget ||
-    ($page.url.pathname as string) === '/widget' ||
-    ($page.url.pathname as string) === '/sticky' ||
-    ($page.url.pathname as string) === '/quick-add' ||
-    ($page.url.pathname as string) === '/dock'
+    (page.url.pathname as string) === '/widget' ||
+    (page.url.pathname as string) === '/sticky' ||
+    (page.url.pathname as string) === '/quick-add' ||
+    (page.url.pathname as string) === '/dock'
   );
   // Whether any in-app banner (reminder alert or routine prompt) is showing —
   // gates the shared spacing wrapper so there's no empty offset when none are.
@@ -128,7 +128,7 @@
 
   // Mobile: is this a task-list page where we show the FAB?
   let isTaskListPage = $derived(
-    $page.url.pathname.startsWith('/day/') || $page.url.pathname.startsWith('/week/')
+    page.url.pathname.startsWith('/day/') || page.url.pathname.startsWith('/week/')
   );
 
   const SHORTCUT_HELP = [
@@ -165,7 +165,7 @@
     if (e.key === 'Escape') { shortcutsOpen = false; return; }
     if (shortcutsOpen) return;
 
-    const path = $page.url.pathname;
+    const path = page.url.pathname;
     const dayMatch = path.match(/^\/day\/(\d{4}-\d{2}-\d{2})/);
     const curDate = dayMatch?.[1] ?? todayDate;
     const curWs   = weekStart(curDate);
@@ -274,11 +274,11 @@
         // plaintext token) into the in-memory cache before the auth gate reads it.
         await initTauriToken();
         if (!getServerUrl()) {
-          goto('/login?redirect=' + encodeURIComponent($page.url.pathname), { replaceState: true });
+          goto('/login?redirect=' + encodeURIComponent(page.url.pathname), { replaceState: true });
           return;
         }
         if (!getTauriToken()) {
-          goto('/login?redirect=' + encodeURIComponent($page.url.pathname), { replaceState: true });
+          goto('/login?redirect=' + encodeURIComponent(page.url.pathname), { replaceState: true });
           return;
         }
         // Server URL and token present. Verify the token *if* the server is
@@ -291,7 +291,7 @@
           const me = await api.auth.me();
           if (!me.authenticated) {
             clearTauriToken();
-            goto('/login?redirect=' + encodeURIComponent($page.url.pathname), { replaceState: true });
+            goto('/login?redirect=' + encodeURIComponent(page.url.pathname), { replaceState: true });
             return;
           }
           userEmail = me.email ?? 'desktop';
@@ -312,7 +312,7 @@
       try {
         const me = await api.auth.me();
         if (!me.authenticated) {
-          goto('/login?redirect=' + encodeURIComponent($page.url.pathname), { replaceState: true });
+          goto('/login?redirect=' + encodeURIComponent(page.url.pathname), { replaceState: true });
           return;
         }
         userEmail = me.email;
@@ -342,7 +342,7 @@
           userEmail = 'mobile';
           startSync();
         } else {
-          goto('/login?redirect=' + encodeURIComponent($page.url.pathname), { replaceState: true });
+          goto('/login?redirect=' + encodeURIComponent(page.url.pathname), { replaceState: true });
           realtime.disconnect();
         }
       } finally {
@@ -427,7 +427,7 @@
   });
 
   function isActive(prefix: string): boolean {
-    return $page.url.pathname.startsWith(prefix);
+    return page.url.pathname.startsWith(prefix);
   }
 
   // Desktop nav rail grouping. Items keep their routes/icons — only the order
@@ -698,7 +698,7 @@
         <AiSetupBanner />
       </div>
     {/if}
-    {#key $page.url.pathname}
+    {#key page.url.pathname}
       <main class="animate-page-in">{@render children()}</main>
     {/key}
   </div>

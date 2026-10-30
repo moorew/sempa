@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { api } from '$lib/api';
   import { backupHealth } from '$lib/stores/backupHealth.svelte';
   import { isTauri, openExternal } from '$lib/tauri/bridge';
@@ -52,7 +52,7 @@
     void initNative();
 
     // Full-redirect fallback (e.g. popup blocked) lands back here with a flag.
-    const driveParam = $page.url.searchParams.get('drive');
+    const driveParam = page.url.searchParams.get('drive');
     if (driveParam === 'connected') notice = 'Google Drive connected.';
     else if (driveParam === 'error') error = 'Google Drive connection failed. Please try again.';
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { timeTracking } from '$lib/stores/timeTracking.svelte';
 
   // A short, dismissible intro to time tracking. Opens once on the first app
@@ -35,7 +35,7 @@
   // `walkthroughSeen` read its default (false) and the intro reappears every launch.
   $effect(() => {
     if (!timeTracking.initialized) return;
-    const path = $page.url.pathname;
+    const path = page.url.pathname;
     const appPage = !path.startsWith('/login') && !path.startsWith('/setup');
     if (appPage && !timeTracking.walkthroughSeen && !triggered) {
       triggered = true;

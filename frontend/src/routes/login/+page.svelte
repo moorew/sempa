@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { api, setServerUrl, getServerUrl, setTauriToken, clearTauriToken, setNativeToken, clearNativeToken, resetApiResolver } from '$lib/api';
   import { isTauri, openExternal } from '$lib/tauri/bridge';
 
@@ -21,7 +21,7 @@
   let showServerUrl = $state(false);
   let appUrlListener: { remove: () => void } | null = null;
 
-  const redirectTarget = $derived($page.url.searchParams.get('redirect') ?? '/');
+  const redirectTarget = $derived(page.url.searchParams.get('redirect') ?? '/');
 
   /** Derive the base URL for OAuth redirects (matches api.ts logic). */
   function getBase(): string {
@@ -70,7 +70,7 @@
   // in the query — onMount won't re-run, so react to it.
   $effect(() => {
     if (!isTauri()) return;
-    const linkToken = $page.url.searchParams.get('link_token');
+    const linkToken = page.url.searchParams.get('link_token');
     if (linkToken && !tauriLoginDone) void finalizeTauriLogin(linkToken);
   });
 
@@ -95,14 +95,14 @@
     // start — the deep link arrives while /login is already open — is handled by
     // the $effect below.)
     if (isTauri()) {
-      const linkToken = $page.url.searchParams.get('link_token');
+      const linkToken = page.url.searchParams.get('link_token');
       if (linkToken) { await finalizeTauriLogin(linkToken); return; }
     }
 
     // Android Capacitor WebView-navigation OAuth callback (fallback when Browser plugin unavailable).
     // Backend redirects to https://localhost/login?link_token=X, which loads this page.
     if (isNative && !isTauri()) {
-      const linkToken = $page.url.searchParams.get('link_token');
+      const linkToken = page.url.searchParams.get('link_token');
       if (linkToken) {
         loading = true;
         try {
@@ -132,7 +132,7 @@
   });
 
   async function continueAuth() {
-    const errParam = $page.url.searchParams.get('error');
+    const errParam = page.url.searchParams.get('error');
     if (errParam === 'not_allowed') error = 'Your Google account is not authorised for this Sempa instance.';
     else if (errParam) error = 'Google sign-in was cancelled or failed. Please try again.';
 
