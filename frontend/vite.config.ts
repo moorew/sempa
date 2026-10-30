@@ -22,7 +22,9 @@ export default defineConfig({
     // SvelteKit 3 takes its config here; svelte.config.js is no longer read.
     sveltekit({
       preprocess: vitePreprocess(),
-      // Kit 3 replaced `$lib` with `#lib`; keep the alias rather than rewrite every import.
+      // Kit 3 defaults to `#lib` (package.json subpath imports), but TypeScript
+      // won't resolve the extensionless `#lib/*` targets svelte-check sees, so
+      // keep `$lib` via the (deprecated, still supported) alias for now.
       alias: { $lib: 'src/lib' },
       adapter: adapter({
         fallback: 'index.html', // SPA mode: serve index.html for all unmatched routes
