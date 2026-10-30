@@ -6,7 +6,8 @@
   import type { Objective, Task, WeekReview } from '$lib/types';
   import { formatMinutes, formatWeekRange, today, weekStart as calcWeekStart } from '$lib/utils';
   import { moveAllUnfinishedToNextWeek, unfinishedObjectives } from '$lib/objectives';
-  import { CalendarArrowDown, Sparkles } from 'lucide-svelte';
+  import { CalendarArrowDown, Sparkles, ChartColumn, MessageCircle, Target, ArrowLeft, ArrowRight,
+           Check, CircleCheck, Clock, Trophy, Mountain, Plus } from 'lucide-svelte';
   import { prefs } from '$lib/stores/prefs.svelte';
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
 
@@ -130,110 +131,117 @@
   }
 
   const STEPS = [
-    { n: 1, icon: '📊', label: 'Stats' },
-    { n: 2, icon: '💭', label: 'Reflect' },
-    { n: 3, icon: '🎯', label: 'Next week' },
+    { n: 1, icon: ChartColumn,   label: 'Stats' },
+    { n: 2, icon: MessageCircle, label: 'Reflect' },
+    { n: 3, icon: Target,        label: 'Next week' },
   ];
 </script>
 
 <svelte:head><title>Weekly Review — {formatWeekRange(ws)}</title></svelte:head>
 
-<div class="mx-auto max-w-xl px-6 py-10 space-y-8 animate-fade-in"
-     style="padding-top: calc(env(safe-area-inset-top, 0px) + 40px);">
+<div class="mx-auto max-w-xl px-4 pb-28 pt-8 sm:px-6 sm:py-10 space-y-6 animate-page-in"
+     style="padding-top: calc(env(safe-area-inset-top, 0px) + 32px);">
 
   <!-- Header -->
   <div>
-    <a href="/week/{ws}" class="text-xs transition-colors"
-       style="color: var(--sempa-text-dim);"
-       onmouseenter={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-accent)'}
-       onmouseleave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text-dim)'}>
-      ← Back to week
+    <a href="/week/{ws}" class="back-link">
+      <ArrowLeft size={14} strokeWidth={2.25} />
+      Back to week
     </a>
-    <h1 class="mt-2 text-xl font-bold" style="color: var(--sempa-text);">Weekly Review</h1>
-    <p class="text-sm" style="color: var(--sempa-text-soft);">{formatWeekRange(ws)}</p>
+    <h1 class="mt-3 type-page" style="color: var(--sempa-text);">Weekly review</h1>
+    <p class="mt-1 type-meta" style="color: var(--sempa-text-soft);">{formatWeekRange(ws)}</p>
   </div>
 
-  <!-- Step indicators -->
-  <div class="flex items-center gap-2">
+  <!-- Step indicators: a segmented control -->
+  <div class="segmented on-canvas" role="tablist" aria-label="Review steps">
     {#each STEPS as s}
       <button onclick={() => step = s.n}
-              class="flex items-center gap-1.5 transition-colors"
-              style={step === s.n
-                ? 'background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px; padding:4px 14px; font-size:12px; font-weight:500;'
-                : step > s.n
-                  ? 'background: var(--sempa-success-soft); color: var(--sempa-success); border-radius: 999px; padding:4px 14px; font-size:12px; font-weight:500;'
-                  : 'background: var(--sempa-accent-bg); color: var(--sempa-text-dim); border-radius: 999px; padding:4px 14px; font-size:12px;'}>
-        {s.icon} {s.label}
+              role="tab"
+              aria-selected={step === s.n}
+              class="seg-step"
+              style="color: {step === s.n ? 'var(--sempa-text)' : step > s.n ? 'var(--sempa-success)' : 'var(--sempa-text-soft)'};">
+        {#if s.n < step}
+          <Check size={14} strokeWidth={3} />
+        {:else}
+          <s.icon size={14} strokeWidth={2.25} />
+        {/if}
+        {s.label}
       </button>
-      {#if s.n < STEPS.length}
-        <div class="h-px flex-1" style="background: var(--sempa-border);"></div>
-      {/if}
     {/each}
   </div>
 
   {#if loading}
-    <div class="flex h-40 items-center justify-center text-sm text-gray-400">Loading…</div>
+    <div class="flex h-40 items-center justify-center text-sm" style="color: var(--sempa-text-dim);">Loading…</div>
   {:else if error}
     <p class="rounded-xl bg-red-50 p-4 text-sm text-red-600 dark:bg-red-950 dark:text-red-400">{error}</p>
 
   <!-- Step 1: Stats -->
   {:else if step === 1}
-    <div class="space-y-4">
-      <h2 class="text-base font-semibold" style="color: var(--sempa-text);">This week at a glance</h2>
+    <div class="space-y-5">
+      <h2 class="type-section" style="color: var(--sempa-text);">This week at a glance</h2>
 
-      <div class="grid grid-cols-3 gap-3">
-        <div class="rounded-xl p-4 text-center" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
-          <p class="text-2xl font-bold" style="color: var(--sempa-accent);">{doneTasks.length}</p>
-          <p class="text-xs" style="color: var(--sempa-text-soft);">of {totalTasks.length} tasks done</p>
+      <div class="grid grid-cols-3 gap-2.5 sm:gap-3">
+        <div class="stat-tile">
+          <span class="stat-icon" style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
+            <CircleCheck size={20} strokeWidth={2} />
+          </span>
+          <p class="stat-num tabular-nums">{doneTasks.length}</p>
+          <p class="stat-label">of {totalTasks.length} tasks done</p>
         </div>
-        <div class="rounded-xl p-4 text-center" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
-          <p class="text-2xl font-bold text-green-600">{doneObjs}</p>
-          <p class="text-xs" style="color: var(--sempa-text-soft);">of {objectives.length} objectives</p>
+        <div class="stat-tile">
+          <span class="stat-icon" style="background: var(--sempa-success-bg); color: var(--sempa-success);">
+            <Target size={20} strokeWidth={2} />
+          </span>
+          <p class="stat-num tabular-nums">{doneObjs}</p>
+          <p class="stat-label">of {objectives.length} objectives</p>
         </div>
-        <div class="rounded-xl p-4 text-center" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
-          <p class="text-2xl font-bold" style="color: var(--sempa-amber);">{totalMins > 0 ? formatMinutes(totalMins) : '—'}</p>
-          <p class="text-xs" style="color: var(--sempa-text-soft);">time logged</p>
+        <div class="stat-tile">
+          <span class="stat-icon" style="background: var(--cal-amber-bg); color: var(--cal-amber-fg);">
+            <Clock size={20} strokeWidth={2} />
+          </span>
+          <p class="stat-num tabular-nums">{totalMins > 0 ? formatMinutes(totalMins) : '—'}</p>
+          <p class="stat-label">time logged</p>
         </div>
       </div>
 
       {#if doneTasks.length > 0}
-        <div>
-          <p class="mb-2" style="font-family:monospace; font-size: 12px; font-weight:700;                    color:var(--sempa-text-dim)">Completed tasks</p>
-          <ul class="space-y-1">
-            {#each doneTasks.slice(0, 8) as t}
-              <li class="flex items-center gap-2 text-sm" style="color: var(--sempa-text-soft);">
-                <svg class="h-3.5 w-3.5 shrink-0 text-green-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                </svg>
+        <div class="surface" style="border-radius: 20px; padding: 14px 16px 10px;">
+          <p class="mb-1 type-label" style="color: var(--sempa-text-soft);">Completed tasks</p>
+          <ul>
+            {#each doneTasks.slice(0, 8) as t, i}
+              <li class="flex items-center gap-2.5 py-2 text-sm" style="color: var(--sempa-text); {i > 0 ? 'border-top: 1px solid var(--sempa-border);' : ''}">
+                <span class="check-ring" data-state="done" style="width: 18px; height: 18px;" aria-hidden="true">
+                  <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="3.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                  </svg>
+                </span>
                 <span class="truncate">{t.title}</span>
               </li>
             {/each}
             {#if doneTasks.length > 8}
-              <li class="text-xs pl-5" style="color: var(--sempa-text-dim);">+{doneTasks.length - 8} more</li>
+              <li class="py-2 pl-7 type-meta" style="color: var(--sempa-text-dim); border-top: 1px solid var(--sempa-border);">+{doneTasks.length - 8} more</li>
             {/if}
           </ul>
         </div>
       {/if}
 
       <button onclick={() => step = 2}
-              class="w-full transition-colors"
-              style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
-                     padding:10px 20px; font-size:14px; font-weight:500; border:none; cursor:pointer;"
-              onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
-              onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>
-        Continue →
+              class="btn-primary w-full"
+              style="height: 46px; font-size: 14px;">
+        Continue
+        <ArrowRight size={16} strokeWidth={2.25} />
       </button>
     </div>
 
   <!-- Step 2: Reflection -->
   {:else if step === 2}
-    <div class="space-y-6">
+    <div class="space-y-5">
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-base font-semibold" style="color: var(--sempa-text);">How did the week go?</h2>
+        <h2 class="type-section" style="color: var(--sempa-text);">How did the week go?</h2>
         {#if showAiDraft}
           <button onclick={aiDraftReview} disabled={aiDrafting}
-                  class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
-                  style="border: 1px solid var(--sempa-border); color: var(--sempa-accent);"
+                  class="btn-soft disabled:opacity-50"
+                  style="height: 34px; padding: 0 14px; font-size: 12.5px;"
                   title="Draft this review from your completed work">
             <Sparkles size={13} strokeWidth={2} />
             {aiDrafting ? 'Drafting…' : 'AI draft'}
@@ -241,121 +249,109 @@
         {/if}
       </div>
 
-      <div>
-        <label class="mb-2 block text-sm font-medium" style="color: var(--sempa-text-soft);">
-          🏆 What went well?
-        </label>
-        <div class="space-y-1.5 rounded-xl px-3 py-2"
-             style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main);">
+      <div class="surface" style="border-radius: 20px; padding: 16px;" role="group" aria-labelledby="wins-label">
+        <p id="wins-label" class="field-title">
+          <span class="field-icon" style="background: var(--cal-amber-bg); color: var(--cal-amber-fg);"><Trophy size={14} strokeWidth={2.25} /></span>
+          What went well?
+        </p>
+        <div class="space-y-1.5">
           {#each wins as w, i}
-            <div class="flex items-center gap-2">
-              <span class="text-sm" style="color: var(--sempa-text-dim);">·</span>
-              <input value={w}
-                     oninput={(e) => updateBullet(wins, i, (e.target as HTMLInputElement).value, v => wins = v)}
-                     onkeydown={(e) => handleBulletKey(e, wins, i, v => wins = v)}
-                     type="text"
-                     placeholder="Something that went well…"
-                     class="flex-1 bg-transparent text-sm outline-none"
-                     style="color: var(--sempa-text);" />
-            </div>
+            <input value={w}
+                   oninput={(e) => updateBullet(wins, i, (e.target as HTMLInputElement).value, v => wins = v)}
+                   onkeydown={(e) => handleBulletKey(e, wins, i, v => wins = v)}
+                   type="text"
+                   placeholder="Something that went well…"
+                   aria-label="Win {i + 1}"
+                   class="bullet-input" />
           {/each}
-          <button onclick={() => addBullet(wins, v => wins = v)}
-                  class="text-xs pl-4" style="color: var(--sempa-accent);">
-            + Add
-          </button>
         </div>
+        <button onclick={() => addBullet(wins, v => wins = v)} class="add-link">
+          <Plus size={13} strokeWidth={2.5} /> Add
+        </button>
       </div>
 
-      <div>
-        <label class="mb-2 block text-sm font-medium" style="color: var(--sempa-text-soft);">
-          🚧 What was challenging?
-        </label>
-        <div class="space-y-1.5 rounded-xl px-3 py-2"
-             style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main);">
+      <div class="surface" style="border-radius: 20px; padding: 16px;" role="group" aria-labelledby="challenges-label">
+        <p id="challenges-label" class="field-title">
+          <span class="field-icon" style="background: var(--cal-stone-bg); color: var(--cal-stone-fg);"><Mountain size={14} strokeWidth={2.25} /></span>
+          What was challenging?
+        </p>
+        <div class="space-y-1.5">
           {#each challenges as c, i}
-            <div class="flex items-center gap-2">
-              <span class="text-sm" style="color: var(--sempa-text-dim);">·</span>
-              <input value={c}
-                     oninput={(e) => updateBullet(challenges, i, (e.target as HTMLInputElement).value, v => challenges = v)}
-                     onkeydown={(e) => handleBulletKey(e, challenges, i, v => challenges = v)}
-                     type="text"
-                     placeholder="Something that was hard…"
-                     class="flex-1 bg-transparent text-sm outline-none"
-                     style="color: var(--sempa-text);" />
-            </div>
+            <input value={c}
+                   oninput={(e) => updateBullet(challenges, i, (e.target as HTMLInputElement).value, v => challenges = v)}
+                   onkeydown={(e) => handleBulletKey(e, challenges, i, v => challenges = v)}
+                   type="text"
+                   placeholder="Something that was hard…"
+                   aria-label="Challenge {i + 1}"
+                   class="bullet-input" />
           {/each}
-          <button onclick={() => addBullet(challenges, v => challenges = v)}
-                  class="text-xs pl-4" style="color: var(--sempa-accent);">
-            + Add
-          </button>
         </div>
+        <button onclick={() => addBullet(challenges, v => challenges = v)} class="add-link">
+          <Plus size={13} strokeWidth={2.5} /> Add
+        </button>
       </div>
 
       <div class="flex gap-2">
         <button onclick={() => step = 1}
-                class="flex-1 transition-colors"
-                style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);
-                       background: transparent; border-radius:18px; padding:10px; font-size:14px;">
-          ← Back
+                class="btn-surface flex-1"
+                style="height: 46px; font-size: 14px; color: var(--sempa-text-soft);">
+          <ArrowLeft size={16} strokeWidth={2.25} />
+          Back
         </button>
         <button onclick={() => step = 3}
-                class="flex-1 transition-colors"
-                style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
-                       padding:10px; font-size:14px; font-weight:500; border:none; cursor:pointer;"
-                onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
-                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>
-          Continue →
+                class="btn-primary flex-1"
+                style="height: 46px; font-size: 14px;">
+          Continue
+          <ArrowRight size={16} strokeWidth={2.25} />
         </button>
       </div>
     </div>
 
   <!-- Step 3: Next week -->
   {:else if step === 3}
-    <div class="space-y-6">
-      <h2 class="text-base font-semibold" style="color: var(--sempa-text);">Looking ahead</h2>
+    <div class="space-y-5">
+      <h2 class="type-section" style="color: var(--sempa-text);">Looking ahead</h2>
 
       <!-- Carry unfinished objectives into next week -->
       {#if carriedCount !== null}
-        <div class="flex items-center gap-2 rounded-xl px-4 py-3 text-sm"
-             style="border: 1px solid var(--sempa-success); background: var(--sempa-success-soft); color: var(--sempa-success);">
+        <div class="flex items-center gap-2.5 px-4 py-3 text-sm font-medium"
+             style="border-radius: 16px; background: var(--sempa-success-bg); color: var(--sempa-success);">
           <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
           </svg>
           Carried {carriedCount} {carriedCount === 1 ? 'objective' : 'objectives'} to next week.
         </div>
       {:else if unfinished.length > 0}
-        <div class="rounded-xl p-4" style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
-          <p class="mb-2 text-sm font-medium" style="color: var(--sempa-text);">
+        <div class="surface" style="border-radius: 20px; padding: 16px;">
+          <p class="mb-2 text-sm font-semibold" style="color: var(--sempa-text);">
             {unfinished.length} unfinished {unfinished.length === 1 ? 'objective' : 'objectives'} this week
           </p>
-          <ul class="mb-3 space-y-1">
+          <ul class="mb-3 space-y-1.5">
             {#each unfinished as o}
-              <li class="flex items-center gap-2 text-sm" style="color: var(--sempa-text-soft);">
-                <span class="h-1.5 w-1.5 shrink-0 rounded-full" style="background: var(--sempa-accent);"></span>
+              <li class="flex items-center gap-2.5 text-sm" style="color: var(--sempa-text-soft);">
+                <span class="check-ring" data-state="active" style="width: 16px; height: 16px;" aria-hidden="true"></span>
                 <span class="truncate">{o.title}</span>
               </li>
             {/each}
           </ul>
           <button onclick={carryForward} disabled={carrying}
-                  class="flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium transition-opacity disabled:opacity-50"
-                  style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
+                  class="btn-soft w-full disabled:opacity-50"
+                  style="height: 40px; font-size: 13px;">
             <CalendarArrowDown size={15} />
             {carrying ? 'Moving…' : 'Move them to next week'}
           </button>
         </div>
       {/if}
 
-      <div>
-        <label class="mb-2 block text-sm font-medium" style="color: var(--sempa-text-soft);" for="next-focus">
-          🎯 What is your focus for next week?
+      <!-- The intention for next week: the soft accent "intention" card -->
+      <div class="intention-card">
+        <label class="mb-2 flex items-center gap-2 type-label" style="color: var(--sempa-accent-ink);" for="next-focus">
+          <Target size={14} strokeWidth={2.25} />
+          Your focus for next week
         </label>
         <textarea id="next-focus" bind:value={nextFocus} rows="4"
                   placeholder="Your intention for the week ahead…"
-                  onfocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2.5px rgba(179,89,46,0.12)'; }}
-                  onblur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'; (e.currentTarget as HTMLElement).style.boxShadow = ''; }}
-                  style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main);
-                         border-radius:18px; padding:14px; resize:none; width:100%;
-                         font-size:14px; line-height:1.65; color:var(--sempa-text); outline:none;"></textarea>
+                  class="focus-area"></textarea>
       </div>
 
       {#if error}
@@ -364,20 +360,92 @@
 
       <div class="flex gap-2">
         <button onclick={() => step = 2}
-                class="flex-1 transition-colors"
-                style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);
-                       background: transparent; border-radius:18px; padding:10px; font-size:14px;">
-          ← Back
+                class="btn-surface flex-1"
+                style="height: 46px; font-size: 14px; color: var(--sempa-text-soft);">
+          <ArrowLeft size={16} strokeWidth={2.25} />
+          Back
         </button>
         <button onclick={save} disabled={saving}
-                class="flex-1 disabled:opacity-40 transition-colors"
-                style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
-                       padding:10px; font-size:14px; font-weight:500; border:none; cursor:pointer;"
-                onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
-                onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>
-          {saving ? 'Saving…' : 'Complete review ✓'}
+                class="btn-primary flex-1 disabled:opacity-40"
+                style="height: 46px; font-size: 14px;">
+          {saving ? 'Saving…' : 'Complete review'}
+          {#if !saving}<Check size={16} strokeWidth={2.5} />{/if}
         </button>
       </div>
     </div>
   {/if}
 </div>
+
+<style>
+  .back-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; color: var(--sempa-text-soft);
+    transition: color 120ms ease;
+  }
+  .back-link:hover { color: var(--sempa-accent-ink); }
+
+  /* The segmented track normally sits on a surface; here it sits on the
+     canvas, so recess it a notch so the raised selected pill reads. */
+  .on-canvas { background: color-mix(in srgb, var(--sempa-text) 6%, var(--sempa-bg-main)); }
+
+  .seg-step {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 36px; padding: 0 10px; font-size: 13px; font-weight: 600; white-space: nowrap;
+  }
+  .seg-step[aria-selected="true"] { font-weight: 700; }
+
+  /* Stat tile: surface, radius 22, tinted 46px icon tile, big number, soft label. */
+  .stat-tile {
+    background: var(--sempa-bg-panel);
+    border-radius: var(--radius-tile);
+    box-shadow: var(--sempa-shadow-1);
+    padding: 14px;
+    min-width: 0;
+  }
+  .stat-icon {
+    display: grid; place-items: center;
+    width: 46px; height: 46px; border-radius: 14px;
+    margin-bottom: 12px;
+  }
+  .stat-num   { font-size: 20px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; color: var(--sempa-text); }
+  .stat-label { margin-top: 2px; font-size: 12.5px; font-weight: 500; color: var(--sempa-text-soft); line-height: 1.3; }
+  @media (max-width: 420px) {
+    .stat-tile { padding: 12px; }
+    .stat-icon { width: 40px; height: 40px; border-radius: 12px; margin-bottom: 10px; }
+  }
+
+  .field-title {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+    font-size: 15px; font-weight: 700; letter-spacing: -.01em; color: var(--sempa-text);
+  }
+  .field-icon {
+    display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 10px;
+  }
+  .bullet-input {
+    display: block; width: 100%;
+    background: var(--sempa-fill); border: 1px solid transparent; border-radius: 12px;
+    padding: 9px 13px; font-size: 14px; color: var(--sempa-text); outline: none;
+    transition: border-color 120ms ease;
+  }
+  .bullet-input:focus { border-color: var(--sempa-accent); }
+  .add-link {
+    display: inline-flex; align-items: center; gap: 5px; margin-top: 8px;
+    height: 30px; padding: 0 10px 0 6px; border-radius: 999px;
+    font-size: 12.5px; font-weight: 600; color: var(--sempa-accent-ink);
+  }
+  .add-link:hover { background: var(--sempa-accent-bg); }
+
+  /* Soft accent-tinted intention card. */
+  .intention-card {
+    background: var(--sempa-accent-bg);
+    border-radius: 22px;
+    padding: 16px;
+  }
+  .focus-area {
+    display: block; width: 100%; resize: none;
+    background: var(--sempa-bg-panel); border: 1px solid transparent; border-radius: 16px;
+    padding: 14px; font-size: 14px; line-height: 1.65; color: var(--sempa-text); outline: none;
+    transition: border-color 120ms ease;
+  }
+  .focus-area:focus { border-color: var(--sempa-accent); }
+</style>
