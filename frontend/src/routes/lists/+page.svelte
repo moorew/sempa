@@ -28,6 +28,21 @@
   // Re-fetch on realtime changes and when the archived toggle flips.
   $effect(() => { void realtime.lastEvent; void showArchived; load(); });
 
+  // Item counts for the cards. Read-only and best-effort: a list whose items
+  // can't be fetched just shows no count. Written to its own state (never read
+  // in this effect), so it can't loop.
+  let counts = $state<Record<string, { total: number; done: number }>>({});
+  async function loadCounts(ls: List[]) {
+    const entries = await Promise.all(ls.map(async (l) => {
+      try {
+        const its = await api.lists.items(l.id);
+        return [l.id, { total: its.length, done: its.filter((i) => i.done).length }] as const;
+      } catch { return null; }
+    }));
+    counts = Object.fromEntries(entries.filter((e) => e !== null));
+  }
+  $effect(() => { void loadCounts(lists); });
+
   const active = $derived(lists.filter((l) => !l.archived_at));
   const archived = $derived(lists.filter((l) => l.archived_at));
 
@@ -57,41 +72,52 @@
 <svelte:head><title>Lists — Sempa</title></svelte:head>
 
 <div class="mx-auto flex h-full max-w-2xl flex-col" style="padding-top: env(safe-area-inset-top, 0px);">
-  <div class="flex items-center gap-2.5 px-5 py-4" style="border-bottom: 1px solid var(--sempa-border);">
-    <ListChecks size={20} style="color: var(--sempa-accent);" />
-    <h1 class="text-base font-semibold" style="color: var(--sempa-text);">Lists</h1>
+  <div class="flex items-end gap-3 px-5 pb-2 pt-7">
+    <div class="min-w-0 flex-1">
+      <h1 class="type-page" style="color: var(--sempa-text);">Lists</h1>
+      {#if !loading}
+        <p class="type-meta mt-1" style="color: var(--sempa-text-dim);">
+          {active.length} list{active.length === 1 ? '' : 's'}
+        </p>
+      {/if}
+    </div>
     {#if showImport}
       <button onclick={() => importModal.show()}
-        class="ml-auto flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors"
-        style="border: 1px solid var(--sempa-border); color: var(--sempa-accent);"
+        class="btn-soft h-9 gap-1.5 px-4 text-[12.5px]"
         title="Turn a recipe, itinerary or brief into a task + list">
         <Sparkles size={14} /> Import with AI
       </button>
     {/if}
   </div>
 
-  <div class="flex-1 overflow-y-auto px-5 py-6 pb-24">
-    <!-- New list -->
-    <form class="mb-5 flex gap-2" onsubmit={(e) => { e.preventDefault(); create(); }}>
+  <div class="flex-1 overflow-y-auto px-5 pb-24 pt-4">
+    <!-- New list: one raised pill with the input and the add button. -->
+    <form class="new-pill mb-6 flex items-center gap-2 rounded-full py-1.5 pl-4 pr-1.5"
+          style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);"
+          onsubmit={(e) => { e.preventDefault(); create(); }}>
+      <ListChecks size={17} class="shrink-0" style="color: var(--sempa-text-dim);" />
       <input bind:value={newName} bind:this={newNameInput} placeholder="New list (e.g. Groceries)…"
-        class="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
-        style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); color: var(--sempa-text);" />
+        class="min-w-0 flex-1 bg-transparent py-1.5 text-sm outline-none"
+        style="color: var(--sempa-text);" />
       <button type="submit" disabled={!newName.trim()}
-        class="flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-        style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent);">
-        <Plus size={16} /> Add
+        class="btn-primary h-9 shrink-0 px-4 text-[13px] disabled:opacity-40">
+        <Plus size={16} strokeWidth={2.5} /> Add
       </button>
     </form>
 
     {#if loading && lists.length === 0}
       <p class="text-sm" style="color: var(--sempa-text-dim);">Loading…</p>
     {:else if active.length === 0 && archived.length === 0}
-      <div class="rounded-2xl border border-dashed p-8 text-center" style="border-color: var(--sempa-border);">
-        <p class="text-sm" style="color: var(--sempa-text-soft);">No lists yet.</p>
-        <p class="mt-1 text-xs" style="color: var(--sempa-text-dim);">Create an ongoing list like Groceries — it sticks around and can be attached to tasks.</p>
+      <div class="surface flex flex-col items-center px-8 py-10 text-center" style="border-radius: 24px;">
+        <span class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl"
+              style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
+          <ListChecks size={22} />
+        </span>
+        <p class="font-bold" style="font-size: 15px; color: var(--sempa-text);">No lists yet</p>
+        <p class="type-meta mt-1 max-w-sm" style="color: var(--sempa-text-soft);">Create an ongoing list like Groceries — it sticks around and can be attached to tasks.</p>
       </div>
     {:else}
-      <div class="flex flex-col gap-2">
+      <div class="grid gap-3 sm:grid-cols-2">
         {#each active as l (l.id)}
           {@render listRow(l, false)}
         {/each}
@@ -103,16 +129,16 @@
          archived lists permanently unreachable. -->
     {#if !loading}
       <button onclick={() => (showArchived = !showArchived)}
-        class="mt-6 text-xs font-medium transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);">
+        class="btn-surface mt-6 h-9 px-4 text-[12.5px]" style="color: var(--sempa-text-soft);">
         {showArchived ? 'Hide' : 'Show'} archived
       </button>
       {#if showArchived}
-        <div class="mt-2 flex flex-col gap-2">
+        <div class="mt-3 grid gap-3 sm:grid-cols-2">
           {#each archived as l (l.id)}
             {@render listRow(l, true)}
           {/each}
           {#if archived.length === 0}
-            <p class="text-xs" style="color: var(--sempa-text-dim);">No archived lists.</p>
+            <p class="type-meta px-1" style="color: var(--sempa-text-dim);">No archived lists.</p>
           {/if}
         </div>
       {/if}
@@ -121,21 +147,46 @@
 </div>
 
 {#snippet listRow(l: List, isArchived: boolean)}
-  <div class="flex items-center gap-3 rounded-xl px-4 py-3"
-    style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel); {isArchived ? 'opacity:0.65;' : ''}">
-    <a href={`/lists/${l.id}`} class="min-w-0 flex-1">
-      <p class="truncate text-sm font-medium" style="color: var(--sempa-text);">{l.name || 'Untitled list'}</p>
-      {#if l.task_id}
-        <p class="text-xs" style="color: var(--sempa-text-dim);">Linked to a task</p>
-      {/if}
-    </a>
-    <button onclick={() => setArchived(l, !isArchived)} aria-label={isArchived ? 'Unarchive' : 'Archive'}
-      class="rounded-lg p-1.5 transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);">
-      {#if isArchived}<ArchiveRestore size={16} />{:else}<Archive size={16} />{/if}
-    </button>
-    <button onclick={() => remove(l)} aria-label="Delete list"
-      class="rounded-lg p-1.5 transition-opacity hover:opacity-70" style="color: var(--sempa-text-dim);">
-      <Trash2 size={16} />
-    </button>
+  {@const c = counts[l.id]}
+  <div class="surface flex flex-col gap-3 p-4"
+    style="border-radius: 22px; {isArchived ? 'opacity:0.65;' : ''}">
+    <div class="flex items-start gap-3">
+      <a href={`/lists/${l.id}`} class="flex min-w-0 flex-1 items-center gap-3">
+        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px]"
+              style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
+          <ListChecks size={18} />
+        </span>
+        <span class="min-w-0">
+          <span class="block truncate text-[14.5px] font-bold" style="color: var(--sempa-text); letter-spacing: -.01em;">{l.name || 'Untitled list'}</span>
+          <span class="type-meta block truncate" style="color: var(--sempa-text-dim);">
+            {#if c}
+              {c.total} item{c.total === 1 ? '' : 's'}{c.total > 0 ? ` · ${c.done} done` : ''}
+            {:else}
+              &nbsp;
+            {/if}{#if l.task_id}{c ? ' · ' : ''}Linked to a task{/if}
+          </span>
+        </span>
+      </a>
+      <div class="flex shrink-0 items-center gap-0.5">
+        <button onclick={() => setArchived(l, !isArchived)} aria-label={isArchived ? 'Unarchive' : 'Archive'}
+          class="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-[var(--sempa-fill)]" style="color: var(--sempa-text-dim);">
+          {#if isArchived}<ArchiveRestore size={16} />{:else}<Archive size={16} />{/if}
+        </button>
+        <button onclick={() => remove(l)} aria-label="Delete list"
+          class="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-[var(--sempa-fill)]" style="color: var(--sempa-text-dim);">
+          <Trash2 size={16} />
+        </button>
+      </div>
+    </div>
+    {#if c && c.total > 0}
+      <div class="day-bar-track">
+        <div class="day-bar-fill" style="width: {Math.round((c.done / c.total) * 100)}%; background: var(--sempa-accent);"></div>
+      </div>
+    {/if}
   </div>
 {/snippet}
+
+<style>
+  .new-pill input:focus-visible { box-shadow: none; }
+  .new-pill:focus-within { box-shadow: var(--sempa-shadow-1), 0 0 0 2px color-mix(in srgb, var(--sempa-accent) 30%, transparent) !important; }
+</style>

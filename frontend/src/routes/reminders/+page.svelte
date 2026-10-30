@@ -96,93 +96,93 @@
 
 <div class="mx-auto flex h-full max-w-xl flex-col" style="padding-top: env(safe-area-inset-top, 0px);">
   <!-- Header -->
-  <div class="flex items-center gap-3 px-5 py-4" style="border-bottom: 1px solid var(--sempa-border);">
-    <div class="flex h-8 w-8 items-center justify-center rounded-lg"
-         style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
-      <Bell size={17} strokeWidth={2} />
+  <div class="flex items-end gap-3 px-5 pb-2 pt-7">
+    <div class="min-w-0 flex-1">
+      <h1 class="type-page" style="color: var(--sempa-text);">Reminders</h1>
+      {#if !loading && withTime.length > 0}
+        <p class="type-meta mt-1" style="color: var(--sempa-text-dim);">
+          {upcoming.length} upcoming{rang.length ? ` · ${rang.length} rang` : ''}
+        </p>
+      {/if}
     </div>
-    <h1 class="text-base font-semibold" style="color: var(--sempa-text);">Reminders</h1>
-    <a href="/settings/notifications"
-       class="ml-auto rounded-lg px-2.5 py-1.5 text-[12.5px] font-medium transition-colors"
-       style="color: var(--sempa-text-soft); border: 1px solid var(--sempa-border);">
+    <a href="/settings/notifications" class="btn-surface h-9 px-4 text-[12.5px]">
       Settings
     </a>
   </div>
 
-  <div class="flex-1 overflow-y-auto px-5 py-6 pb-20">
+  <div class="flex-1 overflow-y-auto px-5 pb-20 pt-4">
     {#if loading}
       <p class="text-sm" style="color: var(--sempa-text-dim);">Loading…</p>
     {:else if withTime.length === 0}
       <div class="flex flex-col items-center justify-center py-20 text-center">
         <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl"
-             style="background: var(--sempa-bg-panel); color: var(--sempa-text-dim);">
+             style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-dim);">
           <Bell size={22} strokeWidth={1.75} />
         </div>
-        <p class="font-semibold" style="font-size: 14px; color: var(--sempa-text);">No reminders set</p>
-        <p class="mt-1 max-w-xs" style="font-size: 12.5px; color: var(--sempa-text-soft);">
+        <p class="font-bold" style="font-size: 15px; color: var(--sempa-text);">No reminders set</p>
+        <p class="type-meta mt-1 max-w-xs" style="color: var(--sempa-text-soft);">
           Set "Remind me" on any task and it'll show up here.
         </p>
       </div>
     {:else}
 
       {#snippet sectionLabel(text: string, count: number)}
-        <div class="mb-3 flex items-center gap-2">
-          <p style="font-family:monospace; font-size: 12px; font-weight:700;              color:var(--sempa-text-dim)">{text}</p>
-          <span class="rounded-full px-1.5 text-[10px] font-semibold"
-                style="background: var(--sempa-bg-panel); color: var(--sempa-text-dim);">{count}</span>
+        <div class="mb-2.5 flex items-center gap-2 px-1">
+          <p style="font-size: 15px; font-weight: 800; letter-spacing: -.015em; color: var(--sempa-text);">{text}</p>
+          <span class="chip" style="height: 20px; padding: 0 7px; background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-soft);">{count}</span>
         </div>
       {/snippet}
 
-      {#snippet row(task: Task, at: number, fired: boolean)}
-        <div class="flex items-center gap-3 px-4 py-3" style:opacity={fired ? 0.92 : 1}
-             style:border-bottom="1px solid var(--sempa-border)">
-          <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-               style="background: {fired ? 'var(--sempa-accent-bg)' : 'var(--sempa-bg-main)'};
-                      color: {fired ? 'var(--sempa-accent)' : 'var(--sempa-text-dim)'};
-                      border: 1px solid var(--sempa-border);">
-            {#if fired}<BellRing size={15} strokeWidth={2} />{:else}<Clock size={15} strokeWidth={2} />{/if}
+      {#snippet row(task: Task, at: number, fired: boolean, i: number)}
+        <div class="flex items-center gap-3 px-4 py-3"
+             style={i > 0 ? 'border-top: 1px solid var(--sempa-border);' : ''}>
+          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px]"
+               style="background: {fired ? 'var(--sempa-accent-bg)' : 'var(--sempa-fill)'};
+                      color: {fired ? 'var(--sempa-accent-ink)' : 'var(--sempa-text-soft)'};">
+            {#if fired}<BellRing size={16} strokeWidth={2} />{:else}<Clock size={16} strokeWidth={2} />{/if}
           </div>
 
           <button class="min-w-0 flex-1 text-left" onclick={() => open(task.id)}>
-            <p class="truncate font-semibold" style="font-size: 13.5px; color: var(--sempa-text);">{task.title}</p>
-            <p style="font-size: 11.5px; color: {fired ? 'var(--sempa-accent)' : 'var(--sempa-text-soft)'};">
-              {clockTime(at)} · {dayLabel(at)} · {fired ? `rang ${relPast(at)}` : relUpcoming(at)}
+            <p class="truncate font-semibold" style="font-size: 14px; color: var(--sempa-text);">{task.title}</p>
+            <p class="type-meta mt-0.5 flex flex-wrap items-center gap-x-1.5" style="color: {fired ? 'var(--sempa-accent-ink)' : 'var(--sempa-text-soft)'};">
+              <span class="font-mono text-[11.5px]">{clockTime(at)}</span>
+              <span aria-hidden="true">·</span>
+              <span>{dayLabel(at)}</span>
+              <span aria-hidden="true">·</span>
+              <span>{fired ? `rang ${relPast(at)}` : relUpcoming(at)}</span>
             </p>
           </button>
 
           {#if fired}
             <button onclick={() => markDone(task.id)} aria-label="Mark done"
-                    class="shrink-0 rounded-lg p-1.5 transition-colors"
-                    style="color: var(--sempa-text-soft); border: 1px solid var(--sempa-border);"
+                    class="btn-soft h-9 w-9 shrink-0 p-0"
                     title="Mark done">
-              <Check size={15} />
+              <Check size={16} strokeWidth={2.25} />
             </button>
           {/if}
           <button onclick={() => clearReminder(task.id)} aria-label="Clear reminder"
-                  class="shrink-0 rounded-lg p-1.5 transition-colors"
+                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-[var(--sempa-fill)]"
                   style="color: var(--sempa-text-dim);"
                   title="Clear reminder">
-            <X size={15} />
+            <X size={16} />
           </button>
         </div>
       {/snippet}
 
       {#if rang.length > 0}
         {@render sectionLabel('Rang', rang.length)}
-        <section class="mb-7 overflow-hidden rounded-xl "
-                 style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
-          {#each rang as r (r.task.id)}
-            {@render row(r.task, r.at, true)}
+        <section class="surface mb-7 overflow-hidden" style="border-radius: 22px;">
+          {#each rang as r, i (r.task.id)}
+            {@render row(r.task, r.at, true, i)}
           {/each}
         </section>
       {/if}
 
       {#if upcoming.length > 0}
         {@render sectionLabel('Upcoming', upcoming.length)}
-        <section class="mb-7 overflow-hidden rounded-xl "
-                 style="box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
-          {#each upcoming as r (r.task.id)}
-            {@render row(r.task, r.at, false)}
+        <section class="surface mb-7 overflow-hidden" style="border-radius: 22px;">
+          {#each upcoming as r, i (r.task.id)}
+            {@render row(r.task, r.at, false, i)}
           {/each}
         </section>
       {/if}

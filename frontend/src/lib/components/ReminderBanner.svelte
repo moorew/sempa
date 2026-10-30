@@ -42,51 +42,87 @@
     {#each reminderAlerts.alerts as a (a.taskId)}
       <!-- One compact row per reminder: icon + title on the left, quick actions
            on the right. Wraps to a second line only on very narrow widths. -->
-      <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-3 py-2"
-           style="border-color: var(--sempa-accent); background: var(--sempa-accent-bg);">
-        <div class="flex min-w-0 flex-1 items-center gap-2.5">
-          <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-               style="background: var(--sempa-bg-panel); color: var(--sempa-accent);">
-            <Bell size={15} strokeWidth={2} />
+      <div class="banner flex-wrap" style="row-gap: 10px;">
+        <div class="flex min-w-0 flex-[1_1_14rem] items-center gap-3">
+          <!-- The one "now" thing on screen: a solid tile. -->
+          <div class="banner-icon" style="background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); box-shadow: var(--sempa-shadow-accent);">
+            <Bell size={17} strokeWidth={2} />
           </div>
           <div class="min-w-0 flex-1">
-            <span class="font-semibold" style="font-size: 12px; color: var(--sempa-accent);">
+            <span class="banner-hint" style="font-weight: 700; color: var(--sempa-accent-ink);">
               Reminder
             </span>
-            <p class="truncate" style="font-size: 13px; line-height: 1.25; color: var(--sempa-text);">{a.title}</p>
+            <p class="banner-title truncate">{a.title}</p>
           </div>
         </div>
 
         <!-- Quick actions: compact, right-aligned, never grow to fill the row. -->
-        <div class="flex shrink-0 items-center gap-1.5">
+        <div class="ml-auto flex shrink-0 items-center gap-1.5">
           <button
             onclick={() => startFocus(a.taskId, a.title)}
-            class="rounded-full px-2.5 py-1 font-semibold transition-opacity hover:opacity-90"
-            style="font-size: 12px; background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: #fff;">
+            class="btn-primary banner-btn">
             Focus
           </button>
           <button
             onclick={() => reminderAlerts.markDone(a.taskId)}
-            class="rounded-md px-2 py-1 font-medium transition-colors"
-            style="font-size: 12px; color: var(--sempa-text-soft); border: 1px solid var(--sempa-border);">
+            class="btn-soft banner-btn banner-quiet">
             Done
           </button>
           <button
             onclick={() => reminderAlerts.snooze(a.taskId)}
-            class="rounded-md px-2 py-1 font-medium transition-colors"
-            style="font-size: 12px; color: var(--sempa-text-soft); border: 1px solid var(--sempa-border);"
+            class="btn-soft banner-btn banner-quiet"
             title="Snooze 1 hour">
             Snooze
           </button>
           <button
             onclick={() => reminderAlerts.dismiss(a.taskId)}
             aria-label="Dismiss"
-            class="ml-0.5 shrink-0 rounded-md p-1 transition-colors"
-            style="color: var(--sempa-text-dim);">
-            <X size={15} />
+            class="banner-x">
+            <X size={16} />
           </button>
         </div>
       </div>
     {/each}
   </div>
 {/if}
+
+<style>
+  /* 1.27: a soft raised surface with a tinted icon tile and pill actions. */
+  .banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border-radius: 18px;
+    background: var(--sempa-bg-panel);
+    box-shadow: var(--sempa-shadow-1);
+  }
+  .banner-icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: var(--sempa-accent-bg);
+    color: var(--sempa-accent-ink);
+  }
+  .banner-title { font-size: 13.5px; font-weight: 700; line-height: 1.25; color: var(--sempa-text); }
+  .banner-hint  { font-size: 12px; font-weight: 500; line-height: 1.35; color: var(--sempa-text-soft); }
+  .banner-btn   { height: 36px; padding: 0 15px; font-size: 12.5px; flex-shrink: 0; }
+  .banner-quiet { background: var(--sempa-fill); color: var(--sempa-text-soft); }
+  .banner-quiet:hover { color: var(--sempa-text); }
+  .banner-x {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    color: var(--sempa-text-dim);
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+  .banner-x:hover { background: var(--sempa-fill); color: var(--sempa-text); }
+</style>
