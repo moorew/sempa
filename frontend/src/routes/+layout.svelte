@@ -14,6 +14,7 @@
   import { initMobileDeepLinks } from '$lib/deeplinkMobile';
   import { quotes } from '$lib/stores/quotes.svelte';
   import { tagStore } from '$lib/stores/tags.svelte';
+  import { projectStore } from '$lib/stores/projects.svelte';
   import { mobile } from '$lib/stores/mobile.svelte';
   import { viewport } from '$lib/stores/viewport.svelte';
   import { hapticTick } from '$lib/haptics';
@@ -69,7 +70,7 @@
     Sun, CalendarDays, ClipboardCheck, Mail, Moon, SlidersHorizontal,
     ChevronLeft, ChevronRight, Plus, RefreshCw, X, Check,
     Target, Timer, Palette, Menu, Layers, BookOpen, Search, Bell, LayoutGrid,
-    SquareKanban, CalendarClock, ArrowUpCircle, Gauge, ListChecks, Sparkles,
+    SquareKanban, CalendarClock, ArrowUpCircle, Gauge, ListChecks, Sparkles, FolderKanban,
   } from 'lucide-svelte';
   import { createWidgetWindow } from '$lib/tauri/bridge';
 
@@ -267,6 +268,7 @@
 
     if (!isLoginPage && !isSetupPage) {
       tagStore.load();
+      projectStore.load();
 
       // In Tauri (desktop), require server URL and token before proceeding.
       if (isTauri()) {
@@ -365,6 +367,7 @@
     const path = to?.url.pathname;
     if (path && path !== '/login' && path !== '/setup') {
       tagStore.load();
+      projectStore.load();
       // Same remount problem bites sync: on a FRESH login the onMount sync gate
       // already returned early (no token yet) and never runs again, so the
       // first session after sign-in never pulled and the app stayed empty until
@@ -405,6 +408,7 @@
     const ev = realtime.lastEvent;
     if (!ev) return;
     if (ev.type === 'tag:change') tagStore.reload();
+    if (ev.type === 'project:change') projectStore.reload();
     // On local-first clients a server-side change (from another device) should
     // pull into the local DB so the UI reflects it. runSync is coalesced/cheap.
     if (hasLocalDb()) void runSync();
@@ -421,6 +425,7 @@
     if (rev === lastRevision) return;
     lastRevision = rev;
     tagStore.reload();
+    projectStore.reload();
     realtime.emitLocal('task:change');
     // New/changed tasks may carry reminders — reschedule on-device alarms.
     void syncLocalReminders();
@@ -441,10 +446,10 @@
         { label: null,      items: [['/home', 'Today', CalendarDays], [`/week/${thisWeek}`, 'This Week', CalendarDays]] },
         { label: 'Rituals', items: [[`/plan/${todayDate}`, 'Plan Day', ClipboardCheck], [`/shutdown/${todayDate}`, 'Shutdown', Moon]] },
         { label: 'Inbox',   items: [['/email', 'Email', Mail], ['/reminders', 'Reminders', Bell]] },
-        { label: 'Library', items: [['/backlog', 'Backlog', Layers], ['/lists', 'Lists', ListChecks], ['/journal', 'Journal', BookOpen], ['/insights', 'Insights', Gauge]] },
+        { label: 'Library', items: [['/projects', 'Projects', FolderKanban], ['/backlog', 'Backlog', Layers], ['/lists', 'Lists', ListChecks], ['/journal', 'Journal', BookOpen], ['/insights', 'Insights', Gauge]] },
       ],
       rhythm: [
-        { label: 'Plan',   items: [[`/plan/${todayDate}`, 'Plan Day', ClipboardCheck], [`/week/${thisWeek}`, 'This Week', CalendarDays]] },
+        { label: 'Plan',   items: [[`/plan/${todayDate}`, 'Plan Day', ClipboardCheck], [`/week/${thisWeek}`, 'This Week', CalendarDays], ['/projects', 'Projects', FolderKanban]] },
         { label: 'Focus',  items: [['/home', 'Today', CalendarDays], ['/backlog', 'Backlog', Layers], ['/lists', 'Lists', ListChecks]] },
         { label: 'Inbox',  items: [['/email', 'Email', Mail], ['/reminders', 'Reminders', Bell]] },
         { label: 'Review', items: [[`/shutdown/${todayDate}`, 'Shutdown', Moon], ['/journal', 'Journal', BookOpen], ['/insights', 'Insights', Gauge]] },
@@ -454,7 +459,7 @@
           ['/home', 'Today', CalendarDays], ['/search', 'Search', Search], [`/week/${thisWeek}`, 'This Week', CalendarDays],
           [`/plan/${todayDate}`, 'Plan Day', ClipboardCheck], ['/email', 'Email', Mail], ['/backlog', 'Backlog', Layers],
           ['/reminders', 'Reminders', Bell], [`/shutdown/${todayDate}`, 'Shutdown', Moon], ['/journal', 'Journal', BookOpen],
-          ['/insights', 'Insights', Gauge], ['/lists', 'Lists', ListChecks],
+          ['/insights', 'Insights', Gauge], ['/lists', 'Lists', ListChecks], ['/projects', 'Projects', FolderKanban],
         ] },
       ],
     };
@@ -807,6 +812,7 @@
       <div class="grid grid-cols-2 gap-2">
         {@render sheetTile(`/plan/${todayDate}`, 'Plan Day', ClipboardCheck)}
         {@render sheetTile('/schedule', 'Schedule', CalendarClock)}
+        {@render sheetTile('/projects', 'Projects', FolderKanban)}
         {@render sheetTile('/backlog', 'Backlog', Layers)}
         {@render sheetTile('/search', 'Search', Search)}
       </div>

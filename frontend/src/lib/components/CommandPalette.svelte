@@ -18,7 +18,7 @@
   import { goto } from '$app/navigation';
   import {
     Sparkles, Search, Home, Layers, ListChecks, CalendarClock, ClipboardCheck,
-    Moon, Bell, Mail, SquareKanban, BarChart3, BookOpen, Settings, SunMoon,
+    Moon, Bell, Mail, SquareKanban, BarChart3, BookOpen, Settings, SunMoon, FolderKanban,
   } from 'lucide-svelte';
 
   interface Command {
@@ -57,6 +57,7 @@
       { id: 'today',    label: 'Today',           icon: Home,          keywords: 'home day board', run: () => go('/home') },
       { id: 'backlog',  label: 'Backlog',         icon: Layers,        keywords: 'inbox unscheduled', run: () => go('/backlog') },
       { id: 'lists',    label: 'Lists',           icon: ListChecks,    keywords: 'checklist groceries', run: () => go('/lists') },
+      { id: 'projects', label: 'Projects',        icon: FolderKanban,  keywords: 'epic initiative long term goal', run: () => go('/projects') },
       { id: 'schedule', label: 'Schedule',        icon: CalendarClock, keywords: 'calendar timebox', run: () => go('/schedule') },
       { id: 'plan',     label: 'Plan today',      icon: ClipboardCheck, keywords: 'planning', run: () => go(`/plan/${td}`) },
       { id: 'shutdown', label: 'Shutdown',        icon: Moon,          keywords: 'reflect end of day', run: () => go(`/shutdown/${td}`) },
