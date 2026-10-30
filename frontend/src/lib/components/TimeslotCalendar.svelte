@@ -513,7 +513,7 @@
         <div class="pointer-events-none absolute left-0 right-0"
              style="top: {(h - START_HOUR) * HOUR_PX}px; border-top: 1px solid var(--sempa-border);">
           <span class="absolute -left-12 -top-[6px] w-10 text-right font-mono text-[10px] leading-none select-none"
-                style="color: var(--sempa-text-soft);">
+                style="color: var(--sempa-text-soft); opacity: {nowPx !== null && Math.abs(nowPx - (h - START_HOUR) * HOUR_PX) < 16 ? 0 : 1};">
             {formatHour(h)}
           </span>
         </div>

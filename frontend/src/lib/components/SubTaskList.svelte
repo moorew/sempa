@@ -66,11 +66,11 @@
 
 <div class="space-y-2">
   <div class="flex items-center justify-between">
-    <span class="text-xs font-medium" style="color: var(--sempa-text-soft);">
+    <span class="text-[12.5px] font-semibold" style="color: var(--sempa-text-soft);">
       Sub-tasks {#if total > 0}<span style="color: var(--sempa-text-dim);">({done}/{total})</span>{/if}
     </span>
     {#if total > 0}
-      <div class="h-1 w-20 overflow-hidden rounded-full" style="background: var(--sempa-border);">
+      <div class="h-1.5 w-20 overflow-hidden rounded-full" style="background: var(--sempa-track);">
         <div class="h-full rounded-full transition-all"
              style="width: {total ? (done / total) * 100 : 0}%; background: var(--sempa-accent);"></div>
       </div>
@@ -80,7 +80,7 @@
   {#if loading}
     <div class="space-y-1.5">
       {#each Array(2) as _}
-        <div class="h-7 animate-pulse rounded-lg" style="background: var(--sempa-bg-panel);"></div>
+        <div class="h-7 animate-pulse rounded-lg" style="background: var(--sempa-fill);"></div>
       {/each}
     </div>
   {:else}
@@ -89,11 +89,11 @@
         <li class="subrow group flex items-start gap-2 rounded-lg px-2 py-1.5">
           <button onclick={() => toggleDone(sub)}
                   aria-label={sub.status === 'done' ? 'Mark not done' : 'Mark done'}
-                  class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-all"
-                  style="border-color: {sub.status === 'done' ? 'var(--sempa-accent)' : 'var(--sempa-border)'};
-                         background: {sub.status === 'done' ? 'var(--sempa-accent)' : 'transparent'};">
+                  class="check-ring mt-px"
+                  style="width: 19px; height: 19px;"
+                  data-state={sub.status === 'done' ? 'done' : undefined}>
             {#if sub.status === 'done'}
-              <svg class="h-2.5 w-2.5" style="color: #fff;" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+              <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
               </svg>
             {/if}
@@ -123,8 +123,8 @@
   {/if}
 
   <!-- Add sub-task input -->
-  <div class="addrow flex items-center gap-2 rounded-lg border border-dashed px-2 py-1.5"
-       style="border-color: var(--sempa-border);">
+  <div class="addrow flex items-center gap-2 rounded-full border border-dashed px-3 py-2"
+       style="border-color: var(--sempa-track);">
     <svg class="h-3.5 w-3.5 shrink-0" style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
       <path stroke-linecap="round" d="M12 4v16m8-8H4"/>
     </svg>
@@ -133,11 +133,11 @@
            onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void add(); } }}
            type="text"
            placeholder="Add a sub-task…"
-           class="flex-1 bg-transparent text-xs outline-none"
+           class="flex-1 bg-transparent text-[13px] outline-none"
            style="color: var(--sempa-text);" />
     {#if newTitle.trim()}
       <button onclick={add} disabled={adding}
-              class="text-xs disabled:opacity-40" style="color: var(--sempa-accent);">
+              class="text-xs font-bold disabled:opacity-40" style="color: var(--sempa-accent-ink);">
         Add
       </button>
     {/if}

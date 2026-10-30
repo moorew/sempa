@@ -120,9 +120,9 @@
   <!-- Greeting header -->
   <div class="flex items-start justify-between px-5 pt-5 pb-4">
     <div>
-      <p class="text-[12px] font-semibold mb-1"
-         style="color: var(--sempa-text-dim);">{formatDate(todayDate)}</p>
-      <h1 class="text-2xl font-bold" style="color: var(--sempa-text);">{greetingPrefix()}</h1>
+      <p class="text-[13.5px] font-semibold mb-0.5"
+         style="color: var(--sempa-accent-ink);">{formatDate(todayDate)}</p>
+      <h1 class="type-page" style="color: var(--sempa-text);">{greetingPrefix()}</h1>
     </div>
     <a href="/settings/accounts"
        class="flex h-9 w-9 items-center justify-center rounded-full transition-colors"
@@ -148,7 +148,7 @@
 
     <!-- Today card -->
     <a href="/day/{todayDate}"
-       class="flex items-center gap-5 rounded-2xl px-5 py-5 transition-opacity active:opacity-70"
+       class="flex items-center gap-5 rounded-[24px] px-5 py-5 transition-opacity active:opacity-70"
        style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
 
       <!-- Progress ring -->
@@ -156,7 +156,7 @@
         <svg width="74" height="74" viewBox="0 0 74 74" fill="none">
           <!-- Track -->
           <circle cx="37" cy="37" r="30"
-                  stroke="var(--sempa-border)" stroke-width="6" fill="none"/>
+                  stroke="var(--sempa-track)" stroke-width="6" fill="none"/>
           <!-- Progress -->
           <circle cx="37" cy="37" r="30"
                   stroke="var(--sempa-accent)" stroke-width="6" fill="none"
@@ -199,12 +199,12 @@
     <!-- Today's tasks -->
     {#if openToday.length > 0}
       <div>
-        <p class="mb-2 px-1 text-[12px] font-bold"
-           style="font-family:monospace; color: var(--sempa-text-dim);">Up Next</p>
+        <p class="mb-2 px-1 text-[15px] font-extrabold tracking-[-0.02em]"
+           style="color: var(--sempa-text);">Up next</p>
         <div class="flex flex-col gap-2">
           {#each openToday.slice(0, 5) as task (task.id)}
             <a href="/day/{todayDate}"
-               class="flex items-center gap-3 rounded-xl px-4 py-3 transition-opacity active:opacity-70"
+               class="flex items-center gap-3 rounded-[18px] px-4 py-3.5 transition-opacity active:opacity-70"
                style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
               <!-- Status dot -->
               <span class="h-2 w-2 shrink-0 rounded-full"
@@ -234,7 +234,7 @@
 
     <!-- Week card -->
     <a href="/week/{thisWeek}"
-       class="block rounded-2xl px-5 py-4 transition-opacity active:opacity-70"
+       class="block rounded-[24px] px-5 py-4 transition-opacity active:opacity-70"
        style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
       <div class="flex items-center justify-between mb-3">
         <p class="text-sm font-semibold" style="color: var(--sempa-text);">This Week</p>
@@ -243,7 +243,7 @@
         </svg>
       </div>
       <!-- Progress bar -->
-      <div class="h-2 rounded-full overflow-hidden mb-3" style="background: var(--sempa-border);">
+      <div class="h-1.5 rounded-full overflow-hidden mb-3" style="background: var(--sempa-track);">
         <div style="width:{objectives.length > 0 ? Math.round((doneObjectives/objectives.length)*100) : 0}%;
                     height:100%; border-radius:9999px; background: var(--sempa-accent);
                     transition: width 500ms ease-out;"></div>
@@ -255,11 +255,11 @@
           {doneObjectives} done
         </span>
         <span class="rounded-full px-2.5 py-1 text-xs font-medium"
-              style="background: var(--sempa-border); color: var(--sempa-text-soft);">
+              style="background: var(--sempa-fill); color: var(--sempa-text-soft);">
           {openObjectives} open
         </span>
         <span class="rounded-full px-2.5 py-1 text-xs font-medium"
-              style="background: var(--sempa-border); color: var(--sempa-text-soft);">
+              style="background: var(--sempa-fill); color: var(--sempa-text-soft);">
           {objectives.length} objectives
         </span>
       </div>
@@ -276,10 +276,10 @@
         Plan Day
       </a>
       <a href="/week/{thisWeek}/review"
-         class="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-3 text-sm transition-opacity active:opacity-70"
+         class="flex flex-1 items-center justify-center gap-1.5 rounded-full py-3 text-sm font-semibold transition-opacity active:opacity-70"
          style="background: {reviewDone ? 'var(--sempa-accent-bg)' : 'var(--sempa-bg-panel)'};
-                border: 1px solid {reviewDone ? 'var(--sempa-accent)' : 'var(--sempa-border)'};
-                color: {reviewDone ? 'var(--sempa-accent)' : 'var(--sempa-text-soft)'};">
+                box-shadow: {reviewDone ? 'none' : 'var(--sempa-shadow-1)'};
+                color: {reviewDone ? 'var(--sempa-accent-ink)' : 'var(--sempa-text-soft)'};">
         {#if reviewDone}
           <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
@@ -293,7 +293,7 @@
         {/if}
       </a>
       <a href="/email"
-         class="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-3 text-sm transition-opacity active:opacity-70"
+         class="flex flex-1 items-center justify-center gap-1.5 rounded-full py-3 text-sm font-semibold transition-opacity active:opacity-70"
          style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-soft);">
         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
@@ -305,20 +305,18 @@
     <!-- Weekly objectives -->
     {#if objectives.length > 0}
       <div>
-        <p class="mb-2 px-1 text-[12px] font-bold"
-           style="font-family:monospace; color: var(--sempa-text-dim);">Weekly Objectives</p>
+        <p class="mb-2 px-1 text-[15px] font-extrabold tracking-[-0.02em]"
+           style="color: var(--sempa-text);">Weekly objectives</p>
         <div class="flex flex-col gap-2">
           {#each objectives.slice(0, 4) as obj (obj.id)}
             {@const isDone = obj.status === 'completed'}
             <a href="/week/{thisWeek}"
-               class="flex items-center gap-3 rounded-xl px-4 py-3 transition-opacity active:opacity-70"
+               class="flex items-center gap-3 rounded-[18px] px-4 py-3.5 transition-opacity active:opacity-70"
                style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
               <!-- Checkbox -->
-              <div class="h-5 w-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors
-                          {isDone ? 'border-green-500 bg-green-500' : ''}"
-                   style="{!isDone ? 'border-color: var(--sempa-border);' : ''}">
+              <div class="check-ring" style="width: 22px; height: 22px;" data-state={isDone ? 'done' : undefined}>
                 {#if isDone}
-                  <svg class="h-3 w-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                  <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                   </svg>
                 {/if}
@@ -339,8 +337,8 @@
       </div>
     {:else}
       <a href="/week/{thisWeek}/plan"
-         class="flex items-center justify-center gap-2 rounded-xl py-5 transition-opacity active:opacity-70"
-         style="border: 2px dashed var(--sempa-border); color: var(--sempa-accent);">
+         class="flex items-center justify-center gap-2 rounded-[22px] py-5 transition-opacity active:opacity-70"
+         style="border: 2px dashed var(--sempa-track); color: var(--sempa-accent-ink);">
         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
         </svg>

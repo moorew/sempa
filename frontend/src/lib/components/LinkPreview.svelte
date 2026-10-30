@@ -40,15 +40,15 @@
 
 <a href={url} target="_blank" rel="noopener noreferrer"
    onclick={(e) => e.stopPropagation()}
-   class="block overflow-hidden rounded-xl no-underline"
-   style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main);">
+   class="block overflow-hidden rounded-[18px] no-underline"
+   style="background: var(--sempa-fill);">
   {#await unfurlCached(url)}
     <!-- Skeleton while fetching -->
     <div class="flex items-center gap-2.5 px-3 py-3">
-      <div class="h-9 w-9 shrink-0 rounded-lg" style="background: var(--sempa-border); opacity:.5;"></div>
+      <div class="h-9 w-9 shrink-0 rounded-lg" style="background: var(--sempa-track); opacity:.7;"></div>
       <div class="flex-1 space-y-1.5">
-        <div class="h-2.5 w-1/2 rounded" style="background: var(--sempa-border); opacity:.5;"></div>
-        <div class="h-2.5 w-3/4 rounded" style="background: var(--sempa-border); opacity:.35;"></div>
+        <div class="h-2.5 w-1/2 rounded" style="background: var(--sempa-track); opacity:.7;"></div>
+        <div class="h-2.5 w-3/4 rounded" style="background: var(--sempa-track); opacity:.5;"></div>
       </div>
     </div>
   {:then data}
