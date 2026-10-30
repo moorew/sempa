@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { api } from '$lib/api';
   import type { Task } from '$lib/types';
   import { pomodoro } from '$lib/stores/pomodoro.svelte';
@@ -8,7 +8,7 @@
   import SubTaskList from '$lib/components/SubTaskList.svelte';
   import RichText from '$lib/components/RichText.svelte';
 
-  let taskId  = $derived($page.params.taskId);
+  let taskId  = $derived(page.params.taskId);
   let task    = $state<Task | null>(null);
   let loading = $state(true);
   let error   = $state<string | null>(null);

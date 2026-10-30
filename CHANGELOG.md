@@ -6,6 +6,26 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [Unreleased]
+
+### Security
+- **Patched vulnerable dependencies.** Go 1.26.10 (eleven standard-library
+  advisories in `net/http`, `crypto/tls`, `crypto/x509` and `net/textproto`),
+  chi 5.5.0 (client-IP spoofing in `ClientIPFromXFF`; Sempa doesn't use that
+  middleware, but the module is flagged), vite 8.3 and `@vitest/ui` 5.0.5
+  (dev-server file-serving and `launch-editor` advisories; build tooling only,
+  not shipped in the app), and SvelteKit 3 (two advisories with no 2.x fix).
+
+### Changed
+- **SvelteKit 3.** The config moved from `svelte.config.js` into
+  `vite.config.ts`; pages now read the route from `$app/state` (Kit 3 removed
+  `$app/stores`). The unused `@sveltejs/adapter-node` dependency is gone.
+- **vite unpinned.** The 8.1+ rolldown build failure that forced the 8.0.x pin
+  no longer reproduces: a cache-cold `docker build --no-cache` succeeds on 8.3.5.
+- **Dependency refresh.** Tauri 2.12 plugins bumped on both the npm and cargo
+  sides in lockstep, Capacitor 8.5.3, vitest 5.0.5, and the GitHub Actions
+  group. No user-visible behaviour change.
+
 ## [1.25.6] - 2026-10-06
 
 ### Security

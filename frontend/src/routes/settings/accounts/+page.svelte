@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { api, getServerUrl, clearTauriToken, clearNativeToken, resetApiResolver } from '$lib/api';
   import type { AiTitleConfig } from '$lib/api';
   import { theme } from '$lib/stores/theme.svelte';
@@ -254,7 +254,7 @@
   }
 
   onMount(async () => {
-    const connected = $page.url.searchParams.get('connected');
+    const connected = page.url.searchParams.get('connected');
     if (connected === '1') window.history.replaceState({}, '', '/settings/accounts');
 
     void loadAutostart();

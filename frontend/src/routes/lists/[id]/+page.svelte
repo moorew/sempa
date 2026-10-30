@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { api } from '$lib/api';
   import type { List, ListItem, Task } from '$lib/types';
   import { realtime } from '$lib/stores/realtime.svelte';
@@ -9,7 +9,7 @@
   import { household } from '$lib/stores/household.svelte';
   import { Sparkles, Download, Trash2, GripVertical, X } from 'lucide-svelte';
 
-  const listId = $derived($page.params.id ?? '');
+  const listId = $derived(page.params.id ?? '');
 
   let list = $state<List | null>(null);
   let items = $state<ListItem[]>([]);

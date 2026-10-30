@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { api } from '$lib/api';
   import type { Objective, Task, WeekReview } from '$lib/types';
   import { formatMinutes, formatWeekRange, today, weekStart as calcWeekStart } from '$lib/utils';
@@ -10,7 +10,7 @@
   import { prefs } from '$lib/stores/prefs.svelte';
   import { aiStatus } from '$lib/stores/aiStatus.svelte';
 
-  let ws = $derived($page.params.weekStart ?? calcWeekStart(today()));
+  let ws = $derived(page.params.weekStart ?? calcWeekStart(today()));
 
   let step = $state(1); // 1=stats, 2=reflection, 3=next-week
   let loading = $state(true);

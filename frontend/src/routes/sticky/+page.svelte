@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { isTauri } from '$lib/tauri/bridge';
   import { X, Pin } from 'lucide-svelte';
 
-  let noteId = $derived($page.url.searchParams.get('id') ?? 'default');
+  let noteId = $derived(page.url.searchParams.get('id') ?? 'default');
   let content = $state('');
   let pinned = $state(true);
   let saveTimer: ReturnType<typeof setTimeout> | null = null;

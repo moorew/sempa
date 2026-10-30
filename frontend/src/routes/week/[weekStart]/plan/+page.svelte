@@ -1,11 +1,11 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { api } from '$lib/api';
   import type { Objective, Task } from '$lib/types';
   import { appendPosition, formatWeekRange, offsetDate, today, weekStart as calcWeekStart } from '$lib/utils';
 
-  let ws = $derived($page.params.weekStart ?? calcWeekStart(today()));
+  let ws = $derived(page.params.weekStart ?? calcWeekStart(today()));
   const thisWeek = calcWeekStart(today());
 
   let step = $state(1);
