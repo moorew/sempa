@@ -6,6 +6,21 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.25.8] - 2026-10-30
+
+### Fixed
+- **Opening a task on the web no longer shows "500 Internal Error".** The server
+  sent `null` instead of an empty list for a task with no sub-tasks, and the
+  task panel crashed on it (SvelteKit 3 in 1.25.7 turned that into a full error
+  page). Every API list endpoint now returns `[]` when empty, and the sub-task
+  list tolerates `null` from an older server. Desktop and Android in offline
+  mode were unaffected.
+- **No more `state_unsafe_mutation` error when closing a dialog.** The viewport
+  tracker re-measured synchronously on focus changes, which fire mid-teardown.
+- **Self-hosted Docker builds use a clean `node_modules`.** A `.dockerignore`
+  stops a stale host `frontend/node_modules` from overriding `npm ci`, which
+  failed `vite build` on long-lived checkouts.
+
 ## [1.25.7] - 2026-10-30
 
 ### Security
