@@ -65,6 +65,27 @@ func (s *ObjectiveStore) ListByWeek(ctx context.Context, weekStart, ownerID stri
 	return objs, rows.Err()
 }
 
+// ListByProject returns every objective in a project, across all weeks.
+func (s *ObjectiveStore) ListByProject(ctx context.Context, projectID, ownerID string) ([]Objective, error) {
+	scope, sargs := visScope(ownerID)
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT `+objCols+` FROM weekly_objectives WHERE project_id = ?`+scope+` ORDER BY week_start, position`,
+		append([]any{projectID}, sargs...)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	objs := []Objective{}
+	for rows.Next() {
+		o, err := scanObjective(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan objective: %w", err)
+		}
+		objs = append(objs, o)
+	}
+	return objs, rows.Err()
+}
+
 func (s *ObjectiveStore) Get(ctx context.Context, id, ownerID string) (Objective, error) {
 	scope, sargs := visScope(ownerID)
 	row := s.db.QueryRowContext(ctx, `SELECT `+objCols+` FROM weekly_objectives WHERE id = ?`+scope,

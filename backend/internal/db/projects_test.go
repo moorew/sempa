@@ -183,3 +183,27 @@ func TestProjects_DescendantsFollow(t *testing.T) {
 		t.Fatalf("grand project = %v, want nil", *got.ProjectID)
 	}
 }
+
+func TestProjects_ListByProjectSkipsChildrenAndInstances(t *testing.T) {
+	ctx := context.Background()
+	conn, ps, tasks, userA, _ := newProjectFixture(t)
+	objs := NewObjectiveStore(conn)
+
+	p, _ := ps.Create(ctx, CreateProjectParams{ID: uuid.New().String(), Title: "p", OwnerID: userA})
+	top, _ := tasks.Create(ctx, CreateTaskParams{ID: uuid.New().String(), Title: "top", Status: "backlog", OwnerID: userA, ProjectID: &p.ID})
+	_, _ = tasks.Create(ctx, CreateTaskParams{ID: uuid.New().String(), Title: "sub", Status: "backlog", OwnerID: userA, ProjectID: &p.ID, ParentTaskID: &top.ID})
+	_, _ = tasks.Create(ctx, CreateTaskParams{ID: uuid.New().String(), Title: "inst", Status: "planned", OwnerID: userA, ProjectID: &p.ID, RecurrenceOriginID: &top.ID})
+	_, _ = objs.Create(ctx, CreateObjectiveParams{ID: uuid.New().String(), WeekStart: "2026-11-02", Title: "o", Status: "active", OwnerID: userA, ProjectID: &p.ID})
+
+	got, err := tasks.ListByProject(ctx, p.ID, userA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].ID != top.ID {
+		t.Fatalf("ListByProject = %d tasks, want only the top-level one", len(got))
+	}
+	os, err := objs.ListByProject(ctx, p.ID, userA)
+	if err != nil || len(os) != 1 {
+		t.Fatalf("objectives = %d (%v), want 1", len(os), err)
+	}
+}

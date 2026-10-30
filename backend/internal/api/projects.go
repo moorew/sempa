@@ -11,10 +11,12 @@ import (
 )
 
 type projectHandler struct {
-	store  *db.ProjectStore
-	hub    *EventHub
-	sync   *db.SyncStore
-	attach *attachmentHandler // for cascading attachment cleanup on delete
+	store      *db.ProjectStore
+	tasks      *db.TaskStore
+	objectives *db.ObjectiveStore
+	hub        *EventHub
+	sync       *db.SyncStore
+	attach     *attachmentHandler // for cascading attachment cleanup on delete
 }
 
 func (h *projectHandler) broadcast() {
@@ -171,6 +173,25 @@ func (h *projectHandler) delete(w http.ResponseWriter, r *http.Request) {
 		h.hub.Broadcast("list:change", map[string]string{"entity": "list"})
 	}
 	respond(w, http.StatusOK, map[string]any{"status": "deleted", "unlinked": links})
+}
+
+// tasks lists the project's top-level tasks (see TaskStore.ListByProject).
+func (h *projectHandler) projectTasks(w http.ResponseWriter, r *http.Request) {
+	tasks, err := h.tasks.ListByProject(r.Context(), chi.URLParam(r, "id"), ownerID(r))
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to load project tasks")
+		return
+	}
+	respond(w, http.StatusOK, tasks)
+}
+
+func (h *projectHandler) projectObjectives(w http.ResponseWriter, r *http.Request) {
+	objs, err := h.objectives.ListByProject(r.Context(), chi.URLParam(r, "id"), ownerID(r))
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to load project objectives")
+		return
+	}
+	respond(w, http.StatusOK, objs)
 }
 
 // ── Project statuses ─────────────────────────────────────────────────────────

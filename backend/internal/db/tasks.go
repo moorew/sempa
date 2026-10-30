@@ -497,6 +497,24 @@ func (s *TaskStore) SetSubtasksShared(ctx context.Context, parentID string, shar
 	return ids, err
 }
 
+// ListByProject returns a project's top-level work: tasks in the project that
+// aren't sub-tasks or recurring instances (a daily recurring task would
+// otherwise flood the view — its template stands in for the series).
+func (s *TaskStore) ListByProject(ctx context.Context, projectID, ownerID string) ([]Task, error) {
+	scope, sargs := visScope(ownerID)
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT `+taskCols+` FROM tasks
+		 WHERE project_id = ? AND parent_task_id IS NULL AND recurrence_origin_id IS NULL
+		   AND status != 'cancelled'`+scope+`
+		 ORDER BY (planned_date IS NULL), planned_date, position`,
+		append([]any{projectID}, sargs...)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return collectTasks(rows)
+}
+
 // SetDescendantsProject moves a task's sub-tasks and recurring instances (and
 // their sub-tasks) into projectID (nil = no project), so a task's whole family
 // stays in one project. Bumps updated_at so the change syncs.

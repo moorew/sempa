@@ -88,7 +88,7 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 	}
 	objectives := &objectiveHandler{store: objectiveStore, hub: hub, attach: attachments, sync: syncStore}
 	lists := &listHandler{store: listStore, hub: hub, sync: syncStore}
-	projects := &projectHandler{store: projectStore, hub: hub, sync: syncStore, attach: attachments}
+	projects := &projectHandler{store: projectStore, tasks: tasks.store, objectives: objectiveStore, hub: hub, sync: syncStore, attach: attachments}
 
 	backupSvc := backup.NewService(database, cfg.DBPath, blobs.Dir())
 	backups := &backupHandler{
@@ -228,6 +228,8 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 				r.Get("/{id}", projects.get)
 				r.Patch("/{id}", projects.update)
 				r.Delete("/{id}", projects.delete)
+				r.Get("/{id}/tasks", projects.projectTasks)
+				r.Get("/{id}/objectives", projects.projectObjectives)
 				r.Get("/{id}/attachments", attachments.list("project"))
 				r.Post("/{id}/attachments", attachments.upload("project"))
 			})
