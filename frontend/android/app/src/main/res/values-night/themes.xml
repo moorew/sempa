@@ -3,10 +3,11 @@
 
     <!-- Sempa Material 3 theme — dark -->
     <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Dark accent is the lighter #E0814F (as in themes.css); light text fails
-             AA on it, so filled primaries take the dark canvas ink instead. -->
-        <item name="colorPrimary">#E0814F</item>
-        <item name="colorOnPrimary">#14100D</item>
+        <!-- Filled primaries use the burnt #B3592E with light text, matching the
+             app's dark button fill and text pair (holds AA). The lighter #E0814F in
+             themes.css is only for accent TEXT on dark surfaces. -->
+        <item name="colorPrimary">#B3592E</item>
+        <item name="colorOnPrimary">#FFFAF5</item>
         <item name="colorPrimaryContainer">#3A2519</item>
         <item name="colorOnPrimaryContainer">#F4EDE5</item>
         <item name="colorSurface">#14100D</item>
