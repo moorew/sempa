@@ -18,7 +18,7 @@
 {#if open}
   <!-- Overlay -->
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="sheet-scrim fixed inset-0 z-[89] bg-black/40"
+  <div class="sheet-scrim fixed inset-0 z-[89] bg-black/45"
        style="animation: sempa-fade-in 200ms ease both;"
        onclick={onClose}></div>
 
@@ -27,8 +27,8 @@
        adjustResize shrinks/restores that viewport with the keyboard. -->
   <div class="sheet-panel fixed left-0 right-0 bottom-0 z-[90] flex flex-col overflow-hidden"
        style="max-height: calc(100% - max(32px, env(safe-area-inset-top, 0px)));
-              border-radius: 26px 26px 0 0;
-              background: var(--sempa-bg-panel);
+              border-radius: 30px 30px 0 0;
+              background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-2);
               padding-bottom: env(safe-area-inset-bottom);
               animation: sempa-sheet-up 300ms cubic-bezier(0.16, 0.84, 0.44, 1) both;"
        role="dialog" aria-modal="true"
@@ -36,7 +36,7 @@
 
     <!-- Drag handle -->
     <div class="flex justify-center pt-3 pb-2 cursor-grab shrink-0" data-sheet-handle>
-      <div class="h-1 w-9 rounded-full" style="background: var(--sempa-border);"></div>
+      <div class="h-[5px] w-10 rounded-full" style="background: var(--sempa-track);"></div>
     </div>
 
     <!-- Content -->

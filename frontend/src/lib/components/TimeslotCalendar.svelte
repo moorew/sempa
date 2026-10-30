@@ -5,6 +5,7 @@
   import { formatMinutes, today as getToday, weekStart } from '$lib/utils';
   import { calendars, calFg, calBg, BRAND_CAL_LABEL } from '$lib/stores/calendars.svelte';
   import { openExternal } from '$lib/external';
+  import { tagStore } from '$lib/stores/tags.svelte';
 
   let {
     date,
@@ -271,7 +272,20 @@
 
   // Scheduled task blocks take the on-brand terracotta; calendar-sourced ones use
   // sage so they read as "from a calendar" without falling back to cold blue.
-  function taskCal(task: Task): { fg: string; bg: string } {
+  // Block colours (1.27): the task in progress is the one solid accent block
+  // (the timeline's "now"); a tagged task takes a soft tint of its first tag's
+  // colour, mixed against the theme so any custom tag colour stays readable;
+  // everything else falls back to the brand calendar pairs.
+  function taskCal(task: Task): { fg: string; bg: string; now?: boolean } {
+    if (task.status === 'in_progress') return { fg: 'var(--sempa-btn-fg)', bg: 'var(--sempa-btn-bg)', now: true };
+    const tag = task.tags?.[0];
+    if (tag && task.source !== 'google_calendar') {
+      const c = tagStore.colorFor(tag);
+      return {
+        fg: `color-mix(in srgb, ${c} var(--sempa-tint-fg), var(--sempa-text))`,
+        bg: `color-mix(in srgb, ${c} var(--sempa-tint-bg), var(--sempa-bg-panel))`,
+      };
+    }
     const key = task.source === 'google_calendar' ? 'sage' : 'terracotta';
     return { fg: calFg(key), bg: calBg(key) };
   }
@@ -418,17 +432,17 @@
 <svelte:window onkeydown={onKeydown} />
 
 <div class="flex h-full flex-col overflow-hidden">
-  <div class="shrink-0 px-4 py-2 border-b border-gray-100 dark:border-gray-800/60">
+  <div class="shrink-0 px-4 pb-2 pt-1">
     <div class="flex items-center justify-between gap-2">
-      <p class="text-[12px] font-medium text-gray-400 dark:text-gray-600"
+      <p class="text-[15px] font-extrabold tracking-[-0.02em]" style="color: var(--sempa-text);"
          title="Drag tasks here to place them on the timeline">
         Schedule
       </p>
       <div class="flex shrink-0 items-center gap-1">
         {#if eventCalendars.length > 0}
           <button onclick={() => showFilter = !showFilter}
-                  class="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] font-medium transition-colors"
-                  style="color: var(--sempa-text-dim); {showFilter ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent);' : ''}"
+                  class="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[11.5px] font-semibold transition-colors"
+                  style="background: var(--sempa-fill); color: var(--sempa-text-soft); {showFilter ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);' : ''}"
                   title="Show or hide calendars">
             <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/>
@@ -437,8 +451,8 @@
           </button>
         {/if}
         <a href="/settings/calendars"
-           class="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] font-medium transition-colors"
-           style="color: var(--sempa-text-dim);"
+           class="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[11.5px] font-semibold transition-colors"
+           style="background: var(--sempa-fill); color: var(--sempa-text-soft);"
            title="Calendar settings">
           <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -478,7 +492,7 @@
                     aria-label="Change calendar colour"></button>
           </div>
         {/each}
-        <p class="mt-0.5 text-[10px]" style="color: var(--sempa-text-dim);">Tap a dot to recolour a calendar.</p>
+        <p class="mt-0.5 text-[11px]" style="color: var(--sempa-text-dim);">Tap a dot to recolour a calendar.</p>
       </div>
     {/if}
   </div>
@@ -490,15 +504,16 @@
 
     <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
     <div bind:this={containerEl}
-         class="relative ml-10 mr-2"
+         class="relative ml-12 mr-3"
          style="height: {TOTAL * HOUR_PX}px;"
          onclick={handleSlotClick}>
 
       <!-- Hour grid lines + labels -->
       {#each hours as h}
-        <div class="pointer-events-none absolute left-0 right-0 border-t border-gray-100 dark:border-gray-800/50"
-             style="top: {(h - START_HOUR) * HOUR_PX}px;">
-          <span class="absolute -left-10 -top-2 w-9 text-right text-[10.5px] text-gray-400 dark:text-gray-600 leading-none select-none">
+        <div class="pointer-events-none absolute left-0 right-0"
+             style="top: {(h - START_HOUR) * HOUR_PX}px; border-top: 1px solid var(--sempa-border);">
+          <span class="absolute -left-12 -top-[6px] w-10 text-right font-mono text-[10px] leading-none select-none"
+                style="color: var(--sempa-text-soft);">
             {formatHour(h)}
           </span>
         </div>
@@ -511,14 +526,14 @@
         </div>
       {/if}
 
-      <!-- Current time indicator — brand accent, not red (7px dot + 1.5px rule) -->
+      <!-- Current time indicator — the amber "now" of the day thread (dot + rule) -->
       {#if nowPx !== null}
         <div class="absolute left-0 right-0 z-20 pointer-events-none flex items-center"
              style="top: {nowPx}px;">
-          <div class="shrink-0 rounded-full" style="width:7px; height:7px; margin-left:-3.5px; background: var(--sempa-accent);"></div>
-          <div class="flex-1" style="height:1.5px; background: var(--sempa-accent);"></div>
-          <span class="absolute -left-10 w-9 text-right text-[9.5px] font-semibold leading-none select-none"
-                style="color: var(--sempa-accent); top: -4px;">{nowLabel}</span>
+          <div class="shrink-0 rounded-full" style="width:11px; height:11px; margin-left:-5.5px; margin-top:-0.5px; background: var(--sempa-amber); box-shadow: 0 0 0 3px var(--sempa-bg-panel);"></div>
+          <div class="flex-1" style="height:2px; background: var(--sempa-amber);"></div>
+          <span class="absolute -left-12 w-10 text-right font-mono text-[9.5px] font-bold leading-none select-none"
+                style="color: var(--cal-amber-fg); top: -4px;">{nowLabel}</span>
         </div>
       {/if}
 
@@ -553,7 +568,8 @@
           <div
             class="cal-event absolute text-left overflow-hidden transition-[filter] hover:brightness-95"
             style="top: {style.top}; height: {style.height}; {colStyle('t:' + task.id)} --cal-fg:{cal.fg}; --cal-bg:{cal.bg};
-                   opacity:{isPast(task.scheduled_end ?? task.scheduled_start!) ? 0.55 : 1};
+                   {cal.now ? 'box-shadow: var(--sempa-shadow-accent);' : ''}
+                   opacity:{!cal.now && (task.status === 'done' || isPast(task.scheduled_end ?? task.scheduled_start!)) ? 0.55 : 1};
                    cursor: {drag?.taskId === task.id ? 'grabbing' : 'grab'}; touch-action: none;"
             onpointerdown={(e) => startDrag(e, task, 'move')}
             oncontextmenu={(e) => openContext(e, 'task', task.id)}
@@ -578,7 +594,7 @@
 
   {#if scheduled.length === 0}
     <div class="shrink-0 px-4 pb-3 pt-1">
-      <p class="text-[10.5px] text-gray-300 dark:text-gray-700">
+      <p class="text-[11.5px]" style="color: var(--sempa-text-dim);">
         No tasks scheduled · drag from kanban ↗
       </p>
     </div>
@@ -589,8 +605,8 @@
 {#if popover}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div class="fixed inset-0 z-[70]" onclick={closeOverlays} oncontextmenu={(e) => { e.preventDefault(); closeOverlays(); }}></div>
-  <div class="fixed z-[71] w-60 rounded-xl p-3 shadow-2xl animate-scale-in"
-       style="left:{popover.x}px; top:{popover.y}px; background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
+  <div class="fixed z-[71] w-60 rounded-[20px] p-3.5 animate-scale-in"
+       style="left:{popover.x}px; top:{popover.y}px; background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-2);">
     {#if popoverEvent}
       <p class="text-[13px] font-semibold leading-snug" style="color: var(--sempa-text);">{popoverEvent.summary}</p>
       <p class="mt-1 text-[11.5px]" style="color: var(--sempa-text-soft);">{eventTimeLabel(popoverEvent)}</p>
@@ -612,8 +628,8 @@
           </button>
         {/if}
         <button onclick={() => convertEvent(popoverEvent!)} disabled={converting}
-                class="flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-colors disabled:opacity-50"
-                style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
+                class="flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors disabled:opacity-50"
+                style="background: var(--sempa-fill); color: var(--sempa-text-soft);">
           <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" d="M12 5v14M5 12h14"/>
           </svg>
@@ -636,8 +652,8 @@
           </button>
         {/if}
         <button onclick={() => unscheduleFromOverlay(popoverTask!.id)}
-                class="flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-colors"
-                style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
+                class="flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors"
+                style="background: var(--sempa-fill); color: var(--sempa-text-soft);">
           Unschedule
         </button>
       </div>
@@ -649,8 +665,8 @@
 {#if ctxMenu}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div class="fixed inset-0 z-[70]" onclick={closeOverlays} oncontextmenu={(e) => { e.preventDefault(); closeOverlays(); }}></div>
-  <div class="fixed z-[71] w-48 overflow-hidden rounded-lg py-1 shadow-2xl animate-scale-in"
-       style="left:{ctxMenu.x}px; top:{ctxMenu.y}px; background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
+  <div class="fixed z-[71] w-48 overflow-hidden rounded-[16px] p-1 animate-scale-in"
+       style="left:{ctxMenu.x}px; top:{ctxMenu.y}px; background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-2);">
     {#if ctxEvent}
       {#if ctxEvent.url}
         <button onclick={() => { const u = ctxEvent!.url!; closeOverlays(); openExternal(u); }} class="menu-item">Open in browser</button>
@@ -671,10 +687,11 @@
     display: block;
     width: 100%;
     text-align: left;
-    padding: 6px 12px;
-    font-size: 12.5px;
-    color: var(--sempa-text-soft);
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    color: var(--sempa-text);
     transition: background-color 120ms ease;
   }
-  .menu-item:hover { background: var(--sempa-accent-bg); color: var(--sempa-accent); }
+  .menu-item:hover { background: var(--sempa-accent-bg); color: var(--sempa-accent-ink); }
 </style>

@@ -20,7 +20,7 @@
   import MiniCalendar from '$lib/components/MiniCalendar.svelte';
   import TimeslotCalendar from '$lib/components/TimeslotCalendar.svelte';
   import WeeklyObjectivesWidget from '$lib/components/WeeklyObjectivesWidget.svelte';
-  import { ChevronLeft, ChevronRight, Plus, Clock, Mail, SlidersHorizontal, Target } from 'lucide-svelte';
+  import { ChevronLeft, ChevronRight, Plus, Clock, Mail, SlidersHorizontal, Target, Search } from 'lucide-svelte';
   import { tagStore } from '$lib/stores/tags.svelte';
   import TagFilterBar from '$lib/components/TagFilterBar.svelte';
   import JiraPanel from '$lib/components/JiraPanel.svelte';
@@ -167,6 +167,8 @@
         date: d,
         dayName: dt.toLocaleDateString('en-US', { weekday: 'short' }),
         dayNum: dt.toLocaleDateString('en-US', { day: 'numeric' }),
+        fullDayName: dt.toLocaleDateString('en-US', { weekday: 'long' }),
+        monthName: dt.toLocaleDateString('en-US', { month: 'long' }),
         isToday: d === todayDate,
         isWeekend: dt.getDay() === 0 || dt.getDay() === 6,
         isFirstOfMonth: dt.getDate() === 1,
@@ -396,6 +398,20 @@
       if (t.planned_date) weekCounts.set(t.planned_date, (weekCounts.get(t.planned_date) ?? 0) + 1);
     }
     syncWidgetData(todayList, weekCounts);
+  });
+
+  // Desktop header height, measured so the board below fills the window exactly
+  // (the 1.27 header is taller than the old fixed 57px).
+  let deskHeaderH = $state(57);
+  // Whether the desktop summary row carries the intention card.
+  const showIntention = $derived(prefs.contextualReflections && !!(dayIntention?.trim() || dayReflection?.trim() || isToday(date)));
+
+  // Time-of-day greeting for the header eyebrow (1.27). Re-evaluates with the
+  // clock store so a page left open across midnight doesn't go stale.
+  const greeting = $derived.by(() => {
+    void clock.today;
+    const h = new Date().getHours();
+    return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
   });
 
   // Mobile: stats for selected day
@@ -922,86 +938,108 @@
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 {#if mobile.value}
 
-  <!-- Mobile header -->
-  <header class="sticky top-0 z-[40] px-5 pt-4 pb-3"
-          style="background: var(--sempa-bg-main); padding-top: max(12px, calc(env(safe-area-inset-top, 0px) + 8px));">
-    <div class="flex items-center justify-between mb-1">
-      <button onclick={() => navigateDay(-1)} aria-label="Previous day"
-              class="flex h-10 w-10 items-center justify-center rounded-xl transition-colors
-                     active:bg-gray-100 dark:active:bg-gray-800"
-              style="color: var(--sempa-text-dim);">
-        <ChevronLeft size={20} />
-      </button>
-      <div class="text-center">
-        <h1 style="font-size: 28px; font-weight: 600; letter-spacing: -0.025em; color: var(--sempa-text);">
+  <!-- Mobile header (1.27): greeting + big day title with round day-nav
+       buttons, then a capsule date strip. Stays sticky so the strip is always
+       reachable; the summary card below scrolls with the list. -->
+  <header class="sticky top-0 z-[40] px-5 pb-3"
+          style="background: var(--sempa-bg-main); padding-top: max(16px, calc(env(safe-area-inset-top, 0px) + 10px));">
+    <div class="flex items-center gap-3">
+      <div class="min-w-0 flex-1">
+        <p class="text-[13.5px] font-semibold" style="color: var(--sempa-accent-ink);">
+          {selectedDay.isToday ? greeting : selectedDay.monthName}
+        </p>
+        <h1 class="type-page truncate" style="color: var(--sempa-text);">
           {selectedDay.isToday ? 'Today' : selectedDay.fullDayName + ', ' + selectedDay.dayNum}
         </h1>
-        {#if !selectedDay.isToday}
-          <p class="text-xs" style="color: var(--sempa-text-dim);">{selectedDay.monthName}</p>
-        {/if}
       </div>
-      <button onclick={() => navigateDay(1)} aria-label="Next day"
-              class="flex h-10 w-10 items-center justify-center rounded-xl transition-colors
-                     active:bg-gray-100 dark:active:bg-gray-800"
-              style="color: var(--sempa-text-dim);">
-        <ChevronRight size={20} />
+      <button onclick={() => navigateDay(-1)} aria-label="Previous day" class="btn-icon h-11 w-11">
+        <ChevronLeft size={20} strokeWidth={2.2} />
+      </button>
+      <button onclick={() => navigateDay(1)} aria-label="Next day" class="btn-icon h-11 w-11">
+        <ChevronRight size={20} strokeWidth={2.2} />
       </button>
     </div>
 
-    <!-- Quick date strip — horizontally scrollable; swipe to browse, tap to pick -->
+    <!-- Quick date strip — capsules; horizontally scrollable, tap to pick -->
     <div bind:this={stripEl}
-         class="no-scrollbar -mx-5 mt-2 flex snap-x snap-proximity gap-1 overflow-x-auto scroll-px-5 px-5"
+         class="no-scrollbar -mx-5 mt-3 flex snap-x snap-proximity gap-1.5 overflow-x-auto scroll-px-5 px-5 pb-2"
          style="-webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;">
       {#each stripDays as day (day.date)}
         {@const isSel = day.date === date}
         <button onclick={() => { hapticTick(); goto(`/day/${day.date}`); }}
                 data-strip-date={day.date}
                 aria-current={isSel ? 'date' : undefined}
-                class="flex shrink-0 snap-center flex-col items-center gap-0.5 rounded-xl px-2.5 py-1.5 transition-colors"
+                aria-label="{day.fullDayName}, {day.monthName} {day.dayNum}"
+                class="flex h-[68px] w-[46px] shrink-0 snap-center flex-col items-center justify-center gap-0.5 rounded-full transition-colors"
                 style={isSel
-                  ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent);'
+                  ? 'background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); box-shadow: var(--sempa-shadow-accent);'
                   : day.isToday
-                    ? 'color: var(--sempa-accent);'
+                    ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);'
                     : day.isWeekend
-                      ? 'color: var(--sempa-text-dim); opacity: 0.7;'
-                      : 'color: var(--sempa-text-dim);'}>
-          <span class="text-[10.5px] font-semibold uppercase">{day.dayName}</span>
-          <span class="flex h-7 w-7 items-center justify-center rounded-full text-[13px] font-semibold"
-                style={day.isToday && !isSel
-                  ? 'background: var(--sempa-today-bg); color: var(--sempa-today-fg);'
-                  : ''}>
-            {day.dayNum}
-          </span>
+                      ? 'color: var(--sempa-text-dim);'
+                      : 'color: var(--sempa-text-soft);'}>
+          <span class="text-[16px] font-extrabold leading-none">{day.dayNum}</span>
+          <span class="text-[10.5px] font-semibold opacity-85">{day.dayName}</span>
+          <span class="mt-0.5 h-[5px] w-[5px] rounded-full"
+                style="background: {isSel ? 'var(--sempa-btn-fg)' : day.isToday ? 'var(--sempa-accent)' : 'transparent'};"></span>
         </button>
       {/each}
     </div>
-
-    <!-- Day stats -->
-    {#if mobileDayTasks.length > 0}
-      <div class="flex items-center gap-3 mt-2 text-[11px]" style="color: var(--sempa-text-dim);">
-        <span>{mobileDone.length}/{mobileDayTasks.length} done</span>
-        {#if mobileDayEstimate > 0}<span style={mobileOverCapacity ? 'color:#b07d18;' : ''}>{formatMinutes(mobileDayEstimate)} planned{#if mobileOverCapacity} · over{/if}</span>{/if}
-      </div>
-    {/if}
   </header>
 
-  <!-- Tag filter (in-place) -->
-  {#if tagStore.definitions.length}
-    <div class="px-4 pb-1">
+  <!-- Search + tag filter row -->
+  <div class="flex items-center gap-2.5 px-4 pb-3">
+    <a href="/search" class="flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-full px-4 text-[14px]"
+       style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text-soft);">
+      <Search size={17} strokeWidth={2} />
+      <span class="truncate">Search tasks</span>
+    </a>
+    {#if tagStore.definitions.length}
       <button onclick={() => showFilter = !showFilter}
-              class="inline-flex items-center gap-1.5 rounded-full transition-colors"
-              style="font-size: 12px; padding: 4px 10px;
-                     {filterTags.length
-                       ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent);'
-                       : 'color: var(--sempa-text-dim); box-shadow: inset 0 0 0 1px var(--sempa-border);'}">
-        <SlidersHorizontal size={13} />
-        {filterTags.length ? `Filtered · ${filterTags.length}` : 'Filter by tag'}
+              aria-label={filterTags.length ? `Tag filter: ${filterTags.length} selected` : 'Filter by tag'}
+              aria-expanded={showFilter}
+              class="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-colors"
+              style={showFilter || filterTags.length
+                ? 'background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); box-shadow: var(--sempa-shadow-accent);'
+                : 'background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);'}>
+        <SlidersHorizontal size={18} strokeWidth={2.2} />
+        {#if filterTags.length}
+          <span class="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10.5px] font-bold"
+                style="background: var(--sempa-bg-panel); color: var(--sempa-accent-ink); box-shadow: var(--sempa-shadow-1);">{filterTags.length}</span>
+        {/if}
       </button>
-      {#if showFilter}
-        <div class="mt-2">
-          <TagFilterBar bind:selected={filterTags} bind:match={filterMatch} />
-        </div>
-      {/if}
+    {/if}
+  </div>
+  {#if showFilter && tagStore.definitions.length}
+    <div class="px-4 pb-3">
+      <TagFilterBar bind:selected={filterTags} bind:match={filterMatch} />
+    </div>
+  {/if}
+
+  <!-- Day summary: progress ring + counts -->
+  {#if mobileDayTasks.length > 0}
+    {@const C = 2 * Math.PI * 18}
+    {@const frac = mobileDayTasks.length ? mobileDone.length / mobileDayTasks.length : 0}
+    <div class="mx-4 mb-3 flex items-center gap-3.5 rounded-[22px] px-4 py-3"
+         style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
+      <svg width="46" height="46" viewBox="0 0 46 46" role="img" aria-label="{mobileDone.length} of {mobileDayTasks.length} done" class="shrink-0">
+        <circle cx="23" cy="23" r="18" fill="none" stroke="var(--sempa-track)" stroke-width="5"/>
+        <circle cx="23" cy="23" r="18" fill="none" stroke="var(--sempa-success)" stroke-width="5" stroke-linecap="round"
+                stroke-dasharray="{(frac * C).toFixed(1)} {C.toFixed(1)}" transform="rotate(-90 23 23)"
+                style="transition: stroke-dasharray 500ms ease-out;"/>
+        <text x="23" y="27" text-anchor="middle" font-size="11" font-weight="800" fill="var(--sempa-text)"
+              font-family="Plus Jakarta Sans, sans-serif">{mobileDone.length}/{mobileDayTasks.length}</text>
+      </svg>
+      <div class="min-w-0 flex-1">
+        <p class="text-[15px] font-extrabold tracking-[-0.01em]" style="color: var(--sempa-text);">
+          {mobileActive.length === 0 ? 'All done' : `${mobileActive.length} left`}
+        </p>
+        {#if mobileDayEstimate > 0}
+          <p class="text-[12.5px] font-medium" style="color: {mobileOverCapacity ? 'var(--cal-amber-fg)' : 'var(--sempa-text-soft)'};">
+            {`${formatMinutes(mobileDayEstimate)} planned${mobileOverCapacity ? ' · over capacity' : ''}`}
+          </p>
+        {/if}
+      </div>
     </div>
   {/if}
 
@@ -1014,19 +1052,19 @@
 
   <!-- Rollover banner (mobile) -->
   {#if rolloverTasks.length > 0 && !rolloverDismissed && isToday(date)}
-    <div class="mx-4 mb-3 flex items-center gap-2 rounded-xl px-3 py-2.5 animate-slide-down"
-         style="border: 1px solid var(--sempa-amber); background: color-mix(in srgb, var(--sempa-amber) 8%, var(--sempa-bg-main));">
-      <p class="flex-1 text-xs" style="color: var(--sempa-amber);">
+    <div class="mx-4 mb-3 flex items-center gap-3 rounded-[20px] px-4 py-3 animate-slide-down"
+         style="background: var(--cal-amber-bg); color: var(--cal-amber-fg);">
+      <p class="flex-1 text-[13px] font-semibold">
         <strong>{rolloverTasks.length}</strong> from yesterday
       </p>
       <button onclick={rolloverAll}
-              class="rounded-lg px-2.5 py-1 text-[11px] font-medium"
-              style="background: var(--sempa-amber); color: var(--sempa-btn-fg);">
+              class="h-9 rounded-full px-4 text-[12.5px] font-bold"
+              style="background: var(--sempa-bg-panel); color: var(--cal-amber-fg); box-shadow: var(--sempa-shadow-1);">
         Roll over
       </button>
       <button onclick={() => rolloverDismissed = true} aria-label="Dismiss"
-              style="color: var(--sempa-amber); opacity: 0.7;">
-        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              class="flex h-9 w-9 items-center justify-center rounded-full" style="opacity: 0.8;">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
           <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/>
         </svg>
       </button>
@@ -1039,26 +1077,26 @@
     {#if loading}
       <div class="flex h-48 items-center justify-center text-sm" style="color: var(--sempa-text-dim);">Loading...</div>
     {:else if error}
-      <div class="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600
-                  dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400">
+      <div class="rounded-[18px] bg-red-50 p-3.5 text-sm text-red-700
+                  dark:bg-red-950/40 dark:text-red-300">
         {error} <button onclick={loadTasks} class="ml-2 underline">Retry</button>
       </div>
     {:else if mobileDayTasks.length === 0}
       <div class="flex flex-col items-center justify-center py-16 gap-3">
-        <div class="h-12 w-12 rounded-full flex items-center justify-center"
+        <div class="h-14 w-14 rounded-[20px] flex items-center justify-center"
              style="background: var(--sempa-accent-bg);">
-          <Plus size={20} style="color: var(--sempa-accent);" />
+          <Plus size={22} style="color: var(--sempa-accent-ink);" />
         </div>
-        <p class="text-sm" style="color: var(--sempa-text-dim);">No tasks for this day</p>
+        <p class="text-[14px] font-semibold" style="color: var(--sempa-text-soft);">No tasks for this day</p>
         <button onclick={() => openCreate(date)}
-                class="rounded-[12px] px-4 py-2 text-[13px] font-medium"
+                class="h-11 rounded-full px-5 text-[14px] font-bold"
                 style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);">
           Add task
         </button>
       </div>
     {:else}
       <!-- Active tasks — long-press a card to drag it into priority order -->
-      <div bind:this={mobileListEl} class="flex flex-col gap-2">
+      <div bind:this={mobileListEl} class="flex flex-col gap-2.5">
         {#each mobileActiveOrdered as task (task.id)}
           <div animate:flip={{ duration: 200 }}>
             <MobileTaskCard
@@ -1079,11 +1117,11 @@
 
       <!-- Completed tasks -->
       {#if mobileDone.length > 0}
-        <div class="mt-4 pt-3" style="border-top: 1px solid var(--sempa-border);">
-          <p class="mb-2 text-[12px] font-medium" style="color: var(--sempa-text-dim);">
-            {mobileDone.length} completed
+        <div class="mt-5">
+          <p class="mb-2 px-1 text-[13px] font-bold" style="color: var(--sempa-text-soft);">
+            Completed · {mobileDone.length}
           </p>
-          <div class="flex flex-col gap-1.5">
+          <div class="flex flex-col gap-2">
             {#each mobileDone as task (task.id)}
               <MobileTaskCard
                 {task}
@@ -1127,84 +1165,58 @@
 {:else}
 
 <!-- ── Header ─────────────────────────────────────────────────────────────── -->
-<header class="sticky top-0 z-[40] backdrop-blur-sm"
-        style="background: color-mix(in srgb, var(--sempa-bg-main) 95%, transparent);
-               border-bottom: 1px solid var(--sempa-border);
+<!-- 1.27: greeting eyebrow + big week title on the left; round week nav, the
+     Today pill and the primary New task pill on the right. Stats moved down
+     into the summary tiles above the board. -->
+<header class="sticky top-0 z-[40]" bind:clientHeight={deskHeaderH}
+        style="background: var(--sempa-bg-main);
                padding-top: max(12px, calc(env(safe-area-inset-top, 0px) + 8px));">
-  <div class="flex items-center justify-between gap-3 px-6 py-3">
-    <!-- Week nav — highest priority; never shrinks -->
-    <div class="flex shrink-0 items-center gap-2">
-      <button onclick={() => scrollWeeks(-1)} aria-label="Previous week"
-              class="rounded-lg p-1.5 transition-colors"
-              style="color: var(--sempa-text-dim);">
-        <ChevronLeft size={16} />
-      </button>
-      <div>
-        <p class="type-date" style="color: var(--sempa-text);">{weekLabel()}</p>
-        {#if isToday(date)}
-          <p class="type-label" style="color: var(--sempa-accent);">This week</p>
-        {/if}
-      </div>
-      <button onclick={() => scrollWeeks(1)} aria-label="Next week"
-              class="rounded-lg p-1.5 transition-colors"
-              style="color: var(--sempa-text-dim);">
-        <ChevronRight size={16} />
-      </button>
+  <div class="flex items-center justify-between gap-3 px-6 pb-2 pt-3">
+    <div class="min-w-0">
+      <p class="text-[13.5px] font-semibold" style="color: var(--sempa-accent-ink);">
+        {isToday(date) ? greeting : 'Week of'}
+      </p>
+      <h1 class="type-page truncate" style="color: var(--sempa-text);">{weekLabel()}</h1>
     </div>
 
-    <!-- The toolbar holds only nav, stats, and actions — the daily quote moved to
-         the intention card (a quiet companion to planning the day), so nothing
-         competes for this contested horizontal space. -->
     <div class="min-w-0 flex-auto"></div>
-
-    <!-- Stats — uniform size/colour across the row (spec 4g) -->
-    {#if !loading && totalTasks.length > 0}
-      <div class="hidden md:flex shrink-0 items-center gap-4" style="font-size: 12.5px; color: var(--sempa-text-soft);">
-        {#if isToday(date)}
-          <span class="flex items-center gap-1.5" style="color: var(--sempa-text-soft);">
-            <span class="inline-flex h-1.5 w-1.5 rounded-full" style="background: var(--sempa-accent);"></span>
-            {#if todayRemaining > 0}
-              <strong style="color: var(--sempa-text);">{todayRemaining}</strong> left today
-              {#if todayRemainMins > 0}· ~{formatMinutes(todayRemainMins)}{/if}
-            {:else if todayBoard.length > 0}
-              All done today 🎉
-            {:else}
-              Nothing scheduled today
-            {/if}
-          </span>
-          <span style="opacity:0.4;">|</span>
-        {/if}
-        <span>{doneTasks}/{totalTasks.length} done this week</span>
-        {#if estimateMins > 0}<span>~{formatMinutes(estimateMins)} planned</span>{/if}
-        {#if actualMins > 0}<span style="color: var(--sempa-accent);">{formatMinutes(actualMins)} logged</span>{/if}
-      </div>
-    {/if}
 
     <!-- Actions — never shrink; Today pill + New task keep full size -->
     <div class="flex shrink-0 items-center gap-2">
+      <button onclick={() => scrollWeeks(-1)} aria-label="Previous week" class="btn-icon">
+        <ChevronLeft size={18} strokeWidth={2.2} />
+      </button>
       <!-- Always present: jump to (and centre) today. When already on this week
            it re-centres today's column; otherwise it navigates to today. -->
       <button onclick={goToday}
               title={onToday ? 'Jump to today' : 'Go to today'}
-              class="flex items-center gap-1.5 font-medium"
-              style="border: 1px solid {onToday ? 'var(--sempa-accent)' : 'var(--sempa-border)'};
-                     color: {onToday ? 'var(--sempa-accent)' : 'var(--sempa-text-soft)'};
-                     background: {onToday ? 'var(--sempa-accent-bg)' : 'transparent'};
-                     border-radius: 12px; padding: 6px 12px;
-                     font-size: 12px; cursor: pointer; transition: all 150ms ease;"
-              onmouseenter={(e) => { if (!onToday) (e.currentTarget as HTMLElement).style.background = 'var(--sempa-accent-bg)'; }}
-              onmouseleave={(e) => { if (!onToday) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
+              class="btn-surface h-10 px-[18px] text-[13.5px]"
+              style={onToday ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent-ink); box-shadow: none;' : ''}>
         <span class="inline-flex h-1.5 w-1.5 rounded-full"
               style="background: {onToday ? 'var(--sempa-accent)' : 'var(--sempa-text-dim)'};"></span>
         Today
       </button>
-      <button onclick={() => openCreate(date)}
-              class="flex items-center gap-1.5 rounded-[12px] px-3 py-1.5 text-[13px] font-[500]
-                     tracking-[-0.01em] transition-colors shadow-sm"
-              style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);"
-              onmouseenter={(e)=>(e.currentTarget as HTMLElement).style.opacity='0.88'}
-              onmouseleave={(e)=>(e.currentTarget as HTMLElement).style.opacity='1'}>
-        <Plus size={13} strokeWidth={2.5} />
+      <button onclick={() => scrollWeeks(1)} aria-label="Next week" class="btn-icon">
+        <ChevronRight size={18} strokeWidth={2.2} />
+      </button>
+      {#if tagStore.definitions.length}
+        <button onclick={() => showFilter = !showFilter}
+                aria-label={filterTags.length ? `Tag filter: ${filterTags.length} selected` : 'Filter by tag'}
+                aria-expanded={showFilter}
+                title="Filter by tag"
+                class="btn-icon relative ml-1"
+                style={showFilter || filterTags.length
+                  ? 'background: var(--sempa-btn-bg); color: var(--sempa-btn-fg); box-shadow: var(--sempa-shadow-accent);'
+                  : 'background: var(--sempa-accent-bg); color: var(--sempa-accent-ink); box-shadow: none;'}>
+          <SlidersHorizontal size={17} strokeWidth={2.1} />
+          {#if filterTags.length}
+            <span class="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10.5px] font-bold"
+                  style="background: var(--sempa-bg-panel); color: var(--sempa-accent-ink); box-shadow: var(--sempa-shadow-1);">{filterTags.length}</span>
+          {/if}
+        </button>
+      {/if}
+      <button onclick={() => openCreate(date)} class="btn-primary h-10 pl-4 pr-5 text-[14px]">
+        <Plus size={16} strokeWidth={2.5} />
         New task
       </button>
     </div>
@@ -1212,66 +1224,113 @@
 </header>
 
 <!-- ── Body ───────────────────────────────────────────────────────────────── -->
-<!-- Height excludes the desktop header (57px) AND the custom titlebar (--app-titlebar-h,
+<!-- Height excludes the desktop header (measured) AND the custom titlebar (--app-titlebar-h,
      38px on the Tauri desktop, 0 on web) so the planner fills the window exactly
      instead of overflowing by the titlebar height (which caused stray v+h scrollbars). -->
-<div class="flex overflow-hidden" style="height: calc(100vh - 57px - var(--app-titlebar-h, 0px));">
+<div class="flex overflow-hidden" style="height: calc(100vh - {deskHeaderH}px - var(--app-titlebar-h, 0px));">
 
   <!-- Kanban area. A flex COLUMN that fills the viewport height: the filter /
        banner sit at the top (fixed), and the board below grows to fill the rest
        so its horizontal scrollbar lands at the very BOTTOM of the page rather
        than floating halfway up where the tallest column happens to end. -->
-  <main bind:this={kanbanScroll} class="flex-1 flex flex-col overflow-hidden px-4 pt-5 pb-2 animate-fade-in">
+  <main bind:this={kanbanScroll} class="flex-1 flex flex-col overflow-hidden px-6 pt-3 pb-3 animate-fade-in">
 
-    <!-- Intention card — and, until an intention is set, the quiet home for the
-         daily quote (reflection paired with planning the day). A set reflection
-         still shows beneath it; the end-of-day prompt lives in the shutdown ritual. -->
-    {#if prefs.contextualReflections && (dayIntention?.trim() || dayReflection?.trim() || isToday(date))}
-      <div class="mb-4 flex shrink-0 flex-col gap-2">
-        <IntentionQuoteCard date={date} intention={dayIntention} promptWhenEmpty={isToday(date)} />
-        {#if dayReflection?.trim()}
-          <ReflectionCard date={date} reflection={dayReflection} show="reflection" />
+    <!-- Summary row (1.27): stat tiles for today/this week, then the intention
+         card as the wide tile. The intention card is also, until an intention is
+         set, the quiet home for the daily quote (reflection paired with planning
+         the day). A set reflection still shows beneath; the end-of-day prompt
+         lives in the shutdown ritual. -->
+    {#if (!loading && totalTasks.length > 0) || showIntention}
+      <div class="mb-4 flex shrink-0 flex-wrap items-stretch gap-3">
+        {#if !loading && totalTasks.length > 0}
+          {#if isToday(date) && todayBoard.length > 0}
+            {@const C = 2 * Math.PI * 19}
+            {@const frac = (todayBoard.length - todayRemaining) / todayBoard.length}
+            <div class="flex flex-[0_0_auto] items-center whitespace-nowrap gap-3.5 rounded-[22px] px-4 py-3.5"
+                 style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
+              <svg width="48" height="48" viewBox="0 0 48 48" role="img" class="shrink-0"
+                   aria-label="{todayBoard.length - todayRemaining} of {todayBoard.length} done today">
+                <circle cx="24" cy="24" r="19" fill="none" stroke="var(--sempa-track)" stroke-width="5.5"/>
+                <circle cx="24" cy="24" r="19" fill="none" stroke="var(--sempa-success)" stroke-width="5.5" stroke-linecap="round"
+                        stroke-dasharray="{(frac * C).toFixed(1)} {C.toFixed(1)}" transform="rotate(-90 24 24)"
+                        style="transition: stroke-dasharray 500ms ease-out;"/>
+                <text x="24" y="28" text-anchor="middle" font-size="11" font-weight="800" fill="var(--sempa-text)"
+                      font-family="Plus Jakarta Sans, sans-serif">{Math.round(frac * 100)}%</text>
+              </svg>
+              <div class="min-w-0">
+                <p class="text-[12.5px] font-medium" style="color: var(--sempa-text-soft);">Done today</p>
+                <p class="text-[19px] font-extrabold tracking-[-0.02em]" style="color: var(--sempa-text);">
+                  {todayRemaining === 0 ? 'All done' : `${todayBoard.length - todayRemaining} of ${todayBoard.length}`}
+                </p>
+                {#if todayRemainMins > 0}
+                  <p class="text-[12px] font-medium" style="color: var(--sempa-text-soft);">{`~${formatMinutes(todayRemainMins)} left`}</p>
+                {/if}
+              </div>
+            </div>
+          {/if}
+          <div class="flex flex-[0_0_auto] items-center whitespace-nowrap gap-3.5 rounded-[22px] px-4 py-3.5"
+               style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
+            <span class="tint flex h-11 w-11 shrink-0 items-center justify-center rounded-[15px]" style="--tint: #5f9a6c;">
+              <Target size={20} strokeWidth={2.1} />
+            </span>
+            <div class="min-w-0">
+              <p class="text-[12.5px] font-medium" style="color: var(--sempa-text-soft);">This week</p>
+              <p class="text-[19px] font-extrabold tracking-[-0.02em]" style="color: var(--sempa-text);">{doneTasks}/{totalTasks.length} done</p>
+            </div>
+          </div>
+          {#if actualMins > 0}
+            <div class="flex flex-[0_0_auto] items-center whitespace-nowrap gap-3.5 rounded-[22px] px-4 py-3.5"
+                 style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
+              <span class="tint flex h-11 w-11 shrink-0 items-center justify-center rounded-[15px]" style="--tint: var(--sempa-accent);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><path d="M12 14l4-4M3.34 19a10 10 0 1 1 17.32 0"/></svg>
+              </span>
+              <div class="min-w-0">
+                <p class="text-[12.5px] font-medium" style="color: var(--sempa-text-soft);">Logged this week</p>
+                <p class="text-[19px] font-extrabold tracking-[-0.02em]" style="color: var(--sempa-text);">{formatMinutes(actualMins)}</p>
+                {#if estimateMins > 0}
+                  <p class="text-[12px] font-medium" style="color: var(--sempa-text-soft);">{`of ~${formatMinutes(estimateMins)} planned`}</p>
+                {/if}
+              </div>
+            </div>
+          {/if}
+        {/if}
+        {#if showIntention}
+          <div class="flex min-w-[260px] flex-[1_1_260px] flex-col justify-center gap-2">
+            <IntentionQuoteCard date={date} intention={dayIntention} promptWhenEmpty={isToday(date)} />
+            {#if dayReflection?.trim()}
+              <ReflectionCard date={date} reflection={dayReflection} show="reflection" />
+            {/if}
+          </div>
         {/if}
       </div>
     {/if}
 
-    <!-- Tag filter (in-place) -->
-    {#if tagStore.definitions.length}
+    <!-- Tag filter (in-place; toggled from the header's filter button) -->
+    {#if showFilter && tagStore.definitions.length}
       <div class="mb-4 flex shrink-0 flex-wrap items-center gap-3">
-        <button onclick={() => showFilter = !showFilter}
-                class="inline-flex items-center gap-1.5 rounded-full transition-colors"
-                style="font-size: 12px; padding: 4px 10px;
-                       {filterTags.length
-                         ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent);'
-                         : 'color: var(--sempa-text-dim); box-shadow: inset 0 0 0 1px var(--sempa-border);'}">
-          <SlidersHorizontal size={13} />
-          {filterTags.length ? `Filtered · ${filterTags.length}` : 'Filter by tag'}
-        </button>
-        {#if showFilter}
-          <TagFilterBar bind:selected={filterTags} bind:match={filterMatch} />
-        {/if}
+        <TagFilterBar bind:selected={filterTags} bind:match={filterMatch} />
       </div>
     {/if}
 
     <!-- Rollover banner -->
     {#if rolloverTasks.length > 0 && !rolloverDismissed}
-      <div class="mb-4 flex shrink-0 items-center gap-3 rounded-xl px-4 py-3 animate-slide-down"
-           style="border: 1px solid var(--sempa-amber); background: color-mix(in srgb, var(--sempa-amber) 8%, var(--sempa-bg-main));">
-        <svg class="h-4 w-4 shrink-0" style="color: var(--sempa-amber);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <div class="mb-4 flex shrink-0 items-center gap-3 rounded-[20px] px-4 py-3 animate-slide-down"
+           style="background: var(--cal-amber-bg); color: var(--cal-amber-fg);">
+        <svg class="h-[18px] w-[18px] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
-        <p class="flex-1 text-xs" style="color: var(--sempa-amber);">
-          <strong>{rolloverTasks.length}</strong> unfinished from yesterday —
+        <p class="min-w-0 flex-1 truncate text-[13px] font-medium">
+          <strong>{rolloverTasks.length}</strong> unfinished from yesterday:
           {rolloverTasks.slice(0,2).map(t=>t.title).join(', ')}{rolloverTasks.length > 2 ? '...' : ''}
         </p>
         <button onclick={rolloverAll}
-                class="rounded-lg px-3 py-1 text-xs font-medium transition-colors"
-                style="background: var(--sempa-amber); color: var(--sempa-btn-fg);">
+                class="h-9 shrink-0 rounded-full px-4 text-[12.5px] font-bold transition-colors"
+                style="background: var(--sempa-bg-panel); color: var(--cal-amber-fg); box-shadow: var(--sempa-shadow-1);">
           Roll over
         </button>
         <button onclick={() => rolloverDismissed = true} aria-label="Dismiss"
-                style="color: var(--sempa-amber); opacity: 0.7;">
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style="opacity: 0.8;">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
             <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>
         </button>
@@ -1281,8 +1340,8 @@
     {#if loading}
       <div class="flex h-64 items-center justify-center text-sm text-gray-300 dark:text-gray-700">Loading...</div>
     {:else if error}
-      <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600
-                  dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400">
+      <div class="rounded-[18px] bg-red-50 p-4 text-sm text-red-700
+                  dark:bg-red-950/40 dark:text-red-300">
         {error} <button onclick={loadTasks} class="ml-2 underline">Retry</button>
       </div>
     {:else}
@@ -1291,9 +1350,9 @@
            the range grows on demand at either edge, so there's no week boundary
            to flash through. Weekend columns read a touch softer. -->
       <div bind:this={weekGrid} onscroll={onBoardScroll}
-           class="flex flex-1 min-h-0 items-stretch gap-3 overflow-x-auto overflow-y-hidden" data-weekgrid>
+           class="flex flex-1 min-h-0 items-stretch gap-3.5 overflow-x-auto overflow-y-hidden" data-weekgrid>
         {#each columns as day (day.date)}
-          <div id="day-col-{day.date}" data-daycol class="flex h-full w-56 shrink-0" style={day.isWeekend ? 'opacity: 0.92;' : ''}>
+          <div id="day-col-{day.date}" data-daycol class="flex h-full w-60 shrink-0" style={day.isWeekend ? 'opacity: 0.92;' : ''}>
             <WeekDayColumn
               date={day.date} dayName={day.dayName} dayNum={day.dayNum}
               isToday={day.isToday} isWeekend={day.isWeekend}
@@ -1324,24 +1383,25 @@
        / Jira / Objectives) that fills the rest of the height. Previously these
        all stacked vertically and pushed each other off-screen on shorter
        windows; now exactly one is shown at full height. -->
-  <aside class="w-80 shrink-0 flex flex-col overflow-hidden"
-         style="background: var(--sempa-bg-panel); border-left: 1px solid var(--sempa-border);">
+  <aside class="mb-4 mr-4 mt-3 w-[332px] shrink-0 flex flex-col overflow-hidden rounded-[28px]"
+         style="background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1);">
 
     <!-- Pinned: mini calendar -->
-    <div class="shrink-0" style="border-bottom: 1px solid var(--sempa-border);">
+    <div class="shrink-0">
       <MiniCalendar {date} onDateClick={handleCalendarDateClick} onDateDrop={(d) => handleDrop(d)} dragActive={draggingId !== null} />
     </div>
 
-    <!-- Tab bar -->
-    <div class="flex shrink-0 items-stretch" style="border-bottom: 1px solid var(--sempa-border);">
+    <!-- Tab bar — a segmented pill control -->
+    <div class="segmented mx-3.5 mb-2 mt-1 shrink-0" role="tablist" aria-label="Side panel">
       {#each rightPanelTabs as panel}
         {@const active = activePanel === panel.id}
         <button onclick={() => rightPanel = panel.id}
                 title={panel.label}
-                class="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10.5px] font-medium transition-colors"
+                role="tab" aria-selected={active}
+                class="flex h-9 items-center justify-center gap-1.5 text-[12.5px] transition-colors"
                 style={active
-                  ? 'color: var(--sempa-accent); box-shadow: inset 0 -2px 0 var(--sempa-accent);'
-                  : 'color: var(--sempa-text-dim);'}>
+                  ? 'color: var(--sempa-text); font-weight: 700;'
+                  : 'color: var(--sempa-text-soft); font-weight: 600;'}>
           {#if panel.id === 'schedule'}
             <Clock size={15} />
           {:else if panel.id === 'mail'}
@@ -1386,8 +1446,8 @@
             <div class="h-full overflow-y-auto">
               <WeeklyObjectivesWidget {date} />
               <a href="/week/{ws}"
-                 class="m-3 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium transition-colors"
-                 style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
+                 class="m-3 flex h-10 items-center justify-center gap-1.5 rounded-full px-4 text-[13px] font-bold transition-colors"
+                 style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
                 <Target size={13} />
                 Open weekly planner
               </a>

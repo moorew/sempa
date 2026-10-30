@@ -36,6 +36,9 @@
 
   const isDone      = $derived(task.status === 'done');
   const isRecurring = $derived(!!task.recurrence_origin_id);
+  const isActive    = $derived(task.status === 'in_progress');
+  // Share of the estimate already logged, for the in-progress ring (null = no estimate).
+  const ringFrac    = $derived(task.time_estimate_minutes ? (task.time_actual_minutes ?? 0) / task.time_estimate_minutes : null);
   const sourceLabel: Record<string, string> = {
     gmail: 'Gmail', fastmail: 'Mail', jira: 'Jira', google_calendar: 'Cal',
   };
@@ -166,7 +169,7 @@
   }
 </script>
 
-<div class="relative overflow-hidden rounded-xl" data-task-id={task.id}>
+<div class="relative overflow-hidden rounded-[22px]" data-task-id={task.id}>
   <!-- Swipe-right reveal (complete — green check) -->
   {#if deltaX > 0}
     <div class="absolute inset-y-0 left-0 flex items-center pl-4"
@@ -191,11 +194,19 @@
   <!-- Card -->
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div
-    class="relative flex items-start gap-3 rounded-xl p-3.5"
+    class="relative flex items-center gap-3 rounded-[22px] py-3.5 pl-4 pr-2.5"
     class:reordering={dragging}
-    style="background: var(--card-bg);            transform: {dragging ? 'scale(1.02)' : `translateX(${deltaX}px)`};
+    style="background: {isDone ? 'transparent' : 'var(--card-bg)'};
+           box-shadow: {dragging
+             ? 'var(--sempa-shadow-2)'
+             : isDone
+               ? 'inset 0 0 0 1px var(--sempa-border)'
+               : isActive
+                 ? 'var(--sempa-shadow-1), inset 0 0 0 2px var(--sempa-accent)'
+                 : 'var(--sempa-shadow-1)'};
+           transform: {dragging ? 'scale(1.02)' : `translateX(${deltaX}px)`};
            transition: {swiping || dragging ? 'none' : 'transform 200ms ease-out'};
-           {dragging ? 'box-shadow: 0 12px 28px -6px rgba(0,0,0,0.35); z-index: 5;' : ''}
+           {dragging ? 'z-index: 5;' : ''}
            -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
     ontouchstart={handleTouchStart}
     ontouchmove={handleTouchMove}
@@ -207,12 +218,13 @@
     <button
       type="button"
       onclick={(e) => { e.stopPropagation(); hapticClick(); onComplete?.(task.id); }}
-      class="mt-0.5 h-5 w-5 shrink-0 rounded-full border-2 flex items-center justify-center
-             {isDone ? 'border-green-500 bg-green-500' : 'border-gray-300 dark:border-gray-600'}"
+      class="check-ring self-start mt-0.5"
+      style="width: 24px; height: 24px;"
+      data-state={isDone ? 'done' : isActive ? 'active' : undefined}
       aria-label="Complete task"
     >
       {#if isDone}
-        <svg class="h-3 w-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+        <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3.2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
         </svg>
       {/if}
@@ -220,8 +232,8 @@
 
     <!-- Content -->
     <div class="min-w-0 flex-1">
-      <p class="text-[15px] leading-snug
-                {isDone ? 'line-through opacity-40' : 'font-medium'}"
+      <p class="text-[15px] leading-snug tracking-[-0.01em]
+                {isDone ? 'line-through opacity-50 font-medium' : 'font-bold'}"
          style="color: var(--sempa-text); overflow-wrap: anywhere; word-break: break-word;">
         {#if bareUrl(task.title)}
           <span class="inline-flex max-w-full items-center gap-1 align-middle">
@@ -237,7 +249,7 @@
 
       <!-- Meta row -->
       {#if project || task.tags?.length || task.time_estimate_minutes || (task.source && task.source !== 'manual') || isRecurring || hasReminder}
-        <div class="flex flex-wrap items-center gap-1 mt-1.5">
+        <div class="flex flex-wrap items-center gap-1.5 mt-2">
           {#if project}
             <!-- Project as a small colour SQUARE (tags are round dots). -->
             <span class="shrink-0" title={`Project: ${project.title || 'Untitled project'}`}
@@ -253,14 +265,13 @@
             </span>
           {/if}
           {#if task.time_estimate_minutes}
-            <span class="rounded px-1.5 py-0.5 text-[10.5px] font-mono"
-                  style="background: var(--sempa-accent-bg); color: var(--sempa-text-dim);">
-              {formatMinutes(task.time_estimate_minutes)}
+            <span class="chip chip-time">
+              {isActive && task.time_actual_minutes ? `${formatMinutes(task.time_actual_minutes)} / ` : ''}{formatMinutes(task.time_estimate_minutes)}
             </span>
           {/if}
           {#if hasReminder}
-            <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10.5px]"
-                  style="gap: 3px; background: var(--sempa-accent-bg); color: var(--sempa-accent);"
+            <span class="chip"
+                  style="gap: 4px; background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);"
                   title="Reminder {remindLabel}">
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" style="flex: 0 0 auto;">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
@@ -269,26 +280,39 @@
             </span>
           {/if}
           {#if task.source && task.source !== 'manual'}
-            <span class="rounded px-1.5 py-0.5 text-[10.5px]"
-                  style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
+            <span class="chip"
+                  style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
               {sourceLabel[task.source] ?? task.source}
             </span>
           {/if}
           {#if isRecurring}
-            <span class="rounded px-1.5 py-0.5 text-[10.5px]"
-                  style="background: var(--sempa-accent-bg); color: var(--sempa-text-dim);"
+            <span class="chip"
+                  style="background: var(--sempa-fill); color: var(--sempa-text-soft);"
                   title="Recurring">&#8634;</span>
           {/if}
         </div>
       {/if}
     </div>
 
+    <!-- Time-used ring for the task in progress (actual vs estimate) -->
+    {#if isActive && ringFrac !== null}
+      {@const C = 2 * Math.PI * 14}
+      <svg width="36" height="36" viewBox="0 0 36 36" role="img" class="shrink-0"
+           aria-label="{Math.round(ringFrac * 100)} percent of estimate used">
+        <circle cx="18" cy="18" r="14" fill="none" stroke="var(--sempa-track)" stroke-width="4"/>
+        <circle cx="18" cy="18" r="14" fill="none" stroke="var(--sempa-accent)" stroke-width="4" stroke-linecap="round"
+                stroke-dasharray="{(Math.min(ringFrac, 1) * C).toFixed(1)} {C.toFixed(1)}" transform="rotate(-90 18 18)"/>
+        <text x="18" y="21.5" text-anchor="middle" font-size="9.5" font-weight="800" fill="var(--sempa-text)"
+              font-family="Plus Jakarta Sans, sans-serif">{Math.round(ringFrac * 100)}%</text>
+      </svg>
+    {/if}
+
     <!-- Actions (visible on mobile, no hover needed) -->
-    <div class="flex shrink-0 items-center gap-1">
+    <div class="flex shrink-0 items-center">
       {#if onFocusClick && !isDone}
         <button onclick={(e) => { e.stopPropagation(); onFocusClick?.(task.id, task.title); }}
-                class="rounded-lg p-1.5" style="color: var(--sempa-text-dim);"
-                title="Start focus timer">
+                class="flex h-9 w-9 items-center justify-center rounded-full" style="color: var(--sempa-text-soft);"
+                title="Start focus timer" aria-label="Start focus timer">
           <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 7v5l3 3"/>
           </svg>
@@ -296,8 +320,8 @@
       {/if}
       {#if onTrash}
         <button onclick={(e) => { e.stopPropagation(); onTrash?.(task.id, task.title); }}
-                class="rounded-lg p-1.5" style="color: var(--sempa-text-dim);"
-                title="Delete task">
+                class="flex h-9 w-9 items-center justify-center rounded-full" style="color: var(--sempa-text-soft);"
+                title="Delete task" aria-label="Delete task">
           <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
           </svg>
