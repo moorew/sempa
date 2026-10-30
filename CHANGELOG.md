@@ -6,7 +6,7 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
-## [Unreleased]
+## [1.25.7] - 2026-10-30
 
 ### Security
 - **Patched vulnerable dependencies.** Go 1.26.10 (eleven standard-library
@@ -14,7 +14,8 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
   chi 5.5.0 (client-IP spoofing in `ClientIPFromXFF`; Sempa doesn't use that
   middleware, but the module is flagged), vite 8.3 and `@vitest/ui` 5.0.5
   (dev-server file-serving and `launch-editor` advisories; build tooling only,
-  not shipped in the app), and SvelteKit 3 (two advisories with no 2.x fix).
+  not shipped in the app), SvelteKit 3 (two advisories with no 2.x fix), and
+  rustls 0.23.46 in the desktop shell (four TLS advisories).
 
 ### Changed
 - **SvelteKit 3.** The config moved from `svelte.config.js` into
