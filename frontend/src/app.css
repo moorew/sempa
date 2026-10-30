@@ -29,6 +29,8 @@
 :root {
   --sempa-font-ui: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 }
+:root { --sempa-danger: #c0392b; }   /* destructive actions; AA on light surfaces */
+.dark { --sempa-danger: #f0776b; }   /* lifted for dark surfaces */
 :root.system-font {
   --sempa-font-ui: system-ui, -apple-system, 'Segoe UI', Cantarell, 'Noto Sans', sans-serif;
 }
