@@ -127,21 +127,16 @@
        insertIdx = null;
      }}>
 
-  <!-- Compact header: MON + day-number circle -->
-  <div class="mb-2 flex shrink-0 items-center gap-1.5 px-1">
-    <span class="text-[12px] font-semibold {isWeekend ? 'text-gray-400 dark:text-gray-600' : 'text-gray-400 dark:text-gray-500'}">
-      {dayName}
-    </span>
-    <!-- Day number — circle only on today -->
-    <span class="flex h-5 w-5 items-center justify-center rounded-full text-xs font-[600] leading-none
-                 {isToday ? '' : isWeekend ? 'text-gray-400 dark:text-gray-600' : 'text-gray-600 dark:text-gray-300'}"
-          style={isToday ? 'background: var(--sempa-today-bg); color: var(--sempa-today-fg);' : ''}>
-      {dayNum}
+  <!-- Pill header: day name + number. Today is the one solid pill (btn-bg). -->
+  <div class="mb-2 flex shrink-0 items-center gap-2 px-0.5">
+    <span class="day-pill" class:is-today={isToday} class:is-weekend={isWeekend && !isToday}>
+      <span class="day-name">{dayName}</span>
+      <span class="day-num tabular-nums">{dayNum}</span>
     </span>
     <!-- Task count -->
     {#if tasks.length > 0}
-      <span class="ml-auto text-[10.5px] tabular-nums
-                   {isWeekend ? 'text-gray-300 dark:text-gray-700' : 'text-gray-400 dark:text-gray-600'}">
+      <span class="ml-auto pr-1 tabular-nums"
+            style="font-size: 11.5px; font-weight: 600; color: {done.length === tasks.length ? 'var(--sempa-success)' : 'var(--sempa-text-dim)'};">
         {done.length}/{tasks.length}
       </span>
     {/if}
@@ -154,14 +149,14 @@
         <div class="day-bar-fill"
              style="width: {barPct}%; background: {dayComplete ? 'var(--sempa-success)' : 'var(--sempa-accent)'};"></div>
       </div>
-      <div class="mt-1 flex items-center justify-between text-[10px] tabular-nums">
+      <div class="mt-1.5 flex items-center justify-between tabular-nums" style="font-size: 11px; font-weight: 500;">
         {#if dayComplete}
           <span style="color: var(--sempa-success);">{fmtCapacity(workedMins || plannedMins)} done</span>
         {:else if dayStarted}
-          <span style="color: var(--sempa-accent);">{fmtCapacity(workedMins)} done</span>
-          <span style="color: {overCapacity ? '#b07d18' : 'var(--sempa-text-dim)'};">{fmtCapacity(Math.max(plannedMins - workedMins, 0))} left</span>
+          <span style="color: var(--sempa-accent-ink);">{fmtCapacity(workedMins)} done</span>
+          <span style="color: {overCapacity ? 'var(--cal-amber-fg)' : 'var(--sempa-text-dim)'};">{fmtCapacity(Math.max(plannedMins - workedMins, 0))} left</span>
         {:else}
-          <span style="color: {overCapacity ? '#b07d18' : 'var(--sempa-text-dim)'};"
+          <span style="color: {overCapacity ? 'var(--cal-amber-fg)' : 'var(--sempa-text-dim)'};"
             title={overCapacity ? `${timeTracking.capacityRealistic ? `Realistically ~${fmtCapacity(effectivePlanned)} — ` : ''}over your ${fmtCapacity(timeTracking.capacityMinutes)} day` : undefined}>
             {fmtCapacity(plannedMins)} planned{#if overCapacity} · over{/if}
           </span>
@@ -171,14 +166,11 @@
   {/if}
 
   <!-- Column body. Fills the column height so its task list scrolls INTERNALLY
-       (the board itself only scrolls left/right). The drag-over cue is a soft
-       accent tint + gentle inset outline — no bright ring — that eases in. -->
-  <div class="drop-zone flex min-h-0 flex-1 flex-col rounded-xl
-              {isDragOver
-                ? 'is-drag-over'
-                : isWeekend
-                  ? 'bg-gray-50/40 dark:bg-gray-800/10'
-                  : 'bg-gray-100/60 dark:bg-gray-800/25'}">
+       (the board itself only scrolls left/right). It sits slightly recessed
+       into the canvas so the raised task cards read as cards on paper. The
+       drag-over cue is a soft accent tint + gentle inset outline that eases in. -->
+  <div class="drop-zone flex min-h-0 flex-1 flex-col
+              {isDragOver ? 'is-drag-over' : isWeekend ? 'is-weekend' : ''}">
 
     <!-- Scrollable region: active list + (optional) completed. Add-task stays
          pinned below. Scrollbar is hidden globally; only this area scrolls. -->
@@ -213,20 +205,21 @@
            edge. Revealed on column hover / keyboard focus on hover-capable
            devices; always shown on touch. Opens a new task on THIS day. -->
       <button onclick={() => onAddClick(date)} title="Add a task on this day"
-              class="add-pill mb-2 ml-2 mt-0.5 flex w-fit shrink-0 items-center gap-1 rounded-full px-2.5 py-1
-                     text-[11px] font-medium transition-all"
-              style="color: var(--sempa-accent); background: var(--sempa-accent-bg);">
-        <Plus size={11} />
+              class="add-pill mb-2 ml-2 mt-0.5 flex w-fit shrink-0 items-center gap-1 rounded-full
+                     transition-all"
+              style="color: var(--sempa-accent-ink); background: var(--sempa-accent-bg);
+                     height: 28px; padding: 0 12px; font-size: 12px; font-weight: 600;">
+        <Plus size={12} strokeWidth={2.5} />
         Add task
       </button>
 
       <!-- Completed tasks (collapsed by default) -->
       {#if done.length > 0}
-        <div class="border-t border-gray-100/80 px-2 pb-1 pt-0.5 dark:border-gray-700/30">
+        <div class="px-2 pb-2 pt-1">
         <button onclick={() => showDone = !showDone}
                 class="inline-flex items-center gap-1 rounded-full transition-opacity hover:opacity-80"
-                style="background: var(--sempa-success-soft); color: var(--sempa-success);
-                       font-size: 11.5px; font-weight: 500; padding: 2px 9px;">
+                style="background: var(--sempa-success-bg); color: var(--sempa-success);
+                       font-size: 12px; font-weight: 600; height: 26px; padding: 0 11px;">
           <svg class="h-3 w-3 transition-transform {showDone ? 'rotate-180' : ''}"
                fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" d="M19 9l-7 7-7-7"/>
@@ -251,13 +244,37 @@
 </div>
 
 <style>
-  /* Drag-over cue: a calm accent tint + a gentle inset outline that eases in —
-     not a bright ring, so the cards and the drop position stay easy to read. */
+  /* Pill day header: soft fill pill; today is the single solid btn-bg pill. */
+  .day-pill {
+    display: inline-flex; align-items: baseline; gap: 6px;
+    height: 28px; padding: 0 12px; border-radius: 999px;
+    line-height: 28px; white-space: nowrap;
+    background: color-mix(in srgb, var(--sempa-text) 5%, var(--sempa-bg-main));
+    color: var(--sempa-text-soft);
+  }
+  .day-pill .day-name { font-size: 12px; font-weight: 600; }
+  .day-pill .day-num  { font-size: 13px; font-weight: 800; letter-spacing: -.01em; color: var(--sempa-text); }
+  .day-pill.is-weekend { background: transparent; box-shadow: inset 0 0 0 1px var(--sempa-border); }
+  .day-pill.is-weekend .day-num { color: var(--sempa-text-soft); }
+  .day-pill.is-today {
+    background: var(--sempa-btn-bg); color: var(--sempa-btn-fg);
+    box-shadow: var(--sempa-shadow-accent);
+  }
+  .day-pill.is-today .day-name { color: var(--sempa-btn-fg); opacity: .85; }
+  .day-pill.is-today .day-num  { color: var(--sempa-btn-fg); }
+
+  /* Column well: recessed slightly into the canvas (darker in light themes,
+     deeper in dark ones) so the raised task cards sit on it like paper. */
   .drop-zone {
+    border-radius: 20px;
+    background: color-mix(in srgb, var(--sempa-text) 4.5%, var(--sempa-bg-main));
     transition: background-color 200ms ease, box-shadow 200ms ease;
   }
+  .drop-zone.is-weekend {
+    background: color-mix(in srgb, var(--sempa-text) 2.5%, var(--sempa-bg-main));
+  }
   .drop-zone.is-drag-over {
-    background: color-mix(in srgb, var(--sempa-accent) 7%, var(--sempa-bg-panel));
+    background: color-mix(in srgb, var(--sempa-accent) 9%, var(--sempa-bg-main));
     box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--sempa-accent) 45%, transparent);
   }
   /* Where the card will land — a soft, clearly visible pill. */

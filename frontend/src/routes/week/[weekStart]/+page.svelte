@@ -117,6 +117,20 @@
   let totalObjectives     = $derived(objectives.length);
   let completedObjectives = $derived(objectives.filter(o => o.status === 'completed').length);
 
+  // Display-only: the week summary surface (progress ring + task tally) and a
+  // compact range for the narrow mobile header.
+  const weekPct        = $derived(totalObjectives ? Math.round((completedObjectives / totalObjectives) * 100) : 0);
+  const weekTasks      = $derived(tasks.filter(t => t.planned_date && t.status !== 'cancelled'));
+  const weekTasksDone  = $derived(weekTasks.filter(t => t.status === 'done').length);
+  const RING_R = 26;
+  const RING_C = 2 * Math.PI * RING_R;
+  const shortRange = $derived.by(() => {
+    const s = new Date(weekStartDate + 'T12:00:00');
+    const e = new Date(weekStartDate + 'T12:00:00'); e.setDate(e.getDate() + 6);
+    const f = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${f(s)} – ${f(e)}`;
+  });
+
   async function toggleStatus(obj: Objective) {
     const next = obj.status === 'completed' ? 'active' : 'completed';
     objectives = objectives.map(o => o.id === obj.id ? { ...o, status: next } : o);
@@ -315,26 +329,27 @@
 
 <!-- Header -->
 <header class="sticky top-0 z-10 backdrop-blur-sm"
-        style="background: color-mix(in srgb, var(--sempa-bg-main) 95%, transparent);
-               border-bottom: 1px solid var(--sempa-border);
+        style="background: color-mix(in srgb, var(--sempa-bg-main) 92%, transparent);
                padding-top: env(safe-area-inset-top, 0px);">
-  <div class="flex items-center justify-between gap-3 px-6 py-3">
-    <div class="flex min-w-0 items-center gap-2">
+  <div class="flex items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+    <div class="flex min-w-0 items-center gap-1.5 sm:gap-2">
       <button onclick={() => navigate(-1)} aria-label="Previous week"
-              class="rounded-lg p-1.5 transition-colors"
-              style="color: var(--sempa-text-dim);">
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              class="wk-nav grid shrink-0 place-items-center rounded-full transition-colors"
+              style="color: var(--sempa-text-soft);">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.25" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
         </svg>
       </button>
       <div class="min-w-0">
-        <p class="truncate text-sm font-semibold" style="color: var(--sempa-text);">{formatWeekRange(weekStartDate)}</p>
-        <p class="truncate text-xs" style="color: var(--sempa-text-dim);">{completedObjectives}/{totalObjectives} objectives complete</p>
+        <p class="truncate type-date" style="color: var(--sempa-text); {mobile.value ? 'font-size: 18px;' : ''}">
+          {mobile.value ? shortRange : formatWeekRange(weekStartDate)}
+        </p>
+        <p class="truncate type-meta" style="color: var(--sempa-text-soft);">{completedObjectives}/{totalObjectives} objectives complete</p>
       </div>
       <button onclick={() => navigate(1)} aria-label="Next week"
-              class="rounded-lg p-1.5 transition-colors"
-              style="color: var(--sempa-text-dim);">
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              class="wk-nav grid shrink-0 place-items-center rounded-full transition-colors"
+              style="color: var(--sempa-text-soft);">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.25" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
         </svg>
       </button>
@@ -342,45 +357,11 @@
 
     <div class="flex shrink-0 items-center gap-2">
       {#if mobile.value}
-        <!-- Mobile: icon-only actions -->
-        <button onclick={copyMarkdown}
-                title="Copy as markdown"
-                class="flex items-center justify-center rounded-lg transition-colors"
-                style="width:34px; height:34px; border: 1px solid var(--sempa-border);
-                       color: {copied ? 'var(--sempa-success)' : 'var(--sempa-text-soft)'}; background: transparent;">
-          {#if copied}
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-            </svg>
-          {:else}
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <rect x="9" y="9" width="13" height="13" rx="2"/>
-              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-            </svg>
-          {/if}
-        </button>
-        <a href="/week/{weekStartDate}/review"
-           title={reviewDone ? 'Reviewed — edit' : 'Review week'}
-           class="flex items-center justify-center rounded-lg transition-colors"
-           style="width:34px; height:34px; border: 1px solid {reviewDone ? 'var(--sempa-accent)' : 'var(--sempa-border)'};
-                  color: {reviewDone ? 'var(--sempa-accent)' : 'var(--sempa-text-soft)'};
-                  background: {reviewDone ? 'var(--sempa-accent-bg)' : 'transparent'};">
-          {#if reviewDone}
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-            </svg>
-          {:else}
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2"/>
-            </svg>
-          {/if}
-        </a>
+        <!-- Mobile: the primary action stays in the header; copy + review sit
+             in the action row at the top of the page so the week title has room. -->
         <a href="/week/{weekStartDate}/plan"
-           class="flex items-center gap-1 shadow-sm"
-           style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
-                  padding: 7px 12px; font-size: 13px; font-weight: 500; border: none; cursor: pointer;"
-           onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
-           onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>
+           class="btn-primary"
+           style="height: 44px; padding: 0 18px; font-size: 14px; gap: 6px;">
           <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
           </svg>
@@ -389,11 +370,10 @@
       {:else}
         <!-- Desktop: text buttons -->
         <button onclick={copyMarkdown}
-                class="flex items-center gap-1.5 font-medium transition-colors"
-                style="border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);
-                       background: transparent; border-radius: 12px; padding: 7px 14px; font-size: 12px;">
+                class="btn-surface"
+                style="height: 38px; padding: 0 16px; font-size: 13px; color: var(--sempa-text-soft);">
           {#if copied}
-            <svg class="h-3.5 w-3.5 text-green-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <svg class="h-3.5 w-3.5" style="color: var(--sempa-success);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
             </svg>
             Copied!
@@ -407,10 +387,8 @@
         </button>
 
         <a href="/week/{weekStartDate}/review"
-           class="flex items-center gap-1.5 font-medium transition-colors"
-           style="border: 1px solid {reviewDone ? 'var(--sempa-accent)' : 'var(--sempa-border)'};
-                  color: {reviewDone ? 'var(--sempa-accent)' : 'var(--sempa-text-soft)'};
-                  background: {reviewDone ? 'var(--sempa-accent-bg)' : 'transparent'}; border-radius: 12px; padding: 7px 14px; font-size: 12px;">
+           class={reviewDone ? 'btn-soft' : 'btn-surface'}
+           style="height: 38px; padding: 0 16px; font-size: 13px; {reviewDone ? '' : 'color: var(--sempa-text-soft);'}">
           {#if reviewDone}
             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
@@ -425,12 +403,9 @@
         </a>
 
       <a href="/week/{weekStartDate}/plan"
-         class="flex items-center gap-1.5 shadow-sm"
-         style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg); border-radius: 999px;
-                padding: 8px 20px; font-size: 13px; font-weight: 500; border: none; cursor: pointer;"
-         onmouseenter={(e) => (e.currentTarget as HTMLElement).style.opacity = '0.88'}
-         onmouseleave={(e) => (e.currentTarget as HTMLElement).style.opacity = '1'}>
-        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+         class="btn-primary"
+         style="height: 38px; padding: 0 20px; font-size: 13px; gap: 6px;">
+        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
         </svg>
         Plan week
@@ -441,28 +416,63 @@
 </header>
 
 <!-- Body -->
-<main class="mx-auto max-w-2xl px-6 py-6 animate-fade-in"
+<main class="mx-auto max-w-2xl px-4 pb-28 pt-3 sm:px-6 sm:pb-10 sm:pt-4 animate-page-in"
       use:swipeNavigate={{ onPrev: () => navigate(-1), onNext: () => navigate(1) }}>
-  <!-- Tag filter (in-place) -->
-  {#if tagStore.definitions.length}
+  <!-- Tag filter (in-place) + mobile copy/review actions -->
+  {#if tagStore.definitions.length || mobile.value}
     <div class="mb-4 flex flex-wrap items-center gap-3">
-      <button onclick={() => showFilter = !showFilter}
-              class="inline-flex items-center gap-1.5 rounded-full transition-colors"
-              style="font-size: 12px; padding: 4px 10px;
-                     {filterTags.length
-                       ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent);'
-                       : 'color: var(--sempa-text-dim); box-shadow: inset 0 0 0 1px var(--sempa-border);'}">
-        <SlidersHorizontal size={13} />
-        {filterTags.length ? `Filtered · ${filterTags.length}` : 'Filter by tag'}
-      </button>
-      {#if showFilter}
-        <TagFilterBar bind:selected={filterTags} bind:match={filterMatch} />
+      {#if tagStore.definitions.length}
+        <button onclick={() => showFilter = !showFilter}
+                class="inline-flex items-center gap-1.5 rounded-full transition-colors {filterTags.length ? 'btn-soft' : 'btn-surface'}"
+                style="height: {mobile.value ? 40 : 32}px; padding: 0 {mobile.value ? 14 : 12}px; font-size: 12.5px;
+                       {filterTags.length ? '' : 'color: var(--sempa-text-soft);'}">
+          <SlidersHorizontal size={13} />
+          {filterTags.length ? `Filtered · ${filterTags.length}` : 'Filter by tag'}
+        </button>
+      {/if}
+      {#if mobile.value}
+        <div class="ml-auto flex items-center gap-2">
+          <button onclick={copyMarkdown}
+                  title="Copy as markdown" aria-label="Copy as markdown"
+                  class="btn-icon"
+                  style="width:44px; height:44px; {copied ? 'color: var(--sempa-success);' : ''}">
+            {#if copied}
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+              </svg>
+            {:else}
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+              </svg>
+            {/if}
+          </button>
+          <a href="/week/{weekStartDate}/review"
+             title={reviewDone ? 'Reviewed — edit' : 'Review week'}
+             class={reviewDone ? 'btn-soft' : 'btn-surface'}
+             style="height: 44px; padding: 0 16px; font-size: 13px; {reviewDone ? '' : 'color: var(--sempa-text-soft);'}">
+            {#if reviewDone}
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+              </svg>
+              Reviewed
+            {:else}
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2"/>
+              </svg>
+              Review
+            {/if}
+          </a>
+        </div>
+      {/if}
+      {#if showFilter && tagStore.definitions.length}
+        <div class="w-full sm:w-auto"><TagFilterBar bind:selected={filterTags} bind:match={filterMatch} /></div>
       {/if}
     </div>
   {/if}
 
   {#if loading}
-    <div class="flex h-48 items-center justify-center text-sm text-gray-400">Loading…</div>
+    <div class="flex h-48 items-center justify-center text-sm" style="color: var(--sempa-text-dim);">Loading…</div>
 
   {:else if error}
     <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400">
@@ -470,30 +480,66 @@
     </div>
 
   {:else}
-    <!-- Overall progress -->
+    <!-- Week summary: progress ring + tallies, with the carry-forward action -->
     {#if totalObjectives > 0}
-      <div class="mb-6">
-        <div class="mb-1.5 flex justify-between text-xs" style="color: var(--sempa-text-dim);">
-          <span>Week progress</span>
-          <span>{completedObjectives}/{totalObjectives} objectives · {totalObjectives ? Math.round((completedObjectives/totalObjectives)*100) : 0}%</span>
+      <section class="surface mb-5" style="border-radius: 22px; padding: 18px 20px;">
+        <div class="flex items-center gap-4">
+          <div class="relative shrink-0" style="width: 64px; height: 64px;"
+               role="img" aria-label="{weekPct}% of objectives complete">
+            <svg width="64" height="64" viewBox="0 0 64 64" style="transform: rotate(-90deg);">
+              <circle cx="32" cy="32" r={RING_R} fill="none" stroke="var(--sempa-track)" stroke-width="6" />
+              <circle cx="32" cy="32" r={RING_R} fill="none"
+                      stroke={weekPct === 100 ? 'var(--sempa-success)' : 'var(--sempa-accent)'}
+                      stroke-width="6" stroke-linecap="round"
+                      stroke-dasharray={RING_C}
+                      stroke-dashoffset={RING_C * (1 - weekPct / 100)}
+                      style="transition: stroke-dashoffset 500ms ease-out; {weekPct === 0 ? 'opacity: 0;' : ''}" />
+            </svg>
+            <span class="absolute inset-0 grid place-items-center tabular-nums"
+                  style="font-size: 14px; font-weight: 800; letter-spacing: -.02em; color: var(--sempa-text);">
+              {weekPct}%
+            </span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <h2 class="type-section" style="color: var(--sempa-text);">Week progress</h2>
+            <p class="mt-0.5 type-meta" style="color: var(--sempa-text-soft);">
+              {completedObjectives} of {totalObjectives} objectives complete
+              {#if weekTasks.length}<span class="mx-1" style="color: var(--sempa-text-dim);" aria-hidden="true">·</span>{weekTasksDone} of {weekTasks.length} tasks done{/if}
+            </p>
+          </div>
         </div>
-        <div class="h-2 overflow-hidden rounded-full" style="background: var(--sempa-border);">
-          <div style="width:{totalObjectives ? Math.round((completedObjectives/totalObjectives)*100) : 0}%; height:100%; border-radius:9999px;
-                      background: var(--sempa-accent); transition: width 500ms ease-out;"></div>
-        </div>
-      </div>
+
+        <!-- Carry unfinished objectives forward to next week -->
+        {#if unfinishedCount > 0}
+          <div class="mt-4 pt-4" style="border-top: 1px solid var(--sempa-border);">
+            <button onclick={replanAllUnfinished} disabled={replanning}
+                    class="btn-soft w-full disabled:opacity-50"
+                    style="min-height: 40px; padding: 0 16px; font-size: 13px;">
+              <CalendarArrowDown size={15} />
+              {replanning ? 'Moving…' : `Move ${unfinishedCount} unfinished ${unfinishedCount === 1 ? 'objective' : 'objectives'} to next week`}
+            </button>
+          </div>
+        {/if}
+      </section>
+    {:else if unfinishedCount > 0}
+      <button onclick={replanAllUnfinished} disabled={replanning}
+              class="btn-soft mb-4 w-full disabled:opacity-50"
+              style="min-height: 40px; padding: 0 16px; font-size: 13px;">
+        <CalendarArrowDown size={15} />
+        {replanning ? 'Moving…' : `Move ${unfinishedCount} unfinished ${unfinishedCount === 1 ? 'objective' : 'objectives'} to next week`}
+      </button>
     {/if}
 
     <!-- Contextual week-review summary -->
     {#if prefs.contextualReflections && reviewDone}
       <a href="/week/{weekStartDate}/review"
-         class="mb-6 block rounded-2xl px-5 py-4 transition-opacity active:opacity-70"
-         style="background: var(--sempa-accent-bg); border: 1px solid var(--sempa-border);">
-        <div class="mb-2 flex items-center gap-2">
-          <svg class="h-3.5 w-3.5 shrink-0" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+         class="mb-5 block px-5 py-4 transition-opacity active:opacity-70"
+         style="background: var(--sempa-accent-bg); border-radius: 20px;">
+        <div class="mb-1.5 flex items-center gap-2">
+          <svg class="h-3.5 w-3.5 shrink-0" style="color: var(--sempa-accent-ink);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
           </svg>
-          <p class="text-[12px] font-semibold" style="color: var(--sempa-accent);">Week reviewed</p>
+          <p class="type-label" style="color: var(--sempa-accent-ink);">Week reviewed</p>
         </div>
         {#if reviewWins.length}
           <p class="text-sm leading-relaxed" style="color: var(--sempa-text);">
@@ -508,19 +554,10 @@
       </a>
     {/if}
 
-    <!-- Carry unfinished objectives forward to next week -->
-    {#if unfinishedCount > 0}
-      <button onclick={replanAllUnfinished} disabled={replanning}
-              class="mb-4 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-medium transition-colors disabled:opacity-50"
-              style="border: 1px dashed var(--sempa-border); color: var(--sempa-text-soft); background: transparent;"
-              onmouseenter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--sempa-accent-bg)'; (e.currentTarget as HTMLElement).style.color = 'var(--sempa-accent)'; }}
-              onmouseleave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text-soft)'; }}>
-        <CalendarArrowDown size={14} />
-        {replanning ? 'Moving…' : `Move ${unfinishedCount} unfinished ${unfinishedCount === 1 ? 'objective' : 'objectives'} to next week`}
-      </button>
-    {/if}
-
     <!-- Objectives list -->
+    {#if objectives.length > 0}
+      <h2 class="mb-2.5 px-1 type-label" style="color: var(--sempa-text-soft);">Objectives</h2>
+    {/if}
     <div class="flex flex-col gap-3">
       {#each objectives as obj (obj.id)}
         {@const linked  = objectiveTasks(obj.id)}
@@ -529,25 +566,24 @@
         {@const isExp   = expandedId === obj.id}
         {@const isDone  = obj.status === 'completed'}
 
-        <div class="transition-shadow hover:shadow-md {dragObjId === obj.id ? 'opacity-50' : ''}"
+        <div class="obj-card {dragObjId === obj.id ? 'opacity-50' : ''}"
              role="listitem"
              oncontextmenu={(e) => onObjContextMenu(e, obj)}
              ondragover={(e) => { e.preventDefault(); if (dragObjId && dragObjId !== obj.id) dragOverObjId = obj.id; }}
              ondragleave={() => { if (dragOverObjId === obj.id) dragOverObjId = null; }}
              ondrop={(e) => { e.preventDefault(); void onObjDrop(obj.id); }}
-             style="border-radius:18px; background: var(--sempa-bg-panel);
-                    border: 1px solid {dragOverObjId === obj.id ? 'var(--sempa-accent)' : 'var(--sempa-border)'};
-                    box-shadow: {dragOverObjId === obj.id ? '0 0 0 1px var(--sempa-accent)' : 'none'};">
+             style="border-radius: 20px; background: var(--sempa-bg-panel);
+                    box-shadow: {dragOverObjId === obj.id ? '0 0 0 2px var(--sempa-accent), var(--sempa-shadow-1)' : 'var(--sempa-shadow-1)'};">
 
           <!-- Objective header row -->
-          <div class="flex items-start gap-2 p-4">
+          <div class="flex items-start gap-2.5 py-4 pl-2.5 pr-3 sm:pl-3">
             <!-- Drag handle (reorder) — only the handle is draggable so the card's
                  buttons and the expanded add-task input stay fully interactive. -->
             <div role="button" tabindex="-1" aria-label="Drag to reorder" title="Drag to reorder"
                  draggable="true"
                  ondragstart={(e) => onObjDragStart(e, obj.id)}
                  ondragend={onObjDragEnd}
-                 class="mt-0.5 shrink-0 cursor-grab touch-none active:cursor-grabbing"
+                 class="obj-grip mt-0.5 shrink-0 cursor-grab touch-none active:cursor-grabbing"
                  style="color: var(--sempa-text-dim);"
                  onmouseenter={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text)'}
                  onmouseleave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text-dim)'}>
@@ -556,62 +592,60 @@
 
             <!-- Completion circle -->
             <button onclick={() => toggleStatus(obj)} title="{isDone ? 'Mark active' : 'Mark complete'}"
-                    class="mt-0.5 h-5 w-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-all
-                           {isDone ? 'border-green-500 bg-green-500' : 'border-gray-300'}"
-                    onmouseenter={(e) => { if (!isDone) (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-success)'; }}
-                    onmouseleave={(e) => { if (!isDone) (e.currentTarget as HTMLElement).style.borderColor = ''; }}>
+                    class="check-ring" data-state={isDone ? 'done' : undefined}>
               {#if isDone}
-                <svg class="h-3 w-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                 </svg>
               {/if}
             </button>
 
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-semibold {isDone ? 'line-through' : ''}"
-                 style="color: {isDone ? 'var(--sempa-text-dim)' : 'var(--sempa-text)'}">
-                {obj.title}{#if household.multiUser && obj.shared}<Users2 class="ml-1.5 inline h-3.5 w-3.5 align-[-2px]" style="color: var(--sempa-accent);" aria-label="Shared with household" />{/if}
+              <p class="{isDone ? 'line-through' : ''}"
+                 style="font-size: 15px; font-weight: 700; letter-spacing: -.01em; line-height: 1.35;
+                        color: {isDone ? 'var(--sempa-text-dim)' : 'var(--sempa-text)'}">
+                {obj.title}{#if household.multiUser && obj.shared}<Users2 class="ml-1.5 inline h-3.5 w-3.5 align-[-2px]" style="color: var(--sempa-accent-ink);" aria-label="Shared with household" />{/if}
               </p>
 
               <!-- Task progress bar + label -->
               {#if linked.length > 0}
-                <div class="mt-2 flex items-center gap-2">
-                  <div class="h-1.5 flex-1 max-w-[160px] overflow-hidden rounded-full" style="background: var(--sempa-border);">
-                    <div style="width:{p}%; height:100%; border-radius:3px;
-                                background: {isDone ? 'var(--sempa-success)' : 'var(--sempa-accent)'}; transition: width 500ms ease-out;"></div>
+                <div class="mt-2.5 flex items-center gap-2.5">
+                  <div class="day-bar-track flex-1" style="max-width: 220px;">
+                    <div class="day-bar-fill"
+                         style="width:{p}%; background: {isDone || p === 100 ? 'var(--sempa-success)' : 'var(--sempa-accent)'};"></div>
                   </div>
-                  <span class="text-xs font-medium"
-                        style="color: {isDone || p === 100 ? 'var(--sempa-success)' : 'var(--sempa-text-dim)'}">
+                  <span class="type-meta tabular-nums"
+                        style="color: {isDone || p === 100 ? 'var(--sempa-success)' : 'var(--sempa-text-soft)'}">
                     {p}% · {done.length}/{linked.length} tasks
                   </span>
                 </div>
               {:else}
-                <p class="mt-1 text-xs" style="color: var(--sempa-text-dim);">No tasks linked yet</p>
+                <p class="mt-1 type-meta" style="color: var(--sempa-text-dim);">No tasks linked yet</p>
               {/if}
             </div>
 
             <!-- Actions -->
-            <div class="flex shrink-0 items-center gap-0.5">
+            <div class="-mr-1 -mt-1.5 flex shrink-0 items-center">
               {#if !isDone}
                 <button onclick={() => replanObjective(obj)} aria-label="Move to next week"
                         title="Move to next week"
-                        class="rounded-lg p-1.5 transition-colors"
+                        class="icon-ghost"
                         style="color: var(--sempa-text-dim);"
-                        onmouseenter={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-accent)'}
+                        onmouseenter={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-accent-ink)'}
                         onmouseleave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text-dim)'}>
-                  <CalendarArrowDown size={15} />
+                  <CalendarArrowDown size={16} />
                 </button>
               {/if}
               <button onclick={() => expandedId = isExp ? null : obj.id}
-                      class="rounded-lg p-1.5 transition-colors"
-                      style="color: var(--sempa-text-dim);"
+                      class="icon-ghost"
+                      style="color: {isExp ? 'var(--sempa-text)' : 'var(--sempa-text-dim)'};"
                       aria-label="{isExp ? 'Collapse' : 'Expand'}">
                 <svg class="h-4 w-4 transition-transform {isExp ? 'rotate-180' : ''}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
                 </svg>
               </button>
               <button onclick={() => deleteObjective(obj.id)} aria-label="Delete objective"
-                      class="rounded-lg p-1.5 transition-colors"
+                      class="icon-ghost"
                       style="color: var(--sempa-text-dim);"
                       onmouseenter={(e) => (e.currentTarget as HTMLElement).style.color = '#f87171'}
                       onmouseleave={(e) => (e.currentTarget as HTMLElement).style.color = 'var(--sempa-text-dim)'}>
@@ -624,16 +658,14 @@
 
           <!-- Expanded: task list + inline add -->
           {#if isExp}
-            <div class="px-4 py-3 space-y-1" style="border-top: 1px solid var(--sempa-border);">
+            <div class="px-4 pb-4 pt-2 sm:pl-[3.25rem]" style="border-top: 1px solid var(--sempa-border);">
               {#each linked as t (t.id)}
-                <div class="group flex items-center gap-2.5 rounded-lg px-1 py-1.5">
+                <div class="group flex items-center gap-2.5 py-2" style="border-bottom: 1px solid var(--sempa-border);">
                   <button onclick={() => toggleTask(t)}
-                          class="h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center transition-all
-                                 {t.status === 'done' ? 'border-green-500 bg-green-500' : 'border-gray-300'}"
-                          onmouseenter={(e) => { if (t.status !== 'done') (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-success)'; }}
-                          onmouseleave={(e) => { if (t.status !== 'done') (e.currentTarget as HTMLElement).style.borderColor = ''; }}>
+                          class="check-ring" data-state={t.status === 'done' ? 'done' : undefined}
+                          style="width: 20px; height: 20px;">
                     {#if t.status === 'done'}
-                      <svg class="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                      <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="3.5" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                       </svg>
                     {/if}
@@ -643,21 +675,20 @@
                     {t.title}
                   </span>
                   {#if linked.length > 0}
-                    <span class="text-[10.5px] shrink-0" style="color: var(--sempa-text-dim);">
+                    <span class="shrink-0 tabular-nums" style="font-size: 11.5px; color: var(--sempa-text-dim);">
                       {Math.round(100 / linked.length)}%
                     </span>
                   {/if}
                   {#if t.planned_date}
-                    <span class="text-[10.5px] shrink-0" style="color: var(--sempa-text-dim);">{t.planned_date.slice(5)}</span>
+                    <span class="chip chip-time shrink-0">{t.planned_date.slice(5)}</span>
                   {/if}
                 </div>
               {/each}
 
               <!-- Quick add task -->
-              <div class="mt-1 space-y-1.5">
-                <div class="flex items-center gap-2 rounded-lg border border-dashed px-2 py-1.5
-                            focus-within:border-[var(--a500)]"
-                     style="border-color: var(--sempa-border);">
+              <div class="mt-3 space-y-2">
+                <div class="add-field flex items-center gap-2 px-3"
+                     style="min-height: 40px;">
                   <svg class="h-3.5 w-3.5 shrink-0" style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" d="M12 4v16m8-8H4"/>
                   </svg>
@@ -665,11 +696,11 @@
                          onkeydown={(e) => { if (e.key === 'Enter') addTask(obj.id); }}
                          type="text"
                          placeholder="Add a task… (Enter to save)"
-                         class="flex-1 bg-transparent text-xs outline-none"
+                         class="flex-1 bg-transparent text-sm outline-none"
                          style="color: var(--sempa-text);" />
                 </div>
                 {#if taskDrafts[obj.id]?.trim()}
-                  <div class="flex items-center gap-2 pl-1">
+                  <div class="flex items-center gap-2">
                     <div class="min-w-[150px]">
                       <SempaSelect
                         value={taskDays[obj.id] ?? offsetDate(weekStartDate, 0)}
@@ -677,8 +708,8 @@
                         options={Array.from({length:7},(_,i)=>{ const d=offsetDate(weekStartDate,i); return { value: d, label: new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) }; })} />
                     </div>
                     <button onclick={() => addTask(obj.id)} disabled={addingTask[obj.id]}
-                            class="rounded-full px-3 py-1.5 text-xs font-medium disabled:opacity-40 transition-colors"
-                            style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);">
+                            class="btn-primary disabled:opacity-40"
+                            style="height: 36px; padding: 0 16px; font-size: 13px;">
                       Add
                     </button>
                   </div>
@@ -686,7 +717,7 @@
               </div>
 
               <!-- Attachments for this objective -->
-              <div class="mt-3 pt-3" style="border-top: 1px solid var(--sempa-border);">
+              <div class="mt-4 pt-3" style="border-top: 1px solid var(--sempa-border);">
                 <AttachmentList ownerType="objective" ownerId={obj.id} />
               </div>
             </div>
@@ -696,20 +727,20 @@
 
       <!-- Empty state -->
       {#if objectives.length === 0 && !showAddForm}
-        <div class="relative overflow-hidden rounded-2xl py-20 text-center"
-             style="border: 1px solid var(--sempa-border);">
+        <div class="surface relative overflow-hidden py-20 text-center" style="border-radius: 24px;">
 
           <div class="absolute inset-0 pointer-events-none z-0">
             <SempaPattern motif="rings" class="w-full h-full" opacity={0.9} />
           </div>
 
-          <div class="relative z-10 flex flex-col items-center gap-3">
-            <p class="text-sm font-medium" style="color: var(--sempa-text-soft);">
+          <div class="relative z-10 flex flex-col items-center gap-3 px-6">
+            <p class="type-section" style="color: var(--sempa-text);">No objectives yet</p>
+            <p class="text-sm" style="color: var(--sempa-text-soft);">
               No objectives set for this week.
             </p>
             <a href="/week/{weekStartDate}/plan"
-               class="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium"
-               style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
+               class="btn-primary mt-1"
+               style="height: 40px; padding: 0 20px; font-size: 14px;">
               Start weekly planning →
             </a>
           </div>
@@ -718,27 +749,26 @@
 
       <!-- Inline add form -->
       {#if showAddForm}
-        <div style="border-radius:18px; border: 1px solid var(--sempa-accent-bg);
-                    background: var(--sempa-accent-bg); padding:16px;">
+        <div class="surface" style="border-radius: 20px; padding: 16px;">
           <input bind:this={addingInput}
                  bind:value={addingTitle}
                  onkeydown={(e) => { if (e.key === 'Enter') addObjective(); if (e.key === 'Escape') showAddForm = false; }}
                  onfocus={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-accent)'}
-                 onblur={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'var(--sempa-border)'}
+                 onblur={(e) => (e.currentTarget as HTMLElement).style.borderColor = 'transparent'}
                  type="text"
                  placeholder="What do you want to accomplish this week?"
-                 class="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
-                 style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-main);
+                 class="w-full px-3 py-2.5 text-sm outline-none"
+                 style="border: 1px solid transparent; background: var(--sempa-fill); border-radius: 12px;
                         color: var(--sempa-text);" />
-          <div class="mt-2 flex gap-2">
+          <div class="mt-3 flex gap-2">
             <button onclick={addObjective} disabled={!addingTitle.trim()}
-                    class="rounded-full px-4 py-1.5 text-xs font-medium disabled:opacity-40 transition-colors"
-                    style="background: var(--sempa-btn-bg); box-shadow: var(--sempa-shadow-accent); color: var(--sempa-btn-fg);">
+                    class="btn-primary disabled:opacity-40"
+                    style="height: 36px; padding: 0 18px; font-size: 13px;">
               Add
             </button>
             <button onclick={() => showAddForm = false}
-                    class="rounded-lg px-4 py-1.5 text-xs transition-colors"
-                    style="color: var(--sempa-text-soft);">
+                    class="icon-ghost"
+                    style="width: auto; padding: 0 14px; font-size: 13px; font-weight: 600; color: var(--sempa-text-soft);">
               Cancel
             </button>
           </div>
@@ -748,13 +778,13 @@
 
     <!-- Unscheduled tasks for this week -->
     {#if unscheduled.length > 0}
-      <div class="mt-4" style="border-radius:18px; box-shadow: var(--sempa-shadow-1); background: var(--sempa-bg-panel);">
-        <button class="flex w-full items-center justify-between px-4 py-3"
+      <div class="surface mt-5" style="border-radius: 20px;">
+        <button class="flex w-full items-center justify-between px-4 py-3.5"
+                style="min-height: 48px;"
                 onclick={() => showUnscheduled = !showUnscheduled}>
-          <span class="text-sm font-semibold" style="color: var(--sempa-text);">Unscheduled this week</span>
+          <span style="font-size: 15px; font-weight: 700; letter-spacing: -.01em; color: var(--sempa-text);">Unscheduled this week</span>
           <div class="flex items-center gap-2">
-            <span class="rounded-full px-2 py-0.5 text-xs font-medium"
-                  style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">
+            <span class="chip" style="background: var(--sempa-accent-bg); color: var(--sempa-accent-ink);">
               {unscheduled.length}
             </span>
             <svg class="h-4 w-4 transition-transform {showUnscheduled ? 'rotate-180' : ''}"
@@ -765,14 +795,15 @@
           </div>
         </button>
         {#if showUnscheduled}
-          <div class="space-y-1 px-4 pb-4 pt-1" style="border-top: 1px solid var(--sempa-border);">
-            {#each unscheduled as t (t.id)}
-              <div class="group flex items-center gap-3 rounded-lg px-1 py-2">
+          <div class="px-4 pb-3" style="border-top: 1px solid var(--sempa-border);">
+            {#each unscheduled as t, i (t.id)}
+              <div class="group flex items-center gap-3 py-2.5"
+                   style={i > 0 ? 'border-top: 1px solid var(--sempa-border);' : ''}>
                 <button onclick={() => toggleTask(t)}
-                        class="h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center transition-all
-                               {t.status === 'done' ? 'border-green-500 bg-green-500' : 'border-gray-300'}">
+                        class="check-ring" data-state={t.status === 'done' ? 'done' : undefined}
+                        style="width: 20px; height: 20px;">
                   {#if t.status === 'done'}
-                    <svg class="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                    <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="3.5" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                     </svg>
                   {/if}
@@ -782,8 +813,8 @@
                   {t.title}
                 </span>
                 <button onclick={() => scheduleToday(t)}
-                        class="opacity-0 group-hover:opacity-100 rounded-lg px-2 py-1 text-[11px] font-medium transition-all"
-                        style="background: var(--sempa-accent-bg); color: var(--sempa-accent);"
+                        class="btn-soft opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                        style="height: 28px; padding: 0 12px; font-size: 12px;"
                         title="Schedule to today">
                   Plan today
                 </button>
@@ -795,3 +826,32 @@
     {/if}
   {/if}
 </main>
+
+<style>
+  /* Header week arrows: round, quiet until hovered. */
+  .wk-nav { width: 36px; height: 36px; }
+  .wk-nav:hover { background: var(--sempa-bg-panel); box-shadow: var(--sempa-shadow-1); color: var(--sempa-text); }
+  @media (pointer: coarse) { .wk-nav { width: 40px; height: 40px; } }
+
+  /* Ghost icon button that lives ON a surface: round, fill on hover. */
+  .icon-ghost {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 999px;
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+  .icon-ghost:hover { background: var(--sempa-fill); }
+
+  .obj-card { transition: box-shadow 150ms ease, opacity 150ms ease; }
+  .obj-card .obj-grip { opacity: .55; transition: opacity 120ms ease; }
+  .obj-card:hover .obj-grip { opacity: 1; }
+  @media (hover: none) { .obj-card .obj-grip { opacity: 1; } }
+
+  /* Inline add-task field: fill on the surface, accent edge on focus. */
+  .add-field {
+    background: var(--sempa-fill);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    transition: border-color 120ms ease;
+  }
+  .add-field:focus-within { border-color: var(--sempa-accent); }
+</style>
