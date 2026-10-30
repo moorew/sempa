@@ -411,7 +411,8 @@
 </div>
 
 {#if project}
-  <TaskPanel open={panelOpen} task={panelTask} defaultStatus="backlog" defaultDate={todayStr}
+  <!-- defaultDate="": an unscheduled project task must stay unscheduled when edited. -->
+  <TaskPanel open={panelOpen} task={panelTask} defaultStatus="backlog" defaultDate=""
              defaultProjectId={project.id} onSave={onPanelSave} onClose={() => (panelOpen = false)} />
 {/if}
 
