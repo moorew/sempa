@@ -25,6 +25,7 @@ type attachmentHandler struct {
 	blobs      *blob.Store
 	tasks      *db.TaskStore
 	objectives *db.ObjectiveStore
+	projects   *db.ProjectStore
 	hub        *EventHub
 }
 
@@ -37,6 +38,12 @@ func (h *attachmentHandler) ownerExists(r *http.Request, ownerType, entityID str
 		return err == nil
 	case "objective":
 		_, err := h.objectives.Get(r.Context(), entityID, ownerID(r))
+		return err == nil
+	case "project":
+		if h.projects == nil {
+			return false
+		}
+		_, err := h.projects.Get(r.Context(), entityID, ownerID(r))
 		return err == nil
 	}
 	return false

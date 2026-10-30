@@ -1524,6 +1524,23 @@
         </svg>
       </a>
 
+      <a href="/settings/projects"
+         class="flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
+         style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style="background: var(--sempa-accent-bg);">
+          <svg class="h-4 w-4" style="color: var(--sempa-accent);" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zM8 11v4M12 11v2M16 11v5"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <p class="text-sm font-semibold" style="color: var(--sempa-text);">Project statuses</p>
+          <p class="text-xs" style="color: var(--sempa-text-soft);">Name, colour and order the stages your projects move through</p>
+        </div>
+        <svg class="h-4 w-4" style="color: var(--sempa-text-dim);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" d="m9 18 6-6-6-6"/>
+        </svg>
+      </a>
+
       <a href="/settings/recurring"
          class="flex items-center gap-3 rounded-xl border px-5 py-4 transition-colors"
          style="border-color: var(--sempa-border); background: var(--sempa-bg-panel);">

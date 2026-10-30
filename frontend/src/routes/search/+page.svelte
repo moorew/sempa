@@ -5,6 +5,7 @@
   import { today } from '$lib/utils';
   import type { SearchResults, Task } from '$lib/types';
   import { tagStore } from '$lib/stores/tags.svelte';
+  import { projectStore } from '$lib/stores/projects.svelte';
   import { mobile } from '$lib/stores/mobile.svelte';
   import TagFilterBar from '$lib/components/TagFilterBar.svelte';
   import TaskPanel from '$lib/components/TaskPanel.svelte';
@@ -28,6 +29,7 @@
 
   onMount(() => {
     tagStore.load();
+    projectStore.load();
     // Seed from ?q= so the command palette (and shared links) can prefill a query.
     const seed = new URLSearchParams(location.search).get('q');
     if (seed) q = seed;
@@ -62,7 +64,16 @@
     }
   }
 
-  const total = $derived(results.tasks.length + results.objectives.length + results.journal.length);
+  // Projects are matched client-side from the (local-first) project store, so
+  // they're searchable offline too. Like objectives, they have no tags.
+  const projectHits = $derived.by(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle || tags.length > 0) return [];
+    return projectStore.projects.filter((p) =>
+      p.title.toLowerCase().includes(needle) || (p.description ?? '').toLowerCase().includes(needle));
+  });
+
+  const total = $derived(results.tasks.length + results.objectives.length + results.journal.length + projectHits.length);
 
   function openTask(t: Task) { panelTask = t; panelOpen = true; }
   function onPanelSave() { panelOpen = false; runSearch(); }
@@ -105,7 +116,7 @@
          style="border: 1px solid var(--sempa-border); background: var(--sempa-bg-panel); height: 40px;">
       <Search size={16} style="color: var(--sempa-text-dim);" />
       <input bind:this={searchInput} bind:value={q}
-             placeholder="Search tasks, objectives, journal…"
+             placeholder="Search tasks, projects, objectives, journal…"
              autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
              class="flex-1 bg-transparent outline-none"
              style="font-size: 14px; color: var(--sempa-text);" />
@@ -181,6 +192,27 @@
                 <span class="shrink-0" style="font-size: 11px; color: var(--sempa-text-dim);">
                   {task.planned_date ? fmtDate(task.planned_date) : 'Backlog'}
                 </span>
+              </button>
+            {/each}
+          </div>
+        </section>
+      {/if}
+
+      <!-- Projects -->
+      {#if projectHits.length}
+        <section>
+          <div class="mb-2 flex items-center gap-2 px-1">
+            <span class="type-label" style="color: var(--sempa-accent);">Projects</span>
+            <span class="type-label" style="color: var(--sempa-text-dim);">{projectHits.length}</span>
+          </div>
+          <div style="border: 1px solid var(--sempa-border); border-radius: 12px; background: var(--sempa-bg-panel); overflow: hidden;">
+            {#each projectHits as p, i (p.id)}
+              <button class="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors"
+                      style="{i > 0 ? 'border-top: 1px solid var(--sempa-border);' : ''}"
+                      onclick={() => goto(`/projects/${p.id}`)}>
+                <span class="h-2.5 w-2.5 shrink-0 rounded-sm" style="background: {p.color};"></span>
+                <span class="min-w-0 flex-1 truncate" style="font-size: 13.5px; color: var(--sempa-text);">{p.title || 'Untitled project'}</span>
+                <span class="shrink-0" style="font-size: 11px; color: var(--sempa-text-dim);">{projectStore.status(p.status_id)?.name ?? ''}</span>
               </button>
             {/each}
           </div>

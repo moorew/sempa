@@ -90,6 +90,7 @@ const COLUMN_RECONCILE: Record<string, Array<[string, string]>> = {
         ['roughly_at', 'TEXT'],
         ['remind_at', 'TEXT'],
         ['shared', 'INTEGER NOT NULL DEFAULT 0'],
+        ['project_id', 'TEXT'],
     ],
     daily_plans: [
         ['intention', 'TEXT'],
@@ -102,9 +103,11 @@ const COLUMN_RECONCILE: Record<string, Array<[string, string]>> = {
     // throws "no such column: shared".
     weekly_objectives: [
         ['shared', 'INTEGER NOT NULL DEFAULT 0'],
+        ['project_id', 'TEXT'],
     ],
     lists: [
         ['shared', 'INTEGER NOT NULL DEFAULT 0'],
+        ['project_id', 'TEXT'],
     ],
     list_items: [
         ['shared', 'INTEGER NOT NULL DEFAULT 0'],

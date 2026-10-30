@@ -138,6 +138,9 @@ CI overrides — are in the private `sempa-ops` guide.)
   `restPath`/custom replay for non-uniform REST), and add the namespace to
   `LOCAL_CORE` in `lib/api.ts`. Make create accept a client id (`clientOrNewID`)
   so offline-created rows keep their id on sync. Lists are the worked example.
+  Projects (`projects` + `project_statuses`) are the newest, fuller example —
+  including a synced *global* table (statuses, like tags) and a link column
+  (`project_id`) on existing tables.
 - **Backend background work** goes through the `poller` pattern (startup +
   interval, idempotent), not ad-hoc goroutines.
 - **Notification channels (Android)** are immutable once created — bump the
@@ -231,6 +234,16 @@ the same area.
   font CDN.
 
 ### Backend
+- **Never return a nil slice as JSON.** `respond()` now encodes a nil slice as
+  `[]`, because several stores return nil for "no rows" and the client calls
+  `.length`/`.filter` on the result. A `null` from `GET /tasks?parent_id=`
+  crashed the task panel on web, and SvelteKit 3 turns that into a full 500
+  page (the 1.25.7 regression). Keep going through `respond()`.
+- **Link columns on local-first tables carry no FK on-device.** A shared task
+  can point at a project that user can't see; an FK there would fail the
+  upsert and stall sync forever. The server keeps the FK, but a delete must
+  clear the links *with an updated_at bump* (ON DELETE SET NULL doesn't touch
+  updated_at, so offline clients would never learn of the unlink).
 - **Server "today" must use the home timezone, never the container clock.** The
   container runs UTC, so a bare `time.Now()` rolls the date over at the wrong
   local hour — midnight UTC is 8pm US-Eastern, which is how a pristine "today"
@@ -251,6 +264,10 @@ the same area.
 - **Sessions must persist.** They're DB-backed (table `sessions`); an in-memory
   store logged everyone out on every redeploy (symptom: tasks show but all tags
   render **grey**, because `/api/v1/tags` 401s and the color falls back).
+- **Self-host builds use `.dockerignore`.** Without it, `COPY frontend/ ./`
+  copied the host's stale `frontend/node_modules` over `npm ci`, so `vite build`
+  failed only on the long-lived prod checkout (the "unexplained divergence"
+  behind the old vite pin). Don't delete it.
 - **Inspecting the live DB:** it's WAL mode. Copy `sempa.db` **with** its `-wal`
   and `-shm` files (or query in-process) or you'll read stale state.
 - **Fastmail:** calendar reads go over **CalDAV** (app-password Basic auth), not

@@ -28,6 +28,7 @@ func (h *listHandler) list(w http.ResponseWriter, r *http.Request) {
 	lists, err := h.store.List(r.Context(),
 		r.URL.Query().Get("archived") == "1",
 		r.URL.Query().Get("task_id"),
+		r.URL.Query().Get("project_id"),
 		ownerID(r))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to load lists")
@@ -47,10 +48,11 @@ func (h *listHandler) get(w http.ResponseWriter, r *http.Request) {
 
 func (h *listHandler) create(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		ID     string  `json:"id"`
-		Name   string  `json:"name"`
-		TaskID *string `json:"task_id"`
-		Shared bool    `json:"shared"`
+		ID        string  `json:"id"`
+		Name      string  `json:"name"`
+		TaskID    *string `json:"task_id"`
+		ProjectID *string `json:"project_id"`
+		Shared    bool    `json:"shared"`
 	}
 	if err := decode(r, &req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
@@ -58,7 +60,7 @@ func (h *listHandler) create(w http.ResponseWriter, r *http.Request) {
 	}
 	l, err := h.store.Create(r.Context(), db.CreateListParams{
 		ID: clientOrNewID(req.ID), Name: req.Name, TaskID: req.TaskID,
-		OwnerID: ownerID(r), Shared: req.Shared,
+		ProjectID: emptyToNil(req.ProjectID), OwnerID: ownerID(r), Shared: req.Shared,
 	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create list")
@@ -84,6 +86,7 @@ func (h *listHandler) update(w http.ResponseWriter, r *http.Request) {
 		Archived          *bool    `json:"archived"`
 		ArchiveOnComplete *bool    `json:"archive_on_complete"`
 		Shared            *bool    `json:"shared"`
+		ProjectID         *string  `json:"project_id"` // "" unlinks; an id links; omitted = unchanged
 	}
 	if err := decode(r, &req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
@@ -94,6 +97,9 @@ func (h *listHandler) update(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Name != nil {
 		l.Name = *req.Name
+	}
+	if req.ProjectID != nil {
+		l.ProjectID = emptyToNil(req.ProjectID)
 	}
 	if req.TaskID != nil {
 		if *req.TaskID == "" {

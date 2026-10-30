@@ -17,6 +17,7 @@ type List struct {
 	UpdatedAt         string  `json:"updated_at"`
 	OwnerID           string  `json:"owner_id"`
 	Shared            bool    `json:"shared"`
+	ProjectID         *string `json:"project_id"` // migration 028
 }
 
 // ListItem is one row in a list. `Done` greys/strikes it in place; `Category` is
@@ -35,20 +36,21 @@ type ListItem struct {
 	Shared    bool    `json:"shared"`
 }
 
-const listCols = `id, name, task_id, position, archived_at, archive_on_complete, created_at, updated_at, owner_id, shared`
+const listCols = `id, name, task_id, position, archived_at, archive_on_complete, created_at, updated_at, owner_id, shared, project_id`
 const listItemCols = `id, list_id, text, position, done, category, created_at, updated_at, owner_id, shared`
 
 func scanList(s scanner) (List, error) {
 	var l List
-	var taskID, archivedAt sql.NullString
+	var taskID, archivedAt, projectID sql.NullString
 	var archiveOnComplete, shared int64
-	if err := s.Scan(&l.ID, &l.Name, &taskID, &l.Position, &archivedAt, &archiveOnComplete, &l.CreatedAt, &l.UpdatedAt, &l.OwnerID, &shared); err != nil {
+	if err := s.Scan(&l.ID, &l.Name, &taskID, &l.Position, &archivedAt, &archiveOnComplete, &l.CreatedAt, &l.UpdatedAt, &l.OwnerID, &shared, &projectID); err != nil {
 		return List{}, err
 	}
 	l.TaskID = nullStr(taskID)
 	l.ArchivedAt = nullStr(archivedAt)
 	l.ArchiveOnComplete = archiveOnComplete == 1
 	l.Shared = shared == 1
+	l.ProjectID = nullStr(projectID)
 	return l, nil
 }
 
@@ -71,7 +73,7 @@ func NewListStore(db *sql.DB) *ListStore { return &ListStore{db: db} }
 
 // ── Lists ────────────────────────────────────────────────────────────────────
 
-func (s *ListStore) List(ctx context.Context, includeArchived bool, taskID, ownerID string) ([]List, error) {
+func (s *ListStore) List(ctx context.Context, includeArchived bool, taskID, projectID, ownerID string) ([]List, error) {
 	q := `SELECT ` + listCols + ` FROM lists`
 	var where []string
 	var args []any
@@ -81,6 +83,10 @@ func (s *ListStore) List(ctx context.Context, includeArchived bool, taskID, owne
 	if taskID != "" {
 		where = append(where, "task_id = ?")
 		args = append(args, taskID)
+	}
+	if projectID != "" {
+		where = append(where, "project_id = ?")
+		args = append(args, projectID)
 	}
 	// Visibility: own + shared. Expressed as a where-term so it composes with the
 	// optional filters above.
@@ -120,11 +126,12 @@ func (s *ListStore) Get(ctx context.Context, id, ownerID string) (List, error) {
 }
 
 type CreateListParams struct {
-	ID      string
-	Name    string
-	TaskID  *string
-	OwnerID string
-	Shared  bool
+	ID        string
+	Name      string
+	TaskID    *string
+	ProjectID *string
+	OwnerID   string
+	Shared    bool
 }
 
 func (s *ListStore) Create(ctx context.Context, p CreateListParams) (List, error) {
@@ -137,9 +144,9 @@ func (s *ListStore) Create(ctx context.Context, p CreateListParams) (List, error
 		shared = 1
 	}
 	return scanList(s.db.QueryRowContext(ctx, `
-		INSERT INTO lists (id, name, task_id, position, owner_id, shared)
-		VALUES (?,?,?, COALESCE((SELECT MAX(position)+1 FROM lists), 0), ?, ?)
-		RETURNING `+listCols, p.ID, p.Name, p.TaskID, owner, shared))
+		INSERT INTO lists (id, name, task_id, position, owner_id, shared, project_id)
+		VALUES (?,?,?, COALESCE((SELECT MAX(position)+1 FROM lists), 0), ?, ?, ?)
+		RETURNING `+listCols, p.ID, p.Name, p.TaskID, owner, shared, p.ProjectID))
 }
 
 // Update saves the mutable fields of a list (caller passes the desired values),
@@ -155,10 +162,10 @@ func (s *ListStore) Update(ctx context.Context, l List) (List, error) {
 	}
 	return scanList(s.db.QueryRowContext(ctx, `
 		UPDATE lists SET name = ?, task_id = ?, position = ?, archived_at = ?,
-		    archive_on_complete = ?, shared = ?, updated_at = datetime('now')
+		    archive_on_complete = ?, shared = ?, project_id = ?, updated_at = datetime('now')
 		WHERE id = ?
 		RETURNING `+listCols,
-		l.Name, l.TaskID, l.Position, l.ArchivedAt, archiveOnComplete, shared, l.ID))
+		l.Name, l.TaskID, l.Position, l.ArchivedAt, archiveOnComplete, shared, l.ProjectID, l.ID))
 }
 
 // SetItemsShared cascades a list's share state to all its items, so item

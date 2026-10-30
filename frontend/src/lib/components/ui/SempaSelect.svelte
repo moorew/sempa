@@ -18,6 +18,7 @@
     value: OptionValue;
     label: string;
     icon?: string;
+    color?: string; // renders a small colour dot (e.g. a project's colour)
   }
 
   let {
@@ -103,7 +104,7 @@
     style="background: var(--sempa-bg-nav); border: 1px solid var(--sempa-border);
            color: {hasValue ? 'var(--sempa-text)' : 'var(--sempa-text-dim)'};">
     <span class="flex min-w-0 items-center gap-2 truncate">
-      {#if selected?.icon}<span class="shrink-0">{selected.icon}</span>{/if}
+      {#if selected?.icon}<span class="shrink-0">{selected.icon}</span>{/if}{#if selected?.color}<span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background: {selected.color};"></span>{/if}
       <span class="truncate">{selected ? selected.label : placeholder}</span>
     </span>
     <span class="shrink-0 transition-transform" style="transform: rotate({open ? 180 : 0}deg); color: var(--sempa-text-dim);">
@@ -137,7 +138,7 @@
               {:else}
                 <span class="shrink-0 rounded-full" style="width: 20px; height: 20px; border: 2px solid var(--sempa-border);"></span>
               {/if}
-              {#if opt.icon}<span class="shrink-0">{opt.icon}</span>{/if}
+              {#if opt.icon}<span class="shrink-0">{opt.icon}</span>{/if}{#if opt.color}<span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background: {opt.color};"></span>{/if}
               <span class="truncate">{opt.label}</span>
             </button>
           {/each}
@@ -162,7 +163,7 @@
             <span class="flex h-4 w-4 shrink-0 items-center justify-center" style="color: var(--sempa-accent);">
               {#if isSel}<Check size={15} strokeWidth={2.5} />{/if}
             </span>
-            {#if opt.icon}<span class="shrink-0">{opt.icon}</span>{/if}
+            {#if opt.icon}<span class="shrink-0">{opt.icon}</span>{/if}{#if opt.color}<span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background: {opt.color};"></span>{/if}
             <span class="truncate">{opt.label}</span>
           </button>
         {/each}

@@ -393,8 +393,9 @@ func (s *TaskStore) createInstance(ctx context.Context, tmpl Task, t time.Time) 
 		RecurrenceOriginID:  &tmpl.ID,
 		RoughlyAt:           tmpl.RoughlyAt,
 		// Instances inherit the template's ownership + share state.
-		OwnerID: tmpl.OwnerID,
-		Shared:  tmpl.Shared,
+		OwnerID:   tmpl.OwnerID,
+		Shared:    tmpl.Shared,
+		ProjectID: tmpl.ProjectID,
 	})
 	return err
 }

@@ -36,11 +36,13 @@ export interface Task {
   // Multi-user: owning user + whether it's shared with the household.
   owner_id?: string;
   shared?: boolean;
+  // Owning project, if any. Sub-tasks and recurring instances follow their parent.
+  project_id?: string | null;
 }
 
 export interface Attachment {
   id: string;
-  owner_type: 'task' | 'objective';
+  owner_type: 'task' | 'objective' | 'project';
   owner_id: string;
   filename: string;
   mime_type: string;
@@ -67,6 +69,7 @@ export interface Objective {
   updated_at: string;
   owner_id?: string;
   shared?: boolean;
+  project_id?: string | null;
 }
 
 export interface DailyPlan {
@@ -134,6 +137,60 @@ export interface List {
   updated_at: string;
   owner_id?: string;
   shared?: boolean;
+  project_id?: string | null;
+}
+
+// The fixed buckets every (user-customisable) project status maps to. App logic
+// keys off the category, never the status name.
+export type ProjectCategory = 'planning' | 'active' | 'on_hold' | 'done' | 'archived';
+
+export interface ProjectStatus {
+  id: string;
+  name: string;
+  color: string;
+  category: ProjectCategory;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// A long-lived, multi-month container (like a Jira epic) for tasks, weekly
+// objectives and lists. Each of those belongs to at most one project.
+export interface Project {
+  id: string;
+  title: string;
+  description: string | null;
+  status_id: string;
+  color: string;
+  start_date: string | null;  // YYYY-MM-DD
+  target_date: string | null; // YYYY-MM-DD
+  position: number;
+  created_at: string;
+  updated_at: string;
+  owner_id?: string;
+  shared?: boolean;
+}
+
+export interface CreateProjectInput {
+  title: string;
+  description?: string | null;
+  status_id?: string;
+  color?: string;
+  start_date?: string | null;
+  target_date?: string | null;
+  shared?: boolean;
+}
+
+// Dates accept '' to clear.
+export interface UpdateProjectInput {
+  title?: string;
+  description?: string | null;
+  status_id?: string;
+  color?: string;
+  start_date?: string;
+  target_date?: string;
+  position?: number;
+  shared?: boolean;
 }
 
 export interface ListItem {
@@ -166,6 +223,7 @@ export interface CreateTaskInput {
   scheduled_end?: string;
   roughly_at?: string | null;
   shared?: boolean;
+  project_id?: string;
 }
 
 export interface ICalSubscription {
@@ -226,6 +284,9 @@ export interface UpdateTaskInput {
   recurrence_rule?: string | null;
   // Private/Shared toggle (multi-user). Cascades to sub-tasks server-side.
   shared?: boolean;
+  // '' unlinks; an id links; null/omitted = unchanged (as on the server).
+  // Cascades to sub-tasks + recurring instances.
+  project_id?: string | null;
 }
 
 // ── Notifications ────────────────────────────────────────────────────────────
@@ -266,6 +327,7 @@ export interface CreateObjectiveInput {
   title: string;
   description?: string;
   position?: number;
+  project_id?: string;
 }
 
 export interface UpdateObjectiveInput {
@@ -277,6 +339,8 @@ export interface UpdateObjectiveInput {
   week_start?: string;
   // Private/Shared toggle (multi-user).
   shared?: boolean;
+  // '' unlinks; an id links.
+  project_id?: string;
 }
 
 export interface UpsertPlanInput {

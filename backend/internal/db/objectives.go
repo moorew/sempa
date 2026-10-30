@@ -18,20 +18,22 @@ type Objective struct {
 	UpdatedAt   string  `json:"updated_at"`
 	OwnerID     string  `json:"owner_id"`
 	Shared      bool    `json:"shared"`
+	ProjectID   *string `json:"project_id"` // migration 028
 }
 
-const objCols = `id, week_start, title, description, status, position, created_at, updated_at, owner_id, shared`
+const objCols = `id, week_start, title, description, status, position, created_at, updated_at, owner_id, shared, project_id`
 
 func scanObjective(s scanner) (Objective, error) {
 	var o Objective
-	var description sql.NullString
+	var description, projectID sql.NullString
 	var shared int64
-	err := s.Scan(&o.ID, &o.WeekStart, &o.Title, &description, &o.Status, &o.Position, &o.CreatedAt, &o.UpdatedAt, &o.OwnerID, &shared)
+	err := s.Scan(&o.ID, &o.WeekStart, &o.Title, &description, &o.Status, &o.Position, &o.CreatedAt, &o.UpdatedAt, &o.OwnerID, &shared, &projectID)
 	if err != nil {
 		return Objective{}, err
 	}
 	o.Description = nullStr(description)
 	o.Shared = shared == 1
+	o.ProjectID = nullStr(projectID)
 	return o, nil
 }
 
@@ -63,6 +65,27 @@ func (s *ObjectiveStore) ListByWeek(ctx context.Context, weekStart, ownerID stri
 	return objs, rows.Err()
 }
 
+// ListByProject returns every objective in a project, across all weeks.
+func (s *ObjectiveStore) ListByProject(ctx context.Context, projectID, ownerID string) ([]Objective, error) {
+	scope, sargs := visScope(ownerID)
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT `+objCols+` FROM weekly_objectives WHERE project_id = ?`+scope+` ORDER BY week_start, position`,
+		append([]any{projectID}, sargs...)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	objs := []Objective{}
+	for rows.Next() {
+		o, err := scanObjective(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan objective: %w", err)
+		}
+		objs = append(objs, o)
+	}
+	return objs, rows.Err()
+}
+
 func (s *ObjectiveStore) Get(ctx context.Context, id, ownerID string) (Objective, error) {
 	scope, sargs := visScope(ownerID)
 	row := s.db.QueryRowContext(ctx, `SELECT `+objCols+` FROM weekly_objectives WHERE id = ?`+scope,
@@ -83,6 +106,7 @@ type CreateObjectiveParams struct {
 	Position    float64
 	OwnerID     string
 	Shared      bool
+	ProjectID   *string
 }
 
 func (s *ObjectiveStore) Create(ctx context.Context, p CreateObjectiveParams) (Objective, error) {
@@ -95,9 +119,9 @@ func (s *ObjectiveStore) Create(ctx context.Context, p CreateObjectiveParams) (O
 		shared = 1
 	}
 	row := s.db.QueryRowContext(ctx,
-		`INSERT INTO weekly_objectives (id, week_start, title, description, status, position, owner_id, shared)
-		 VALUES (?,?,?,?,?,?,?,?) RETURNING `+objCols,
-		p.ID, p.WeekStart, p.Title, p.Description, p.Status, p.Position, owner, shared,
+		`INSERT INTO weekly_objectives (id, week_start, title, description, status, position, owner_id, shared, project_id)
+		 VALUES (?,?,?,?,?,?,?,?,?) RETURNING `+objCols,
+		p.ID, p.WeekStart, p.Title, p.Description, p.Status, p.Position, owner, shared, p.ProjectID,
 	)
 	return scanObjective(row)
 }
@@ -115,10 +139,11 @@ func (s *ObjectiveStore) Update(ctx context.Context, o Objective) (Objective, er
 			status      = ?,
 			position    = ?,
 			shared      = ?,
+			project_id  = ?,
 			updated_at  = datetime('now')
 		WHERE id = ?
 		RETURNING `+objCols,
-		o.WeekStart, o.Title, o.Description, o.Status, o.Position, shared, o.ID,
+		o.WeekStart, o.Title, o.Description, o.Status, o.Position, shared, o.ProjectID, o.ID,
 	)
 	updated, err := scanObjective(row)
 	if errors.Is(err, sql.ErrNoRows) {

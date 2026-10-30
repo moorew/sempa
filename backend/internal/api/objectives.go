@@ -24,6 +24,7 @@ type createObjectiveRequest struct {
 	Status      string  `json:"status"`
 	Position    float64 `json:"position"`
 	Shared      bool    `json:"shared"`
+	ProjectID   *string `json:"project_id"`
 }
 
 type updateObjectiveRequest struct {
@@ -35,6 +36,7 @@ type updateObjectiveRequest struct {
 	// an unfinished objective forward to next week from the weekly review).
 	WeekStart *string `json:"week_start"`
 	Shared    *bool   `json:"shared"`
+	ProjectID *string `json:"project_id"` // "" unlinks; an id links; omitted = unchanged
 }
 
 func (h *objectiveHandler) list(w http.ResponseWriter, r *http.Request) {
@@ -87,6 +89,7 @@ func (h *objectiveHandler) create(w http.ResponseWriter, r *http.Request) {
 		Position:    req.Position,
 		OwnerID:     ownerID(r),
 		Shared:      req.Shared,
+		ProjectID:   emptyToNil(req.ProjectID),
 	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create objective")
@@ -121,6 +124,9 @@ func (h *objectiveHandler) update(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Shared != nil {
 		obj.Shared = *req.Shared
+	}
+	if req.ProjectID != nil {
+		obj.ProjectID = emptyToNil(req.ProjectID)
 	}
 
 	if req.Title != nil {

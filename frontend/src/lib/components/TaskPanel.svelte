@@ -21,6 +21,7 @@
   import { timeInsights } from '$lib/stores/timeInsights.svelte';
   import { timeTracking } from '$lib/stores/timeTracking.svelte';
   import { household } from '$lib/stores/household.svelte';
+  import { projectStore } from '$lib/stores/projects.svelte';
   import { capacityState } from '$lib/dayCapacity';
   import { classifyActivity } from '$lib/activityBuckets';
   import { Sparkles } from 'lucide-svelte';
@@ -94,6 +95,7 @@
     defaultDate,
     defaultTitle = '',    // prefill for create mode (e.g. shared-in text)
     defaultNotes = '',    // prefill notes for create mode (e.g. a shared URL)
+    defaultProjectId = null, // prefill the project for create mode (e.g. from a project page)
     onSave,
     onClose,
     inline = false,       // when true, renders content only (no overlay/aside wrapper)
@@ -104,6 +106,7 @@
     defaultDate: string;
     defaultTitle?: string;
     defaultNotes?: string;
+    defaultProjectId?: string | null;
     onSave: (task: Task) => void;
     onClose: () => void;
     inline?: boolean;
@@ -226,6 +229,16 @@
   });
 
   let selectedObjectiveId = $state<string | null>(null);
+  let selectedProjectId = $state<string | null>(null);
+  // Picker options: open projects, plus the task's current project even if it's
+  // done/archived (so editing never silently drops it).
+  const projectOptions = $derived.by(() => {
+    const list = [...projectStore.open];
+    const cur = projectStore.get(selectedProjectId);
+    if (cur && !list.some((p) => p.id === cur.id)) list.push(cur);
+    return [{ value: null, label: 'No project' },
+      ...list.map((p) => ({ value: p.id, label: p.title || 'Untitled project', color: p.color }))];
+  });
   let weekObjectives = $state<Objective[]>([]);
   let recurrenceRule = $state('');
   let selectedTags = $state<string[]>([]);
@@ -526,6 +539,7 @@
       recurrenceRule = task.recurrence_rule ?? '';
       selectedTags = [...(task.tags ?? [])];
       selectedObjectiveId = task.weekly_objective_id ?? null;
+      selectedProjectId = task.project_id ?? null;
       shared = task.shared ?? false;
     } else {
       title = defaultTitle; description = defaultNotes; plannedDate = defaultDate;
@@ -535,6 +549,7 @@
       remindDate = ''; remindTime = '';
       recurrenceRule = ''; selectedTags = [];
       selectedObjectiveId = null;
+      selectedProjectId = defaultProjectId;
       shared = false;
     }
     tagSearch = ''; tagDropdownOpen = false; error = ''; suggestedTags = [];
@@ -611,6 +626,8 @@
           // Empty string clears the reminder; a date produces an ISO timestamp.
           remind_at: remindDate ? (combineToISO(remindDate, remindTime) ?? '') : '',
           weekly_objective_id: selectedObjectiveId ?? null,
+          // Only send on change: '' unlinks, and a move cascades to sub-tasks.
+          ...((selectedProjectId ?? null) !== (task.project_id ?? null) ? { project_id: selectedProjectId ?? '' } : {}),
           shared,
           // Editing a template's schedule — only sent for templates (the server
           // propagates the change to upcoming instances).
@@ -629,6 +646,7 @@
               }),
           time_estimate_minutes: estimateMinutes ?? undefined,
           weekly_objective_id: selectedObjectiveId ?? undefined,
+          project_id: selectedProjectId ?? undefined,
           shared,
         });
       }
@@ -661,6 +679,7 @@
   {#if task}
     {@const isDone = task.status === 'done'}
     {@const objTitle = weekObjectives.find(o => o.id === task!.weekly_objective_id)?.title}
+    {@const proj = projectStore.get(task.project_id)}
     <!-- Action bar -->
     <div class="flex shrink-0 items-center gap-2 border-b px-5 py-3" style="border-color: var(--sempa-border);">
       <h2 class="flex-1 text-xs font-semibold uppercase tracking-wider" style="color: var(--sempa-text-dim);">
@@ -778,6 +797,12 @@
         {/if}
         {#if task.recurrence_rule || task.recurrence_origin_id}
           <span class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs" style="background: var(--sempa-bg-main); border: 1px solid var(--sempa-border); color: var(--sempa-text-dim);">↺ Recurring</span>
+        {/if}
+        {#if proj}
+          <a href={`/projects/${proj.id}`} class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs hover:underline"
+             style="background: var(--sempa-bg-main); border: 1px solid var(--sempa-border); color: var(--sempa-text-soft);">
+            <span class="h-2 w-2 rounded-full" style="background: {proj.color};"></span>{proj.title || 'Untitled project'}
+          </a>
         {/if}
         {#if objTitle}
           <span class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs" style="background: var(--sempa-accent-bg); color: var(--sempa-accent);">🎯 {objTitle}</span>
@@ -1180,6 +1205,17 @@
             <span class="absolute top-[3px] h-[20px] w-[20px] rounded-full bg-white transition-all"
                   style="left: {shared ? '21px' : '3px'};"></span>
           </button>
+        </div>
+      {/if}
+
+      <!-- Project (sub-tasks always follow their parent's, so hide it for them) -->
+      {#if !task?.parent_task_id && (projectStore.projects.length > 0 || selectedProjectId)}
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400" for="task-project">
+            Project
+          </label>
+          <SempaSelect id="task-project" bind:value={selectedProjectId}
+                       placeholder="No project" options={projectOptions} />
         </div>
       {/if}
 

@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS weekly_objectives (
     position REAL NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    shared INTEGER NOT NULL DEFAULT 0
+    shared INTEGER NOT NULL DEFAULT 0,
+    project_id TEXT
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
@@ -52,6 +53,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     roughly_at TEXT,
     remind_at TEXT,
     shared INTEGER NOT NULL DEFAULT 0,
+    project_id TEXT,
     UNIQUE(source, source_id)
 );
 
@@ -131,8 +133,48 @@ CREATE TABLE IF NOT EXISTS lists (
     archive_on_complete INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    shared INTEGER NOT NULL DEFAULT 0,
+    project_id TEXT
+);
+
+-- Projects (server migration 028). project_id columns above carry NO foreign
+-- key on-device: a shared task can point at a project this user can't see, and
+-- an FK there would fail the upsert and stall sync. Statuses sync down from the
+-- server; the seed below only covers a never-synced (offline-only) install, and
+-- its epoch timestamps let any server copy win last-write-wins.
+CREATE TABLE IF NOT EXISTS project_statuses (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL DEFAULT '#8a8178',
+    category TEXT NOT NULL DEFAULT 'active'
+        CHECK (category IN ('planning', 'active', 'on_hold', 'done', 'archived')),
+    position REAL NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL DEFAULT '',
+    description TEXT,
+    status_id TEXT NOT NULL DEFAULT 'active',
+    color TEXT NOT NULL DEFAULT '#b3592e',
+    start_date TEXT,
+    target_date TEXT,
+    position REAL NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     shared INTEGER NOT NULL DEFAULT 0
 );
+
+INSERT INTO project_statuses (id, name, color, category, position, created_at, updated_at)
+SELECT * FROM (
+    SELECT 'planning', 'Planning', '#8a8178', 'planning', 0, '1970-01-01 00:00:00', '1970-01-01 00:00:00'
+    UNION ALL SELECT 'active', 'Active', '#b3592e', 'active', 1, '1970-01-01 00:00:00', '1970-01-01 00:00:00'
+    UNION ALL SELECT 'on_hold', 'On hold', '#c99a2e', 'on_hold', 2, '1970-01-01 00:00:00', '1970-01-01 00:00:00'
+    UNION ALL SELECT 'done', 'Done', '#4f8a5b', 'done', 3, '1970-01-01 00:00:00', '1970-01-01 00:00:00'
+    UNION ALL SELECT 'archived', 'Archived', '#9a948d', 'archived', 4, '1970-01-01 00:00:00', '1970-01-01 00:00:00'
+) WHERE NOT EXISTS (SELECT 1 FROM project_statuses);
 
 CREATE TABLE IF NOT EXISTS list_items (
     id TEXT PRIMARY KEY,

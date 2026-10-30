@@ -265,6 +265,57 @@ pub fn get_migrations() -> Vec<Migration> {
             "#,
             kind: MigrationKind::Up,
         },
+        Migration {
+            // Projects (server migration 028). Mirrors schema.ts: project_id has
+            // no FK on-device (a shared task may reference a project this user
+            // can't see), and the epoch-stamped status seed only applies to a
+            // never-synced install so any server copy wins last-write-wins.
+            version: 11,
+            description: "projects and project statuses",
+            sql: r#"
+                CREATE TABLE IF NOT EXISTS project_statuses (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    color TEXT NOT NULL DEFAULT '#8a8178',
+                    category TEXT NOT NULL DEFAULT 'active'
+                        CHECK (category IN ('planning', 'active', 'on_hold', 'done', 'archived')),
+                    position REAL NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                );
+
+                CREATE TABLE IF NOT EXISTS projects (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL DEFAULT '',
+                    description TEXT,
+                    status_id TEXT NOT NULL DEFAULT 'active',
+                    color TEXT NOT NULL DEFAULT '#b3592e',
+                    start_date TEXT,
+                    target_date TEXT,
+                    position REAL NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    shared INTEGER NOT NULL DEFAULT 0
+                );
+
+                INSERT INTO project_statuses (id, name, color, category, position, created_at, updated_at)
+                SELECT * FROM (
+                    SELECT 'planning', 'Planning', '#8a8178', 'planning', 0, '1970-01-01 00:00:00', '1970-01-01 00:00:00'
+                    UNION ALL SELECT 'active', 'Active', '#b3592e', 'active', 1, '1970-01-01 00:00:00', '1970-01-01 00:00:00'
+                    UNION ALL SELECT 'on_hold', 'On hold', '#c99a2e', 'on_hold', 2, '1970-01-01 00:00:00', '1970-01-01 00:00:00'
+                    UNION ALL SELECT 'done', 'Done', '#4f8a5b', 'done', 3, '1970-01-01 00:00:00', '1970-01-01 00:00:00'
+                    UNION ALL SELECT 'archived', 'Archived', '#9a948d', 'archived', 4, '1970-01-01 00:00:00', '1970-01-01 00:00:00'
+                ) WHERE NOT EXISTS (SELECT 1 FROM project_statuses);
+
+                ALTER TABLE tasks ADD COLUMN project_id TEXT;
+                ALTER TABLE weekly_objectives ADD COLUMN project_id TEXT;
+                ALTER TABLE lists ADD COLUMN project_id TEXT;
+                CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
+                CREATE INDEX IF NOT EXISTS idx_objectives_project ON weekly_objectives(project_id);
+                CREATE INDEX IF NOT EXISTS idx_lists_project ON lists(project_id);
+            "#,
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

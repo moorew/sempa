@@ -66,3 +66,20 @@ func clientOrNewID(id string) string {
 	}
 	return newID()
 }
+
+// emptyToNil maps an optional link id from a request to the stored value: nil
+// and "" both mean "not linked".
+func emptyToNil(s *string) *string {
+	if s == nil || *s == "" {
+		return nil
+	}
+	return s
+}
+
+// sameStr compares two nullable strings by value.
+func sameStr(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return *a == *b
+}

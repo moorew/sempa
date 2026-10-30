@@ -2,6 +2,7 @@
   import type { Task } from '$lib/types';
   import { formatMinutes, bareUrl, prettyUrl } from '$lib/utils';
   import { tagStore } from '$lib/stores/tags.svelte';
+  import { projectStore } from '$lib/stores/projects.svelte';
   import { hapticClick, hapticTick } from '$lib/haptics';
 
   let {
@@ -31,6 +32,7 @@
     /** True when THIS card is the one currently being dragged (lifts it). */
     dragging?: boolean;
   } = $props();
+  const project = $derived(projectStore.get(task.project_id));
 
   const isDone      = $derived(task.status === 'done');
   const isRecurring = $derived(!!task.recurrence_origin_id);
@@ -235,8 +237,13 @@
       </p>
 
       <!-- Meta row -->
-      {#if task.tags?.length || task.time_estimate_minutes || (task.source && task.source !== 'manual') || isRecurring || hasReminder}
-        <div class="flex flex-wrap gap-1 mt-1.5">
+      {#if project || task.tags?.length || task.time_estimate_minutes || (task.source && task.source !== 'manual') || isRecurring || hasReminder}
+        <div class="flex flex-wrap items-center gap-1 mt-1.5">
+          {#if project}
+            <!-- Project as a small colour SQUARE (tags are round dots). -->
+            <span class="shrink-0" title={`Project: ${project.title || 'Untitled project'}`}
+                  style="width: 8px; height: 8px; border-radius: 2px; background: {project.color};"></span>
+          {/if}
           {#if (task.tags ?? []).length}
             <!-- Tags as colour dots only (matches TaskCard) — names live in the
                  task detail view; title shows them on long-press. -->

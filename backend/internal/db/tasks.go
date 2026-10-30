@@ -44,6 +44,8 @@ type Task struct {
 	// visible to a user when owner_id == them OR shared == true.
 	OwnerID string `json:"owner_id"`
 	Shared  bool   `json:"shared"`
+	// Owning project (migration 028). Subtasks + recurring instances inherit it.
+	ProjectID *string `json:"project_id"`
 }
 
 const taskCols = `id, title, description, planned_date, week_start, status, position,
@@ -51,7 +53,7 @@ const taskCols = `id, title, description, planned_date, week_start, status, posi
        source, source_id, source_url, source_metadata,
        completed_at, archived_at, created_at, updated_at,
        tags, recurrence_rule, recurrence_origin_id, is_customized,
-       scheduled_start, scheduled_end, roughly_at, remind_at, owner_id, shared`
+       scheduled_start, scheduled_end, roughly_at, remind_at, owner_id, shared, project_id`
 
 func scanTask(s scanner) (Task, error) {
 	var t Task
@@ -65,6 +67,7 @@ func scanTask(s scanner) (Task, error) {
 	var isCustomized int64
 	var scheduledStart, scheduledEnd, roughlyAt, remindAt sql.NullString
 	var shared int64
+	var projectID sql.NullString
 
 	err := s.Scan(
 		&t.ID, &t.Title, &description, &plannedDate, &weekStart,
@@ -75,7 +78,7 @@ func scanTask(s scanner) (Task, error) {
 		&completedAt, &archivedAt,
 		&t.CreatedAt, &t.UpdatedAt,
 		&tagsJSON, &recurrenceRule, &recurrenceOriginID, &isCustomized,
-		&scheduledStart, &scheduledEnd, &roughlyAt, &remindAt, &t.OwnerID, &shared,
+		&scheduledStart, &scheduledEnd, &roughlyAt, &remindAt, &t.OwnerID, &shared, &projectID,
 	)
 	if err != nil {
 		return Task{}, err
@@ -102,6 +105,7 @@ func scanTask(s scanner) (Task, error) {
 	t.ScheduledEnd = nullStr(scheduledEnd)
 	t.RoughlyAt = nullStr(roughlyAt)
 	t.RemindAt = nullStr(remindAt)
+	t.ProjectID = nullStr(projectID)
 
 	if tagsJSON != "" && tagsJSON != "[]" {
 		_ = json.Unmarshal([]byte(tagsJSON), &t.Tags)
@@ -263,8 +267,9 @@ type CreateTaskParams struct {
 	RoughlyAt           *string
 	// Multi-user. OwnerID may be empty for background/integration creates — it
 	// then defaults to the primary user. Shared defaults to private.
-	OwnerID string
-	Shared  bool
+	OwnerID   string
+	Shared    bool
+	ProjectID *string
 }
 
 func (s *TaskStore) Create(ctx context.Context, p CreateTaskParams) (Task, error) {
@@ -286,14 +291,14 @@ func (s *TaskStore) Create(ctx context.Context, p CreateTaskParams) (Task, error
 			time_estimate_minutes, parent_task_id, weekly_objective_id,
 			source, source_id, source_url, source_metadata,
 			tags, recurrence_rule, recurrence_origin_id,
-			scheduled_start, scheduled_end, roughly_at, owner_id, shared
-		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+			scheduled_start, scheduled_end, roughly_at, owner_id, shared, project_id
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		RETURNING `+taskCols,
 		p.ID, p.Title, p.Description, p.PlannedDate, p.WeekStart, p.Status, p.Position,
 		p.TimeEstimateMinutes, p.ParentTaskID, p.WeeklyObjectiveID,
 		p.Source, p.SourceID, p.SourceURL, p.SourceMetadata,
 		string(tagsJSON), p.RecurrenceRule, p.RecurrenceOriginID,
-		p.ScheduledStart, p.ScheduledEnd, p.RoughlyAt, owner, shared,
+		p.ScheduledStart, p.ScheduledEnd, p.RoughlyAt, owner, shared, p.ProjectID,
 	)
 	return scanTask(row)
 }
@@ -330,6 +335,7 @@ func (s *TaskStore) Update(ctx context.Context, t Task) (Task, error) {
 			roughly_at            = ?,
 			remind_at             = ?,
 			shared                = ?,
+			project_id            = ?,
 			updated_at            = datetime('now')
 		WHERE id = ?
 		RETURNING `+taskCols,
@@ -338,7 +344,7 @@ func (s *TaskStore) Update(ctx context.Context, t Task) (Task, error) {
 		t.TimeEstimateMinutes, t.TimeActualMinutes,
 		t.WeeklyObjectiveID, t.CompletedAt,
 		string(tagsJSON), isCustomized,
-		t.ScheduledStart, t.ScheduledEnd, t.RoughlyAt, t.RemindAt, shared,
+		t.ScheduledStart, t.ScheduledEnd, t.RoughlyAt, t.RemindAt, shared, t.ProjectID,
 		t.ID,
 	)
 	updated, err := scanTask(row)
@@ -489,6 +495,39 @@ func (s *TaskStore) SetSubtasksShared(ctx context.Context, parentID string, shar
 		`UPDATE tasks SET shared = ?, updated_at = datetime('now') WHERE parent_task_id = ? AND shared != ?`,
 		v, parentID, v)
 	return ids, err
+}
+
+// ListByProject returns a project's top-level work: tasks in the project that
+// aren't sub-tasks or recurring instances (a daily recurring task would
+// otherwise flood the view — its template stands in for the series).
+func (s *TaskStore) ListByProject(ctx context.Context, projectID, ownerID string) ([]Task, error) {
+	scope, sargs := visScope(ownerID)
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT `+taskCols+` FROM tasks
+		 WHERE project_id = ? AND parent_task_id IS NULL AND recurrence_origin_id IS NULL
+		   AND status != 'cancelled'`+scope+`
+		 ORDER BY (planned_date IS NULL), planned_date, position`,
+		append([]any{projectID}, sargs...)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return collectTasks(rows)
+}
+
+// SetDescendantsProject moves a task's sub-tasks and recurring instances (and
+// their sub-tasks) into projectID (nil = no project), so a task's whole family
+// stays in one project. Bumps updated_at so the change syncs.
+func (s *TaskStore) SetDescendantsProject(ctx context.Context, rootID string, projectID *string) error {
+	_, err := s.db.ExecContext(ctx, `
+		WITH RECURSIVE fam(id) AS (
+			SELECT id FROM tasks WHERE parent_task_id = ?1 OR recurrence_origin_id = ?1
+			UNION
+			SELECT t.id FROM tasks t JOIN fam ON t.parent_task_id = fam.id
+		)
+		UPDATE tasks SET project_id = ?2, updated_at = datetime('now')
+		WHERE id IN (SELECT id FROM fam) AND project_id IS NOT ?2`, rootID, projectID)
+	return err
 }
 
 func (s *TaskStore) Delete(ctx context.Context, id string) error {

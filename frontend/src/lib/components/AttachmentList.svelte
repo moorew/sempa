@@ -2,7 +2,7 @@
   import type { Attachment } from '$lib/types';
   import { api } from '$lib/api';
 
-  let { ownerType, ownerId }: { ownerType: 'task' | 'objective'; ownerId: string } = $props();
+  let { ownerType, ownerId }: { ownerType: 'task' | 'objective' | 'project'; ownerId: string } = $props();
 
   const MAX_BYTES = 500 * 1024 * 1024; // 500 MB
 
@@ -21,7 +21,9 @@
     loading = true;
     const load = ownerType === 'task'
       ? api.attachments.listForTask(id)
-      : api.attachments.listForObjective(id);
+      : ownerType === 'project'
+        ? api.attachments.listForProject(id)
+        : api.attachments.listForObjective(id);
     load.then((a) => { items = a; }).catch(() => { items = []; }).finally(() => { loading = false; });
   });
 
@@ -58,7 +60,9 @@
       try {
         const saved = ownerType === 'task'
           ? await api.attachments.uploadToTask(ownerId, file, (p) => (uploadPct = p))
-          : await api.attachments.uploadToObjective(ownerId, file, (p) => (uploadPct = p));
+          : ownerType === 'project'
+            ? await api.attachments.uploadToProject(ownerId, file, (p) => (uploadPct = p))
+            : await api.attachments.uploadToObjective(ownerId, file, (p) => (uploadPct = p));
         items = [...items, saved];
       } catch (e) {
         error = e instanceof Error ? e.message : 'Upload failed';

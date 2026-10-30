@@ -8,7 +8,7 @@ import (
 
 type Attachment struct {
 	ID        string `json:"id"`
-	OwnerType string `json:"owner_type"` // 'task' | 'objective'
+	OwnerType string `json:"owner_type"` // 'task' | 'objective' | 'project'
 	OwnerID   string `json:"owner_id"`
 	Filename  string `json:"filename"`
 	MimeType  string `json:"mime_type"`

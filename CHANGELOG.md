@@ -6,6 +6,33 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.26.0] - 2026-10-30
+
+### Added
+- **Projects** — long-lived, multi-month containers (like an epic in Jira or
+  GitLab) for the work that spans weeks. A project has a description, colour,
+  status, start and target dates, files, and a progress bar, and holds:
+  - **tasks** (pick a project on any task; sub-tasks and recurring instances
+    follow their parent automatically),
+  - **weekly objectives** (each week's slice of the project),
+  - **lists**.
+  Find them under **Projects** in the sidebar, the mobile More sheet, the
+  command palette and search. Deleting a project keeps its tasks, objectives
+  and lists — they simply stop belonging to it.
+- **Customisable project statuses** (Settings → Project statuses): rename,
+  recolour, reorder, add and delete. Each status maps to one of five fixed
+  categories (Planning, Active, On hold, Done, Archived) that decide how Sempa
+  treats it.
+- **Weekly planning shows your active projects for reference**, and each
+  objective can be filed into a project; tasks added under that objective join
+  the project too.
+- Task cards mark a task's project with a small colour square (tags stay dots).
+- Projects work offline and sync on desktop and Android like everything else.
+
+### Fixed
+- iOS builds run on macOS 15 runners (macOS 14 images are being retired, and
+  their brownouts were cancelling the iOS job).
+
 ## [1.25.8] - 2026-10-30
 
 ### Fixed

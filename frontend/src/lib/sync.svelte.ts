@@ -137,6 +137,8 @@ interface ServerChanges {
     week_reviews: Record<string, unknown>[];
     lists: Record<string, unknown>[];
     list_items: Record<string, unknown>[];
+    project_statuses: Record<string, unknown>[];
+    projects: Record<string, unknown>[];
     deletions: Tombstone[];
     cursor: string;
 }
@@ -201,6 +203,8 @@ function restPath(entityType: string): string | null {
         case 'objectives': return '/api/v1/objectives';
         case 'tags': return '/api/v1/tags';
         case 'lists': return '/api/v1/lists';
+        case 'projects': return '/api/v1/projects';
+        case 'project_statuses': return '/api/v1/project-statuses';
         case 'plans': return '/api/v1/plans';        // create/update both PUT /{date}
         case 'week_reviews': return '/api/v1/weeks';  // PUT /{ws}/review
         default: return null;
@@ -215,6 +219,8 @@ const SYNC_LOG_TO_TOMBSTONE: Record<string, string> = {
     tags: 'tag',
     lists: 'list',
     list_items: 'list_item',
+    projects: 'project',
+    project_statuses: 'project_status',
 };
 
 // Replays queued mutations in order. Returns human-readable descriptions of any
@@ -359,6 +365,9 @@ async function pullChanges(): Promise<void> {
         catch (e) { failed += 1; console.error('sync upsert skipped a row:', e); }
     };
 
+    // Projects (and their statuses) first: tasks, objectives and lists point at them.
+    for (const st of changes.project_statuses ?? []) await tryUpsert(() => upsertProjectStatus(st));
+    for (const p of changes.projects ?? []) await tryUpsert(() => upsertProject(p));
     for (const o of changes.objectives) await tryUpsert(() => upsertObjective(o));
     for (const tag of changes.tags) await tryUpsert(() => upsertTag(tag));
     for (const p of changes.plans) await tryUpsert(() => upsertPlan(p));
@@ -382,7 +391,8 @@ async function pullChanges(): Promise<void> {
     } else if (failed > 0) {
         const total = changes.tasks.length + changes.objectives.length + changes.plans.length
             + changes.tags.length + changes.week_reviews.length
-            + (changes.lists?.length ?? 0) + (changes.list_items?.length ?? 0);
+            + (changes.lists?.length ?? 0) + (changes.list_items?.length ?? 0)
+            + (changes.project_statuses?.length ?? 0) + (changes.projects?.length ?? 0);
         throw new Error(`Applied ${applied}, skipped ${failed} of ${total} changes (will retry next sync)`);
     }
 }
@@ -438,8 +448,8 @@ async function upsertTask(t: Record<string, unknown>): Promise<boolean> {
             time_estimate_minutes, time_actual_minutes, parent_task_id, weekly_objective_id,
             source, source_id, source_url, source_metadata, completed_at, archived_at,
             created_at, updated_at, tags, recurrence_rule, recurrence_origin_id, is_customized,
-            scheduled_start, scheduled_end, roughly_at, remind_at, shared)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            scheduled_start, scheduled_end, roughly_at, remind_at, shared, project_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(id) DO UPDATE SET
             title=excluded.title, description=excluded.description, planned_date=excluded.planned_date,
             week_start=excluded.week_start, status=excluded.status, position=excluded.position,
@@ -451,7 +461,7 @@ async function upsertTask(t: Record<string, unknown>): Promise<boolean> {
             recurrence_rule=excluded.recurrence_rule, recurrence_origin_id=excluded.recurrence_origin_id,
             is_customized=excluded.is_customized, scheduled_start=excluded.scheduled_start,
             scheduled_end=excluded.scheduled_end, roughly_at=excluded.roughly_at,
-            remind_at=excluded.remind_at, shared=excluded.shared`,
+            remind_at=excluded.remind_at, shared=excluded.shared, project_id=excluded.project_id`,
         [
             t.id, t.title, t.description ?? null, t.planned_date ?? null, t.week_start ?? null,
             t.status, t.position ?? 0, t.time_estimate_minutes ?? null, t.time_actual_minutes ?? null,
@@ -460,7 +470,7 @@ async function upsertTask(t: Record<string, unknown>): Promise<boolean> {
             t.created_at ?? null, t.updated_at ?? null, JSON.stringify(t.tags ?? []),
             t.recurrence_rule ?? null, t.recurrence_origin_id ?? null, t.is_customized ? 1 : 0,
             t.scheduled_start ?? null, t.scheduled_end ?? null, t.roughly_at ?? null, t.remind_at ?? null,
-            t.shared ? 1 : 0,
+            t.shared ? 1 : 0, t.project_id ?? null,
         ],
     );
     return true;
@@ -469,15 +479,16 @@ async function upsertTask(t: Record<string, unknown>): Promise<boolean> {
 async function upsertList(l: Record<string, unknown>): Promise<boolean> {
     if (!(await lww('lists', l))) return false;
     await execute(
-        `INSERT INTO lists (id, name, task_id, position, archived_at, archive_on_complete, created_at, updated_at, shared)
-         VALUES (?,?,?,?,?,?,?,?,?)
+        `INSERT INTO lists (id, name, task_id, position, archived_at, archive_on_complete, created_at, updated_at, shared, project_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(id) DO UPDATE SET
             name=excluded.name, task_id=excluded.task_id, position=excluded.position,
             archived_at=excluded.archived_at, archive_on_complete=excluded.archive_on_complete,
-            updated_at=excluded.updated_at, shared=excluded.shared`,
+            updated_at=excluded.updated_at, shared=excluded.shared, project_id=excluded.project_id`,
         [
             l.id, l.name ?? '', l.task_id ?? null, l.position ?? 0, l.archived_at ?? null,
             l.archive_on_complete ? 1 : 0, l.created_at ?? null, l.updated_at ?? null, l.shared ? 1 : 0,
+            l.project_id ?? null,
         ],
     );
     return true;
@@ -502,13 +513,45 @@ async function upsertListItem(it: Record<string, unknown>): Promise<boolean> {
 async function upsertObjective(o: Record<string, unknown>): Promise<boolean> {
     if (!(await lww('weekly_objectives', o))) return false;
     await execute(
-        `INSERT INTO weekly_objectives (id, week_start, title, description, status, position, created_at, updated_at, shared)
-         VALUES (?,?,?,?,?,?,?,?,?)
+        `INSERT INTO weekly_objectives (id, week_start, title, description, status, position, created_at, updated_at, shared, project_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(id) DO UPDATE SET
             week_start=excluded.week_start, title=excluded.title, description=excluded.description,
-            status=excluded.status, position=excluded.position, updated_at=excluded.updated_at, shared=excluded.shared`,
+            status=excluded.status, position=excluded.position, updated_at=excluded.updated_at, shared=excluded.shared,
+            project_id=excluded.project_id`,
         [o.id, o.week_start, o.title, o.description ?? null, o.status ?? 'active', o.position ?? 0,
-         o.created_at ?? null, o.updated_at ?? null, o.shared ? 1 : 0],
+         o.created_at ?? null, o.updated_at ?? null, o.shared ? 1 : 0, o.project_id ?? null],
+    );
+    return true;
+}
+
+async function upsertProject(p: Record<string, unknown>): Promise<boolean> {
+    if (!(await lww('projects', p))) return false;
+    await execute(
+        `INSERT INTO projects (id, title, description, status_id, color, start_date, target_date, position,
+            created_at, updated_at, shared)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)
+         ON CONFLICT(id) DO UPDATE SET
+            title=excluded.title, description=excluded.description, status_id=excluded.status_id,
+            color=excluded.color, start_date=excluded.start_date, target_date=excluded.target_date,
+            position=excluded.position, updated_at=excluded.updated_at, shared=excluded.shared`,
+        [p.id, p.title ?? '', p.description ?? null, p.status_id ?? 'active', p.color ?? '#b3592e',
+         p.start_date ?? null, p.target_date ?? null, p.position ?? 0,
+         p.created_at ?? null, p.updated_at ?? null, p.shared ? 1 : 0],
+    );
+    return true;
+}
+
+async function upsertProjectStatus(st: Record<string, unknown>): Promise<boolean> {
+    if (!(await lww('project_statuses', st))) return false;
+    await execute(
+        `INSERT INTO project_statuses (id, name, color, category, position, created_at, updated_at)
+         VALUES (?,?,?,?,?,?,?)
+         ON CONFLICT(id) DO UPDATE SET
+            name=excluded.name, color=excluded.color, category=excluded.category,
+            position=excluded.position, updated_at=excluded.updated_at`,
+        [st.id, st.name ?? '', st.color ?? '#8a8178', st.category ?? 'active', st.position ?? 0,
+         st.created_at ?? null, st.updated_at ?? null],
     );
     return true;
 }
@@ -565,6 +608,8 @@ const TOMBSTONE_TABLE: Record<string, string> = {
     week_review: 'week_reviews',
     list: 'lists',
     list_item: 'list_items',
+    project: 'projects',
+    project_status: 'project_statuses',
 };
 
 // Inverse of TOMBSTONE_TABLE (local table name → tombstone entity type), used by
