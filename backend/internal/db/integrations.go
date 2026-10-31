@@ -103,23 +103,66 @@ func (s *IntegrationConfigStore) Delete(ctx context.Context, typ string) error {
 	return nil
 }
 
-// AITitleType is the integration_configs key for the AI task-title cleanup
-// settings (local Ollama model that tidies imported email subjects).
+// AITitleType is the integration_configs key for the AI settings. (It began as
+// the local-model email-title cleanup and grew into the one model config every
+// AI feature uses; the key stays for compatibility.)
 const AITitleType = "ai_title"
 
-// AITitleConfig is the effective AI task-title cleanup configuration. The
-// stored config JSON carries base_url + model; on/off uses the enabled column.
+// Where AI requests go. Mirrors ai.Provider*; kept here so db needn't import ai.
+const (
+	AIProviderOllama   = "ollama"
+	AIProviderAperture = "aperture"
+)
+
+// AITitleConfig is the effective AI configuration. The stored config JSON
+// carries the fields below; on/off uses the enabled column.
 type AITitleConfig struct {
 	Enabled bool   `json:"enabled"`
-	BaseURL string `json:"base_url"`
+	BaseURL string `json:"base_url"` // Ollama on this host
 	Model   string `json:"model"`
+	// Provider picks which of the two is used: "" or "ollama" means BaseURL +
+	// Model above; "aperture" means a Tailscale Aperture gateway at GatewayURL,
+	// asking for GatewayModel. Both sets are kept, so switching back and forth
+	// doesn't lose either.
+	Provider     string `json:"provider,omitempty"`
+	GatewayURL   string `json:"gateway_url,omitempty"`
+	GatewayModel string `json:"gateway_model,omitempty"`
 }
 
-// ResolveAITitle returns the effective settings: the DB-stored config if the
-// user has saved one, otherwise the env defaults (enabled when an Ollama base
-// URL is configured via OLLAMA_BASE_URL). Empty stored fields fall back to env.
+// Effective returns the provider in use and the URL + model for it.
+func (c AITitleConfig) Effective() (provider, baseURL, model string) {
+	if c.Provider == AIProviderAperture {
+		return AIProviderAperture, c.GatewayURL, c.GatewayModel
+	}
+	return AIProviderOllama, c.BaseURL, c.Model
+}
+
+// AIEnv seeds the AI settings from the environment until the owner saves some.
+type AIEnv struct {
+	OllamaBaseURL string // OLLAMA_BASE_URL
+	OllamaModel   string // OLLAMA_MODEL
+	GatewayURL    string // APERTURE_BASE_URL
+}
+
+// ResolveAITitle is ResolveAI with only the Ollama env seeds.
 func (s *IntegrationConfigStore) ResolveAITitle(ctx context.Context, envBaseURL, envModel string) AITitleConfig {
-	cfg := AITitleConfig{Enabled: envBaseURL != "", BaseURL: envBaseURL, Model: envModel}
+	return s.ResolveAI(ctx, AIEnv{OllamaBaseURL: envBaseURL, OllamaModel: envModel})
+}
+
+// ResolveAI returns the effective settings: the DB-stored config if the owner
+// has saved one, otherwise the env defaults (enabled when a model server or a
+// gateway URL is configured; the gateway is the default provider only when it
+// is the one configured). Empty stored fields fall back to env.
+func (s *IntegrationConfigStore) ResolveAI(ctx context.Context, env AIEnv) AITitleConfig {
+	cfg := AITitleConfig{
+		Enabled:    env.OllamaBaseURL != "" || env.GatewayURL != "",
+		BaseURL:    env.OllamaBaseURL,
+		Model:      env.OllamaModel,
+		GatewayURL: env.GatewayURL,
+	}
+	if env.OllamaBaseURL == "" && env.GatewayURL != "" {
+		cfg.Provider = AIProviderAperture
+	}
 	rec, err := s.Get(ctx, AITitleType)
 	if err != nil {
 		return cfg
@@ -132,6 +175,15 @@ func (s *IntegrationConfigStore) ResolveAITitle(ctx context.Context, envBaseURL,
 		}
 		if stored.Model != "" {
 			cfg.Model = stored.Model
+		}
+		if stored.Provider != "" {
+			cfg.Provider = stored.Provider
+		}
+		if stored.GatewayURL != "" {
+			cfg.GatewayURL = stored.GatewayURL
+		}
+		if stored.GatewayModel != "" {
+			cfg.GatewayModel = stored.GatewayModel
 		}
 	}
 	return cfg

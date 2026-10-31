@@ -35,7 +35,7 @@ The OpenSSF badge above links to Sempa's full [Best Practices assessment](https:
 - **Recurring tasks** — daily, weekly, and monthly templates, **timezone-aware**: instances, the daily rollover and the morning digest key off your home timezone, task times stay floating when you travel, and a banner offers to adjust when you're away
 - **Sharing (household)** — one server, multiple people: tasks, lists and weekly objectives are private by default with a Private/Shared toggle, so a household can share what it wants and keep the rest to themselves
 - **Mobile gestures** — swipe a task left to reschedule it to tomorrow, long-press the app icon for New task / Plan day / Shutdown quick actions, and Share-to-Sempa to turn a shared link or text into a task from any app
-- **Local AI assist** — an optional on-server model (Ollama) powers quick-add parsing, URL/text import, task summaries, tag suggestions, subtask breakdown, day planning, time prediction (from your own logged history), list organizing, weekly-review drafts and reflection prompts. **100% local & private — nothing ever leaves your server**, every feature is individually toggleable, and it's off until you turn it on. [See the AI section ↓](#ai-assist--local--private)
+- **AI assist, local or through Aperture** — an optional model powers quick-add parsing, URL/text import, task summaries, tag suggestions, subtask breakdown, day planning, time prediction (from your own logged history), list organizing, weekly-review drafts and reflection prompts. Run it **on your own server (Ollama), where nothing ever leaves it**, or point Sempa at your **[Tailscale Aperture](https://tailscale.com/docs/aperture)** gateway to use any model it serves, with no API keys in Sempa. Every feature is individually toggleable, and it's off until you turn it on. [See the AI section ↓](#ai-assist--local--private)
 - **In-app updates** — notices new releases, shows what's new, and points you to the installer (silent desktop self-update is opt-in)
 - **Six themes** — Terracotta, Forest, Plum, Slate, OLED Black, and Ocean, each in light + dark
 - **Command palette** — `Cmd/Ctrl+K` opens a keyboard-first launcher to jump anywhere and run actions (including AI Import), with a search fallback
@@ -304,6 +304,7 @@ Generate one at [Tailscale Admin → Keys](https://login.tailscale.com/admin/set
 | `FCM_KEY_PATH` | Path to a Firebase service-account JSON key for native Android push |
 | `OLLAMA_BASE_URL` | Ollama endpoint for AI task-title cleanup. **Empty by default** (feature off). `install.sh` sets it to `http://127.0.0.1:11434` when you opt into local AI; it can also be set manually or changed in **Settings → Integrations**. |
 | `OLLAMA_MODEL` | Local model for AI task-title cleanup (default: `qwen2.5:1.5b`) |
+| `APERTURE_BASE_URL` | Optional [Tailscale Aperture](https://tailscale.com/docs/aperture) gateway, e.g. `https://ai.<tailnet>.ts.net`. Seeds **Settings → Integrations → AI → Aperture**, where you pick a model. See [docs/APERTURE.md](docs/APERTURE.md). |
 | `COMPOSE_PROFILES` | Set to `ai` to start the optional `ollama` service (written automatically when you choose local AI at install). |
 | `INBOX_POLL_INTERVAL` | How often to poll the email inbox (default: `1m`) |
 | `CALENDAR_POLL_INTERVAL` | How often to refresh ICS subscriptions + the Fastmail calendar (default: `15m`; empty disables) |
@@ -323,7 +324,7 @@ All integrations are optional and configured through the Settings UI after first
 | **Jira** | Imports assigned issues as tasks. Marking a Jira-sourced task done closes the ticket. |
 | **Calendar feeds (ICS)** | Subscribe to any `.ics` / webcal URL for read-only events. |
 | **Email inbox** | Forward any email to a Fastmail address to auto-create a task. |
-| **AI assist (local)** | A local language model (Ollama, default `qwen2.5:1.5b`) powers title cleanup plus quick-add parsing, tag suggestions, subtask breakdown, day planning, task-time prediction, list organizing, weekly-review drafts and reflection prompts. **Runs entirely on your server — no data leaves it, no API key.** Opt-in (during `install.sh` or by setting `OLLAMA_BASE_URL`); manage models and toggle each feature in Settings → Integrations → AI. [Details ↓](#ai-assist--local--private) |
+| **AI assist (local)** | A local language model (Ollama, default `qwen2.5:1.5b`) powers title cleanup plus quick-add parsing, tag suggestions, subtask breakdown, day planning, task-time prediction, list organizing, weekly-review drafts and reflection prompts. **Runs entirely on your server — no data leaves it, no API key.** Opt-in (during `install.sh` or by setting `OLLAMA_BASE_URL`); manage models and toggle each feature in Settings → Integrations → AI. Or use any model your **Tailscale Aperture** gateway serves ([docs/APERTURE.md](docs/APERTURE.md)). [Details ↓](#ai-assist--local--private) |
 
 > **Note on the model-server URL (AI task-title cleanup).** The Ollama endpoint
 > is configurable in Settings → Integrations and may point at an internal /
@@ -520,6 +521,15 @@ back to the manual path — nothing breaks.
   Ollama upgrade — re-pull it: `ollama pull <model>` (or remove + re-download in Settings).
 
 Nothing is automatic or destructive — the model **suggests**, you approve.
+
+**Prefer a bigger model? Use Aperture.** If you run
+[Tailscale Aperture](https://tailscale.com/docs/aperture), switch **Settings →
+Integrations → AI → Where the model runs** to **Aperture**, enter its URL and pick
+any model it serves this server: cloud (Claude, Gemini, OpenAI) or one hosted on
+your tailnet. Aperture recognises Sempa by its tailnet identity, so **Sempa holds
+no API keys**. Requests then leave your server for whichever provider serves the
+model, and cloud models may cost money per request, so the local option stays the
+default. Setup and troubleshooting: [docs/APERTURE.md](docs/APERTURE.md).
 
 **What each feature does:**
 

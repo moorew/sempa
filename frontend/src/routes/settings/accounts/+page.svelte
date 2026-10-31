@@ -2,7 +2,7 @@
   import { onMount, untrack } from 'svelte';
   import { page } from '$app/state';
   import { api, getServerUrl, clearTauriToken, clearNativeToken, resetApiResolver } from '$lib/api';
-  import type { AiTitleConfig } from '$lib/api';
+  import type { AiTitleConfig, AiProvider } from '$lib/api';
   import { theme } from '$lib/stores/theme.svelte';
   import type { ThemeName } from '$lib/stores/theme.svelte';
   import { windowChrome } from '$lib/stores/windowChrome.svelte';
@@ -109,14 +109,43 @@
     allowed_senders?: string[]; last_synced_at?: string;
   }>({ connected: false });
 
-  // AI task-title cleanup (local Ollama model — tidies imported email subjects)
-  let aiTitle = $state<AiTitleConfig>(
-    { enabled: false, base_url: '', model: '', reachable: false, available_models: [] });
+  // AI: the model behind every AI feature (and the email-title cleanup). It runs
+  // either on an Ollama host on this server or behind a Tailscale Aperture
+  // gateway, which serves any model it grants this server's tailnet identity.
+  const AI_EMPTY: AiTitleConfig = {
+    enabled: false, provider: 'ollama', base_url: '', model: '', gateway_url: '', gateway_model: '',
+    reachable: false, available_models: [], gateway: { reachable: false, models: [] },
+  };
+  // Fill gaps so a server from before Aperture support still renders cleanly.
+  const normAi = (c: Partial<AiTitleConfig>): AiTitleConfig => ({
+    ...AI_EMPTY, ...c,
+    provider: c.provider === 'aperture' ? 'aperture' : 'ollama',
+    gateway_url: c.gateway_url ?? '', gateway_model: c.gateway_model ?? '',
+    available_models: c.available_models ?? [], gateway: c.gateway ?? AI_EMPTY.gateway,
+  });
+  let aiTitle = $state<AiTitleConfig>({ ...AI_EMPTY });
   let aiSaving = $state(false);
   let aiTesting = $state(false);
   let aiError = $state('');
   let aiStatus = $state('');                 // transient success/info feedback
-  let aiBaseline: { enabled: boolean; base_url: string; model: string } | null = null;
+  type AiSaved = Pick<AiTitleConfig, 'enabled' | 'provider' | 'base_url' | 'model' | 'gateway_url' | 'gateway_model'>;
+  const aiSnapshot = (c: AiTitleConfig = aiTitle): AiSaved => ({
+    enabled: c.enabled, provider: c.provider, base_url: c.base_url.trim(), model: c.model.trim(),
+    gateway_url: c.gateway_url.trim(), gateway_model: c.gateway_model.trim(),
+  });
+  let aiBaseline: AiSaved | null = null;
+  let aiGwTesting = $state(false);
+  let aiTrying = $state(false);
+  let aiTryResult = $state<{ ok: boolean; text: string } | null>(null);
+  // Gateway models: the usable ones to pick from, and the rest (with why) tucked away.
+  const aiGwUsable = $derived(aiTitle.gateway.models.filter((m) => m.usable));
+  const aiGwBlocked = $derived(aiTitle.gateway.models.filter((m) => !m.usable));
+  // Ready for the provider selected here (which may not be saved yet), not the
+  // server's answer for the last saved one.
+  const aiReady = $derived(aiTitle.provider === 'aperture'
+    ? aiGwUsable.some((m) => m.id === aiTitle.gateway_model)
+    : (aiTitle.ollama_reachable ?? aiTitle.reachable));
+  const fmtMs = (ms = 0) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`);
   let aiPullModel = $state('');              // model name to download
   let aiPulling = $state(false);
   let aiPullPct = $state(0);
@@ -334,8 +363,8 @@
     taskInbox = val(4, { connected: false });
     jira      = val(5, { connected: false });
     caldav    = val(6, { connected: false });
-    aiTitle   = val(7, { enabled: false, base_url: '', model: '', reachable: false, available_models: [] });
-    aiBaseline = { enabled: aiTitle.enabled, base_url: aiTitle.base_url, model: aiTitle.model };
+    aiTitle   = normAi(val(7, AI_EMPTY));
+    aiBaseline = aiSnapshot();
 
     serverUnreachable = results.every((r) => r.status === 'rejected');
 
@@ -489,26 +518,78 @@
   // ── AI task-title cleanup ──────────────────────────────────────────────────
   async function saveAiTitle(successMsg = 'AI settings saved') {
     // Skip a no-op save so the button always gives clear feedback.
-    const dirty = !aiBaseline
-      || aiBaseline.enabled !== aiTitle.enabled
-      || aiBaseline.base_url !== aiTitle.base_url.trim()
-      || aiBaseline.model !== aiTitle.model.trim();
-    if (!dirty) { flashAiStatus('Nothing to save'); return; }
+    const next = aiSnapshot();
+    if (aiBaseline && JSON.stringify(aiBaseline) === JSON.stringify(next)) { flashAiStatus('Nothing to save'); return; }
     aiSaving = true;
     aiError = '';
     try {
-      aiTitle = await api.integrations.aiTitle.save({
-        enabled: aiTitle.enabled,
-        base_url: aiTitle.base_url.trim(),
-        model: aiTitle.model.trim(),
-      });
-      aiBaseline = { enabled: aiTitle.enabled, base_url: aiTitle.base_url, model: aiTitle.model };
+      aiTitle = normAi(await api.integrations.aiTitle.save(next));
+      aiBaseline = aiSnapshot();
       void aiAvail.refresh();
       flashAiStatus(successMsg);
     } catch (e) {
       aiError = e instanceof Error ? e.message : 'Failed to save';
     } finally {
       aiSaving = false;
+    }
+  }
+
+  // Switch where the model runs. Saved straight away when the destination is
+  // already set up, so the app moves over without hunting for Save.
+  async function setAiProvider(p: AiProvider) {
+    if (aiTitle.provider === p) return;
+    aiTitle.provider = p;
+    aiTryResult = null;
+    aiError = '';
+    const ready = p === 'ollama' ? !!aiTitle.base_url.trim() : !!aiTitle.gateway_url.trim();
+    if (ready) await saveAiTitle(p === 'aperture' ? 'Using Aperture' : 'Using the model on this server');
+  }
+
+  // Ask the gateway what it serves this server, without saving anything.
+  async function testAiGateway() {
+    const url = aiTitle.gateway_url.trim();
+    if (!url) { aiError = 'Enter your Aperture URL first'; return; }
+    aiGwTesting = true;
+    aiError = '';
+    aiTryResult = null;
+    try {
+      const res = await api.integrations.aiTitle.testGateway(url);
+      aiTitle = { ...aiTitle, gateway: { reachable: res.reachable, error: res.error, models: res.gateway_models ?? [] } };
+      if (res.reachable) {
+        const n = (res.gateway_models ?? []).filter((m) => m.usable).length;
+        flashAiStatus(n ? `Connected · ${n} model${n === 1 ? '' : 's'} you can use` : 'Connected, but no models are usable yet');
+      }
+      // On failure the card shows the gateway's own error under the URL field.
+    } catch (e) {
+      aiError = e instanceof Error ? e.message : 'Test failed';
+    } finally {
+      aiGwTesting = false;
+    }
+  }
+
+  async function pickGatewayModel(id: string) {
+    aiTitle.gateway_model = id;
+    aiTryResult = null;
+    await saveAiTitle('Model updated');
+  }
+
+  // One tiny prompt, end to end: proves the model really answers this server.
+  async function tryAiModel() {
+    aiTrying = true;
+    aiTryResult = null;
+    aiError = '';
+    try {
+      const gw = aiTitle.provider === 'aperture';
+      const res = await api.integrations.aiTitle.try(gw
+        ? { provider: 'aperture', gateway_url: aiTitle.gateway_url.trim(), model: aiTitle.gateway_model }
+        : { provider: 'ollama', base_url: aiTitle.base_url.trim(), model: aiTitle.model });
+      aiTryResult = res.ok
+        ? { ok: true, text: `Answered “${res.reply ?? ''}” in ${fmtMs(res.ms)}` }
+        : { ok: false, text: res.error ?? 'No answer' };
+    } catch (e) {
+      aiTryResult = { ok: false, text: e instanceof Error ? e.message : 'Try failed' };
+    } finally {
+      aiTrying = false;
     }
   }
 
@@ -524,7 +605,7 @@
     aiError = '';
     try {
       const res = await api.integrations.aiTitle.test(aiTitle.base_url.trim());
-      aiTitle = { ...aiTitle, reachable: res.reachable, available_models: res.models ?? [] };
+      aiTitle = { ...aiTitle, available_models: res.models ?? [], ollama_reachable: res.reachable };
       if (res.reachable) {
         void aiAvail.refresh();
         const n = res.models?.length ?? 0;
@@ -558,10 +639,10 @@
         if (st.done) { aiPullPct = 100; break; }
       }
       if (!aiError) {
-        const cfg = await api.integrations.aiTitle.get();
-        aiTitle = { ...cfg, model: name };
-        await api.integrations.aiTitle.save({ enabled: aiTitle.enabled, base_url: base, model: name });
-        aiBaseline = { enabled: aiTitle.enabled, base_url: aiTitle.base_url, model: name };
+        const cfg = normAi(await api.integrations.aiTitle.get());
+        aiTitle = { ...cfg, base_url: base, model: name };
+        aiTitle = normAi(await api.integrations.aiTitle.save(aiSnapshot()));
+        aiBaseline = aiSnapshot();
         flashAiStatus(`Downloaded ${name}`);
         aiPullModel = '';
       }
@@ -578,10 +659,9 @@
     if (!confirm(`Remove "${name}"?\n\nIt will be deleted from the server and must be downloaded again to use it.`)) return;
     aiRemoving = name; aiError = ''; aiStatus = '';
     try {
-      const cfg = await api.integrations.aiTitle.remove(name, aiTitle.base_url.trim());
-      aiTitle = cfg;
+      aiTitle = normAi(await api.integrations.aiTitle.remove(name, aiTitle.base_url.trim()));
       if (aiTitle.model === name) aiTitle.model = aiTitle.available_models[0]?.name ?? '';
-      aiBaseline = { enabled: aiTitle.enabled, base_url: aiTitle.base_url, model: aiTitle.model };
+      aiBaseline = aiSnapshot();
       flashAiStatus(`Removed ${name}`);
     } catch (e) {
       aiError = e instanceof Error ? e.message : 'Remove failed';
@@ -1286,7 +1366,6 @@
 
     <!-- ── AI task-title cleanup (local Ollama) ──────────────────── -->
     <h3 class="set-heading">AI</h3>
-
     <section class="set-group">
       <div class="set-row set-row-top" style="padding-top: 16px; padding-bottom: 16px;">
         <span class="set-icon">
@@ -1295,87 +1374,184 @@
           </svg>
         </span>
         <div class="set-row-main">
-          <p class="set-label">AI task-title cleanup</p>
+          <p class="set-label">AI assist</p>
           <p class="set-desc">
-            Tidies imported email subjects into concise task titles using a language model that
-            runs on your own server. Nothing is sent to any third party; if it's unavailable the
-            original subject is kept.
+            {#if aiTitle.provider === 'aperture'}
+              Quick-add, planning, summaries and email-title cleanup use a model reached through your
+              Aperture gateway, which routes to whichever provider serves it. If it's unavailable, AI
+              features hide and imported emails keep their original subject.
+            {:else}
+              Quick-add, planning, summaries and email-title cleanup use a language model that runs on
+              your own server. Nothing is sent to any third party; if it's unavailable, AI features hide
+              and imported emails keep their original subject.
+            {/if}
           </p>
         </div>
         <button onclick={toggleAi}
                 disabled={aiSaving}
-                aria-label="Toggle AI task-title cleanup"
+                aria-label="Toggle AI assist"
                 class="set-switch mt-1" data-on={aiTitle.enabled}></button>
       </div>
 
       {#if aiTitle.enabled}
         <div class="set-block flex flex-col gap-4">
-          <!-- Reachability -->
+          <!-- Where the model runs -->
+          <div>
+            <p class="set-field-label">Where the model runs</p>
+            <div class="segmented" role="tablist" aria-label="Where the model runs">
+              <button role="tab" aria-selected={aiTitle.provider === 'ollama'} onclick={() => setAiProvider('ollama')}
+                      disabled={aiSaving} class="flex h-9 items-center justify-center text-[12.5px] font-semibold">
+                On this server
+              </button>
+              <button role="tab" aria-selected={aiTitle.provider === 'aperture'} onclick={() => setAiProvider('aperture')}
+                      disabled={aiSaving} class="flex h-9 items-center justify-center text-[12.5px] font-semibold">
+                Aperture
+              </button>
+            </div>
+          </div>
+
+          <!-- Reachability of the model in use -->
           <div class="flex items-center gap-2 text-[12.5px] font-semibold">
-            <span class="h-2 w-2 rounded-full" style="background: {aiTitle.reachable ? 'var(--sempa-success)' : 'var(--sempa-amber)'};"></span>
+            <span class="h-2 w-2 rounded-full" style="background: {aiReady ? 'var(--sempa-success)' : 'var(--sempa-amber)'};"></span>
             <span style="color: var(--sempa-text-soft);">
-              {aiTitle.reachable ? 'Model server reachable' : 'Not reachable — falls back to the raw subject'}
+              {#if aiTitle.provider === 'aperture'}
+                {aiReady ? `Ready · ${aiTitle.gateway_model}`
+                  : !aiTitle.gateway_url ? 'Add your Aperture URL to get started'
+                  : !aiTitle.gateway.reachable ? 'Aperture not reachable from this server'
+                  : !aiTitle.gateway_model ? 'Connected · pick a model'
+                  : 'The chosen model isn’t available to this server'}
+              {:else}
+                {aiReady ? 'Model server reachable' : 'Not reachable · AI features stay hidden'}
+              {/if}
             </span>
           </div>
 
-          <!-- Downloaded models: pick the active one, see its size, remove it -->
-          {#if aiTitle.available_models.length > 0}
+          {#if aiTitle.provider === 'aperture'}
+            <!-- Aperture gateway -->
             <div>
-              <p class="set-field-label">Model</p>
-              <div class="set-fill-list">
-                {#each aiTitle.available_models as m (m.name)}
-                  <label class="flex min-h-12 cursor-pointer items-center gap-3 px-3.5 py-2">
-                    <input type="radio" name="ai-active-model" value={m.name} checked={aiTitle.model === m.name}
-                           onchange={() => { aiTitle.model = m.name; saveAiTitle('Active model updated'); }}
-                           class="set-radio" />
-                    <span class="flex-1 truncate text-[13px] font-mono" style="color: var(--sempa-text);">{m.name}</span>
-                    <span class="shrink-0 text-[11.5px] font-mono" style="color: var(--sempa-text-dim);">{fmtBytes(m.size)}</span>
-                    <button onclick={() => removeAiModel(m.name)} disabled={aiRemoving === m.name}
-                            class="set-icon-btn danger"
-                            aria-label="Remove {m.name}" title="Remove model">
-                      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                      </svg>
-                    </button>
-                  </label>
-                {/each}
-              </div>
-            </div>
-          {/if}
-
-          <!-- Download a model (with progress) -->
-          <div>
-            <label class="set-field-label" for="ai-pull">Download a model</label>
-            {#if aiPulling}
-              <div class="set-fill p-3.5">
-                <div class="mb-2 flex items-center justify-between text-[12px] font-semibold" style="color: var(--sempa-text-soft);">
-                  <span class="truncate pr-2">{aiPullLabel}</span>
-                  <span class="font-mono">{aiPullPct}%</span>
-                </div>
-                <div class="day-bar-track">
-                  <div class="day-bar-fill" style="width: {aiPullPct}%; background: var(--sempa-accent);"></div>
-                </div>
-              </div>
-            {:else}
+              <label class="set-field-label" for="ai-gw-url">Aperture URL</label>
               <div class="flex items-center gap-2">
-                <input id="ai-pull" bind:value={aiPullModel} placeholder="e.g. qwen2.5:1.5b" spellcheck="false"
-                       onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); pullAiModel(); } }}
+                <input id="ai-gw-url" bind:value={aiTitle.gateway_url} placeholder="https://ai.your-tailnet.ts.net" spellcheck="false"
+                       onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); testAiGateway(); } }}
                        class="set-input set-input-mono min-w-0 flex-1" />
-                <button onclick={pullAiModel} disabled={!aiPullModel.trim()}
-                        class="btn-primary set-btn">
-                  Download
+                <button onclick={testAiGateway} disabled={aiGwTesting || !aiTitle.gateway_url.trim()} class="set-btn-quiet set-btn">
+                  {aiGwTesting ? 'Connecting…' : 'Connect'}
                 </button>
               </div>
-              <p class="set-meta mt-1.5 px-0.5">Find model names at ollama.com/library (e.g. qwen2.5:1.5b, llama3.2:3b).</p>
-            {/if}
-          </div>
+              <p class="set-meta mt-1.5 px-0.5">
+                No key needed: Aperture knows this server by its tailnet identity and lists the models it's allowed to use.
+              </p>
+            </div>
 
-          <!-- Model server URL -->
-          <div>
-            <label class="set-field-label" for="ai-url">Model server URL (Ollama)</label>
-            <input id="ai-url" bind:value={aiTitle.base_url} placeholder="http://127.0.0.1:11434" spellcheck="false"
-                   class="set-input set-input-mono w-full" />
-          </div>
+            {#if aiTitle.gateway.error}
+              <p class="set-error">Couldn't reach Aperture: {aiTitle.gateway.error}</p>
+            {/if}
+
+            {#if aiTitle.gateway.reachable}
+              <div>
+                <p class="set-field-label">Model</p>
+                {#if aiGwUsable.length}
+                  <div class="set-fill-list">
+                    {#each aiGwUsable as m (m.id)}
+                      <label class="flex min-h-12 cursor-pointer items-center gap-3 px-3.5 py-2">
+                        <input type="radio" name="ai-gateway-model" value={m.id} checked={aiTitle.gateway_model === m.id}
+                               onchange={() => pickGatewayModel(m.id)} disabled={aiSaving}
+                               class="set-radio" />
+                        <span class="min-w-0 flex-1">
+                          <span class="block truncate text-[13px] font-mono" style="color: var(--sempa-text);">{m.name}</span>
+                          {#if m.provider}
+                            <span class="block truncate text-[11.5px]" style="color: var(--sempa-text-dim);">{m.provider}</span>
+                          {/if}
+                        </span>
+                        {#if m.context_window}
+                          <span class="shrink-0 text-[11.5px] font-mono" style="color: var(--sempa-text-dim);">{Math.round(m.context_window / 1000)}k</span>
+                        {/if}
+                      </label>
+                    {/each}
+                  </div>
+                {:else}
+                  <p class="set-meta px-0.5">Aperture answered, but none of its models are usable by this server yet.</p>
+                {/if}
+                {#if aiGwBlocked.length}
+                  <details class="mt-2">
+                    <summary class="cursor-pointer px-0.5 text-[12.5px] font-semibold" style="color: var(--sempa-text-soft);">
+                      {aiGwBlocked.length} more need setting up in Aperture
+                    </summary>
+                    <div class="set-fill-list mt-2">
+                      {#each aiGwBlocked as m (m.id)}
+                        <div class="px-3.5 py-2.5">
+                          <p class="truncate text-[13px] font-mono" style="color: var(--sempa-text-soft);">
+                            {m.name}{#if m.provider}<span class="font-sans" style="color: var(--sempa-text-dim);"> · {m.provider}</span>{/if}
+                          </p>
+                          <p class="set-meta mt-0.5">{m.reason}</p>
+                        </div>
+                      {/each}
+                    </div>
+                  </details>
+                {/if}
+              </div>
+            {/if}
+          {:else}
+            <!-- Downloaded models: pick the active one, see its size, remove it -->
+            {#if aiTitle.available_models.length > 0}
+              <div>
+                <p class="set-field-label">Model</p>
+                <div class="set-fill-list">
+                  {#each aiTitle.available_models as m (m.name)}
+                    <label class="flex min-h-12 cursor-pointer items-center gap-3 px-3.5 py-2">
+                      <input type="radio" name="ai-active-model" value={m.name} checked={aiTitle.model === m.name}
+                             onchange={() => { aiTitle.model = m.name; saveAiTitle('Active model updated'); }}
+                             class="set-radio" />
+                      <span class="flex-1 truncate text-[13px] font-mono" style="color: var(--sempa-text);">{m.name}</span>
+                      <span class="shrink-0 text-[11.5px] font-mono" style="color: var(--sempa-text-dim);">{fmtBytes(m.size)}</span>
+                      <button onclick={() => removeAiModel(m.name)} disabled={aiRemoving === m.name}
+                              class="set-icon-btn danger"
+                              aria-label="Remove {m.name}" title="Remove model">
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                      </button>
+                    </label>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+
+            <!-- Download a model (with progress) -->
+            <div>
+              <label class="set-field-label" for="ai-pull">Download a model</label>
+              {#if aiPulling}
+                <div class="set-fill p-3.5">
+                  <div class="mb-2 flex items-center justify-between text-[12px] font-semibold" style="color: var(--sempa-text-soft);">
+                    <span class="truncate pr-2">{aiPullLabel}</span>
+                    <span class="font-mono">{aiPullPct}%</span>
+                  </div>
+                  <div class="day-bar-track">
+                    <div class="day-bar-fill" style="width: {aiPullPct}%; background: var(--sempa-accent);"></div>
+                  </div>
+                </div>
+              {:else}
+                <div class="flex items-center gap-2">
+                  <input id="ai-pull" bind:value={aiPullModel} placeholder="e.g. qwen2.5:1.5b" spellcheck="false"
+                         onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); pullAiModel(); } }}
+                         class="set-input set-input-mono min-w-0 flex-1" />
+                  <button onclick={pullAiModel} disabled={!aiPullModel.trim()}
+                          class="btn-primary set-btn">
+                    Download
+                  </button>
+                </div>
+                <p class="set-meta mt-1.5 px-0.5">Find model names at ollama.com/library (e.g. qwen2.5:1.5b, llama3.2:3b).</p>
+              {/if}
+            </div>
+
+            <!-- Model server URL -->
+            <div>
+              <label class="set-field-label" for="ai-url">Model server URL (Ollama)</label>
+              <input id="ai-url" bind:value={aiTitle.base_url} placeholder="http://127.0.0.1:11434" spellcheck="false"
+                     class="set-input set-input-mono w-full" />
+            </div>
+
+          {/if}
 
           <!-- Feedback -->
           {#if aiError}
@@ -1383,15 +1559,25 @@
           {:else if aiStatus}
             <p class="set-ok">{aiStatus}</p>
           {/if}
+          {#if aiTryResult}
+            <p class={aiTryResult.ok ? 'set-ok' : 'set-error'}>{aiTryResult.text}</p>
+          {/if}
 
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <button onclick={() => saveAiTitle()} disabled={aiSaving}
                     class="btn-primary set-btn">
               {aiSaving ? 'Saving…' : 'Save'}
             </button>
-            <button onclick={testAiTitle} disabled={aiTesting}
-                    class="set-btn-quiet set-btn">
-              {aiTesting ? 'Testing…' : 'Test connection'}
+            {#if aiTitle.provider === 'ollama'}
+              <button onclick={testAiTitle} disabled={aiTesting}
+                      class="set-btn-quiet set-btn">
+                {aiTesting ? 'Testing…' : 'Test connection'}
+              </button>
+            {/if}
+            <button onclick={tryAiModel}
+                    disabled={aiTrying || (aiTitle.provider === 'aperture' ? !aiTitle.gateway_model : !aiTitle.base_url.trim())}
+                    class="set-btn-quiet set-btn" title="Send one short prompt to the model and time the answer">
+              {aiTrying ? 'Asking…' : 'Try it'}
             </button>
           </div>
         </div>

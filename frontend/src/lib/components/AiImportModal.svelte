@@ -63,7 +63,7 @@
     try {
       const res = await api.ai.import(looksLikeUrl(text) ? { url: text } : { text });
       if (!res.available) {
-        error = 'AI isn’t set up. Connect a local model in Settings → Accounts.';
+        error = 'AI isn’t set up. Connect a model in Settings → Integrations → AI.';
         phase = 'input';
         return;
       }

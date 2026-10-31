@@ -38,12 +38,33 @@ import type {
 
 /** A model available on the Ollama host, with its on-disk size in bytes. */
 export interface AiModel { name: string; size: number }
+/** A model a Tailscale Aperture gateway serves this server (see backend ai/gateway.go). */
+export interface AiGatewayModel {
+  /** What to ask for: the model id, or "provider/id" when one id is listed twice. */
+  id: string;
+  name: string;
+  provider?: string;
+  wire: 'openai_chat' | 'anthropic_messages' | '';
+  context_window?: number;
+  usable: boolean;
+  /** Why it can't be used (e.g. passthrough needs a key Sempa doesn't hold). */
+  reason?: string;
+}
+export type AiProvider = 'ollama' | 'aperture';
 export interface AiTitleConfig {
   enabled: boolean;
+  /** Where AI requests go: the Ollama host below, or the Aperture gateway. */
+  provider: AiProvider;
   base_url: string;
   model: string;
+  gateway_url: string;
+  gateway_model: string;
+  /** The model in use (for whichever provider) answers. */
   reachable: boolean;
+  /** The Ollama host answers, whichever provider is in use. */
+  ollama_reachable?: boolean;
   available_models: AiModel[];
+  gateway: { reachable: boolean; error?: string; models: AiGatewayModel[] };
 }
 /** Progress snapshot of an in-flight model download. */
 export interface AiPullState {
@@ -304,7 +325,7 @@ const httpApi = {
   unfurlImageUrl: (imageUrl: string) =>
     authedFileUrl(`/api/v1/unfurl/image?url=${encodeURIComponent(imageUrl)}`),
 
-  // AI-assist features — all run on the instance's local model. Each returns
+  // AI-assist features — run on the instance's model (local Ollama or Aperture). Each returns
   // { available: false } when AI is off, so callers hide the feature. A long
   // timeout accommodates CPU inference on small models.
   ai: {
@@ -598,16 +619,27 @@ const httpApi = {
       delete: () => req<void>('/api/v1/integrations/gmail', { method: 'DELETE' }),
     },
 
-    // AI task-title cleanup via a local Ollama model (tidies imported email
-    // subjects into task titles; nothing leaves the server).
+    // The model behind every AI feature: a local Ollama host (nothing leaves the
+    // server) or a Tailscale Aperture gateway (any model it serves).
     aiTitle: {
       get: () =>
         req<AiTitleConfig>('/api/v1/integrations/ai-title'),
-      save: (cfg: { enabled: boolean; base_url: string; model: string }) =>
+      save: (cfg: {
+        enabled: boolean; base_url: string; model: string;
+        provider: AiProvider; gateway_url: string; gateway_model: string;
+      }) =>
         req<AiTitleConfig>('/api/v1/integrations/ai-title', { method: 'PUT', body: body(cfg) }),
       test: (base_url: string) =>
         req<{ reachable: boolean; models: AiModel[]; error?: string }>(
           '/api/v1/integrations/ai-title/test', { method: 'POST', body: body({ base_url }) }),
+      // List what an Aperture gateway serves this server (bypasses the cache).
+      testGateway: (gateway_url: string) =>
+        req<{ reachable: boolean; gateway_models: AiGatewayModel[]; error?: string }>(
+          '/api/v1/integrations/ai-title/test', { method: 'POST', body: body({ gateway_url }) }),
+      // Send one tiny prompt end to end, to prove the model is actually usable.
+      try: (cfg: { provider: AiProvider; base_url?: string; gateway_url?: string; model: string }) =>
+        req<{ ok: boolean; reply?: string; ms?: number; error?: string }>(
+          '/api/v1/integrations/ai-title/try', { method: 'POST', body: body(cfg) }),
       // Start (or no-op if already running) a background model download.
       pull: (model: string, base_url: string) =>
         req<AiPullState>('/api/v1/integrations/ai-title/pull', { method: 'POST', body: body({ model, base_url }) }),

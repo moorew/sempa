@@ -10,12 +10,14 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/clevercode/sempa/internal/ai"
 )
 
 // SECURITY — accepted request-forgery (SSRF) finding [go/request-forgery].
 //
-// ListModels and ImproveTitle make an HTTP request to a base URL that the
-// instance owner configures (Settings → Integrations, or OLLAMA_BASE_URL). This
+// ListModels (and ImproveTitle, via package ai) make an HTTP request to a base
+// URL that the instance owner configures (Settings → Integrations, or OLLAMA_BASE_URL). This
 // is intentional: the feature exists to talk to a self-hosted model server,
 // which by design lives at an internal/loopback address (e.g.
 // http://ollama:11434 or http://localhost:11434) — so restricting requests to
@@ -165,17 +167,15 @@ func DeleteModel(ctx context.Context, baseURL, model string) error {
 	return nil
 }
 
-// ImproveTitle uses a local Ollama model to turn an email subject into a
-// concise action-oriented task title. The bodyContext (a short snippet of the
-// email body) lets the model preserve the specific names/projects/systems that
-// matter — small models otherwise strip them out as "company names". Falls back
-// to the stripped subject on any error or if Ollama is not configured.
-func ImproveTitle(ctx context.Context, ollamaBaseURL, model, subject, bodyContext string) string {
-	if ollamaBaseURL == "" || subject == "" {
+// ImproveTitle uses the configured model (local Ollama or an Aperture gateway,
+// see package ai) to turn an email subject into a concise action-oriented task
+// title. The bodyContext (a short snippet of the email body) lets the model
+// preserve the specific names/projects/systems that matter — small models
+// otherwise strip them out as "company names". Falls back to the stripped
+// subject on any error or if no model is configured.
+func ImproveTitle(ctx context.Context, cfg ai.Config, subject, bodyContext string) string {
+	if !cfg.Ready() || subject == "" {
 		return subject
-	}
-	if model == "" {
-		model = "qwen2.5:1.5b"
 	}
 
 	// Keep the snippet small: 300 chars is enough context to disambiguate the
@@ -195,48 +195,14 @@ func ImproveTitle(ctx context.Context, ollamaBaseURL, model, subject, bodyContex
 			"Body context: \"Hey, can you review the video rendering options Avery sent over for the new campaign?\"\n"+
 			"Output: Review Avery video rendering options", subject, bodyContext)
 
-	// Use /api/chat (not /api/generate): some models only expose a chat template
-	// and reject generate with "does not support generate".
-	body, _ := json.Marshal(map[string]any{
-		"model":    model,
-		"messages": []map[string]string{{"role": "user", "content": prompt}},
-		"stream":   false,
-		"options":  map[string]any{"temperature": 0.2, "num_predict": 64},
-	})
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		ollamaBaseURL+"/api/chat", bytes.NewReader(body))
+	// Bounded: an email import shouldn't wait long on a title nicety.
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	title, err := ai.Text(ctx, cfg, prompt, ai.Options{Temperature: 0.2, NumPredict: 64})
 	if err != nil {
 		return subject
 	}
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return subject
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return subject
-	}
-
-	raw, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return subject
-	}
-
-	var result struct {
-		Message struct {
-			Content string `json:"content"`
-		} `json:"message"`
-	}
-	if err := json.Unmarshal(raw, &result); err != nil {
-		return subject
-	}
-
-	title := strings.TrimSpace(result.Message.Content)
-	title = strings.Trim(title, `"'`)
+	title = strings.Trim(strings.TrimSpace(title), `"'`)
 	if title == "" {
 		return subject
 	}

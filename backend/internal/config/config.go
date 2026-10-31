@@ -57,6 +57,9 @@ type Config struct {
 	// Optional: Ollama base URL for local AI-powered task title cleanup
 	OllamaBaseURL string // e.g. http://ollama:11434
 	OllamaModel   string // default: qwen2.5:1.5b
+	// Optional: a Tailscale Aperture gateway (e.g. https://ai.<tailnet>.ts.net).
+	// Seeds Settings → Integrations → AI; any model it serves this node can be used.
+	ApertureBaseURL string
 
 	// Firebase Cloud Messaging — path to service account JSON key file
 	FCMKeyPath string // e.g. ./firebase-service-account.json
@@ -90,6 +93,7 @@ func Load() Config {
 		CalendarPollInterval: env("CALENDAR_POLL_INTERVAL", "15m"),
 		OllamaBaseURL:        env("OLLAMA_BASE_URL", ""),
 		OllamaModel:          env("OLLAMA_MODEL", "qwen2.5:1.5b"),
+		ApertureBaseURL:      env("APERTURE_BASE_URL", ""),
 		FCMKeyPath:           env("FCM_KEY_PATH", ""),
 		VAPIDSubject:         env("VAPID_SUBJECT", "mailto:admin@localhost"),
 	}

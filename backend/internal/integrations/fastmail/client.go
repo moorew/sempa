@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/clevercode/sempa/internal/ai"
 	"github.com/clevercode/sempa/internal/db"
 )
 
@@ -497,8 +498,9 @@ type InboxConfig struct {
 	AppPassword    string   `json:"app_password"`
 	InboxAddress   string   `json:"inbox_address"`
 	AllowedSenders []string `json:"allowed_senders,omitempty"`
-	OllamaBaseURL  string   `json:"ollama_base_url,omitempty"` // injected at runtime, not stored
-	OllamaModel    string   `json:"ollama_model,omitempty"`    // injected at runtime, not stored
+	// The model used to tidy subjects into titles; injected at runtime from the
+	// AI settings, never stored. Zero value = keep the raw subject.
+	AI ai.Config `json:"-"`
 }
 
 // SyncTaskInbox fetches unread emails to InboxAddress, filters by AllowedSenders,

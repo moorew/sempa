@@ -16,6 +16,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/clevercode/sempa/internal/ai"
 	"github.com/clevercode/sempa/internal/calsync"
 	"github.com/clevercode/sempa/internal/config"
 	"github.com/clevercode/sempa/internal/db"
@@ -844,12 +845,9 @@ func (h *integrationHandler) taskInboxSync(w http.ResponseWriter, r *http.Reques
 		respondError(w, http.StatusInternalServerError, "malformed config")
 		return
 	}
-	ai := h.configs.ResolveAITitle(r.Context(), h.cfg.OllamaBaseURL, h.cfg.OllamaModel)
-	inboxCfg.OllamaBaseURL = ""
-	if ai.Enabled {
-		inboxCfg.OllamaBaseURL = ai.BaseURL
+	if resolved := h.resolveAI(r.Context()); resolved.Enabled {
+		inboxCfg.AI = aiConfigOf(resolved)
 	}
-	inboxCfg.OllamaModel = ai.Model
 	result, err := fastmail.SyncTaskInbox(r.Context(), inboxCfg, h.tasks)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
@@ -888,47 +886,112 @@ func validModelServerURL(raw string) bool {
 	return (u.Scheme == "http" || u.Scheme == "https") && u.Host != ""
 }
 
-// aiTitleGet returns the effective AI title-cleanup config plus a live
-// reachability check and the models available on the configured Ollama host.
+// aiTitleGet returns the effective AI config plus a live check of both places a
+// model can run: the Ollama host (with its downloaded models) and, when one is
+// set, the Aperture gateway (with every model it serves this server's tailnet
+// identity). "reachable" answers for the provider in use, so the app only shows
+// AI features that will actually work.
 func (h *integrationHandler) aiTitleGet(w http.ResponseWriter, r *http.Request) {
-	ai := h.configs.ResolveAITitle(r.Context(), h.cfg.OllamaBaseURL, h.cfg.OllamaModel)
+	c := h.resolveAI(r.Context())
+	provider, _, _ := c.Effective()
 	resp := map[string]any{
-		"enabled":          ai.Enabled,
-		"base_url":         ai.BaseURL,
-		"model":            ai.Model,
+		"enabled":          c.Enabled,
+		"base_url":         c.BaseURL,
+		"model":            c.Model,
+		"provider":         provider,
+		"gateway_url":      c.GatewayURL,
+		"gateway_model":    c.GatewayModel,
 		"reachable":        false,
 		"available_models": []fastmail.ModelInfo{},
+		"gateway":          map[string]any{"reachable": false, "models": []ai.GatewayModel{}},
 	}
-	if models, err := fastmail.ListModelsDetailed(r.Context(), ai.BaseURL); err == nil {
-		resp["reachable"] = true
-		resp["available_models"] = models
+	ollamaOK := false
+	if c.BaseURL != "" {
+		if models, err := fastmail.ListModelsDetailed(r.Context(), c.BaseURL); err == nil {
+			ollamaOK = true
+			resp["available_models"] = models
+		}
+	}
+	gatewayOK := false
+	if c.GatewayURL != "" {
+		g := map[string]any{"reachable": false, "models": []ai.GatewayModel{}}
+		if models, err := ai.GatewayModels(r.Context(), c.GatewayURL); err != nil {
+			g["error"] = err.Error()
+		} else {
+			g["reachable"] = true
+			g["models"] = models
+			for _, m := range models {
+				if m.ID == c.GatewayModel && m.Usable {
+					gatewayOK = true
+				}
+			}
+		}
+		resp["gateway"] = g
+	}
+	resp["ollama_reachable"] = ollamaOK
+	if provider == db.AIProviderAperture {
+		resp["reachable"] = gatewayOK
+	} else {
+		resp["reachable"] = ollamaOK
 	}
 	respond(w, http.StatusOK, resp)
 }
 
-// aiTitleUpdate saves the enable flag, Ollama base URL, and model.
+// aiTitleUpdate saves the enable flag, the provider, and the settings for both
+// providers (Ollama URL + model, Aperture URL + model).
 func (h *integrationHandler) aiTitleUpdate(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Enabled bool   `json:"enabled"`
 		BaseURL string `json:"base_url"`
 		Model   string `json:"model"`
+		// Pointers: an app from before Aperture support sends none of these,
+		// and must not reset a gateway someone chose on a newer one.
+		Provider     *string `json:"provider"`
+		GatewayURL   *string `json:"gateway_url"`
+		GatewayModel *string `json:"gateway_model"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid body")
 		return
 	}
-	// Validate the model-server URL. It is admin-configured and intentionally
-	// allowed to point at internal/loopback hosts (the self-hosted model server
-	// lives there) — see the SSRF note in fastmail/aititle.go — but it must at
-	// least be a well-formed http(s) URL with a host.
+	current := h.resolveAI(r.Context())
+	provider, gatewayURL, gatewayModel := current.Provider, current.GatewayURL, current.GatewayModel
+	if body.Provider != nil {
+		provider = strings.TrimSpace(*body.Provider)
+	}
+	if body.GatewayURL != nil {
+		gatewayURL = strings.TrimSpace(*body.GatewayURL)
+	}
+	if body.GatewayModel != nil {
+		gatewayModel = strings.TrimSpace(*body.GatewayModel)
+	}
+	if provider == "" {
+		provider = db.AIProviderOllama
+	}
+	if provider != db.AIProviderOllama && provider != db.AIProviderAperture {
+		respondError(w, http.StatusBadRequest, "provider must be ollama or aperture")
+		return
+	}
+	// Validate the URLs. They are admin-configured and intentionally allowed to
+	// point at internal/loopback/tailnet hosts (that is where a self-hosted
+	// model server or an Aperture gateway lives) — see the SSRF note in
+	// fastmail/aititle.go — but each must be a well-formed http(s) URL when set,
+	// and the one in use must be set.
 	baseURL := strings.TrimSpace(body.BaseURL)
-	if !validModelServerURL(baseURL) {
+	if (baseURL != "" || provider == db.AIProviderOllama) && !validModelServerURL(baseURL) {
 		respondError(w, http.StatusBadRequest, "model server URL must be a valid http(s) URL")
 		return
 	}
+	if (gatewayURL != "" || provider == db.AIProviderAperture) && !validModelServerURL(gatewayURL) {
+		respondError(w, http.StatusBadRequest, "Aperture URL must be a valid http(s) URL")
+		return
+	}
 	cfgJSON, _ := json.Marshal(db.AITitleConfig{
-		BaseURL: baseURL,
-		Model:   strings.TrimSpace(body.Model),
+		BaseURL:      baseURL,
+		Model:        strings.TrimSpace(body.Model),
+		Provider:     provider,
+		GatewayURL:   gatewayURL,
+		GatewayModel: gatewayModel,
 	})
 	if _, err := h.configs.Upsert(r.Context(), uuid.New().String(), db.AITitleType, string(cfgJSON)); err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
@@ -941,16 +1004,31 @@ func (h *integrationHandler) aiTitleUpdate(w http.ResponseWriter, r *http.Reques
 	h.aiTitleGet(w, r)
 }
 
-// aiTitleTest pings a candidate Ollama base URL (or the configured one) so the
-// settings UI can verify connectivity before saving.
+// aiTitleTest checks a candidate (or the configured) model server so the
+// settings UI can verify connectivity before saving: an Ollama host when
+// base_url is given or nothing is, an Aperture gateway when gateway_url is.
 func (h *integrationHandler) aiTitleTest(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		BaseURL string `json:"base_url"`
+		BaseURL    string `json:"base_url"`
+		GatewayURL string `json:"gateway_url"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
+	if gatewayURL := strings.TrimSpace(body.GatewayURL); gatewayURL != "" {
+		if !validModelServerURL(gatewayURL) {
+			respondError(w, http.StatusBadRequest, "Aperture URL must be a valid http(s) URL")
+			return
+		}
+		models, err := ai.RefreshGatewayModels(r.Context(), gatewayURL)
+		if err != nil {
+			respond(w, http.StatusOK, map[string]any{"reachable": false, "error": err.Error(), "gateway_models": []ai.GatewayModel{}})
+			return
+		}
+		respond(w, http.StatusOK, map[string]any{"reachable": true, "gateway_models": models})
+		return
+	}
 	baseURL := strings.TrimSpace(body.BaseURL)
 	if baseURL == "" {
-		baseURL = h.configs.ResolveAITitle(r.Context(), h.cfg.OllamaBaseURL, h.cfg.OllamaModel).BaseURL
+		baseURL = h.resolveAI(r.Context()).BaseURL
 	}
 	models, err := fastmail.ListModelsDetailed(r.Context(), baseURL)
 	if err != nil {
@@ -960,12 +1038,61 @@ func (h *integrationHandler) aiTitleTest(w http.ResponseWriter, r *http.Request)
 	respond(w, http.StatusOK, map[string]any{"reachable": true, "models": models})
 }
 
+// aiTitleTry sends one tiny prompt to a model, end to end, and reports what came
+// back and how long it took. Listing a model proves the gateway knows it; this
+// proves this server may actually use it (grants, passthrough keys, routing).
+func (h *integrationHandler) aiTitleTry(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Provider   string `json:"provider"`
+		BaseURL    string `json:"base_url"`
+		GatewayURL string `json:"gateway_url"`
+		Model      string `json:"model"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	current := h.resolveAI(r.Context())
+	cfg := ai.Config{Provider: strings.TrimSpace(body.Provider), Model: strings.TrimSpace(body.Model)}
+	if cfg.Provider == "" {
+		cfg = aiConfigOf(current)
+	} else if cfg.Gateway() {
+		cfg.BaseURL = orString(strings.TrimSpace(body.GatewayURL), current.GatewayURL)
+		cfg.Model = orString(cfg.Model, current.GatewayModel)
+	} else {
+		cfg.Provider = ai.ProviderOllama
+		cfg.BaseURL = orString(strings.TrimSpace(body.BaseURL), current.BaseURL)
+		cfg.Model = orString(cfg.Model, current.Model)
+	}
+	if !validModelServerURL(cfg.BaseURL) || !cfg.Ready() {
+		respond(w, http.StatusOK, map[string]any{"ok": false, "error": "Pick a model server and a model first."})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	defer cancel()
+	start := time.Now()
+	reply, err := ai.Text(ctx, cfg, "Reply with exactly one word: Ready", ai.Options{Temperature: 0, NumPredict: 16})
+	ms := time.Since(start).Milliseconds()
+	if err != nil {
+		respond(w, http.StatusOK, map[string]any{"ok": false, "error": err.Error(), "ms": ms})
+		return
+	}
+	respond(w, http.StatusOK, map[string]any{"ok": true, "reply": clip(reply, 200), "ms": ms, "model": cfg.Model})
+}
+
+// orString returns the first non-empty value.
+func orString(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
 // resolveOllamaURL returns the request's base_url override, else the configured one.
 func (h *integrationHandler) resolveOllamaURL(ctx context.Context, override string) string {
 	if u := strings.TrimSpace(override); u != "" {
 		return u
 	}
-	return h.configs.ResolveAITitle(ctx, h.cfg.OllamaBaseURL, h.cfg.OllamaModel).BaseURL
+	return h.resolveAI(ctx).BaseURL
 }
 
 // aiTitlePull starts (or no-ops if already running) a background model download

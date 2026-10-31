@@ -72,6 +72,10 @@ services:
       # the settings fields blank otherwise). install.sh writes the loopback URL.
       OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-}"
       OLLAMA_MODEL: "${OLLAMA_MODEL:-qwen2.5:1.5b}"
+      # Optional: a Tailscale Aperture gateway (https://ai.<tailnet>.ts.net) to use
+      # any model it serves instead of local Ollama. Pick the model in Settings →
+      # Integrations → AI. See docs/APERTURE.md.
+      APERTURE_BASE_URL: "${APERTURE_BASE_URL:-}"
     env_file:
       - path: .env.local
         required: false
