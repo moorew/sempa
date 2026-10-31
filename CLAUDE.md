@@ -146,6 +146,11 @@ CI overrides — are in the private `sempa-ops` guide.)
 - **Notification channels (Android)** are immutable once created — bump the
   channel id (`rem_<sound>_v2`) to change sound/importance, and keep the id in
   sync across `localReminders.ts`, `push.ts`, and backend `fcm.go`.
+- **Phone navigation** (since 1.28) comes from one catalogue, `lib/nav.ts`
+  (`NAV_DESTS`): the bottom bar shows the ids in `prefs.mobileTabs` and the More
+  sheet lists the rest. Add a new phone destination there, not as a hard-coded
+  tile, or it can't be pinned. The desktop sidebar keeps its own grouping
+  schemes in `+layout.svelte`.
 - **Tags in list cards** (since 1.27.1): the **first tag** is a soft tinted chip
   with its name (`.tint .chip`); any further tags render as colour **dots**, and
   the chip's tooltip lists them all. Full chips for every tag only in the

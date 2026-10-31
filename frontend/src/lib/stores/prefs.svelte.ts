@@ -2,11 +2,14 @@
 // Keep this separate from theme.svelte so feature toggles don't bloat the theme
 // store. Mirrors the same runes + init() pattern.
 
+import { DEFAULT_TABS, sanitizeTabs, type NavId } from '$lib/nav';
+
 const CONTEXTUAL_KEY = 'sempa-contextual-reflections';
 const NAV_GROUPING_KEY = 'sempa.navGrouping';
 const NAV_SECTIONS_KEY = 'sempa.navSections';
 const AI_FEATURES_KEY = 'sempa.aiFeatures';
 const CELEBRATE_SOUND_KEY = 'sempa.celebrateSound';
+const MOBILE_TABS_KEY = 'sempa.mobileTabs';
 
 // Per-feature toggles for the AI-assist features, so users are in full control of
 // where the local model is used. All default ON, but every feature is also gated
@@ -69,6 +72,9 @@ function createPrefsStore() {
   // Soft chime on the day/week celebration moments. Off by default — the
   // celebrations are visual-first; sound is opt-in.
   let celebrateSound = $state(false);
+  // Which destinations sit in the phone's bottom tab bar, in order (More is
+  // always appended). Per device, like the sidebar layout.
+  let mobileTabs = $state<NavId[]>([...DEFAULT_TABS]);
 
   function init() {
     if (typeof localStorage === 'undefined') return;
@@ -83,6 +89,10 @@ function createPrefsStore() {
     try {
       const raw = localStorage.getItem(AI_FEATURES_KEY);
       if (raw) aiFeatures = { ...AI_FEATURES_DEFAULT, ...JSON.parse(raw) };
+    } catch { /* keep defaults */ }
+    try {
+      const raw = localStorage.getItem(MOBILE_TABS_KEY);
+      if (raw) mobileTabs = sanitizeTabs(JSON.parse(raw));
     } catch { /* keep defaults */ }
     try {
       const raw = localStorage.getItem(IMPORT_ENTRIES_KEY);
@@ -122,6 +132,11 @@ function createPrefsStore() {
     if (typeof localStorage !== 'undefined') localStorage.setItem(CELEBRATE_SOUND_KEY, on ? '1' : '0');
   }
 
+  function setMobileTabs(ids: NavId[]) {
+    mobileTabs = sanitizeTabs(ids);
+    if (typeof localStorage !== 'undefined') localStorage.setItem(MOBILE_TABS_KEY, JSON.stringify(mobileTabs));
+  }
+
   return {
     get contextualReflections() { return contextualReflections; },
     get navGrouping() { return navGrouping; },
@@ -129,6 +144,7 @@ function createPrefsStore() {
     get aiFeatures() { return aiFeatures; },
     get importEntries() { return importEntries; },
     get celebrateSound() { return celebrateSound; },
+    get mobileTabs() { return mobileTabs; },
     /** True when a given AI feature is switched on by the user. */
     aiOn(key: AiFeature) { return aiFeatures[key]; },
     /** True when a given AI Import entry point is switched on by the user. */
@@ -141,6 +157,8 @@ function createPrefsStore() {
     setAiFeature,
     setImportEntry,
     setCelebrateSound,
+    setMobileTabs,
+    resetMobileTabs: () => setMobileTabs([...DEFAULT_TABS]),
     toggleCelebrateSound: () => setCelebrateSound(!celebrateSound),
   };
 }

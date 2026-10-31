@@ -14,6 +14,8 @@ object SempaWidgetTheme {
 
     data class Palette(
         val primary: Color,
+        /** Solid fill behind text (the app's button colour) and its text colour. */
+        val primaryFill: Color,
         val onPrimary: Color,
         val surface: Color,
         val surfaceVariant: Color,
@@ -28,6 +30,7 @@ object SempaWidgetTheme {
     // raised card (--sempa-bg-panel), surfaceVariant the inset fill on it.
     private val DEFAULT = Palette(
         primary = Color(0xFFB3592E),
+        primaryFill = Color(0xFFB3592E),
         onPrimary = Color(0xFFFFFAF5),
         surface = Color(0xFFFFFFFF),
         surfaceVariant = Color(0xFFF6F0E8),
@@ -52,9 +55,16 @@ object SempaWidgetTheme {
                 fallback
             }
         }
+        val accent = col("theme_primary", DEFAULT.primary)
         palette = Palette(
-            primary = col("theme_primary", DEFAULT.primary),
-            onPrimary = DEFAULT.onPrimary, // on-accent text stays light at both ends
+            primary = accent,
+            // Text on a solid accent block uses the app's button pair (1.28), not
+            // the accent: in dark themes the accent is lightened for text on dark
+            // surfaces, so light text on it failed contrast (2.9:1 in terracotta),
+            // and the dark Forest/Plum/Slate/Ocean/OLED buttons use dark text.
+            // Falls back to the accent + light text if the app hasn't pushed it.
+            primaryFill = col("theme_primary_fill", accent),
+            onPrimary = col("theme_on_primary_fill", DEFAULT.onPrimary),
             surface = col("theme_surface", DEFAULT.surface),
             surfaceVariant = col("theme_surface", DEFAULT.surfaceVariant),
             onSurface = col("theme_on_surface", DEFAULT.onSurface),
@@ -66,6 +76,7 @@ object SempaWidgetTheme {
     }
 
     val primary get() = palette.primary
+    val primaryFill get() = palette.primaryFill
     val onPrimary get() = palette.onPrimary
     val surface get() = palette.surface
     val surfaceVariant get() = palette.surfaceVariant

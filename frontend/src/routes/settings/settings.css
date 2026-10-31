@@ -76,6 +76,10 @@
   width: 36px; height: 36px; border-radius: 12px;
   background: var(--sempa-accent-bg); color: var(--sempa-accent);
 }
+.set-icon.tint {
+  background: color-mix(in srgb, var(--tint) var(--sempa-tint-bg), var(--sempa-bg-panel));
+  color: color-mix(in srgb, var(--tint) var(--sempa-tint-fg), var(--sempa-text));
+}
 
 /* Pill switch — 46×28 track, accent when on, white knob. Works on a
    <button data-on>, a <span data-on> (inside a row button), or a visually
@@ -262,3 +266,21 @@
   border-radius: 14px; padding: 10px 14px; font-size: 13px; font-weight: 600;
   color: var(--set-danger); background: color-mix(in srgb, var(--set-danger) 10%, var(--sempa-bg-panel));
 }
+
+/* Bottom bar picker (phones): a small live preview of the tab bar. */
+.tabs-preview {
+  display: flex; align-items: center; gap: 2px; padding: 7px 4px 6px;
+  border-radius: 20px; background: var(--sempa-fill);
+}
+.tabs-preview-item {
+  flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  font-size: 10.5px; font-weight: 600; color: var(--sempa-text-soft);
+}
+.tabs-preview-item[data-active="true"] { color: var(--sempa-accent-ink); font-weight: 700; }
+.tabs-preview-pill {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 26px; border-radius: 999px;
+}
+.tabs-preview-item[data-active="true"] .tabs-preview-pill { background: var(--sempa-accent-bg); }
+.tabs-preview-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

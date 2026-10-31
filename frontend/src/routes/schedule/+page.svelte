@@ -172,8 +172,11 @@
     </div>
 
     <!-- Date strip — capsules -->
+    <!-- The strip scrolls sideways, which also clips vertically, so it carries
+         extra bottom padding (pulled back with -mb-4) for the selected capsule's
+         accent shadow to fall into instead of being cut off. -->
     <div bind:this={stripEl}
-         class="no-scrollbar -mx-5 mt-3 flex snap-x snap-proximity gap-1.5 overflow-x-auto scroll-px-5 px-5 pb-2"
+         class="no-scrollbar -mx-5 -mb-4 mt-2 flex snap-x snap-proximity gap-1.5 overflow-x-auto scroll-px-5 px-5 pb-6 pt-1"
          style="-webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;">
       {#each stripDays as day (day.date)}
         {@const isSel = day.date === date}

@@ -142,7 +142,7 @@ private fun LargeWidgetContent(
                                 .size(24.dp)
                                 .cornerRadius(12.dp)
                                 .background(
-                                    if (idx == todayIdx) SempaWidgetTheme.primary
+                                    if (idx == todayIdx) SempaWidgetTheme.primaryFill
                                     else SempaWidgetTheme.surface
                                 ),
                             contentAlignment = Alignment.Center,
