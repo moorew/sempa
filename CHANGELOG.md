@@ -6,6 +6,18 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.29.0] - 2026-10-31
+
+### Changed
+- **A new app icon on every platform.** Same idea, lighter touch: the day
+  thread and its three tasks are slimmer and sit in the middle of the tile with
+  room to breathe. The first task is checked off, today's task glows honey, and
+  the rest stay soft cream. Windows, Linux (including the tray's monochrome
+  icon), Android (including the theme-matched icons), iOS, the web app and its
+  home-screen icon, and sempa.ca all get it.
+- The **iOS app** now uses the Sempa icon. It was still showing the framework's
+  placeholder.
+
 ## [1.28.0] - 2026-10-30
 
 ### Added

@@ -151,6 +151,14 @@ CI overrides — are in the private `sempa-ops` guide.)
   sheet lists the rest. Add a new phone destination there, not as a hard-coded
   tile, or it can't be pinned. The desktop sidebar keeps its own grouping
   schemes in `+layout.svelte`.
+- **App icons** (since 1.29) are all generated from one definition by
+  `frontend/scripts/icons.py`: Tauri/Windows tiles, Linux hicolor + symbolic,
+  Android launcher (legacy, round, adaptive foreground shared by the
+  theme-matched variants), web/PWA, iOS, and `../sempa-web` when checked out.
+  Edit the geometry there and re-run; never hand-edit the PNGs. The iOS project
+  is generated in CI, so `ios-release.yml` copies `resources/ios/AppIcon-1024.png`
+  in. Bump the `?v=` on the favicon/manifest links when the icon changes. The
+  cradle mark (logo, splash, installer art) is separate and unchanged.
 - **Tags in list cards** (since 1.27.1): the **first tag** is a soft tinted chip
   with its name (`.tint .chip`); any further tags render as colour **dots**, and
   the chip's tooltip lists them all. Full chips for every tag only in the
