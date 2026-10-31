@@ -107,11 +107,16 @@ UI font" as an option.
 
 | File | Use |
 |---|---|
-| `icon.svg` | Full-color rounded app tile (source for hicolor PNGs) |
-| `mark.svg` | Bare cradle mark — derive the `-symbolic` icon from this |
+| `icon.svg` | Full-color rounded app tile: the day thread, first node checked off (1.29) |
+| `mark.svg` | Bare cradle mark (logo, splash screens, installer art) |
 | `logo.svg` / `logo-reversed.svg` | Wordmark lockup, dark-on-light / light-on-dark |
 | `icon.ico` | Multi-size icon |
 | `icon-256.png` / `icon-512.png` | Linux/desktop raster source |
+
+Every app icon (these, the hicolor set and its `-symbolic` icon, Tauri, Windows tiles,
+Android launcher incl. the theme-matched variants, web/PWA, iOS) is generated from one
+definition by `frontend/scripts/icons.py`. Change the geometry or colours there and
+re-run it; don't edit the PNGs by hand.
 
 Fuller sets live in the design project: `icon-export/` (svg, desktop, web, android) and
 `Sempa Brand Guidelines.html`.

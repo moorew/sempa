@@ -63,6 +63,26 @@ jobs:
           if [ ! -d ios ]; then npx cap add ios --packagemanager Cocoapods; fi
           npx cap sync ios
 
+      - name: App icon (replace Capacitor's placeholder)
+        working-directory: frontend
+        run: |
+          # The generated project ships Capacitor's default icon. Swap in ours:
+          # one opaque 1024px square (iOS rounds the corners itself), as a
+          # single-size universal AppIcon. Source: frontend/scripts/icons.py.
+          SET=ios/App/App/Assets.xcassets/AppIcon.appiconset
+          mkdir -p "$SET"
+          rm -f "$SET"/*.png
+          cp resources/ios/AppIcon-1024.png "$SET/AppIcon-512@2x.png"
+          cat > "$SET/Contents.json" <<'JSON'
+          {
+            "images": [
+              { "filename": "AppIcon-512@2x.png", "idiom": "universal", "platform": "ios", "size": "1024x1024" }
+            ],
+            "info": { "author": "xcode", "version": 1 }
+          }
+          JSON
+          ls -la "$SET"
+
       - name: CocoaPods install (generates App.xcworkspace)
         working-directory: frontend
         run: |
