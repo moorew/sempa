@@ -88,12 +88,15 @@ Results surface in the repo's **Security** tab.
 Some scanner findings are deliberate, reviewed trade-offs rather than bugs. These
 are dismissed in the Security tab with a justification and documented here:
 
-- **CodeQL `go/request-forgery` (SSRF) — AI task-title cleanup model-server URL.**
-  The AI task-title cleanup feature sends a request to an Ollama endpoint that the
-  instance owner configures (Settings → Integrations, or `OLLAMA_BASE_URL`). By
-  design that endpoint is a self-hosted/internal address (e.g.
-  `http://ollama:11434`), so the usual SSRF mitigation (blocking internal hosts)
-  would break the feature. The URL is settable only by the **authenticated owner**
+- **CodeQL `go/request-forgery` (SSRF) — AI model-server and Aperture URLs.**
+  The AI features send requests to an Ollama endpoint, or (since 1.30) to a
+  Tailscale Aperture gateway, that the instance owner configures (Settings →
+  Integrations → AI, `OLLAMA_BASE_URL` or `APERTURE_BASE_URL`). By design those
+  are self-hosted/internal or tailnet addresses (e.g. `http://127.0.0.1:11434`,
+  `https://ai.<tailnet>.ts.net`), so the usual SSRF mitigation (blocking internal
+  hosts) would break the feature. For the gateway, the server only fetches a
+  **saved** URL: connecting saves it first, and "Try it" uses saved settings only
+  (see `docs/APERTURE.md`). The URL is settable only by the **authenticated owner**
   — who already controls the server — never by untrusted input, and the API
   validates it is a well-formed `http(s)` URL (`validModelServerURL`). The residual
   risk is accepted. See `backend/internal/integrations/fastmail/aititle.go`. If
