@@ -632,14 +632,12 @@ const httpApi = {
       test: (base_url: string) =>
         req<{ reachable: boolean; models: AiModel[]; error?: string }>(
           '/api/v1/integrations/ai-title/test', { method: 'POST', body: body({ base_url }) }),
-      // List what an Aperture gateway serves this server (bypasses the cache).
-      testGateway: (gateway_url: string) =>
-        req<{ reachable: boolean; gateway_models: AiGatewayModel[]; error?: string }>(
-          '/api/v1/integrations/ai-title/test', { method: 'POST', body: body({ gateway_url }) }),
-      // Send one tiny prompt end to end, to prove the model is actually usable.
-      try: (cfg: { provider: AiProvider; base_url?: string; gateway_url?: string; model: string }) =>
+      // Send one tiny prompt to the saved model, end to end, to prove it's usable.
+      // (An Aperture gateway is connected by saving its URL; the reply lists
+      // its models fresh.)
+      try: () =>
         req<{ ok: boolean; reply?: string; ms?: number; error?: string }>(
-          '/api/v1/integrations/ai-title/try', { method: 'POST', body: body(cfg) }),
+          '/api/v1/integrations/ai-title/try', { method: 'POST' }),
       // Start (or no-op if already running) a background model download.
       pull: (model: string, base_url: string) =>
         req<AiPullState>('/api/v1/integrations/ai-title/pull', { method: 'POST', body: body({ model, base_url }) }),

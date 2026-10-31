@@ -1001,31 +1001,25 @@ func (h *integrationHandler) aiTitleUpdate(w http.ResponseWriter, r *http.Reques
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	// A changed gateway URL is how the UI connects: list its models fresh
+	// (from the saved setting, never straight from the request) rather than
+	// from a cache that may predate a new grant.
+	if body.GatewayURL != nil {
+		if saved := h.resolveAI(r.Context()).GatewayURL; saved != "" {
+			_, _ = ai.RefreshGatewayModels(r.Context(), saved)
+		}
+	}
 	h.aiTitleGet(w, r)
 }
 
-// aiTitleTest checks a candidate (or the configured) model server so the
-// settings UI can verify connectivity before saving: an Ollama host when
-// base_url is given or nothing is, an Aperture gateway when gateway_url is.
+// aiTitleTest pings a candidate Ollama base URL (or the configured one) so the
+// settings UI can verify connectivity before saving. (An Aperture gateway is
+// checked by saving its URL instead; see aiTitleUpdate.)
 func (h *integrationHandler) aiTitleTest(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		BaseURL    string `json:"base_url"`
-		GatewayURL string `json:"gateway_url"`
+		BaseURL string `json:"base_url"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
-	if gatewayURL := strings.TrimSpace(body.GatewayURL); gatewayURL != "" {
-		if !validModelServerURL(gatewayURL) {
-			respondError(w, http.StatusBadRequest, "Aperture URL must be a valid http(s) URL")
-			return
-		}
-		models, err := ai.RefreshGatewayModels(r.Context(), gatewayURL)
-		if err != nil {
-			respond(w, http.StatusOK, map[string]any{"reachable": false, "error": err.Error(), "gateway_models": []ai.GatewayModel{}})
-			return
-		}
-		respond(w, http.StatusOK, map[string]any{"reachable": true, "gateway_models": models})
-		return
-	}
 	baseURL := strings.TrimSpace(body.BaseURL)
 	if baseURL == "" {
 		baseURL = h.resolveAI(r.Context()).BaseURL
@@ -1038,30 +1032,14 @@ func (h *integrationHandler) aiTitleTest(w http.ResponseWriter, r *http.Request)
 	respond(w, http.StatusOK, map[string]any{"reachable": true, "models": models})
 }
 
-// aiTitleTry sends one tiny prompt to a model, end to end, and reports what came
-// back and how long it took. Listing a model proves the gateway knows it; this
-// proves this server may actually use it (grants, passthrough keys, routing).
+// aiTitleTry sends one tiny prompt to the saved model, end to end, and reports
+// what came back and how long it took. Listing a model proves the gateway knows
+// it; this proves this server may actually use it (grants, passthrough keys,
+// routing). It only ever uses saved settings, so no request can point the
+// server at an arbitrary URL.
 func (h *integrationHandler) aiTitleTry(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Provider   string `json:"provider"`
-		BaseURL    string `json:"base_url"`
-		GatewayURL string `json:"gateway_url"`
-		Model      string `json:"model"`
-	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
-	current := h.resolveAI(r.Context())
-	cfg := ai.Config{Provider: strings.TrimSpace(body.Provider), Model: strings.TrimSpace(body.Model)}
-	if cfg.Provider == "" {
-		cfg = aiConfigOf(current)
-	} else if cfg.Gateway() {
-		cfg.BaseURL = orString(strings.TrimSpace(body.GatewayURL), current.GatewayURL)
-		cfg.Model = orString(cfg.Model, current.GatewayModel)
-	} else {
-		cfg.Provider = ai.ProviderOllama
-		cfg.BaseURL = orString(strings.TrimSpace(body.BaseURL), current.BaseURL)
-		cfg.Model = orString(cfg.Model, current.Model)
-	}
-	if !validModelServerURL(cfg.BaseURL) || !cfg.Ready() {
+	cfg := aiConfigOf(h.resolveAI(r.Context()))
+	if !cfg.Ready() {
 		respond(w, http.StatusOK, map[string]any{"ok": false, "error": "Pick a model server and a model first."})
 		return
 	}
@@ -1075,16 +1053,6 @@ func (h *integrationHandler) aiTitleTry(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	respond(w, http.StatusOK, map[string]any{"ok": true, "reply": clip(reply, 200), "ms": ms, "model": cfg.Model})
-}
-
-// orString returns the first non-empty value.
-func orString(vals ...string) string {
-	for _, v := range vals {
-		if v != "" {
-			return v
-		}
-	}
-	return ""
 }
 
 // resolveOllamaURL returns the request's base_url override, else the configured one.

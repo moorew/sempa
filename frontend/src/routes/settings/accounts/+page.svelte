@@ -545,23 +545,28 @@
     if (ready) await saveAiTitle(p === 'aperture' ? 'Using Aperture' : 'Using the model on this server');
   }
 
-  // Ask the gateway what it serves this server, without saving anything.
-  async function testAiGateway() {
+  // Connect = save the gateway URL; the server then lists its models fresh.
+  // Until a model is picked, the saved provider stays as it was, so AI keeps
+  // working on the old setup while you finish this one.
+  async function connectAiGateway() {
     const url = aiTitle.gateway_url.trim();
     if (!url) { aiError = 'Enter your Aperture URL first'; return; }
     aiGwTesting = true;
     aiError = '';
     aiTryResult = null;
     try {
-      const res = await api.integrations.aiTitle.testGateway(url);
-      aiTitle = { ...aiTitle, gateway: { reachable: res.reachable, error: res.error, models: res.gateway_models ?? [] } };
-      if (res.reachable) {
-        const n = (res.gateway_models ?? []).filter((m) => m.usable).length;
+      const keepProvider = aiTitle.gateway_model ? aiTitle.provider : (aiBaseline?.provider ?? 'ollama');
+      const saved = normAi(await api.integrations.aiTitle.save({ ...aiSnapshot(), provider: keepProvider }));
+      aiTitle = { ...saved, provider: aiTitle.provider };
+      aiBaseline = { ...aiSnapshot(saved) };
+      void aiAvail.refresh();
+      if (saved.gateway.reachable) {
+        const n = saved.gateway.models.filter((m) => m.usable).length;
         flashAiStatus(n ? `Connected · ${n} model${n === 1 ? '' : 's'} you can use` : 'Connected, but no models are usable yet');
       }
       // On failure the card shows the gateway's own error under the URL field.
     } catch (e) {
-      aiError = e instanceof Error ? e.message : 'Test failed';
+      aiError = e instanceof Error ? e.message : 'Couldn’t connect';
     } finally {
       aiGwTesting = false;
     }
@@ -574,15 +579,17 @@
   }
 
   // One tiny prompt, end to end: proves the model really answers this server.
+  // The server only tries saved settings, so save any edits first.
   async function tryAiModel() {
     aiTrying = true;
     aiTryResult = null;
     aiError = '';
     try {
-      const gw = aiTitle.provider === 'aperture';
-      const res = await api.integrations.aiTitle.try(gw
-        ? { provider: 'aperture', gateway_url: aiTitle.gateway_url.trim(), model: aiTitle.gateway_model }
-        : { provider: 'ollama', base_url: aiTitle.base_url.trim(), model: aiTitle.model });
+      if (!aiBaseline || JSON.stringify(aiBaseline) !== JSON.stringify(aiSnapshot())) {
+        await saveAiTitle('Saved');
+        if (aiError) return;
+      }
+      const res = await api.integrations.aiTitle.try();
       aiTryResult = res.ok
         ? { ok: true, text: `Answered “${res.reply ?? ''}” in ${fmtMs(res.ms)}` }
         : { ok: false, text: res.error ?? 'No answer' };
@@ -1432,9 +1439,9 @@
               <label class="set-field-label" for="ai-gw-url">Aperture URL</label>
               <div class="flex items-center gap-2">
                 <input id="ai-gw-url" bind:value={aiTitle.gateway_url} placeholder="https://ai.your-tailnet.ts.net" spellcheck="false"
-                       onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); testAiGateway(); } }}
+                       onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); connectAiGateway(); } }}
                        class="set-input set-input-mono min-w-0 flex-1" />
-                <button onclick={testAiGateway} disabled={aiGwTesting || !aiTitle.gateway_url.trim()} class="set-btn-quiet set-btn">
+                <button onclick={connectAiGateway} disabled={aiGwTesting || !aiTitle.gateway_url.trim()} class="set-btn-quiet set-btn">
                   {aiGwTesting ? 'Connecting…' : 'Connect'}
                 </button>
               </div>

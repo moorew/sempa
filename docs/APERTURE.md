@@ -24,7 +24,7 @@ elsewhere on your tailnet.
 1. In Sempa, open **Settings → Integrations → AI** and turn on **AI assist**.
 2. Under **Where the model runs**, choose **Aperture**.
 3. Enter your gateway's URL, for example `https://ai.your-tailnet.ts.net`, and
-   press **Connect**. Sempa lists the models you can use.
+   press **Connect**. Sempa saves it and lists the models you can use.
 4. Pick a model. It's saved straight away.
 5. Press **Try it**. Sempa sends one short prompt and shows the answer and how
    long it took. If that works, every AI feature will.
