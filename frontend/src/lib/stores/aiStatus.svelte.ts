@@ -1,5 +1,5 @@
-// Tracks whether the local AI model is actually usable (enabled + reachable on
-// the server), so AI-assist buttons only appear when they'll work. Loaded once
+// Tracks whether the AI model in use (local Ollama or an Aperture gateway) is
+// actually usable (enabled + reachable from the server), so AI-assist buttons only appear when they'll work. Loaded once
 // app-wide; refresh() re-checks after the user changes AI settings.
 import { api } from '$lib/api';
 

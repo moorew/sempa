@@ -81,3 +81,38 @@ func TestResolveAITitleEmptyFieldsFallBackToEnv(t *testing.T) {
 		t.Fatalf("expected env fallback for empty stored fields: %+v", got)
 	}
 }
+
+func TestResolveAIGateway(t *testing.T) {
+	s := newTestConfigStore(t)
+	ctx := context.Background()
+
+	// Only a gateway in the env → on, and the gateway is the provider.
+	got := s.ResolveAI(ctx, AIEnv{GatewayURL: "https://ai.example.ts.net"})
+	if p, u, m := got.Effective(); !got.Enabled || p != AIProviderAperture || u != "https://ai.example.ts.net" || m != "" {
+		t.Fatalf("gateway env default: %+v", got)
+	}
+	// Both in the env → Ollama stays the default.
+	if p, _, _ := s.ResolveAI(ctx, AIEnv{OllamaBaseURL: "http://127.0.0.1:11434", GatewayURL: "https://ai.example.ts.net"}).Effective(); p != AIProviderOllama {
+		t.Fatalf("with both seeded, provider = %q, want ollama", p)
+	}
+
+	// A saved gateway choice wins, and the Ollama fields survive alongside it.
+	cfgJSON, _ := json.Marshal(AITitleConfig{
+		BaseURL: "http://host:11434", Model: "qwen2.5:1.5b",
+		Provider: AIProviderAperture, GatewayURL: "https://ai.saved.ts.net", GatewayModel: "anthropic-api/claude-opus-5",
+	})
+	if _, err := s.Upsert(ctx, uuid.New().String(), AITitleType, string(cfgJSON)); err != nil {
+		t.Fatalf("upsert: %v", err)
+	}
+	if err := s.SetEnabled(ctx, AITitleType, true); err != nil {
+		t.Fatalf("set enabled: %v", err)
+	}
+	got = s.ResolveAI(ctx, AIEnv{OllamaBaseURL: "http://env:11434"})
+	p, u, m := got.Effective()
+	if p != AIProviderAperture || u != "https://ai.saved.ts.net" || m != "anthropic-api/claude-opus-5" {
+		t.Fatalf("saved gateway: %s %s %s", p, u, m)
+	}
+	if got.BaseURL != "http://host:11434" || got.Model != "qwen2.5:1.5b" {
+		t.Fatalf("Ollama settings should be kept while the gateway is active: %+v", got)
+	}
+}

@@ -35,7 +35,7 @@
           Turn on AI assist
         </p>
         <p class="banner-hint truncate">
-          Connect a local model to unlock quick-add, planning and recipe import — nothing leaves your server.
+          Connect a model (on your server, or through Aperture) to unlock quick-add, planning and recipe import.
         </p>
       </div>
     </div>

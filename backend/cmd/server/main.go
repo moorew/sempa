@@ -102,7 +102,9 @@ func main() {
 			slog.Warn("invalid INBOX_POLL_INTERVAL, using 5m", "value", cfg.InboxPollInterval)
 			interval = 5 * time.Minute
 		}
-		poller.StartInbox(ctx, database, interval, cfg.OllamaBaseURL, cfg.OllamaModel)
+		poller.StartInbox(ctx, database, interval, db.AIEnv{
+			OllamaBaseURL: cfg.OllamaBaseURL, OllamaModel: cfg.OllamaModel, GatewayURL: cfg.ApertureBaseURL,
+		})
 		slog.Info("inbox poller started", "interval", interval)
 	}
 

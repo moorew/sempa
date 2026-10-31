@@ -151,6 +151,15 @@ CI overrides — are in the private `sempa-ops` guide.)
   sheet lists the rest. Add a new phone destination there, not as a hard-coded
   tile, or it can't be pinned. The desktop sidebar keeps its own grouping
   schemes in `+layout.svelte`.
+- **AI** goes through one client, `backend/internal/ai` (`ai.Text`/`ai.JSON`),
+  for every feature including email-title cleanup. Since 1.30 it has two
+  providers, picked in Settings: local Ollama (`/api/chat`) or a Tailscale
+  Aperture gateway (`ai/gateway.go`: discovers models from `/v1/models`, speaks
+  `/v1/chat/completions` or `/v1/messages` per model, sends **no credential**,
+  since tailnet identity is the auth). Don't call a model server directly from a
+  feature, and don't add API-key storage: passthrough models get their key in
+  Aperture instead (see `docs/APERTURE.md`). Settings live under the
+  `ai_title` integration key (`db.AITitleConfig`, `ResolveAI`).
 - **App icons** (since 1.29) are all generated from one definition by
   `frontend/scripts/icons.py`: Tauri/Windows tiles, Linux hicolor + symbolic,
   Android launcher (legacy, round, adaptive foreground shared by the

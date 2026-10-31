@@ -6,6 +6,26 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.30.0] - 2026-10-31
+
+### Added
+- **Use any model your Tailscale Aperture gateway serves.** Settings →
+  Integrations → AI now has **Where the model runs**: *On this server* (Ollama,
+  as before) or *Aperture*. Enter your gateway's URL and Sempa lists every model
+  Aperture offers this server: Claude, Gemini, OpenAI, or models hosted on your
+  tailnet. Pick one and it runs every AI feature, including email-title cleanup.
+  No API keys live in Sempa; Aperture recognises the server by its tailnet
+  identity. Models that need your own provider key (passthrough) are listed
+  separately with how to set them up in Aperture. **Try it** sends one short
+  prompt and shows the answer and how long it took. See `docs/APERTURE.md`.
+- `APERTURE_BASE_URL` can seed the gateway URL for new installs.
+
+### Changed
+- The AI settings card is now **AI assist**, and its copy says where prompts go:
+  nothing leaves the server with the local model; with Aperture they go to
+  whichever provider serves the model you picked. Your local model settings are
+  kept when you switch, so switching back is one tap.
+
 ## [1.29.0] - 2026-10-31
 
 ### Changed

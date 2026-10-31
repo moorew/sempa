@@ -7,24 +7,25 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/clevercode/sempa/internal/ai"
 	"github.com/clevercode/sempa/internal/db"
 	"github.com/clevercode/sempa/internal/integrations/fastmail"
 	"github.com/clevercode/sempa/internal/integrations/jira"
 )
 
 // StartInbox polls the task_inbox integration on the given interval.
-func StartInbox(ctx context.Context, database *sql.DB, interval time.Duration, ollamaBaseURL, ollamaModel string) {
+func StartInbox(ctx context.Context, database *sql.DB, interval time.Duration, aiEnv db.AIEnv) {
 	if interval < 30*time.Second {
 		interval = 30 * time.Second
 	}
 	go func() {
-		pollInbox(ctx, database, ollamaBaseURL, ollamaModel)
+		pollInbox(ctx, database, aiEnv)
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
-				pollInbox(ctx, database, ollamaBaseURL, ollamaModel)
+				pollInbox(ctx, database, aiEnv)
 			case <-ctx.Done():
 				return
 			}
@@ -32,7 +33,7 @@ func StartInbox(ctx context.Context, database *sql.DB, interval time.Duration, o
 	}()
 }
 
-func pollInbox(ctx context.Context, database *sql.DB, ollamaBaseURL, ollamaModel string) {
+func pollInbox(ctx context.Context, database *sql.DB, aiEnv db.AIEnv) {
 	configs := db.NewIntegrationConfigStore(database)
 	tasks := db.NewTaskStore(database)
 
@@ -46,14 +47,13 @@ func pollInbox(ctx context.Context, database *sql.DB, ollamaBaseURL, ollamaModel
 		slog.Error("inbox poller: bad config", "err", err)
 		return
 	}
-	// Effective AI task-title cleanup config (DB override, else env). When
-	// disabled, leave the base URL empty so ImproveTitle keeps the raw subject.
-	ai := configs.ResolveAITitle(ctx, ollamaBaseURL, ollamaModel)
-	inboxCfg.OllamaBaseURL = ""
-	if ai.Enabled {
-		inboxCfg.OllamaBaseURL = ai.BaseURL
+	// Effective AI config (DB override, else env): local Ollama or an Aperture
+	// gateway. When AI is off the zero Config makes ImproveTitle keep the raw
+	// subject.
+	if resolved := configs.ResolveAI(ctx, aiEnv); resolved.Enabled {
+		p, u, m := resolved.Effective()
+		inboxCfg.AI = ai.Config{Provider: p, BaseURL: u, Model: m}
 	}
-	inboxCfg.OllamaModel = ai.Model
 
 	result, err := fastmail.SyncTaskInbox(ctx, inboxCfg, tasks)
 	if err != nil {

@@ -10,17 +10,35 @@ import (
 	"unicode/utf8"
 
 	"github.com/clevercode/sempa/internal/ai"
+	"github.com/clevercode/sempa/internal/db"
 )
 
-// AI-assist endpoints. Every handler resolves the instance's local model config;
-// if AI is disabled or unconfigured it returns {"available": false} (HTTP 200)
-// so the UI can quietly hide the feature rather than erroring. All inference runs
-// on the self-hosted Ollama model — nothing is sent to a third party.
+// AI-assist endpoints. Every handler resolves the instance's model config; if AI
+// is disabled or unconfigured it returns {"available": false} (HTTP 200) so the
+// UI can quietly hide the feature rather than erroring. Inference runs on the
+// owner's choice: the self-hosted Ollama model (nothing leaves the server) or a
+// model reached through their Tailscale Aperture gateway.
+
+// aiEnv is the environment's seed for the AI settings.
+func (h *integrationHandler) aiEnv() db.AIEnv {
+	return db.AIEnv{OllamaBaseURL: h.cfg.OllamaBaseURL, OllamaModel: h.cfg.OllamaModel, GatewayURL: h.cfg.ApertureBaseURL}
+}
+
+// resolveAI returns the effective AI settings (saved, else env).
+func (h *integrationHandler) resolveAI(ctx context.Context) db.AITitleConfig {
+	return h.configs.ResolveAI(ctx, h.aiEnv())
+}
+
+// aiConfigOf turns saved settings into a client config for the provider in use.
+func aiConfigOf(c db.AITitleConfig) ai.Config {
+	p, u, m := c.Effective()
+	return ai.Config{Provider: p, BaseURL: u, Model: m}
+}
 
 // aiCfg returns the resolved model config and whether AI is usable.
 func (h *integrationHandler) aiCfg(ctx context.Context) (ai.Config, bool) {
-	c := h.configs.ResolveAITitle(ctx, h.cfg.OllamaBaseURL, h.cfg.OllamaModel)
-	cfg := ai.Config{BaseURL: c.BaseURL, Model: c.Model}
+	c := h.resolveAI(ctx)
+	cfg := aiConfigOf(c)
 	return cfg, c.Enabled && cfg.Ready()
 }
 

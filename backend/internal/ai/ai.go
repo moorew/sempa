@@ -1,8 +1,11 @@
-// Package ai is a thin client over a local Ollama server, shared by the
-// AI-assist features (quick-add parsing, task summaries, tag suggestions,
-// subtask breakdown, day planning, weekly-review drafting, reflection prompts).
-// Everything runs against the instance owner's self-hosted model — nothing
-// leaves the server.
+// Package ai is the one model client behind every AI-assist feature (quick-add
+// parsing, task summaries, tag suggestions, subtask breakdown, day planning,
+// weekly-review drafting, reflection prompts, email-title cleanup).
+//
+// It talks to one of two places, chosen by the instance owner:
+//   - a local Ollama server (the default): nothing leaves the host;
+//   - a Tailscale Aperture gateway (gateway.go): any model Aperture serves
+//     this server's tailnet identity, local or cloud, with no keys in Sempa.
 package ai
 
 import (
@@ -16,14 +19,31 @@ import (
 	"time"
 )
 
-// Config is the resolved Ollama endpoint + model for a request.
+// Providers a Config can point at.
+const (
+	ProviderOllama   = "ollama"
+	ProviderAperture = "aperture"
+)
+
+// Config is the resolved endpoint + model for a request. Provider "" means
+// Ollama, which is what every config was before Aperture support.
 type Config struct {
-	BaseURL string
-	Model   string
+	Provider string
+	BaseURL  string
+	Model    string
 }
 
-// Ready reports whether AI calls can be made (a server URL is configured).
-func (c Config) Ready() bool { return strings.TrimSpace(c.BaseURL) != "" }
+// Gateway reports whether this config points at an Aperture gateway.
+func (c Config) Gateway() bool { return c.Provider == ProviderAperture }
+
+// Ready reports whether AI calls can be made: a server URL is configured and,
+// for a gateway, a model has been picked (Ollama falls back to a default).
+func (c Config) Ready() bool {
+	if strings.TrimSpace(c.BaseURL) == "" {
+		return false
+	}
+	return !c.Gateway() || strings.TrimSpace(c.Model) != ""
+}
 
 // Options tunes a single generation. Lower temperature (near 0) suits structured
 // extraction; higher (~0.6) suits the creative drafting features. NumPredict caps
@@ -48,7 +68,8 @@ func resolveOptions(opts []Options) Options {
 	return o
 }
 
-// generate calls Ollama's /api/chat once (non-streamed). When jsonMode is set,
+// generate runs one completion. Gateway configs go to gatewayGenerate; the rest
+// call Ollama's /api/chat once (non-streamed). When jsonMode is set,
 // Ollama is asked to emit strictly valid JSON (format:json), which makes parsing
 // reliable even with small models. We use /api/chat rather than /api/generate
 // because some models (e.g. recent llama3.2 builds) only expose a chat template
@@ -56,6 +77,9 @@ func resolveOptions(opts []Options) Options {
 func generate(ctx context.Context, c Config, prompt string, jsonMode bool, opts Options) (string, error) {
 	if !c.Ready() {
 		return "", fmt.Errorf("AI model server not configured")
+	}
+	if c.Gateway() {
+		return gatewayGenerate(ctx, c, prompt, jsonMode, opts)
 	}
 	model := strings.TrimSpace(c.Model)
 	if model == "" {
