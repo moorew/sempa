@@ -301,6 +301,7 @@ the same area.
 ## Pointers
 
 - Contributing: `CONTRIBUTING.md`
+- Aperture AI, including how it works under the hood: `docs/APERTURE.md`
 - Security policy: `SECURITY.md`
 - Jira integration: `docs/JIRA.md`
 - Backups + the Google Drive 7-day expiry: `docs/BACKUP.md`

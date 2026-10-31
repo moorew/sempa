@@ -16,7 +16,7 @@ The OpenSSF badge above links to Sempa's full [Best Practices assessment](https:
 
 ## Full details, docs and downloads available at [sempa.ca](https://sempa.ca)
 
-📚 **Documentation:** [sempa.ca/docs.html](https://sempa.ca/docs.html) (full user & self-hosting docs) · in-repo [User Guide](#user-guide) · [Development](#development) · [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md)
+📚 **Documentation:** [sempa.ca/docs.html](https://sempa.ca/docs.html) (full user & self-hosting docs) · in-repo [User Guide](#user-guide) · [Development](#development) · [Aperture AI](docs/APERTURE.md) · [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md)
 
 ---
 
@@ -302,8 +302,8 @@ Generate one at [Tailscale Admin → Keys](https://login.tailscale.com/admin/set
 | `SMTP_PORT` | Port for the built-in inbound SMTP server (default: `2525`) |
 | `VAPID_SUBJECT` | Web Push contact address (e.g. `mailto:you@example.com`); the VAPID key pair auto-generates |
 | `FCM_KEY_PATH` | Path to a Firebase service-account JSON key for native Android push |
-| `OLLAMA_BASE_URL` | Ollama endpoint for AI task-title cleanup. **Empty by default** (feature off). `install.sh` sets it to `http://127.0.0.1:11434` when you opt into local AI; it can also be set manually or changed in **Settings → Integrations**. |
-| `OLLAMA_MODEL` | Local model for AI task-title cleanup (default: `qwen2.5:1.5b`) |
+| `OLLAMA_BASE_URL` | Ollama endpoint for the local AI model (AI assist, including email-title cleanup). **Empty by default** (feature off). `install.sh` sets it to `http://127.0.0.1:11434` when you opt into local AI; it can also be set manually or changed in **Settings → Integrations**. |
+| `OLLAMA_MODEL` | Local model for AI assist (default: `qwen2.5:1.5b`) |
 | `APERTURE_BASE_URL` | Optional [Tailscale Aperture](https://tailscale.com/docs/aperture) gateway, e.g. `https://ai.<tailnet>.ts.net`. Seeds **Settings → Integrations → AI → Aperture**, where you pick a model. See [docs/APERTURE.md](docs/APERTURE.md). |
 | `COMPOSE_PROFILES` | Set to `ai` to start the optional `ollama` service (written automatically when you choose local AI at install). |
 | `INBOX_POLL_INTERVAL` | How often to poll the email inbox (default: `1m`) |
@@ -324,12 +324,13 @@ All integrations are optional and configured through the Settings UI after first
 | **Jira** | Imports assigned issues as tasks. Marking a Jira-sourced task done closes the ticket. |
 | **Calendar feeds (ICS)** | Subscribe to any `.ics` / webcal URL for read-only events. |
 | **Email inbox** | Forward any email to a Fastmail address to auto-create a task. |
-| **AI assist (local)** | A local language model (Ollama, default `qwen2.5:1.5b`) powers title cleanup plus quick-add parsing, tag suggestions, subtask breakdown, day planning, task-time prediction, list organizing, weekly-review drafts and reflection prompts. **Runs entirely on your server — no data leaves it, no API key.** Opt-in (during `install.sh` or by setting `OLLAMA_BASE_URL`); manage models and toggle each feature in Settings → Integrations → AI. Or use any model your **Tailscale Aperture** gateway serves ([docs/APERTURE.md](docs/APERTURE.md)). [Details ↓](#ai-assist--local--private) |
+| **AI assist** | A local language model (Ollama, default `qwen2.5:1.5b`) powers title cleanup plus quick-add parsing, tag suggestions, subtask breakdown, day planning, task-time prediction, list organizing, weekly-review drafts and reflection prompts. **Runs entirely on your server — no data leaves it, no API key.** Opt-in (during `install.sh` or by setting `OLLAMA_BASE_URL`); manage models and toggle each feature in Settings → Integrations → AI. Or use any model your **Tailscale Aperture** gateway serves ([docs/APERTURE.md](docs/APERTURE.md)). [Details ↓](#ai-assist--local--private) |
 
-> **Note on the model-server URL (AI task-title cleanup).** The Ollama endpoint
-> is configurable in Settings → Integrations and may point at an internal /
-> loopback address — that's by design, because the model server is self-hosted
-> (e.g. `http://ollama:11434`). Static analysis (CodeQL `go/request-forgery`)
+> **Note on the model-server and Aperture URLs (AI assist).** The Ollama endpoint
+> and the Aperture gateway are configurable in Settings → Integrations → AI and
+> may point at an internal, loopback or tailnet address — that's by design,
+> because the model server is self-hosted (e.g. `http://127.0.0.1:11434`) and the
+> gateway lives on your tailnet. Static analysis (CodeQL `go/request-forgery`)
 > flags this as a possible SSRF because a configured URL drives a server-side
 > request. It's a **deliberate, accepted trade-off**: the URL is settable only
 > by the authenticated instance owner (who already controls the server), is
@@ -363,8 +364,8 @@ After signing in, a short setup wizard helps you connect email and calendar (all
 
 ### Getting around
 
-- **Desktop / web:** a left sidebar with a pinned **Search** pill and a **sectioned nav rail** — by default grouped into Today/This Week, **Rituals** (Plan Day, Shutdown), **Inbox** (Email, Reminders), and **Library** (Backlog, Lists, Journal, Insights). You can change the grouping (Spaces · Plan·Focus·Review · Flat) and section style (Labels · Dividers) in **Settings → Appearance**. The footer holds a utility icon row (Settings, light/dark, desktop Widget) — plus an **update indicator** when a new version is available — the sync status, and an account chip (avatar + email + Sign out). The day view's right panel is a tabbed dock — **Schedule · Inbox · Jira · Goals** — under a mini-calendar.
-- **Mobile:** a bottom tab bar — **Today**, **Week**, **Journal**, **Lists**, and **More**. The **More** sheet is grouped: a quick row (Settings, light/dark, Widget, **AI Import**), a **Plan** group (Plan Day, Schedule, Backlog, Search), an **Inbox** group (Email, Reminders, Jira, Shutdown), and your account row. A **+** button creates a task on list screens.
+- **Desktop / web:** a left sidebar with a pinned **Search** pill and a **sectioned nav rail** — by default grouped into Today/This Week, **Rituals** (Plan Day, Shutdown), **Inbox** (Email, Reminders), and **Library** (Projects, Backlog, Lists, Journal, Insights). You can change the grouping (Spaces · Plan·Focus·Review · Flat) and section style (Labels · Dividers) in **Settings → Appearance**. The footer holds a utility icon row (Settings, light/dark, desktop Widget) — plus an **update indicator** when a new version is available — the sync status, and an account chip (avatar + email + Sign out). The day view's right panel is a tabbed dock — **Schedule · Inbox · Jira · Goals** — under a mini-calendar.
+- **Mobile:** a floating bottom tab bar. By default it carries **Today**, **Week**, **Journal** and **Lists**, then **More**; pick up to four places of your own (and their order) in **Settings → Appearance → Bottom bar**, or tap **Edit tabs** in the More sheet. The **More** sheet has a quick row (Settings, light/dark, **AI Import**) and then every place not on your bar, grouped as **Plan** (Plan Day, Schedule, Projects, Backlog, Lists, Search), **Inbox** (Email, Reminders, Jira) and **Review** (Shutdown, Journal, Insights), plus your account row. More stays highlighted while you're on a page that lives in it. A **+** button creates a task on list screens.
 - **Command palette:** press **`Cmd/Ctrl+K`** anywhere to open a keyboard-first launcher — jump to any screen, run actions (including **Import with AI**), or fall through to search for any query.
 - **Mobile gestures:** **swipe a task left** to reschedule it to tomorrow; **long-press the app icon** for New task / Plan day / Shutdown quick actions; and **Share-to-Sempa** — share a link or text from any app to turn it straight into a task.
 
@@ -457,7 +458,7 @@ Lists live independently of any day, so a half-checked list waits for you.
   task, then a fresh one next week. Optionally tick **“archive when the task is
   done”** per list for automatic cleanup; otherwise lists never auto-archive.
 - **Organize with AI.** Groups the list's items into natural categories (Produce,
-  Dairy, …) using the local model.
+  Dairy, …) using your AI model.
 - **Export Markdown.** Downloads the list as a `.md` file — the list name as the
   title, items as bullets.
 - Archive/unarchive whole lists to keep the view tidy.
@@ -492,7 +493,7 @@ Turn email into tasks several ways:
 
 - **Gmail / Fastmail:** star an email and it imports as a task (same OAuth app as sign-in for Gmail; an app password for Fastmail).
 - **Task inbox:** forward (or auto-forward) mail to a dedicated address to create tasks; allow-list senders in settings.
-- **AI title cleanup:** imported subjects are tidied into clean task titles by your local model — no API key, no data leaves your server. Part of the broader [AI assist](#ai-assist--local--private) suite; opt in during `install.sh` or in Settings → Integrations → AI.
+- **AI title cleanup:** imported subjects are tidied into clean task titles by your AI model, with no API key in Sempa. With the local model nothing leaves your server; with [Aperture](docs/APERTURE.md) each subject goes to the provider serving the model you picked. Part of the broader [AI assist](#ai-assist--local--private) suite; opt in during `install.sh` or in Settings → Integrations → AI.
 
 The **Email** screen lets you triage incoming mail and convert messages to tasks, with the original linked.
 
@@ -526,8 +527,9 @@ Nothing is automatic or destructive — the model **suggests**, you approve.
 [Tailscale Aperture](https://tailscale.com/docs/aperture), switch **Settings →
 Integrations → AI → Where the model runs** to **Aperture**, enter its URL and pick
 any model it serves this server: cloud (Claude, Gemini, OpenAI) or one hosted on
-your tailnet. Aperture recognises Sempa by its tailnet identity, so **Sempa holds
-no API keys**. Requests then leave your server for whichever provider serves the
+your tailnet. Aperture recognises Sempa by its host's tailnet identity, so
+**Sempa holds no API keys** (the host needs Tailscale installed for this; the
+bundled sidecar alone only publishes your Sempa URL). Requests then leave your server for whichever provider serves the
 model, and cloud models may cost money per request, so the local option stays the
 default. Setup and troubleshooting: [docs/APERTURE.md](docs/APERTURE.md).
 
@@ -625,13 +627,13 @@ Sempa checks GitHub for newer releases and surfaces them in-app: a subtle indica
 | Section | What you configure |
 |---------|--------------------|
 | **Account** | Sign-in, profile |
-| **Integrations** | Gmail, Fastmail, Jira, CalDAV, task inbox, and **AI** (local model: connection, model download/remove, and a per-feature on/off for each AI assist) |
+| **Integrations** | Gmail, Fastmail, Jira, CalDAV, task inbox, and **AI** (where the model runs, on this server or through Aperture; local model download/remove; Aperture connect and model choice; **Try it**; and a per-feature on/off for each AI assist) |
 | **Calendars** | Connected calendars, ICS/webcal feeds, show/hide, colours |
 | **Tags** | Create/rename/recolour tags |
 | **Recurring Tasks** | Daily/weekly/monthly templates |
 | **Notifications** | Reminders, delivery channels, sounds, routines, home timezone |
 | **Backup & Restore** | Schedule, encryption, destinations |
-| **Appearance** | Theme (six options), light/dark mode, text size, sidebar grouping, contextual reflections |
+| **Appearance** | Theme (six options), light/dark mode, text size, sidebar grouping (desktop), **bottom bar** (phones), contextual reflections |
 | **About** | App version, update channel, automatic update checks, "Check for updates" |
 
 ### Keyboard shortcuts
