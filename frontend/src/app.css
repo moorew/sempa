@@ -163,6 +163,11 @@
   background: color-mix(in srgb, var(--tint) var(--sempa-tint-bg), var(--sempa-bg-panel));
   color: color-mix(in srgb, var(--tint) var(--sempa-tint-fg), var(--sempa-text));
 }
+/* A tint block sitting on an inset fill (e.g. the More sheet's tiles) rather
+   than a raised card: mixed against the fill and a touch stronger, or the warm
+   hues (honey, clay) vanish into a cream tile in light themes. */
+.tint.on-fill { background: color-mix(in srgb, var(--tint) var(--sempa-tint-bg-fill, 26%), var(--sempa-fill)); }
+.dark .tint.on-fill { --sempa-tint-bg-fill: 30%; }
 /* Pill chip (tags, time, status). Pair with .tint or set its own colours. */
 .chip {
   display: inline-flex; align-items: center; gap: 5px;

@@ -6,6 +6,30 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.28.0] - 2026-10-30
+
+### Added
+- **Choose your phone's bottom bar.** Settings → Appearance → Bottom bar lets
+  you pick up to four places for the tab bar (Today, Schedule, Projects,
+  Insights, whatever you use most) and put them in your order. Everything else
+  stays one tap away under More, so nothing is ever out of reach. It's set per
+  device, and Reset brings back Today, Week, Journal and Lists.
+- The **More sheet** now lists every place you haven't pinned, grouped into
+  Plan, Inbox and Review, each with its own coloured icon. Insights is in there
+  now too, and an **Edit tabs** button jumps straight to the picker. More stays
+  highlighted while you're on a page that lives in it.
+
+### Fixed
+- The soft shadow under the selected date in the phone date strip (Today and
+  Schedule) is no longer cut off at the bottom.
+- **Android widget, dark mode:** today's count bubble used light text on the
+  lightened dark-mode accent, which was hard to read. It now uses the same
+  colour pair as the app's buttons in every theme.
+- **Settings back links** now return to the section you came from (Tags,
+  Project statuses, Recurring and Time tracking go back to Tasks; Backup and
+  Notifications to System; Gmail, Jira and Calendars to Integrations; Users to
+  Account). On a phone they open that section directly instead of the list.
+
 ## [1.27.1] - 2026-10-30
 
 ### Changed

@@ -37,7 +37,7 @@
 <div class="mx-auto flex h-full max-w-[640px] flex-col" style="padding-top: env(safe-area-inset-top, 0px);">
   <!-- Header -->
   <div class="px-5 pt-6 pb-2 sm:px-8 sm:pt-8">
-    <a href="/settings/accounts" class="set-back">
+    <a href="/settings/accounts?section=tasks" class="set-back">
       <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" d="m15 18-6-6 6-6"/>
       </svg>

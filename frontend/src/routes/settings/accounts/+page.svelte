@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { page } from '$app/state';
   import { api, getServerUrl, clearTauriToken, clearNativeToken, resetApiResolver } from '$lib/api';
   import type { AiTitleConfig } from '$lib/api';
@@ -26,6 +26,9 @@
     if (isTauri()) { e.preventDefault(); void openExternal(url); }
   }
   import { mobile } from '$lib/stores/mobile.svelte';
+  import { NAV_DESTS, DEFAULT_TABS, MAX_TABS, MIN_TABS, navDest, type NavDest, type NavId } from '$lib/nav';
+  import { jiraStatus } from '$lib/stores/jiraStatus.svelte';
+  import { ChevronUp, ChevronDown, Minus, Plus as PlusIcon, Menu as MenuIcon } from 'lucide-svelte';
   import { realtime } from '$lib/stores/realtime.svelte';
   import { goto } from '$app/navigation';
   import UpdatesPanel from '$lib/components/UpdatesPanel.svelte';
@@ -163,10 +166,11 @@
   // Desktop: show ONE section at a time (like mobile) instead of one long scroll.
   // Seeded from ?section= so each settings section is linkable; kept in the URL.
   const SECTION_IDS = ['profile', 'appearance', 'personal', 'tasks', 'integrations', 'system', 'about'];
-  const initialSection = (() => {
-    const s = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('section') : null;
-    return s && SECTION_IDS.includes(s) ? s : 'profile';
+  const sectionParam = (() => {
+    const s = page.url.searchParams.get('section');
+    return s && SECTION_IDS.includes(s) ? s : null;
   })();
+  const initialSection = sectionParam ?? 'profile';
   let desktopSection = $state(initialSection);
   function selectSection(id: string) {
     desktopSection = id;
@@ -177,8 +181,55 @@
     }
   }
 
-  // Mobile section navigation
-  let mobileSection = $state<string | null>(null);
+  // Mobile section navigation. Seeded from ?section= too, so a link into a
+  // section (the Tags and Project statuses back links, the More sheet's
+  // "Edit tabs") lands inside it on a phone instead of on the section list.
+  let mobileSection = $state<string | null>(sectionParam !== 'integrations' ? sectionParam : null);
+  function openMobileSection(id: string | null) {
+    mobileSection = id;
+    if (typeof window !== 'undefined') {
+      const u = new URL(window.location.href);
+      if (id) u.searchParams.set('section', id); else u.searchParams.delete('section');
+      u.searchParams.delete('focus');
+      window.history.replaceState({}, '', u);
+    }
+  }
+
+  // Bottom bar picker (phones, 1.28). The bar keeps its order; "Under More" is
+  // everything else, in catalogue order. Jira is only offered once connected.
+  const tabAvailable = (d: NavDest) => d.needs !== 'jira' || jiraStatus.connected;
+  const pinnedTabs = $derived(prefs.mobileTabs.map((id) => navDest(id)).filter((d): d is NavDest => !!d));
+  const unpinnedTabs = $derived(NAV_DESTS.filter((d) => tabAvailable(d) && !prefs.mobileTabs.includes(d.id)));
+  const tabsAreDefault = $derived(prefs.mobileTabs.join() === DEFAULT_TABS.join());
+  function moveTab(i: number, delta: number) {
+    const next = [...prefs.mobileTabs];
+    const j = i + delta;
+    if (j < 0 || j >= next.length) return;
+    [next[i], next[j]] = [next[j], next[i]];
+    prefs.setMobileTabs(next);
+  }
+  function addTab(id: NavId) {
+    if (prefs.mobileTabs.length < MAX_TABS) prefs.setMobileTabs([...prefs.mobileTabs, id]);
+  }
+  function removeTab(id: NavId) {
+    if (prefs.mobileTabs.length > MIN_TABS) prefs.setMobileTabs(prefs.mobileTabs.filter((t) => t !== id));
+  }
+  // Follow ?section= / ?focus= on every navigation, not just the first load:
+  // "Edit tabs" in the More sheet can be tapped while Settings is already open,
+  // which reuses this component. The writes are untracked so this can't loop.
+  $effect(() => {
+    const s = page.url.searchParams.get('section');
+    const focus = page.url.searchParams.get('focus');
+    untrack(() => {
+      if (s && SECTION_IDS.includes(s)) {
+        desktopSection = s;
+        if (s !== 'integrations') mobileSection = s;
+      }
+      if (focus === 'tabs') {
+        setTimeout(() => document.getElementById('settings-tabs')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 150);
+      }
+    });
+  });
 
   // Grouped so each section has one clear purpose: visual theming (Appearance)
   // is kept separate from the personality/behaviour toggles (Personalization),
@@ -610,7 +661,7 @@
 
       <div class="set-group">
         {#each MOBILE_SECTIONS as section}
-          <button onclick={() => mobileSection = section.id}
+          <button onclick={() => openMobileSection(section.id)}
                   class="set-row set-row-link">
             <span class="set-icon">{@render sectionIcon(section.id)}</span>
             <span class="set-row-main">
@@ -641,7 +692,7 @@
     <div style="padding-top: env(safe-area-inset-top, 0px); display:flex; flex-direction:column; height:100%;">
       <!-- Back header -->
       <div class="px-4 pt-4 pb-1">
-        <button onclick={() => mobileSection = null} class="set-back">
+        <button onclick={() => openMobileSection(null)} class="set-back">
           <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="m15 18-6-6 6-6"/>
           </svg>
@@ -1704,6 +1755,75 @@
       </div>
       {/if}
     </section>
+
+    <!-- Bottom bar (phones, 1.28): pick which places sit in the tab bar.
+         Plain buttons rather than drag, so it works one-handed and with a
+         screen reader. -->
+    {#if mobile.value}
+    <h3 class="set-heading" id="settings-tabs" style="scroll-margin-top: 16px;">Bottom bar</h3>
+    <section class="set-group">
+      <div class="set-block">
+        <p class="set-desc" style="margin-top: 0;">
+          Pick up to {MAX_TABS} places for the tab bar. Everything else stays one tap away under More.
+        </p>
+        <div class="tabs-preview mt-3" aria-hidden="true">
+          {#each pinnedTabs as d, i (d.id)}
+            <span class="tabs-preview-item" data-active={i === 0}>
+              <span class="tabs-preview-pill"><d.icon size={18} strokeWidth={i === 0 ? 2.3 : 1.9} /></span>
+              <span class="tabs-preview-label">{d.short}</span>
+            </span>
+          {/each}
+          <span class="tabs-preview-item">
+            <span class="tabs-preview-pill"><MenuIcon size={18} strokeWidth={1.9} /></span>
+            <span class="tabs-preview-label">More</span>
+          </span>
+        </div>
+      </div>
+      {#each pinnedTabs as d, i (d.id)}
+        <div class="set-row set-row-compact" style="gap: 12px; padding-right: 10px;">
+          <span class="set-icon tint" style="--tint: {d.hue}; width: 34px; height: 34px; border-radius: 11px;">
+            <d.icon size={17} strokeWidth={2} />
+          </span>
+          <p class="set-row-main set-label truncate">{d.label}{#if d.needs === 'jira' && !jiraStatus.connected}<span class="set-meta"> · hidden until Jira is connected</span>{/if}</p>
+          <span class="flex shrink-0 items-center">
+            <button class="set-icon-btn" aria-label={`Move ${d.label} up`} disabled={i === 0} onclick={() => moveTab(i, -1)}>
+              <ChevronUp size={18} strokeWidth={2.2} />
+            </button>
+            <button class="set-icon-btn" aria-label={`Move ${d.label} down`} disabled={i === pinnedTabs.length - 1} onclick={() => moveTab(i, 1)}>
+              <ChevronDown size={18} strokeWidth={2.2} />
+            </button>
+            <button class="set-icon-btn danger" aria-label={`Remove ${d.label} from the bar`} disabled={pinnedTabs.length <= MIN_TABS} onclick={() => removeTab(d.id)}>
+              <Minus size={18} strokeWidth={2.2} />
+            </button>
+          </span>
+        </div>
+      {/each}
+    </section>
+    <div class="mt-2 flex items-center justify-between gap-3 px-1.5">
+      <p class="set-meta">
+        {#if pinnedTabs.length >= MAX_TABS}The bar is full. Remove one to make room.
+        {:else if pinnedTabs.length <= MIN_TABS}Keep at least {MIN_TABS} in the bar.
+        {:else}Room for {MAX_TABS - pinnedTabs.length} more.{/if}
+      </p>
+      <button class="set-btn-quiet set-btn-sm" onclick={prefs.resetMobileTabs} disabled={tabsAreDefault}>Reset</button>
+    </div>
+
+    <h3 class="set-heading">Under More</h3>
+    <section class="set-group">
+      {#each unpinnedTabs as d (d.id)}
+        <div class="set-row set-row-compact" style="gap: 12px; padding-right: 12px;">
+          <span class="set-icon tint" style="--tint: {d.hue}; width: 34px; height: 34px; border-radius: 11px;">
+            <d.icon size={17} strokeWidth={2} />
+          </span>
+          <p class="set-row-main set-label truncate">{d.label}</p>
+          <button class="set-btn-quiet set-btn-sm" aria-label={`Add ${d.label} to the bar`}
+                  disabled={pinnedTabs.length >= MAX_TABS} onclick={() => addTab(d.id)}>
+            <PlusIcon size={14} strokeWidth={2.4} /> Add
+          </button>
+        </div>
+      {/each}
+    </section>
+    {/if}
 
     <!-- Sidebar navigation grouping (desktop rail only) -->
     {#if !mobile.value}

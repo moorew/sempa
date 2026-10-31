@@ -116,7 +116,7 @@ class WidgetBridgePlugin : Plugin() {
         // so a task-only push doesn't wipe the theme and vice-versa.
         val theme = call.getObject("theme")
         if (theme != null) {
-            for (k in arrayOf("primary", "accent_bg", "surface", "on_surface", "on_surface_dim", "outline", "green")) {
+            for (k in arrayOf("primary", "primary_fill", "on_primary_fill", "accent_bg", "surface", "on_surface", "on_surface_dim", "outline", "green")) {
                 val v = theme.optString(k, "")
                 if (v.isNotEmpty()) editor.putString("theme_$k", v)
             }

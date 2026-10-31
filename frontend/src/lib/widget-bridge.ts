@@ -9,6 +9,9 @@ import { today, offsetDate, weekStart } from './utils';
 
 interface WidgetThemeColors {
   primary?: string;
+  /** Solid accent block behind text (the button colour) and the text on it. */
+  primary_fill?: string;
+  on_primary_fill?: string;
   accent_bg?: string;
   surface?: string;
   on_surface?: string;
@@ -64,6 +67,8 @@ function readThemeColors(): WidgetThemeColors | undefined {
     const c = (v: string) => toHex(cs.getPropertyValue(v).trim());
     const t: WidgetThemeColors = {
       primary: c('--sempa-accent'),
+      primary_fill: c('--sempa-btn-bg'),
+      on_primary_fill: c('--sempa-btn-fg'),
       accent_bg: c('--sempa-accent-bg'),
       surface: c('--sempa-bg-panel'),
       on_surface: c('--sempa-text'),

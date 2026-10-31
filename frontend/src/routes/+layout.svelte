@@ -70,9 +70,10 @@
     Sun, CalendarDays, ClipboardCheck, Mail, Moon, SlidersHorizontal,
     ChevronLeft, ChevronRight, Plus, RefreshCw, X, Check,
     Target, Timer, Palette, Menu, Layers, BookOpen, Search, Bell, LayoutGrid,
-    SquareKanban, CalendarClock, ArrowUpCircle, Gauge, ListChecks, Sparkles, FolderKanban,
-    CalendarCheck, CalendarRange,
+    ArrowUpCircle, Gauge, ListChecks, Sparkles, FolderKanban,
+    Pencil,
   } from 'lucide-svelte';
+  import { NAV_DESTS, NAV_GROUPS, navDest, type NavDest } from '$lib/nav';
   import { createWidgetWindow } from '$lib/tauri/bridge';
 
   let { children }: { children: Snippet } = $props();
@@ -488,14 +489,26 @@
     await goto('/login', { replaceState: true });
   }
 
-  // Bottom tab nav items
-  const tabs = $derived([
-    { href: '/home', label: 'Today', prefix: '/home', icon: 'today' },
-    { href: `/week/${thisWeek}`, label: 'Week',  prefix: '/week/', icon: 'week' },
-    { href: '/journal',          label: 'Journal', prefix: '/journal', icon: 'journal' },
-    { href: '/lists',            label: 'Lists', prefix: '/lists', icon: 'lists' },
-    { href: '#more',             label: 'More',  prefix: '__more', icon: 'more' },
-  ]);
+  // Phone chrome (1.28): the bottom bar shows the destinations picked in
+  // Settings → Appearance → Bottom bar, and the More sheet lists everything else
+  // from the same catalogue, so nothing is ever unreachable.
+  const navCtx = { today: todayDate, week: thisWeek };
+  const navAvailable = (d: NavDest) => d.needs !== 'jira' || jiraStatus.connected;
+  const tabDests = $derived(
+    prefs.mobileTabs.map((id) => navDest(id)).filter((d): d is NavDest => !!d && navAvailable(d)),
+  );
+  const moreGroups = $derived(
+    NAV_GROUPS.map((label) => ({
+      label,
+      items: NAV_DESTS.filter((d) => d.group === label && navAvailable(d) && !prefs.mobileTabs.includes(d.id)),
+    })).filter((g) => g.items.length > 0),
+  );
+  // More lights up while its sheet is open, and also when you're on a page that
+  // lives in it (so the bar always shows where you are).
+  const moreActive = $derived(
+    moreSheetOpen ||
+    (!tabDests.some((t) => isActive(t.prefix)) && moreGroups.some((g) => g.items.some((d) => isActive(d.prefix)))),
+  );
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -721,15 +734,10 @@
               bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); height: 68px;
               background: var(--sempa-bg-panel); border-radius: 26px; box-shadow: var(--sempa-shadow-2);
               display: flex; align-items: center; padding: 0 6px;">
-    {#each tabs as tab}
-      {@const active = tab.prefix === '__more' ? moreSheetOpen : isActive(tab.prefix)}
-      <button
-        onclick={() => {
-          if (tab.prefix === '__more') { moreSheetOpen = true; }
-          else { goto(tab.href); moreSheetOpen = false; }
-        }}
-        aria-current={active && tab.prefix !== '__more' ? 'page' : undefined}
-        style="display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1;
+    {#snippet tabButton(label: string, Icon: any, active: boolean, current: boolean, onclick: () => void)}
+      <button {onclick}
+        aria-current={current ? 'page' : undefined}
+        style="display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; min-width: 0;
                min-height: 56px; justify-content: center;
                background: none; border: none; cursor: pointer;
                color: {active ? 'var(--sempa-accent-ink)' : 'var(--sempa-text-soft)'};">
@@ -737,24 +745,18 @@
                      width: 52px; height: 30px; border-radius: 999px;
                      background: {active ? 'var(--sempa-accent-bg)' : 'transparent'};
                      transition: background-color 160ms ease;">
-          {#if tab.icon === 'today'}
-            <CalendarCheck size={21} strokeWidth={active ? 2.3 : 1.9} />
-          {:else if tab.icon === 'week'}
-            <CalendarRange size={21} strokeWidth={active ? 2.3 : 1.9} />
-          {:else if tab.icon === 'inbox'}
-            <Mail size={21} strokeWidth={active ? 2.3 : 1.9} />
-          {:else if tab.icon === 'journal'}
-            <BookOpen size={21} strokeWidth={active ? 2.3 : 1.9} />
-          {:else if tab.icon === 'lists'}
-            <ListChecks size={21} strokeWidth={active ? 2.3 : 1.9} />
-          {:else}
-            <Menu size={21} strokeWidth={active ? 2.3 : 1.9} />
-          {/if}
+          <Icon size={21} strokeWidth={active ? 2.3 : 1.9} />
         </span>
-        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px;
-                     font-weight: {active ? '700' : '600'};">{tab.label}</span>
+        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; max-width: 100%;
+                     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                     font-weight: {active ? '700' : '600'};">{label}</span>
       </button>
+    {/snippet}
+    {#each tabDests as tab (tab.id)}
+      {@const active = isActive(tab.prefix)}
+      {@render tabButton(tab.short, tab.icon, active, active, () => { goto(tab.href(navCtx)); moreSheetOpen = false; })}
     {/each}
+    {@render tabButton('More', Menu, moreActive, false, () => { moreSheetOpen = true; })}
   </nav>
 
   <!-- FAB for task creation on task-list pages -->
@@ -774,14 +776,17 @@
   <BottomSheet open={moreSheetOpen} onClose={() => moreSheetOpen = false}>
     <div style="padding: 8px 16px 24px;">
 
-      {#snippet sheetTile(href: string, label: string, Icon: any)}
-        {@const active = isActive(href)}
-        <a {href} onclick={() => moreSheetOpen = false}
-           class="flex items-center gap-3 rounded-[16px] px-3.5 transition-colors"
+      {#snippet sheetTile(d: NavDest)}
+        {@const active = isActive(d.prefix)}
+        <a href={d.href(navCtx)} onclick={() => moreSheetOpen = false}
+           class="flex items-center gap-2.5 rounded-[16px] pl-2 pr-3 transition-colors"
            style="min-height: 50px;
-                  {active ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent-ink); font-weight: 700;' : 'background: var(--sempa-fill); color: var(--sempa-text); font-weight: 500;'}">
-          <Icon size={18} strokeWidth={active ? 2.25 : 1.75} />
-          <span style="font-size: 14px;">{label}</span>
+                  {active ? 'background: var(--sempa-accent-bg); color: var(--sempa-accent-ink); font-weight: 700;' : 'background: var(--sempa-fill); color: var(--sempa-text); font-weight: 600;'}">
+          <span class="tint flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[11px]"
+                class:on-fill={!active} style="--tint: {d.hue};">
+            <d.icon size={17} strokeWidth={2} />
+          </span>
+          <span class="truncate" style="font-size: 14px;">{d.label}</span>
         </a>
       {/snippet}
 
@@ -820,24 +825,23 @@
         {/if}
       </div>
 
-      <!-- Plan -->
-      <p class="mb-2 mt-5 px-1 text-[13px] font-bold" style="color: var(--sempa-text-soft);">Plan</p>
-      <div class="grid grid-cols-2 gap-2">
-        {@render sheetTile(`/plan/${todayDate}`, 'Plan Day', ClipboardCheck)}
-        {@render sheetTile('/schedule', 'Schedule', CalendarClock)}
-        {@render sheetTile('/projects', 'Projects', FolderKanban)}
-        {@render sheetTile('/backlog', 'Backlog', Layers)}
-        {@render sheetTile('/search', 'Search', Search)}
-      </div>
-
-      <!-- Inbox -->
-      <p class="mb-2 mt-5 px-1 text-[13px] font-bold" style="color: var(--sempa-text-soft);">Inbox</p>
-      <div class="grid grid-cols-2 gap-2">
-        {@render sheetTile('/email', 'Email', Mail)}
-        {@render sheetTile('/reminders', 'Reminders', Bell)}
-        {#if jiraStatus.connected}{@render sheetTile('/jira', 'Jira', SquareKanban)}{/if}
-        {@render sheetTile(`/shutdown/${todayDate}`, 'Shutdown', Moon)}
-      </div>
+      <!-- Destinations not pinned to the bar, grouped. "Edit tabs" jumps to the
+           Bottom bar picker in Settings. -->
+      {#each moreGroups as g, gi (g.label)}
+        <div class="mb-2 mt-5 flex items-center justify-between gap-3 px-1">
+          <p class="text-[13px] font-bold" style="color: var(--sempa-text-soft);">{g.label}</p>
+          {#if gi === 0}
+            <a href="/settings/accounts?section=appearance&focus=tabs" onclick={() => moreSheetOpen = false}
+               class="flex h-8 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold"
+               style="background: var(--sempa-fill); color: var(--sempa-accent-ink);">
+              <Pencil size={13} strokeWidth={2.2} /> Edit tabs
+            </a>
+          {/if}
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          {#each g.items as d (d.id)}{@render sheetTile(d)}{/each}
+        </div>
+      {/each}
 
       <!-- Pomodoro (if running) -->
       {#if pomodoro.taskId}
