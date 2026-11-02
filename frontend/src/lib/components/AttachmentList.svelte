@@ -124,7 +124,8 @@
     {:else if items.length === 0 && uploadPct === null}
       <button type="button" onclick={() => fileInput?.click()}
               class="w-full text-center text-xs text-gray-400 dark:text-gray-600 hover:text-gray-500">
-        Drop files here or click to attach <span class="text-gray-300 dark:text-gray-700">· up to 500 MB</span>
+        Drop files here or click to attach <span class="text-gray-300 dark:text-gray-700"
+              title="Any file type. Images, PDFs, text, audio and video open in Sempa; everything else, including SVG and HTML, downloads.">· any type, up to 500 MB</span>
       </button>
     {:else}
       <div class="flex flex-col gap-2">

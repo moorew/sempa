@@ -74,7 +74,10 @@ household members have accounts; a few apply to every install.
 - **The built-in SMTP receiver is off by default.** It used to listen on 2525 on
   every interface and accept any sender. To use it, set `SMTP_PORT` **and** the
   new `SMTP_RECIPIENT_TOKEN` (the recipient address must carry it); without the
-  token it won't start. The Cloudflare email webhook is unaffected.
+  token it won't start. The Cloudflare email webhook is unaffected. Setup and
+  upgrade steps: [docs/EMAIL.md](docs/EMAIL.md).
+- New [docs/FILES.md](docs/FILES.md) lists which files Sempa accepts and how
+  each opens; the attachment area now says "any type" and explains on hover.
 - Device pairing approval (`/devices/pair/approve`) works again; it was
   shadowed by the public pairing routes and always returned 404. It is admin-only.
 

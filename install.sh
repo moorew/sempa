@@ -197,13 +197,13 @@ echo ""
 dim "Email → task: forward mail to a Cloudflare Email Routing address to create"
 dim "tasks automatically. Enabling generates a webhook token for that worker."
 ask_yn "Enable email-to-task?" EMAIL_ENABLE
-EMAIL_TOKEN=""; SMTP_SENDERS=""
+EMAIL_TOKEN=""
 if [[ "$EMAIL_ENABLE" == "y" ]]; then
   EMAIL_TOKEN=$(rand_hex)
   ok "Generated email-forward token"
-  dim "Restrict who can create tasks this way (comma-separated emails or @domain)."
-  dim "Leave blank to accept any sender."
-  read -rp "    Allowed senders (optional): " SMTP_SENDERS
+  dim "To limit who can create tasks, restrict senders in your Cloudflare"
+  dim "Email Routing rule. (The built-in SMTP receiver is separate and off by"
+  dim "default — see docs/EMAIL.md.)"
 fi
 
 # Web Push contact (RFC 8292 `sub`). Derive a sensible default so browser/PWA
@@ -248,7 +248,6 @@ ok "Written .env"
   [[ -n "$SEMPA_PASSWORD" ]]       && echo "SEMPA_PASSWORD=${SEMPA_PASSWORD}"
   [[ -n "$TS_AUTHKEY" ]]           && echo "TS_AUTHKEY=${TS_AUTHKEY}"
   [[ -n "$EMAIL_TOKEN" ]]          && echo "EMAIL_FORWARD_TOKEN=${EMAIL_TOKEN}"
-  [[ -n "$SMTP_SENDERS" ]]         && echo "SMTP_ALLOWED_SENDERS=${SMTP_SENDERS}"
   [[ -n "$VAPID_SUBJECT" ]]        && echo "VAPID_SUBJECT=${VAPID_SUBJECT}"
 } > .env.local
 ok "Written .env.local"

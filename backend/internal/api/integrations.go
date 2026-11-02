@@ -687,7 +687,8 @@ func (h *integrationHandler) fastmailDelete(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *integrationHandler) emailForwardGet(w http.ResponseWriter, r *http.Request) {
-	// SMTP address (Tailscale-internal, requires port spec)
+	// SMTP recipient address (the port is reported separately). The receiver
+	// runs only when both SMTP_PORT and SMTP_RECIPIENT_TOKEN are set.
 	smtpEnabled := h.cfg.SMTPPort != ""
 	smtpAddress := ""
 	if smtpEnabled {
@@ -698,7 +699,16 @@ func (h *integrationHandler) emailForwardGet(w http.ResponseWriter, r *http.Requ
 		if idx := strings.Index(host, "/"); idx >= 0 {
 			host = host[:idx]
 		}
-		smtpAddress = "tasks@" + host + ":" + h.cfg.SMTPPort
+		if i := strings.LastIndexByte(host, ':'); i >= 0 {
+			host = host[:i]
+		}
+		// The receiver only accepts mail whose recipient carries the secret
+		// token (see docs/EMAIL.md). Admin-only route, so it's safe to show.
+		if h.cfg.SMTPRecipientToken != "" {
+			smtpAddress = "tasks+" + h.cfg.SMTPRecipientToken + "@" + host
+		} else {
+			smtpEnabled = false
+		}
 	}
 
 	// Webhook (Cloudflare Email Routing)

@@ -329,6 +329,8 @@ the same area.
 - Aperture AI, including how it works under the hood: `docs/APERTURE.md`
 - Security policy: `SECURITY.md`
 - Jira integration: `docs/JIRA.md`
+- Email → tasks, incl. the opt-in SMTP receiver + recipient token: `docs/EMAIL.md`
+- Accepted file types and how each is served (inline vs download): `docs/FILES.md`
 - Backups + the Google Drive 7-day expiry: `docs/BACKUP.md`
 - Desktop updater status/steps: `docs/UPDATER.md`
 - **Maintainer ops/security runbook: private `sempa-ops` repo → `BUILDERS.md`**
