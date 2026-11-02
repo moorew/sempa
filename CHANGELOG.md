@@ -6,7 +6,7 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
-## [Unreleased]
+## [1.31.0] - 2026-11-02
 
 ### Security
 Fixes from a full security audit (November 2026). Most matter only when other

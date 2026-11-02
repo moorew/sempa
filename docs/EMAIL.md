@@ -29,7 +29,7 @@ message the worker posts with the right token.
 
 ## Built-in SMTP receiver
 
-Since the November 2026 security release the receiver is **off by default**. It
+Since 1.31.0 the receiver is **off by default**. It
 used to listen on port 2525 on every network interface and accept mail from
 anyone, so anything on your LAN could create tasks.
 
