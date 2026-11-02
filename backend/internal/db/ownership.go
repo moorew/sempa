@@ -55,6 +55,10 @@ var ownedTables = []string{
 	"daily_plans",
 	"week_reviews",
 	"pomodoro_sessions",
+	// Migration 029: server-only, per-user calendars and push targets.
+	"ical_subscriptions",
+	"push_subscriptions",
+	"device_tokens",
 }
 
 // PrimaryUserID returns the oldest user's id — the account that existed before

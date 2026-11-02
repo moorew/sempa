@@ -154,7 +154,7 @@ func (h *objectiveHandler) update(w http.ResponseWriter, r *http.Request) {
 	}
 	// On un-share, revoke from peers so they drop their stale copy.
 	if req.Shared != nil && !updated.Shared && wasShared && h.sync != nil {
-		_ = h.sync.RecordRevocation(r.Context(), "objective", updated.ID, owner)
+		_ = h.sync.RecordRevocation(r.Context(), "objective", updated.ID, updated.OwnerID)
 	}
 	h.hub.Broadcast("objective:change", map[string]string{"week_start": updated.WeekStart})
 	if prevWeek != updated.WeekStart {

@@ -132,6 +132,10 @@ func (s *TaskStore) Get(ctx context.Context, id, ownerID string) (Task, error) {
 	return t, err
 }
 
+// DB exposes the underlying handle for helpers that need a sibling query
+// (e.g. resolving the primary user) without threading another store through.
+func (s *TaskStore) DB() *sql.DB { return s.db }
+
 func (s *TaskStore) ListByDate(ctx context.Context, date, ownerID string) ([]Task, error) {
 	// Exclude recurring templates (they have no planned_date by design)
 	scope, sargs := visScope(ownerID)
@@ -465,16 +469,24 @@ func (s *TaskStore) FindBySource(ctx context.Context, source, sourceID string) (
 	return t, err
 }
 
-// SetSubtasksShared cascades a parent task's share state to its sub-tasks so a
-// sub-task is always as visible as its parent. Returns the affected sub-task ids
-// (for un-share revocation tombstones).
+// SetSubtasksShared cascades a task's share state to its whole family so every
+// piece is exactly as visible as its root: sub-tasks (at any depth) and, for a
+// recurring template, every instance it generated plus their sub-tasks. Without
+// the instance half, making a series private left its customised and past
+// instances shared with every member. Returns the affected ids (for un-share
+// revocation tombstones).
 func (s *TaskStore) SetSubtasksShared(ctx context.Context, parentID string, shared bool) ([]string, error) {
 	v := 0
 	if shared {
 		v = 1
 	}
+	const family = `WITH RECURSIVE fam(id) AS (
+		SELECT id FROM tasks WHERE parent_task_id = ?1 OR recurrence_origin_id = ?1
+		UNION
+		SELECT t.id FROM tasks t JOIN fam ON t.parent_task_id = fam.id
+	)`
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id FROM tasks WHERE parent_task_id = ? AND shared != ?`, parentID, v)
+		family+` SELECT id FROM tasks WHERE id IN (SELECT id FROM fam) AND shared != ?2`, parentID, v)
 	if err != nil {
 		return nil, err
 	}
@@ -492,8 +504,8 @@ func (s *TaskStore) SetSubtasksShared(ctx context.Context, parentID string, shar
 		return nil, nil
 	}
 	_, err = s.db.ExecContext(ctx,
-		`UPDATE tasks SET shared = ?, updated_at = datetime('now') WHERE parent_task_id = ? AND shared != ?`,
-		v, parentID, v)
+		family+` UPDATE tasks SET shared = ?2, updated_at = datetime('now') WHERE id IN (SELECT id FROM fam) AND shared != ?2`,
+		parentID, v)
 	return ids, err
 }
 

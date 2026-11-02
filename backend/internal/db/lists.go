@@ -280,9 +280,10 @@ func (s *ListStore) DeleteItem(ctx context.Context, id string) error {
 	return err
 }
 
-// Reorder sets positions for a batch of item ids (index order). Touches
-// updated_at so the new order syncs.
-func (s *ListStore) Reorder(ctx context.Context, ids []string) error {
+// Reorder sets positions for a batch of item ids (index order) within one list.
+// Ids from any other list are ignored, so a caller that can see this list can't
+// touch items elsewhere. Touches updated_at so the new order syncs.
+func (s *ListStore) Reorder(ctx context.Context, listID string, ids []string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -290,8 +291,8 @@ func (s *ListStore) Reorder(ctx context.Context, ids []string) error {
 	defer tx.Rollback()
 	for i, id := range ids {
 		if _, err := tx.ExecContext(ctx,
-			`UPDATE list_items SET position = ?, updated_at = datetime('now') WHERE id = ?`,
-			float64(i), id); err != nil {
+			`UPDATE list_items SET position = ?, updated_at = datetime('now') WHERE id = ? AND list_id = ?`,
+			float64(i), id, listID); err != nil {
 			return err
 		}
 	}

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -17,6 +18,19 @@ import (
 type caldavConfig struct {
 	CalendarHref string `json:"calendar_href"`
 	CalendarName string `json:"calendar_name"`
+	// OwnerID is the user who chose the calendar; only their tasks (and tasks
+	// shared with them) are exported. Empty on rows saved before this field
+	// existed, which resolve to the primary user.
+	OwnerID string `json:"owner_id,omitempty"`
+}
+
+// caldavOwner is whose tasks the CalDAV export may carry.
+func caldavOwner(ctx context.Context, database *sql.DB, cc caldavConfig) string {
+	if cc.OwnerID != "" {
+		return cc.OwnerID
+	}
+	id, _ := db.PrimaryUserID(ctx, database)
+	return id
 }
 
 // caldavClient builds a CalDAV client from the stored Fastmail credentials.
@@ -105,6 +119,16 @@ func (h *integrationHandler) caldavSelect(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusBadRequest, "calendar_href is required")
 		return
 	}
+	client, err := h.caldavClient(r.Context())
+	if err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if !client.SameOrigin(body.CalendarHref) {
+		respondError(w, http.StatusBadRequest, "calendar_href must be a calendar on the Fastmail CalDAV server")
+		return
+	}
+	body.OwnerID = sessionUserID(r)
 	configJSON, _ := json.Marshal(body)
 	if _, err := h.configs.Upsert(r.Context(), uuid.New().String(), "caldav", string(configJSON)); err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
@@ -152,7 +176,7 @@ func (h *integrationHandler) caldavSync(w http.ResponseWriter, r *http.Request) 
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	count, err := caldav.SyncAll(r.Context(), client, cc.CalendarHref, h.tasks, h.cfg.AppURL)
+	count, err := caldav.SyncAll(r.Context(), client, cc.CalendarHref, h.tasks, h.cfg.AppURL, caldavOwner(r.Context(), h.db, cc))
 	if err != nil {
 		respondError(w, http.StatusBadGateway, err.Error())
 		return

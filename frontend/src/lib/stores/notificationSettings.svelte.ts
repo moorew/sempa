@@ -77,8 +77,11 @@ function createNotificationSettingsStore() {
       settings = await api.notifications.putSettings(settings);
       persist();
       localStorage.removeItem(PENDING_KEY);
-    } catch {
-      // Still offline — leave the pending flag set for the next attempt.
+    } catch (e) {
+      // Settings are instance-wide and admin-only: a member's edit is refused
+      // (403), so drop it rather than retrying forever. Otherwise still
+      // offline — leave the pending flag set for the next attempt.
+      if (String(e).startsWith('Error: 403')) localStorage.removeItem(PENDING_KEY);
     }
   }
 
@@ -114,7 +117,12 @@ function createNotificationSettingsStore() {
       settings = await api.notifications.putSettings(next);
       persist();
       localStorage.removeItem(PENDING_KEY);
-    } catch {
+    } catch (e) {
+      if (String(e).startsWith('Error: 403')) {
+        // Not an admin: the server refused, so re-read the real settings.
+        void refreshFromServer();
+        return;
+      }
       // Offline — remember to push on reconnect. The local cache already
       // reflects the change so the UI and routines stay consistent.
       try {

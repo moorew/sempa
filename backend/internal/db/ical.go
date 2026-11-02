@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 )
 
 type ICalSubscription struct {
 	ID           string  `json:"id"`
+	OwnerID      string  `json:"owner_id"`
 	Name         string  `json:"name"`
 	URL          string  `json:"url"`
 	Color        string  `json:"color"`
@@ -36,10 +38,14 @@ type ICalStore struct{ db *sql.DB }
 
 func NewICalStore(db *sql.DB) *ICalStore { return &ICalStore{db: db} }
 
-func (s *ICalStore) ListSubscriptions(ctx context.Context) ([]ICalSubscription, error) {
+// ListSubscriptions returns the subscriptions owned by ownerID (all of them for
+// SystemScope, e.g. the background calendar poller). Subscriptions are
+// personal: a private feed URL is itself a credential.
+func (s *ICalStore) ListSubscriptions(ctx context.Context, ownerID string) ([]ICalSubscription, error) {
+	scope, sargs := ownScope(ownerID)
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id,name,url,color,last_synced_at,error_msg,created_at,updated_at
-		 FROM ical_subscriptions ORDER BY created_at`)
+		`SELECT id,owner_id,name,url,color,last_synced_at,error_msg,created_at,updated_at
+		 FROM ical_subscriptions WHERE 1=1`+scope+` ORDER BY created_at`, sargs...)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +54,7 @@ func (s *ICalStore) ListSubscriptions(ctx context.Context) ([]ICalSubscription, 
 	for rows.Next() {
 		var sub ICalSubscription
 		var ls, em sql.NullString
-		if err := rows.Scan(&sub.ID, &sub.Name, &sub.URL, &sub.Color, &ls, &em, &sub.CreatedAt, &sub.UpdatedAt); err != nil {
+		if err := rows.Scan(&sub.ID, &sub.OwnerID, &sub.Name, &sub.URL, &sub.Color, &ls, &em, &sub.CreatedAt, &sub.UpdatedAt); err != nil {
 			return nil, err
 		}
 		sub.LastSyncedAt = nullStr(ls)
@@ -58,17 +64,22 @@ func (s *ICalStore) ListSubscriptions(ctx context.Context) ([]ICalSubscription, 
 	return out, nil
 }
 
-func (s *ICalStore) CreateSubscription(ctx context.Context, id, name, url, color string) (ICalSubscription, error) {
+func (s *ICalStore) CreateSubscription(ctx context.Context, id, name, url, color, ownerID string) (ICalSubscription, error) {
+	owner, err := resolveOwner(ctx, s.db, ownerID)
+	if err != nil {
+		return ICalSubscription{}, err
+	}
 	row := s.db.QueryRowContext(ctx,
-		`INSERT INTO ical_subscriptions (id,name,url,color)
-		 VALUES (?,?,?,?)
-		 RETURNING id,name,url,color,last_synced_at,error_msg,created_at,updated_at`,
-		id, name, url, color)
+		`INSERT INTO ical_subscriptions (id,name,url,color,owner_id)
+		 VALUES (?,?,?,?,?)
+		 RETURNING id,owner_id,name,url,color,last_synced_at,error_msg,created_at,updated_at`,
+		id, name, url, color, owner)
 	return scanSubscription(row)
 }
 
-func (s *ICalStore) DeleteSubscription(ctx context.Context, id string) error {
-	res, err := s.db.ExecContext(ctx, `DELETE FROM ical_subscriptions WHERE id=?`, id)
+func (s *ICalStore) DeleteSubscription(ctx context.Context, id, ownerID string) error {
+	scope, sargs := ownScope(ownerID)
+	res, err := s.db.ExecContext(ctx, `DELETE FROM ical_subscriptions WHERE id=?`+scope, append([]any{id}, sargs...)...)
 	if err != nil {
 		return err
 	}
@@ -117,15 +128,18 @@ func (s *ICalStore) SetError(ctx context.Context, subID, msg string) {
 		`UPDATE ical_subscriptions SET error_msg=?,updated_at=datetime('now') WHERE id=?`, msg, subID)
 }
 
-func (s *ICalStore) ListEventsForDate(ctx context.Context, date string) ([]ICalEvent, error) {
+// ListEventsForDate returns events from ownerID's subscriptions that overlap date.
+func (s *ICalStore) ListEventsForDate(ctx context.Context, date, ownerID string) ([]ICalEvent, error) {
+	scope, sargs := ownScope(ownerID)
+	scope = strings.Replace(scope, "owner_id", "s.owner_id", 1)
 	// Events where start_time date <= date < end_time date
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT e.id, e.subscription_id, e.uid, e.summary, e.description, e.location,
 		       e.url, e.start_time, e.end_time, e.all_day, s.color
 		FROM ical_events e
 		JOIN ical_subscriptions s ON s.id = e.subscription_id
-		WHERE substr(e.start_time,1,10) <= ? AND substr(e.end_time,1,10) >= ?
-		ORDER BY e.start_time`, date, date)
+		WHERE substr(e.start_time,1,10) <= ? AND substr(e.end_time,1,10) >= ?`+scope+`
+		ORDER BY e.start_time`, append([]any{date, date}, sargs...)...)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +165,7 @@ func (s *ICalStore) ListEventsForDate(ctx context.Context, date string) ([]ICalE
 func scanSubscription(s scanner) (ICalSubscription, error) {
 	var sub ICalSubscription
 	var ls, em sql.NullString
-	err := s.Scan(&sub.ID, &sub.Name, &sub.URL, &sub.Color, &ls, &em, &sub.CreatedAt, &sub.UpdatedAt)
+	err := s.Scan(&sub.ID, &sub.OwnerID, &sub.Name, &sub.URL, &sub.Color, &ls, &em, &sub.CreatedAt, &sub.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ICalSubscription{}, ErrNotFound
 	}

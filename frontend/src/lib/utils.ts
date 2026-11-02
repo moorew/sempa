@@ -154,3 +154,19 @@ export function extractBareUrls(text: string): string[] {
   }
   return out;
 }
+
+/**
+ * Returns url only if it is an absolute http(s) link, else undefined. Use for
+ * every href or openExternal fed from stored data (task source links, calendar
+ * event links): those fields can be written by other members or external
+ * feeds, and a `javascript:` value there would run in the viewer's session.
+ */
+export function safeHref(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    const u = new URL(url.trim());
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : undefined;
+  } catch {
+    return undefined;
+  }
+}

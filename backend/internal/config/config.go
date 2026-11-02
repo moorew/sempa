@@ -27,8 +27,12 @@ type Config struct {
 	GmailClientSecret string
 
 	// Inbound SMTP (email forwarding)
-	SMTPPort           string   // e.g. "2525"; empty disables the SMTP server
+	SMTPPort           string   // e.g. "2525"; empty (the default) disables the SMTP server
 	SMTPAllowedSenders []string // email addresses or @domain; empty = accept all
+	// SMTPRecipientToken is a secret the recipient address must carry
+	// (tasks+<token>@… or <token>@…). The envelope sender is chosen by whoever
+	// connects, so the sender allowlist alone authenticates nothing.
+	SMTPRecipientToken string
 
 	// Auth — optional; if AuthPassword is empty, password auth is disabled
 	AuthUsername string
@@ -82,8 +86,9 @@ func Load() Config {
 		FrontendURL:          env("FRONTEND_URL", "http://localhost:5173"),
 		GmailClientID:        env("GMAIL_CLIENT_ID", ""),
 		GmailClientSecret:    env("GMAIL_CLIENT_SECRET", ""),
-		SMTPPort:             env("SMTP_PORT", "2525"),
+		SMTPPort:             env("SMTP_PORT", ""),
 		SMTPAllowedSenders:   splitEmails(env("SMTP_ALLOWED_SENDERS", "")),
+		SMTPRecipientToken:   env("SMTP_RECIPIENT_TOKEN", ""),
 		AuthUsername:         env("SEMPA_USERNAME", "admin"),
 		AuthPassword:         env("SEMPA_PASSWORD", ""),
 		AllowedEmails:        splitEmails(env("SEMPA_ALLOWED_EMAILS", "")),

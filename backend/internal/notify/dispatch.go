@@ -32,6 +32,10 @@ type Settings struct {
 	// means "use the SEMPA_TIMEZONE env default". It governs server-side day
 	// boundaries; clients read it back as their "home" zone for travel detection.
 	Timezone string `json:"timezone,omitempty"`
+
+	// WebhookAuthSet is response-only: the API redacts Webhook.AuthValue and
+	// reports here whether one is stored. Never persisted.
+	WebhookAuthSet bool `json:"webhook_auth_set,omitempty"`
 }
 
 // RoutineConfig drives the in-app scheduled workflows (rendered client-side, not
@@ -83,6 +87,9 @@ type Notification struct {
 	TaskID string
 	Tag    string // collapse key, e.g. "reminder-<taskId>"
 	Type   string // "reminder" | "morning_digest" | ...
+	// OwnerID is the user the notification is for. Push channels deliver only to
+	// that user's registered browsers and phones; empty delivers nowhere.
+	OwnerID string
 }
 
 // pushPayload is the JSON the service worker (sw.js) parses on a 'push' event.
@@ -102,13 +109,28 @@ type pushPayload struct {
 type Dispatcher struct {
 	configs  *db.IntegrationConfigStore
 	pushSubs *db.PushSubStore
+	users    *db.UserStore
 	webPush  *WebPushSender
 	fcm      *Service
 	appURL   string
 }
 
-func NewDispatcher(configs *db.IntegrationConfigStore, pushSubs *db.PushSubStore, webPush *WebPushSender, fcm *Service, appURL string) *Dispatcher {
-	return &Dispatcher{configs: configs, pushSubs: pushSubs, webPush: webPush, fcm: fcm, appURL: appURL}
+func NewDispatcher(configs *db.IntegrationConfigStore, pushSubs *db.PushSubStore, users *db.UserStore, webPush *WebPushSender, fcm *Service, appURL string) *Dispatcher {
+	return &Dispatcher{configs: configs, pushSubs: pushSubs, users: users, webPush: webPush, fcm: fcm, appURL: appURL}
+}
+
+// webhookFor reports whether n may go to the instance webhook. The webhook is
+// one instance-wide channel the admin configured for themselves, so only an
+// admin's notifications are sent there.
+func (d *Dispatcher) webhookFor(ctx context.Context, n Notification) bool {
+	if n.OwnerID == "" || d.users == nil {
+		return false
+	}
+	if count, err := d.users.Count(ctx); err == nil && count <= 1 {
+		return true // single-user instance: the owner is the admin
+	}
+	u, err := d.users.GetByID(ctx, n.OwnerID)
+	return err == nil && u.IsAdmin
 }
 
 // Send dispatches n across every enabled channel. Failures are logged, never
@@ -133,9 +155,9 @@ func (d *Dispatcher) Send(ctx context.Context, n Notification) {
 	}
 	if st.FCMEnabled && d.fcm != nil && d.fcm.Enabled() {
 		data := map[string]string{"url": n.URL, "taskId": n.TaskID, "type": n.Type, "tag": n.Tag}
-		d.fcm.SendToAll(n.Title, n.Body, data, soundID)
+		d.fcm.SendToOwner(n.OwnerID, n.Title, n.Body, data, soundID)
 	}
-	if st.WebhookEnabled && st.Webhook.configured() {
+	if st.WebhookEnabled && st.Webhook.configured() && d.webhookFor(ctx, n) {
 		click := ""
 		if n.URL != "" {
 			click = strings.TrimRight(d.appURL, "/") + n.URL
@@ -147,7 +169,10 @@ func (d *Dispatcher) Send(ctx context.Context, n Notification) {
 }
 
 func (d *Dispatcher) sendWebPush(n Notification, sound bool, soundID string) {
-	subs, err := d.pushSubs.ListAll()
+	if n.OwnerID == "" {
+		return
+	}
+	subs, err := d.pushSubs.ListForOwner(n.OwnerID)
 	if err != nil {
 		slog.Error("notify: list push subscriptions", "err", err)
 		return

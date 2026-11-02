@@ -177,12 +177,12 @@ func (c *Client) Search(ctx context.Context, nextPageToken string, maxResults in
 		return SearchResult{}, fmt.Errorf("unauthorized — check your email and API token")
 	}
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 		return SearchResult{}, fmt.Errorf("jira returned HTTP %d: %s", resp.StatusCode, body)
 	}
 
 	var result SearchResult
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 16<<20)).Decode(&result); err != nil {
 		return SearchResult{}, fmt.Errorf("decode response: %w", err)
 	}
 
@@ -210,12 +210,12 @@ func (c *Client) Myself(ctx context.Context) (User, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(resp.Body)
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 		return User{}, fmt.Errorf("jira returned HTTP %d: %s", resp.StatusCode, b)
 	}
 
 	var u User
-	if err := json.NewDecoder(resp.Body).Decode(&u); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 16<<20)).Decode(&u); err != nil {
 		return User{}, fmt.Errorf("decode: %w", err)
 	}
 	return u, nil
@@ -239,12 +239,12 @@ func (c *Client) GetIssue(ctx context.Context, issueKey string) (IssueDetail, er
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(resp.Body)
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 		return IssueDetail{}, fmt.Errorf("jira returned HTTP %d: %s", resp.StatusCode, b)
 	}
 
 	var detail IssueDetail
-	if err := json.NewDecoder(resp.Body).Decode(&detail); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 16<<20)).Decode(&detail); err != nil {
 		return IssueDetail{}, fmt.Errorf("decode: %w", err)
 	}
 	return detail, nil
@@ -266,12 +266,12 @@ func (c *Client) GetAllStatuses(ctx context.Context) ([]JiraStatus, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(resp.Body)
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 		return nil, fmt.Errorf("jira returned HTTP %d: %s", resp.StatusCode, b)
 	}
 
 	var statuses []JiraStatus
-	if err := json.NewDecoder(resp.Body).Decode(&statuses); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 16<<20)).Decode(&statuses); err != nil {
 		return nil, fmt.Errorf("decode: %w", err)
 	}
 	return statuses, nil
@@ -293,12 +293,12 @@ func (c *Client) GetTransitions(ctx context.Context, issueKey string) ([]jiraTra
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(resp.Body)
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 		return nil, fmt.Errorf("transitions: HTTP %d: %s", resp.StatusCode, b)
 	}
 
 	var tr transitionsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tr); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 16<<20)).Decode(&tr); err != nil {
 		return nil, fmt.Errorf("decode transitions: %w", err)
 	}
 	return tr.Transitions, nil
@@ -324,7 +324,7 @@ func (c *Client) Transition(ctx context.Context, issueKey, transitionID string) 
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
-		b, _ := io.ReadAll(resp.Body)
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 		return fmt.Errorf("post transition: HTTP %d: %s", resp.StatusCode, b)
 	}
 	return nil

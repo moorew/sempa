@@ -18,21 +18,25 @@ on:
 permissions:
   contents: read
 
-# Only one finalize at a time; a newer platform finishing supersedes an
-# in-flight finalize so the surviving run has the complete asset set.
+# One finalize per release commit; a newer platform finishing for the SAME
+# commit supersedes an in-flight finalize so the surviving run has the complete
+# asset set. Keyed by commit, not global: a pull-request Linux build also
+# triggers this workflow, and with one global group its (no-op) run cancelled a
+# real tag's finalize mid-flight, leaving the release without a signed manifest.
 concurrency:
-  group: release-finalize
+  group: release-finalize-${{ github.event.workflow_run.head_sha || inputs.tag }}
   cancel-in-progress: true
 
 jobs:
   checksums:
     name: Sign SHA256SUMS
-    # Manual dispatch, or any successful platform release build. Whether this is
-    # actually a tagged release is decided in "Resolve tag" (a non-tag build —
-    # e.g. a Linux PR run — resolves no tag and the rest of the job is skipped).
+    # Manual dispatch, or a successful platform release build from a push (a
+    # tag). Pull-request runs never finalize. Whether the commit really is a
+    # tagged release is still confirmed in "Resolve tag".
     if: >-
       ${{ github.event_name == 'workflow_dispatch' ||
-          github.event.workflow_run.conclusion == 'success' }}
+          (github.event.workflow_run.event == 'push' &&
+           github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write   # upload the checksums to the release

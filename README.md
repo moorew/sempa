@@ -298,8 +298,10 @@ Generate one at [Tailscale Admin → Keys](https://login.tailscale.com/admin/set
 |----------|-------------|
 | `TS_AUTHKEY` | Auth key for the Tailscale sidecar container |
 | `EMAIL_FORWARD_TOKEN` | Secret token for the Cloudflare email-to-task webhook |
-| `SMTP_ALLOWED_SENDERS` | Restrict email-to-task senders (comma-separated emails or `@domain`; empty = accept all) |
-| `SMTP_PORT` | Port for the built-in inbound SMTP server (default: `2525`) |
+| `SMTP_PORT` | Port for the built-in inbound SMTP server. **Empty by default (off).** The Cloudflare webhook above doesn't need it. |
+| `SMTP_RECIPIENT_TOKEN` | Required when `SMTP_PORT` is set: a secret the recipient address must carry (`tasks+<token>@…` or `<token>@…`). The server has no SMTP login and the sender address is whatever the connecting client claims, so this secret is what stops anyone who can reach the port from creating tasks. Without it the SMTP server doesn't start. |
+| `SMTP_ALLOWED_SENDERS` | Further restrict SMTP senders (comma-separated emails or `@domain`; empty = any sender with the right recipient token). Not authentication on its own. |
+| `SEMPA_TRUSTED_PROXIES` | Comma-separated IPs/CIDRs of reverse proxies whose `X-Forwarded-For` is trusted. Default: loopback only, which fits Tailscale Serve in the shipped compose file. List a proxy on another host here. |
 | `VAPID_SUBJECT` | Web Push contact address (e.g. `mailto:you@example.com`); the VAPID key pair auto-generates |
 | `FCM_KEY_PATH` | Path to a Firebase service-account JSON key for native Android push |
 | `OLLAMA_BASE_URL` | Ollama endpoint for the local AI model (AI assist, including email-title cleanup). **Empty by default** (feature off). `install.sh` sets it to `http://127.0.0.1:11434` when you opt into local AI; it can also be set manually or changed in **Settings → Integrations**. |
@@ -382,7 +384,7 @@ The core unit. Open any task to edit it in a panel (desktop) or bottom sheet (mo
 - **Time-blocking:** give a task a scheduled start/end so it appears as a block on the Schedule panel next to your calendar events.
 - **“Roughly at”:** a soft time hint (e.g. “around 2pm”) that orders a task in the day without committing to a hard block.
 - **Reminders:** set **Remind me** (date + time) for a hard alert — see [Reminders & notifications](#reminders-notifications--routines).
-- **Attachments:** attach files to a task (or objective); stored on your server.
+- **Attachments:** attach any file (up to 500 MB) to a task, objective or project; stored on your server. Images, PDFs, text, audio and video open in the app; everything else, including SVG and HTML, downloads. See [docs/FILES.md](docs/FILES.md).
 - **Right-click menu (desktop):** right-click a task for quick actions (Edit · Complete · Focus · Delete), a weekly objective for its actions, or empty board space for New task / Go to today / Search.
 - **Undo delete:** deleting a task shows an **Undo** toast; non-Jira tasks are restored, and a deleted Jira task returns to the Jira list automatically.
 
@@ -493,6 +495,7 @@ Turn email into tasks several ways:
 
 - **Gmail / Fastmail:** star an email and it imports as a task (same OAuth app as sign-in for Gmail; an app password for Fastmail).
 - **Task inbox:** forward (or auto-forward) mail to a dedicated address to create tasks; allow-list senders in settings.
+- **Cloudflare webhook or built-in SMTP receiver:** for your own domain or mail server. The built-in receiver is off by default and needs a secret recipient token; see [docs/EMAIL.md](docs/EMAIL.md).
 - **AI title cleanup:** imported subjects are tidied into clean task titles by your AI model, with no API key in Sempa. With the local model nothing leaves your server; with [Aperture](docs/APERTURE.md) each subject goes to the provider serving the model you picked. Part of the broader [AI assist](#ai-assist--local--private) suite; opt in during `install.sh` or in Settings → Integrations → AI.
 
 The **Email** screen lets you triage incoming mail and convert messages to tasks, with the original linked.

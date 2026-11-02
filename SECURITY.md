@@ -96,11 +96,12 @@ are dismissed in the Security tab with a justification and documented here:
   `https://ai.<tailnet>.ts.net`), so the usual SSRF mitigation (blocking internal
   hosts) would break the feature. For the gateway, the server only fetches a
   **saved** URL: connecting saves it first, and "Try it" uses saved settings only
-  (see `docs/APERTURE.md`). The URL is settable only by the **authenticated owner**
-  — who already controls the server — never by untrusted input, and the API
-  validates it is a well-formed `http(s)` URL (`validModelServerURL`). The residual
-  risk is accepted. See `backend/internal/integrations/fastmail/aititle.go`. If
-  Sempa ever gains lower-privilege/multi-user roles, revisit this.
+  (see `docs/APERTURE.md`). The URL is settable only by an **admin** (every
+  `/api/v1/integrations` write is admin-only since the 2026-11 audit) — who
+  already controls the server — never by untrusted input or a regular household
+  member, and the API validates it is a well-formed `http(s)` URL
+  (`validModelServerURL`). The residual risk is accepted. See
+  `backend/internal/integrations/fastmail/aititle.go`.
 
 - **gtk-rs / `glib` advisories — Linux-only Tauri build graph.** The gtk-rs GTK3
   binding crates (`glib`, `atk`, `gdk*`, `gtk`, `gdk-pixbuf`, …) are pulled in

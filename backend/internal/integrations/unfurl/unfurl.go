@@ -17,6 +17,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/clevercode/sempa/internal/netguard"
 )
 
 // Meta is the metadata extracted from a page. Empty fields mean "not found".
@@ -28,10 +30,7 @@ type Meta struct {
 	FaviconURL  string `json:"favicon_url"`
 }
 
-func isPrivateIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
-		ip.IsLinkLocalMulticast() || ip.IsUnspecified()
-}
+func isPrivateIP(ip net.IP) bool { return netguard.IsNonPublic(ip) }
 
 // safeDialControl rejects connections to private/internal addresses at dial
 // time. ValidatePublicURL only checks the IP a hostname resolves to *at check
@@ -333,8 +332,8 @@ func FetchImage(ctx context.Context, rawURL string) ([]byte, string, error) {
 		return nil, "", fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
 	ct := resp.Header.Get("Content-Type")
-	if !strings.HasPrefix(strings.ToLower(ct), "image/") {
-		return nil, "", fmt.Errorf("not an image (%s)", ct)
+	if !inertImageType(ct) {
+		return nil, "", fmt.Errorf("unsupported image type (%s)", ct)
 	}
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 5<<20))
 	if err != nil {
@@ -355,4 +354,20 @@ func resolveRef(base *url.URL, ref string) string {
 		return r.String()
 	}
 	return base.ResolveReference(r).String()
+}
+
+// inertImageType allows only raster image types. The image proxy serves bytes
+// from the app's own origin, so a scriptable type such as image/svg+xml would
+// run an attacker's script with the viewer's session.
+func inertImageType(ct string) bool {
+	base := strings.ToLower(strings.TrimSpace(ct))
+	if i := strings.IndexByte(base, ';'); i >= 0 {
+		base = strings.TrimSpace(base[:i])
+	}
+	switch base {
+	case "image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp",
+		"image/avif", "image/bmp", "image/x-icon", "image/vnd.microsoft.icon":
+		return true
+	}
+	return false
 }

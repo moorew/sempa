@@ -246,7 +246,7 @@ func (h *integrationHandler) jiraDoTransition(w http.ResponseWriter, r *http.Req
 	var body struct {
 		TransitionID string `json:"transition_id"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.TransitionID == "" {
+	if err := decode(r, &body); err != nil || body.TransitionID == "" {
 		respondError(w, http.StatusBadRequest, "transition_id required")
 		return
 	}
@@ -303,7 +303,7 @@ func (h *integrationHandler) gmailAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	withCalendar := r.URL.Query().Get("calendar") == "1"
-	state := gmail.GenerateState()
+	state := gmail.GenerateStateFor(gmail.PurposeGmail, sessionUserID(r))
 	redirectURI := h.cfg.AppURL + "/api/v1/integrations/gmail/callback"
 	authURL := gmail.AuthURL(h.cfg.GmailClientID, redirectURI, state, withCalendar)
 	http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
@@ -313,7 +313,8 @@ func (h *integrationHandler) gmailCallback(w http.ResponseWriter, r *http.Reques
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
 
-	if !gmail.ConsumeState(state) {
+	uid, ok := gmail.ConsumeStateFor(state, gmail.PurposeGmail)
+	if !ok || !stillAdmin(r.Context(), db.NewUserStore(h.db), uid) {
 		respondError(w, http.StatusBadRequest, "invalid or expired OAuth state")
 		return
 	}
@@ -686,7 +687,8 @@ func (h *integrationHandler) fastmailDelete(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *integrationHandler) emailForwardGet(w http.ResponseWriter, r *http.Request) {
-	// SMTP address (Tailscale-internal, requires port spec)
+	// SMTP recipient address (the port is reported separately). The receiver
+	// runs only when both SMTP_PORT and SMTP_RECIPIENT_TOKEN are set.
 	smtpEnabled := h.cfg.SMTPPort != ""
 	smtpAddress := ""
 	if smtpEnabled {
@@ -697,7 +699,16 @@ func (h *integrationHandler) emailForwardGet(w http.ResponseWriter, r *http.Requ
 		if idx := strings.Index(host, "/"); idx >= 0 {
 			host = host[:idx]
 		}
-		smtpAddress = "tasks@" + host + ":" + h.cfg.SMTPPort
+		if i := strings.LastIndexByte(host, ':'); i >= 0 {
+			host = host[:i]
+		}
+		// The receiver only accepts mail whose recipient carries the secret
+		// token (see docs/EMAIL.md). Admin-only route, so it's safe to show.
+		if h.cfg.SMTPRecipientToken != "" {
+			smtpAddress = "tasks+" + h.cfg.SMTPRecipientToken + "@" + host
+		} else {
+			smtpEnabled = false
+		}
 	}
 
 	// Webhook (Cloudflare Email Routing)
@@ -950,7 +961,7 @@ func (h *integrationHandler) aiTitleUpdate(w http.ResponseWriter, r *http.Reques
 		GatewayURL   *string `json:"gateway_url"`
 		GatewayModel *string `json:"gateway_model"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := decode(r, &body); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid body")
 		return
 	}
@@ -967,6 +978,12 @@ func (h *integrationHandler) aiTitleUpdate(w http.ResponseWriter, r *http.Reques
 	}
 	if provider == "" {
 		provider = db.AIProviderOllama
+	}
+	// Bound what lands in the instance-wide config row, which every AI request
+	// and poller tick re-reads.
+	if len(body.BaseURL) > 2048 || len(gatewayURL) > 2048 || len(body.Model) > 256 || len(gatewayModel) > 256 {
+		respondError(w, http.StatusBadRequest, "value too long")
+		return
 	}
 	if provider != db.AIProviderOllama && provider != db.AIProviderAperture {
 		respondError(w, http.StatusBadRequest, "provider must be ollama or aperture")
@@ -1019,7 +1036,7 @@ func (h *integrationHandler) aiTitleTest(w http.ResponseWriter, r *http.Request)
 	var body struct {
 		BaseURL string `json:"base_url"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = decode(r, &body)
 	baseURL := strings.TrimSpace(body.BaseURL)
 	if baseURL == "" {
 		baseURL = h.resolveAI(r.Context()).BaseURL
@@ -1070,12 +1087,12 @@ func (h *integrationHandler) aiTitlePull(w http.ResponseWriter, r *http.Request)
 		Model   string `json:"model"`
 		BaseURL string `json:"base_url"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := decode(r, &body); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid body")
 		return
 	}
 	model := strings.TrimSpace(body.Model)
-	if model == "" {
+	if model == "" || len(model) > 256 {
 		respondError(w, http.StatusBadRequest, "model required")
 		return
 	}
@@ -1086,6 +1103,11 @@ func (h *integrationHandler) aiTitlePull(w http.ResponseWriter, r *http.Request)
 		h.pulls = map[string]*pullState{}
 	}
 	st := h.pulls[model]
+	if (st == nil || st.Done) && h.activePullsLocked() >= maxConcurrentPulls {
+		h.pullsMu.Unlock()
+		respondError(w, http.StatusTooManyRequests, "another model download is already running")
+		return
+	}
 	if st == nil || st.Done {
 		st = &pullState{Status: "starting"}
 		h.pulls[model] = st
@@ -1096,10 +1118,31 @@ func (h *integrationHandler) aiTitlePull(w http.ResponseWriter, r *http.Request)
 	respond(w, http.StatusOK, snapshot)
 }
 
+// A model pull is a long background download; bound how many run at once and
+// how long one may take, so a stuck or hostile server can't pin goroutines and
+// connections forever.
+const (
+	maxConcurrentPulls = 2
+	maxPullDuration    = 6 * time.Hour
+)
+
+// activePullsLocked counts pulls still running. Caller holds pullsMu.
+func (h *integrationHandler) activePullsLocked() int {
+	n := 0
+	for _, p := range h.pulls {
+		if !p.Done {
+			n++
+		}
+	}
+	return n
+}
+
 // runPull executes the download in the background, updating st as it streams.
 // Uses a detached context so it survives the originating HTTP request.
 func (h *integrationHandler) runPull(baseURL, model string, st *pullState) {
-	err := fastmail.PullModel(context.Background(), baseURL, model, func(p fastmail.PullProgress) {
+	ctx, cancel := context.WithTimeout(context.Background(), maxPullDuration)
+	defer cancel()
+	err := fastmail.PullModel(ctx, baseURL, model, func(p fastmail.PullProgress) {
 		h.pullsMu.Lock()
 		st.Status = p.Status
 		st.Completed = p.Completed
@@ -1141,7 +1184,7 @@ func (h *integrationHandler) aiTitleRemove(w http.ResponseWriter, r *http.Reques
 		Model   string `json:"model"`
 		BaseURL string `json:"base_url"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := decode(r, &body); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid body")
 		return
 	}

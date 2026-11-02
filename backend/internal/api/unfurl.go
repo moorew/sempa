@@ -71,5 +71,8 @@ func (h *unfurlHandler) image(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", "public, max-age=604800") // 7 days
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+	// Defence in depth: even if a scriptable type slipped past FetchImage, a
+	// document opened directly from this URL gets no script and no origin.
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; img-src 'self' data:; sandbox")
 	_, _ = w.Write(data)
 }

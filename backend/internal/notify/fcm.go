@@ -47,12 +47,14 @@ func (s *Service) Enabled() bool {
 // SendToAll sends a notification to all registered devices. sound is the chosen
 // tone's slug (e.g. "piano"); empty means the default channel with no custom
 // sound. The matching res/raw/<sound>.mp3 must be bundled on the Android side.
-func (s *Service) SendToAll(title, body string, data map[string]string, sound string) {
-	if !s.Enabled() {
+// SendToOwner delivers to the FCM devices ownerID registered — never to other
+// members' phones.
+func (s *Service) SendToOwner(ownerID, title, body string, data map[string]string, sound string) {
+	if !s.Enabled() || ownerID == "" {
 		return
 	}
 
-	devices, err := s.devices.ListAll()
+	devices, err := s.devices.ListForOwner(ownerID)
 	if err != nil {
 		slog.Error("notify: list devices", "err", err)
 		return
@@ -122,7 +124,7 @@ func (s *Service) send(token, title, body string, data map[string]string, sound 
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 		return fmt.Errorf("FCM %d: %s", resp.StatusCode, string(respBody))
 	}
 

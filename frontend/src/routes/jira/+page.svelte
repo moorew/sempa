@@ -1,7 +1,7 @@
 <script lang="ts">
   import { api } from '$lib/api';
   import type { Task } from '$lib/types';
-  import { today, weekStart, offsetDate } from '$lib/utils';
+  import { today, weekStart, offsetDate, safeHref } from '$lib/utils';
   import {
     parseJiraMeta,
     applyJiraFilters,
@@ -312,8 +312,8 @@
       <div class="mt-5 rounded-[18px] p-4" style="background: var(--sempa-fill);">
         <div class="flex items-center gap-2">
           {#if meta?.key}<span class="font-mono text-sm font-semibold" style="color: var(--sempa-accent-ink);">{meta.key}</span>{/if}
-          {#if sheetTask.source_url}
-            <a href={sheetTask.source_url} target="_blank" rel="noopener noreferrer"
+          {#if safeHref(sheetTask.source_url)}
+            <a href={safeHref(sheetTask.source_url)} target="_blank" rel="noopener noreferrer"
                class="ml-auto inline-flex items-center gap-1 text-xs font-semibold" style="color: var(--sempa-accent-ink);">Open in Jira <ExternalLink size={12} /></a>
           {/if}
         </div>

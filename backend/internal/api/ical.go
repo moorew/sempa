@@ -15,10 +15,26 @@ type icalHandler struct {
 	store      *db.ICalStore
 	fmCalStore *db.FastmailCalStore
 	configs    *db.IntegrationConfigStore
+	users      *db.UserStore
+}
+
+// seesInstanceCalendar reports whether the caller may see the instance-wide
+// Fastmail calendar, which is the connecting admin's own account. Members see
+// only the feeds they subscribed to themselves.
+func (h *icalHandler) seesInstanceCalendar(r *http.Request) bool {
+	owner := ownerID(r)
+	if owner == db.SystemScope {
+		return true
+	}
+	if h.users == nil {
+		return false
+	}
+	u, err := h.users.GetByID(r.Context(), owner)
+	return err == nil && u.IsAdmin
 }
 
 func (h *icalHandler) listSubscriptions(w http.ResponseWriter, r *http.Request) {
-	subs, err := h.store.ListSubscriptions(r.Context())
+	subs, err := h.store.ListSubscriptions(r.Context(), ownerID(r))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to list subscriptions")
 		return
@@ -39,18 +55,18 @@ func (h *icalHandler) createSubscription(w http.ResponseWriter, r *http.Request)
 	if req.Color == "" {
 		req.Color = "#6b7280"
 	}
-	sub, err := h.store.CreateSubscription(r.Context(), uuid.New().String(), req.Name, req.URL, req.Color)
+	sub, err := h.store.CreateSubscription(r.Context(), uuid.New().String(), req.Name, req.URL, req.Color, ownerID(r))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create subscription")
 		return
 	}
 	// Sync in background so the HTTP response is fast
-	go h.syncSubscriptionByID(context.Background(), sub.ID)
+	go h.syncSubscriptionByID(context.Background(), sub.ID, db.SystemScope)
 	respond(w, http.StatusCreated, sub)
 }
 
 func (h *icalHandler) deleteSubscription(w http.ResponseWriter, r *http.Request) {
-	if err := h.store.DeleteSubscription(r.Context(), chi.URLParam(r, "id")); err != nil {
+	if err := h.store.DeleteSubscription(r.Context(), chi.URLParam(r, "id"), ownerID(r)); err != nil {
 		respondError(w, http.StatusNotFound, "subscription not found")
 		return
 	}
@@ -59,7 +75,7 @@ func (h *icalHandler) deleteSubscription(w http.ResponseWriter, r *http.Request)
 
 func (h *icalHandler) syncSubscription(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	h.syncSubscriptionByID(r.Context(), id)
+	h.syncSubscriptionByID(r.Context(), id, ownerID(r))
 	respond(w, http.StatusOK, map[string]string{"status": "synced"})
 }
 
@@ -69,7 +85,7 @@ func (h *icalHandler) listEventsForDate(w http.ResponseWriter, r *http.Request) 
 		respondError(w, http.StatusBadRequest, "date is required")
 		return
 	}
-	events, err := h.store.ListEventsForDate(r.Context(), date)
+	events, err := h.store.ListEventsForDate(r.Context(), date, ownerID(r))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -80,7 +96,7 @@ func (h *icalHandler) listEventsForDate(w http.ResponseWriter, r *http.Request) 
 
 	// Tag each subscription event with its feed's display name so the client
 	// can group/show/hide by calendar.
-	if subs, err := h.store.ListSubscriptions(r.Context()); err == nil {
+	if subs, err := h.store.ListSubscriptions(r.Context(), ownerID(r)); err == nil {
 		names := make(map[string]string, len(subs))
 		for _, s := range subs {
 			names[s.ID] = s.Name
@@ -93,7 +109,7 @@ func (h *icalHandler) listEventsForDate(w http.ResponseWriter, r *http.Request) 
 	// Merge Fastmail calendar events when the integration is enabled. Each
 	// Fastmail calendar becomes its own selectable "calendar" via a stable
 	// subscription_id of fastmail:<calendar name>.
-	if h.fmCalStore != nil && h.configs != nil {
+	if h.fmCalStore != nil && h.configs != nil && h.seesInstanceCalendar(r) {
 		if cfg, err := h.configs.Get(r.Context(), "fastmail_calendar"); err == nil && cfg.Enabled {
 			fmEvents, _ := h.fmCalStore.ListEventsForDate(r.Context(), date)
 			for _, ev := range fmEvents {
@@ -121,8 +137,8 @@ func (h *icalHandler) listEventsForDate(w http.ResponseWriter, r *http.Request) 
 	respond(w, http.StatusOK, events)
 }
 
-func (h *icalHandler) syncSubscriptionByID(ctx context.Context, id string) {
-	subs, err := h.store.ListSubscriptions(ctx)
+func (h *icalHandler) syncSubscriptionByID(ctx context.Context, id, ownerID string) {
+	subs, err := h.store.ListSubscriptions(ctx, ownerID)
 	if err != nil {
 		return
 	}

@@ -110,6 +110,17 @@ type msSupportedComps struct {
 
 // ── HTTP plumbing ─────────────────────────────────────────────────────────────
 
+// SameOrigin reports whether href (a path or full URL) resolves to the
+// configured server.
+func (c *Client) SameOrigin(href string) bool {
+	u, err := url.Parse(href)
+	if err != nil {
+		return false
+	}
+	full := c.base.ResolveReference(u)
+	return full.Scheme == c.base.Scheme && full.Host == c.base.Host
+}
+
 // resolve turns a server href (absolute path or full URL) into a full URL.
 func (c *Client) resolve(href string) string {
 	u, err := url.Parse(href)
@@ -127,6 +138,12 @@ func (c *Client) do(ctx context.Context, method, fullURL string, depth string, b
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, rdr)
 	if err != nil {
 		return nil, err
+	}
+	// The Basic credential is the account's app password: never send it to any
+	// origin but the configured server. A stored absolute calendar href would
+	// otherwise re-point every request, credential included, at another host.
+	if req.URL.Scheme != c.base.Scheme || req.URL.Host != c.base.Host {
+		return nil, fmt.Errorf("caldav: refusing to send credentials to %s://%s", req.URL.Scheme, req.URL.Host)
 	}
 	req.Header.Set("Authorization", c.auth)
 	if depth != "" {

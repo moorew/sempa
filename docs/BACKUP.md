@@ -7,6 +7,13 @@ Destinations: **Google Drive**, **S3-compatible**, **WebDAV / Nextcloud**, and a
 **local folder**. More than one can be enabled; each gets its own copy and its
 own retention.
 
+**What a bundle never contains:** login sessions (so a copied bundle can't be
+used to sign in), the backup passphrase and destination credentials. In
+"exclude secrets" mode it also drops integration tokens and device push tokens.
+Restoring a bundle keeps the server's current sessions, so a restore never
+brings back a login that was signed out. Only admins can back up or restore,
+and only an admin can connect the Google Drive destination.
+
 ---
 
 ## The Google Drive 7-day expiry (read this before debugging)

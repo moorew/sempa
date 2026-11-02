@@ -29,7 +29,7 @@ func (h *deviceHandler) register(w http.ResponseWriter, r *http.Request) {
 		req.Platform = "android"
 	}
 
-	device, err := h.store.Upsert(newID(), req.Token, req.Platform)
+	device, err := h.store.Upsert(newID(), req.Token, req.Platform, ownerID(r))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to register device")
 		return
@@ -47,7 +47,7 @@ func (h *deviceHandler) unregister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.store.Delete(req.Token); err != nil {
+	if err := h.store.DeleteOwned(req.Token, ownerID(r)); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to unregister device")
 		return
 	}

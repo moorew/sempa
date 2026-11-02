@@ -7,9 +7,15 @@
  * - Web: a plain new tab.
  */
 import { isTauri, isCapacitor } from '$lib/platform';
+import { safeHref } from '$lib/utils';
 
 export async function openExternal(url: string): Promise<void> {
-    if (!url) return;
+    // Only ever hand a web link to the OS or a new window. Callers pass stored
+    // data (task and calendar links); the Tauri command already refuses other
+    // schemes, and falling back to window.open would undo that check.
+    const href = safeHref(url);
+    if (!href) return;
+    url = href;
 
     if (isTauri()) {
         try {

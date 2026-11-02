@@ -122,7 +122,7 @@ func generate(ctx context.Context, c Config, prompt string, jsonMode bool, opts 
 			Content string `json:"content"`
 		} `json:"message"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 4<<20)).Decode(&out); err != nil {
 		return "", err
 	}
 	return strings.TrimSpace(out.Message.Content), nil

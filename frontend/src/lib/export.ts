@@ -26,10 +26,17 @@ export function downloadFile(filename: string, content: string, mime: string): v
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-/** Quote a CSV field, doubling embedded quotes per RFC 4180. */
-function csvCell(value: string | number | null | undefined): string {
-  const s = value == null ? '' : String(value);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+/**
+ * Quote a CSV field, doubling embedded quotes per RFC 4180. A text cell that
+ * starts with a spreadsheet formula trigger (= + - @ tab CR) gets a leading
+ * apostrophe so it opens as text: titles can come from other members or from
+ * inbound email, and a formula there could fetch a URL or exfiltrate the
+ * neighbouring cells of the victim's export.
+ */
+export function csvCell(value: string | number | null | undefined): string {
+  let s = value == null ? '' : String(value);
+  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 /** A CSV with a header row and one row per task. */

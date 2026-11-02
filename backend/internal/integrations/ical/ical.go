@@ -11,6 +11,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/clevercode/sempa/internal/netguard"
 )
 
 // Event is a parsed VEVENT from an ICS feed.
@@ -26,9 +28,7 @@ type Event struct {
 }
 
 // isPrivateIP checks if an IP belongs to a private, loopback, or link-local range.
-func isPrivateIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified()
-}
+func isPrivateIP(ip net.IP) bool { return netguard.IsNonPublic(ip) }
 
 // validateURL ensures the URL is http(s) and does not resolve to a private/internal IP.
 func validateURL(rawURL string) error {
@@ -166,7 +166,10 @@ func Parse(r io.Reader) ([]Event, error) {
 		case "LOCATION":
 			cur.Location = unescapeText(val)
 		case "URL":
-			cur.URL = strings.TrimSpace(val)
+			// Only a web link: the UI opens it, and a feed author controls it.
+			if u := strings.TrimSpace(val); strings.HasPrefix(strings.ToLower(u), "https://") || strings.HasPrefix(strings.ToLower(u), "http://") {
+				cur.URL = u
+			}
 		case "DTSTART":
 			cur.StartTime, cur.AllDay = parseICSTime(line)
 		case "DTEND", "DTEND;VALUE=DATE":

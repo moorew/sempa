@@ -83,7 +83,7 @@ func serviceAccountToken(keyPath string) (token string, expiry time.Time, err er
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
 	if resp.StatusCode != 200 {
 		return "", time.Time{}, fmt.Errorf("token exchange %d: %s", resp.StatusCode, body)
 	}

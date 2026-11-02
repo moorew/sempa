@@ -6,6 +6,81 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.31.0] - 2026-11-02
+
+### Security
+Fixes from a full security audit (November 2026). Most matter only when other
+household members have accounts; a few apply to every install.
+
+- **Integrations are admin-only.** Any signed-in member could read, use, change
+  or delete the instance's integrations and their stored credentials (Jira,
+  Fastmail, Gmail, CalDAV, AI), the notification webhook secret and the server
+  timezone. Everything under Settings → Integrations, notification settings and
+  device pairing now needs an admin. Members still see whether Jira and AI are on.
+- **CalDAV can't send your Fastmail password elsewhere.** A calendar address on
+  another host was accepted and every sync sent the app password to it. Only
+  calendars on the Fastmail server are accepted now, and only the connecting
+  user's tasks are exported.
+- **Drive backup can't be hijacked.** A Gmail sign-in started by a member could
+  finish the admin-only Drive backup connection, so backups went to the
+  member's Drive. Each OAuth flow's state is now bound to that flow and to the
+  admin who started it.
+- **No script through link previews.** The preview image proxy served SVG files
+  from Sempa's own address, so one crafted link could run script as the signed-in
+  user. It now serves only plain image formats, with scripts blocked.
+- **Backups no longer contain login tokens,** in any mode, and restoring an old
+  backup no longer brings back sessions that were signed out.
+- **Signing out really signs out.** Deleting a user, changing a password, an
+  admin password reset, and signing out on desktop or Android now end the
+  affected sessions on the server. A deleted user's old token is rejected
+  instead of writing into the household head's account.
+- **Calendars and reminders are private.** Calendar subscriptions (and their
+  private feed links) are per user, and reminders and the morning digest go only
+  to the task owner's own browsers and phones. The Fastmail calendar shows only
+  for admins.
+- **Recurring tasks can't be wiped by another member.** The day/week views took
+  the client's "today" for rollover across every user's tasks, so any member or
+  paired device could delete or hide others' recurring tasks. Rollover now only
+  touches the caller's own tasks and ignores dates more than two days off.
+- **Login throttle can't be dodged** by a LAN or tailnet device forging
+  `X-Forwarded-For`. Forwarded addresses are trusted only from loopback by
+  default (`SEMPA_TRUSTED_PROXIES` to add a proxy).
+- **Shared desktop and Android devices.** Signing out (or another account, or
+  another server) now clears the offline copy and its queued edits, so the next
+  person can't read them or have them uploaded into their account. A signed-out
+  Android phone no longer opens on the last account's data while offline.
+- **Sign-in links must come from the app.** A `sempa://` or
+  `com.clevercode.sempa://` login link is only honoured if this app started the
+  sign-in, so a link from a web page or another app can't switch your account.
+- **Safer links everywhere.** Task source links, email links and calendar-event
+  links only open as http(s); `javascript:` and other schemes are dropped on the
+  server and ignored by the app. The post-Google-sign-in redirect only goes to
+  pages on this server, and an unverified Google email is refused.
+- Members can't read internal services through the webhook test or a Jira host,
+  and upstream error bodies are no longer echoed back. Web Push subscriptions
+  must be a public https push service. The link-preview and calendar-feed
+  fetchers also refuse Tailscale (100.64.0.0/10) and other non-public ranges.
+- Request bodies are capped at 1 MB on every JSON endpoint, responses from Jira,
+  AI and Google are size-capped, and AI model downloads are bounded in size,
+  time and concurrency.
+- Other fixes: un-sharing a row no longer deletes it from its owner's offline
+  devices; making a recurring task private also makes its instances private;
+  list reordering is limited to your own lists; integration import keys can't be
+  claimed by a client; CSV export opens formula-looking cells as text; calendar
+  event text can't add fields when synced to CalDAV.
+- CI: a pull request's Linux build can no longer cancel a release's signing step.
+
+### Changed
+- **The built-in SMTP receiver is off by default.** It used to listen on 2525 on
+  every interface and accept any sender. To use it, set `SMTP_PORT` **and** the
+  new `SMTP_RECIPIENT_TOKEN` (the recipient address must carry it); without the
+  token it won't start. The Cloudflare email webhook is unaffected. Setup and
+  upgrade steps: [docs/EMAIL.md](docs/EMAIL.md).
+- New [docs/FILES.md](docs/FILES.md) lists which files Sempa accepts and how
+  each opens; the attachment area now says "any type" and explains on hover.
+- Device pairing approval (`/devices/pair/approve`) works again; it was
+  shadowed by the public pairing routes and always returned 404. It is admin-only.
+
 ## [1.30.0] - 2026-10-31
 
 ### Added

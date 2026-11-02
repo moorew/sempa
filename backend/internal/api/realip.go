@@ -7,14 +7,13 @@ import (
 )
 
 // defaultTrustedProxyCIDRs are the peer ranges whose forwarding headers we trust
-// by default: loopback, RFC1918 private, CGNAT/Tailscale (100.64/10) and IPv6
-// unique-local / link-local. A reverse proxy fronting the app almost always
-// connects from one of these; a directly connected public client never does, so
-// it cannot spoof X-Forwarded-For / X-Real-IP to rotate its apparent IP.
-var defaultTrustedProxyCIDRs = []string{
-	"127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
-	"100.64.0.0/10", "169.254.0.0/16", "::1/128", "fc00::/7", "fe80::/10",
-}
+// when SEMPA_TRUSTED_PROXIES is unset: loopback only. The shipped deployment's
+// front door (Tailscale Serve) proxies from 127.0.0.1, and it appends the real
+// tailnet client to X-Forwarded-For. Private, CGNAT and link-local ranges are
+// where Sempa's own clients connect from, so trusting them let any LAN or
+// tailnet peer forge X-Forwarded-For and rotate past the login throttle. A
+// proxy on another host must be listed explicitly. (AURA-SEC-004)
+var defaultTrustedProxyCIDRs = []string{"127.0.0.0/8", "::1/128"}
 
 func parseCIDRs(cidrs []string) []*net.IPNet {
 	nets := make([]*net.IPNet, 0, len(cidrs))
@@ -87,8 +86,8 @@ func realIP(trusted []string) func(http.Handler) http.Handler {
 // It walks X-Forwarded-For right-to-left and returns the first address that is
 // NOT itself a trusted proxy — the client as seen at our trust boundary. This
 // defeats a client that prepends a spoofed entry, because the honest proxy
-// appends the true peer to the right. Falls back to X-Real-IP, then the
-// left-most valid entry. Returns "" when nothing usable is present.
+// appends the true peer to the right. Falls back to X-Real-IP. Returns "" (keep
+// the socket peer) when nothing usable is present or every hop is trusted.
 func forwardedForClientIP(r *http.Request, trusted []*net.IPNet) string {
 	xff := r.Header.Get("X-Forwarded-For")
 	if xff == "" {
@@ -108,11 +107,7 @@ func forwardedForClientIP(r *http.Request, trusted []*net.IPNet) string {
 			return ip
 		}
 	}
-	// Every hop was a trusted proxy — fall back to the left-most valid address.
-	for _, seg := range parts {
-		if ip := strings.TrimSpace(seg); net.ParseIP(ip) != nil {
-			return ip
-		}
-	}
+	// Every hop was a trusted proxy. The left-most entry is whatever the client
+	// sent, so it can't be trusted; keep the socket peer instead.
 	return ""
 }

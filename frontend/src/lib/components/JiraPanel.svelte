@@ -1,5 +1,6 @@
 <script lang="ts">
   import { api } from '$lib/api';
+  import { safeHref } from '$lib/utils';
   import type { Task } from '$lib/types';
   import {
     parseJiraMeta as parseMeta,
@@ -181,8 +182,8 @@
         </svg>
       </button>
       <span class="font-mono font-semibold" style="color: var(--sempa-accent-ink);">{meta?.key ?? ''}</span>
-      {#if cardTask.source_url}
-        <a href={cardTask.source_url} target="_blank" rel="noopener noreferrer"
+      {#if safeHref(cardTask.source_url)}
+        <a href={safeHref(cardTask.source_url)} target="_blank" rel="noopener noreferrer"
            class="btn-soft ml-auto h-7 shrink-0 px-3 text-[11.5px]">Open ↗</a>
       {/if}
     </div>

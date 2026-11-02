@@ -59,7 +59,7 @@ func (h *integrationHandler) aiQuickAdd(w http.ResponseWriter, r *http.Request) 
 		Today string   `json:"today"`
 		Tags  []string `json:"tags"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || strings.TrimSpace(body.Text) == "" {
+	if err := decode(r, &body); err != nil || strings.TrimSpace(body.Text) == "" {
 		respondError(w, http.StatusBadRequest, "text required")
 		return
 	}
@@ -124,7 +124,7 @@ func (h *integrationHandler) aiSummarizeTask(w http.ResponseWriter, r *http.Requ
 		Title string `json:"title"`
 		Body  string `json:"body"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = decode(r, &body)
 	prompt := fmt.Sprintf(`Summarize this into an actionable task.
 Return JSON: "summary" (a clear task title, max 10 words, start with a verb), "time_estimate_minutes" (integer best-guess effort, 0 if unsure).
 
@@ -165,7 +165,7 @@ func (h *integrationHandler) aiPredictTime(w http.ResponseWriter, r *http.Reques
 		Title string   `json:"title"`
 		Tags  []string `json:"tags"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = decode(r, &body)
 	if strings.TrimSpace(body.Title) == "" {
 		respondError(w, http.StatusUnprocessableEntity, "title is required")
 		return
@@ -248,7 +248,7 @@ func (h *integrationHandler) aiSuggestTags(w http.ResponseWriter, r *http.Reques
 		Notes     string   `json:"notes"`
 		Available []string `json:"available_tags"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = decode(r, &body)
 	if strings.TrimSpace(body.Title) == "" {
 		respond(w, http.StatusOK, map[string]any{"available": true, "tags": []string{}, "new_tags": []string{}})
 		return
@@ -325,7 +325,7 @@ func (h *integrationHandler) aiOrganizeList(w http.ResponseWriter, r *http.Reque
 	var body struct {
 		Items []string `json:"items"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = decode(r, &body)
 	if len(body.Items) == 0 {
 		respond(w, http.StatusOK, map[string]any{"available": true, "groups": []any{}})
 		return
@@ -360,7 +360,7 @@ func (h *integrationHandler) aiBreakdown(w http.ResponseWriter, r *http.Request)
 		Title string `json:"title"`
 		Notes string `json:"notes"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = decode(r, &body)
 	if strings.TrimSpace(body.Title) == "" {
 		respondError(w, http.StatusBadRequest, "title required")
 		return
@@ -408,7 +408,7 @@ func (h *integrationHandler) aiPlanDay(w http.ResponseWriter, r *http.Request) {
 			End   string `json:"end"`
 		} `json:"events"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = decode(r, &body)
 	if len(body.Tasks) == 0 {
 		respond(w, http.StatusOK, map[string]any{"available": true, "order": []string{}, "schedule": []any{}, "note": ""})
 		return
@@ -590,7 +590,7 @@ func (h *integrationHandler) aiWeeklyReview(w http.ResponseWriter, r *http.Reque
 			Status string `json:"status"`
 		} `json:"objectives"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = decode(r, &body)
 	cj, _ := json.Marshal(body.Completed)
 	oj, _ := json.Marshal(body.Objectives)
 	prompt := fmt.Sprintf(`Draft a brief weekly review from the completed tasks and objectives.
@@ -630,7 +630,7 @@ func (h *integrationHandler) aiReflectionPrompts(w http.ResponseWriter, r *http.
 		Done   []string `json:"done"`
 		Undone []string `json:"undone"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = decode(r, &body)
 	dj, _ := json.Marshal(body.Done)
 	uj, _ := json.Marshal(body.Undone)
 	prompt := fmt.Sprintf(`Write 2-3 short, thoughtful end-of-day reflection questions, tailored to what got
@@ -661,7 +661,7 @@ func (h *integrationHandler) aiTidyNotes(w http.ResponseWriter, r *http.Request)
 	var body struct {
 		Notes string `json:"notes"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = decode(r, &body)
 	if strings.TrimSpace(body.Notes) == "" {
 		respondError(w, http.StatusBadRequest, "notes required")
 		return

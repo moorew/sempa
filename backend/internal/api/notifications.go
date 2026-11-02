@@ -3,8 +3,10 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/clevercode/sempa/internal/db"
+	"github.com/clevercode/sempa/internal/integrations/unfurl"
 	"github.com/clevercode/sempa/internal/notify"
 )
 
@@ -23,7 +25,16 @@ func (h *notificationHandler) getSettings(w http.ResponseWriter, r *http.Request
 	if st.Timezone == "" {
 		st.Timezone = db.ServerLocation().String()
 	}
-	respond(w, http.StatusOK, st)
+	respond(w, http.StatusOK, redactSettings(st))
+}
+
+// redactSettings blanks the webhook secret before settings leave the server.
+// Settings are readable by every household member, and the admin's form sends
+// the blank back unchanged (see putSettings).
+func redactSettings(st notify.Settings) notify.Settings {
+	st.WebhookAuthSet = st.Webhook.AuthValue != ""
+	st.Webhook.AuthValue = ""
+	return st
 }
 
 // putSettings persists the notification settings document.
@@ -33,6 +44,16 @@ func (h *notificationHandler) putSettings(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
+	// The client only ever sees a redacted secret, so a blank auth value means
+	// "keep the stored one" — but only while the endpoint and header are
+	// unchanged, so the secret can't be re-pointed at a new host.
+	if s.Webhook.AuthValue == "" {
+		prev := notify.LoadSettings(r.Context(), h.configs).Webhook
+		if prev.Endpoint == s.Webhook.Endpoint && prev.AuthHeader == s.Webhook.AuthHeader {
+			s.Webhook.AuthValue = prev.AuthValue
+		}
+	}
+	s.WebhookAuthSet = false
 	raw, err := json.Marshal(s)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to encode settings")
@@ -48,7 +69,7 @@ func (h *notificationHandler) putSettings(w http.ResponseWriter, r *http.Request
 	if s.Timezone == "" {
 		s.Timezone = db.ServerLocation().String()
 	}
-	respond(w, http.StatusOK, s)
+	respond(w, http.StatusOK, redactSettings(s))
 }
 
 // vapidKey hands the browser the application server public key it needs to call
@@ -77,7 +98,13 @@ func (h *notificationHandler) subscribe(w http.ResponseWriter, r *http.Request) 
 		respondError(w, http.StatusBadRequest, "endpoint and keys are required")
 		return
 	}
-	sub, err := h.pushSubs.Upsert(newID(), req.Endpoint, req.Keys.P256dh, req.Keys.Auth, req.Platform)
+	// The server POSTs to this URL on every reminder, so it must be a real push
+	// service: https on a public address, never something inside the network.
+	if _, verr := unfurl.ValidatePublicURL(req.Endpoint); verr != nil || !strings.HasPrefix(strings.ToLower(req.Endpoint), "https://") {
+		respondError(w, http.StatusBadRequest, "endpoint must be a public https push service URL")
+		return
+	}
+	sub, err := h.pushSubs.Upsert(newID(), req.Endpoint, req.Keys.P256dh, req.Keys.Auth, req.Platform, ownerID(r))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to save subscription")
 		return
@@ -94,7 +121,7 @@ func (h *notificationHandler) unsubscribe(w http.ResponseWriter, r *http.Request
 		respondError(w, http.StatusBadRequest, "endpoint is required")
 		return
 	}
-	if err := h.pushSubs.DeleteByEndpoint(req.Endpoint); err != nil {
+	if err := h.pushSubs.DeleteByEndpointOwned(req.Endpoint, ownerID(r)); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to remove subscription")
 		return
 	}
@@ -108,6 +135,14 @@ func (h *notificationHandler) testWebhook(w http.ResponseWriter, r *http.Request
 	if err := decode(r, &cfg); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
+	}
+	// The form holds a redacted secret; reuse the stored one for an unchanged
+	// endpoint so "Send test" works without re-typing it.
+	if cfg.AuthValue == "" {
+		prev := notify.LoadSettings(r.Context(), h.configs).Webhook
+		if prev.Endpoint == cfg.Endpoint && prev.AuthHeader == cfg.AuthHeader {
+			cfg.AuthValue = prev.AuthValue
+		}
 	}
 	if err := notify.TestWebhook(cfg); err != nil {
 		respondError(w, http.StatusBadGateway, "webhook test failed: "+err.Error())

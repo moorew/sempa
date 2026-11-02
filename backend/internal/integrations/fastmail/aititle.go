@@ -1,6 +1,7 @@
 package fastmail
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -60,7 +61,7 @@ func ListModelsDetailed(ctx context.Context, baseURL string) ([]ModelInfo, error
 			Size int64  `json:"size"`
 		} `json:"models"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&out); err != nil {
 		return nil, err
 	}
 	models := make([]ModelInfo, 0, len(out.Models))
@@ -106,7 +107,12 @@ func PullModel(ctx context.Context, baseURL, model string, onProgress func(PullP
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{} // no timeout — pulls can take several minutes
+	// No overall timeout (pulls can take many minutes; the caller bounds the
+	// whole pull with its context), but the server must answer promptly.
+	client := &http.Client{Transport: &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		ResponseHeaderTimeout: 60 * time.Second,
+	}}
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -116,27 +122,45 @@ func PullModel(ctx context.Context, baseURL, model string, onProgress func(PullP
 		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 		return fmt.Errorf("ollama pull returned %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
 	}
-	dec := json.NewDecoder(resp.Body)
-	for {
+	// The stream is newline-delimited JSON progress lines of ~100 bytes. Bound
+	// each line and the whole stream, so a misbehaving or hostile model server
+	// can't make the shared process buffer an endless value.
+	sc := bufio.NewScanner(io.LimitReader(resp.Body, pullStreamMax))
+	sc.Buffer(make([]byte, 0, 4096), pullLineMax)
+	for sc.Scan() {
+		raw := bytes.TrimSpace(sc.Bytes())
+		if len(raw) == 0 {
+			continue
+		}
 		var line struct {
 			Status    string `json:"status"`
 			Completed int64  `json:"completed"`
 			Total     int64  `json:"total"`
 			Error     string `json:"error"`
 		}
-		if err := dec.Decode(&line); err != nil {
-			if err == io.EOF {
-				return nil
-			}
+		if err := json.Unmarshal(raw, &line); err != nil {
 			return err
 		}
 		if line.Error != "" {
-			return fmt.Errorf("%s", line.Error)
+			return fmt.Errorf("%s", truncate(line.Error, 512))
 		}
 		if onProgress != nil {
-			onProgress(PullProgress{Status: line.Status, Completed: line.Completed, Total: line.Total})
+			onProgress(PullProgress{Status: truncate(line.Status, 256), Completed: line.Completed, Total: line.Total})
 		}
 	}
+	return sc.Err()
+}
+
+const (
+	pullLineMax   = 64 << 10 // one progress line
+	pullStreamMax = 64 << 20 // the whole progress stream
+)
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n]
 }
 
 // DeleteModel removes a model from the Ollama host to free disk space.

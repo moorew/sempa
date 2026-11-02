@@ -130,12 +130,15 @@ func (h *listHandler) update(w http.ResponseWriter, r *http.Request) {
 	// Keep items in lockstep with the list's share state; on un-share, revoke the
 	// list + each item from peers (they drop their stale copies; owner keeps them).
 	if req.Shared != nil && updated.Shared != wasShared {
+		// Read the items before flipping them: once private they're invisible to
+		// a non-owner actor, which used to leave no item revocations at all.
+		items, _ := h.store.Items(r.Context(), updated.ID, db.SystemScope)
 		_ = h.store.SetItemsShared(r.Context(), updated.ID, updated.Shared)
 		if !updated.Shared {
-			items, _ := h.store.Items(r.Context(), updated.ID, owner)
-			_ = h.sync.RecordRevocation(r.Context(), "list", updated.ID, owner)
+			// Keyed to the owner, who keeps the rows; everyone else drops them.
+			_ = h.sync.RecordRevocation(r.Context(), "list", updated.ID, updated.OwnerID)
 			for _, it := range items {
-				_ = h.sync.RecordRevocation(r.Context(), "list_item", it.ID, owner)
+				_ = h.sync.RecordRevocation(r.Context(), "list_item", it.ID, updated.OwnerID)
 			}
 		}
 	}
@@ -270,7 +273,12 @@ func (h *listHandler) reorderItems(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	if err := h.store.Reorder(r.Context(), req.IDs); err != nil {
+	listID := chi.URLParam(r, "id")
+	if _, err := h.store.Get(r.Context(), listID, ownerID(r)); err != nil {
+		respondError(w, http.StatusNotFound, "list not found")
+		return
+	}
+	if err := h.store.Reorder(r.Context(), listID, req.IDs); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to reorder")
 		return
 	}
