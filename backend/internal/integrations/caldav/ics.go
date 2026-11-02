@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // TaskUIDPrefix marks calendar events that originate from Sempa tasks, so they
@@ -73,20 +74,38 @@ func ParseTime(s string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("caldav: unrecognised time %q", s)
 }
 
-// writeLine emits a property, folding lines longer than 75 octets (RFC 5545).
+// writeLine emits a property, folding lines longer than 75 octets (RFC 5545)
+// without splitting a UTF-8 character across the fold.
 func writeLine(b *strings.Builder, name, value string) {
 	line := name + ":" + value
 	for len(line) > 75 {
-		b.WriteString(line[:75])
+		cut := 75
+		for cut > 1 && !utf8.RuneStart(line[cut]) {
+			cut--
+		}
+		b.WriteString(line[:cut])
 		b.WriteString("\r\n ")
-		line = line[75:]
+		line = line[cut:]
 	}
 	b.WriteString(line)
 	b.WriteString("\r\n")
 }
 
 // escapeText escapes a value for an iCalendar TEXT property (RFC 5545 §3.3.11).
+//
+// Line breaks of every kind become an escaped \n, and other control characters
+// (which TEXT may not contain) are dropped. A bare CR used to pass through, and
+// a parser that treats CR as a line break would read the rest of the task's
+// title as new properties (an ATTENDEE, say) in the calendar owner's account.
 func escapeText(s string) string {
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\r", "\n")
+	s = strings.Map(func(r rune) rune {
+		if r < 0x20 && r != '\n' && r != '\t' || r == 0x7f {
+			return -1
+		}
+		return r
+	}, s)
 	s = strings.ReplaceAll(s, "\\", "\\\\")
 	s = strings.ReplaceAll(s, "\n", "\\n")
 	s = strings.ReplaceAll(s, ",", "\\,")

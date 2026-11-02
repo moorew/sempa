@@ -316,6 +316,9 @@ export interface NotificationSettings {
   morning_digest: boolean;
   digest_hour: number;
   webhook: WebhookConfig;
+  /** Response-only: the server redacts webhook.auth_value and says here
+   *  whether one is stored. Send auth_value blank to keep it. */
+  webhook_auth_set?: boolean;
   routines: RoutineConfig;
   /** Server's home IANA timezone (e.g. "America/Toronto"); the GET always
    *  returns it resolved to a concrete zone for travel detection. */

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -43,6 +44,45 @@ func (h *authHandler) requireAdmin(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// sessionUserID is the user id of the request's session, or "" when auth is
+// disabled (single-user) or the session predates user ids.
+func sessionUserID(r *http.Request) string {
+	if e, ok := currentSession(r); ok {
+		return e.UserID
+	}
+	return ""
+}
+
+// stillAdmin reports whether the user who started an OAuth flow may finish it.
+// An empty id means the flow began with auth disabled (single-user), where
+// there is no one to gate.
+func stillAdmin(ctx context.Context, users *db.UserStore, userID string) bool {
+	if userID == "" {
+		return true
+	}
+	u, err := users.GetByID(ctx, userID)
+	return err == nil && u.IsAdmin
+}
+
+// requireAdminExcept is requireAdmin with a small allowlist of exact
+// "METHOD /path" routes that any authenticated user may still call.
+func (h *authHandler) requireAdminExcept(open ...string) func(http.Handler) http.Handler {
+	allowed := make(map[string]bool, len(open))
+	for _, o := range open {
+		allowed[o] = true
+	}
+	return func(next http.Handler) http.Handler {
+		gated := h.requireAdmin(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if allowed[r.Method+" "+strings.TrimSuffix(r.URL.Path, "/")] {
+				next.ServeHTTP(w, r)
+				return
+			}
+			gated.ServeHTTP(w, r)
+		})
+	}
 }
 
 // listUsers — admin only.
@@ -121,10 +161,17 @@ func (h *authHandler) deleteUser(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "you can't delete your own account")
 		return
 	}
+	target, err := h.users.GetByID(r.Context(), id)
+	if errors.Is(err, db.ErrUserNotFound) {
+		respondError(w, http.StatusNotFound, "user not found")
+		return
+	}
 	if err := h.users.Delete(r.Context(), id); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to delete user")
 		return
 	}
+	// A removed member's devices must stop working immediately.
+	h.sessions.deleteForUser(target.ID, target.Email, "")
 	respond(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
@@ -146,7 +193,8 @@ func (h *authHandler) adminSetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := chi.URLParam(r, "id")
-	if _, err := h.users.GetByID(r.Context(), id); errors.Is(err, db.ErrUserNotFound) {
+	target, err := h.users.GetByID(r.Context(), id)
+	if errors.Is(err, db.ErrUserNotFound) {
 		respondError(w, http.StatusNotFound, "user not found")
 		return
 	}
@@ -159,6 +207,9 @@ func (h *authHandler) adminSetPassword(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "failed to set password")
 		return
 	}
+	// An admin reset is the response to a compromised account: sign the user
+	// out everywhere.
+	h.sessions.deleteForUser(target.ID, target.Email, "")
 	respond(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -195,5 +246,7 @@ func (h *authHandler) changeOwnPassword(w http.ResponseWriter, r *http.Request) 
 		respondError(w, http.StatusInternalServerError, "failed to set password")
 		return
 	}
+	// Keep the session that made the change; revoke every other one.
+	h.sessions.deleteForUser(me.ID, me.Email, presentedToken(r))
 	respond(w, http.StatusOK, map[string]string{"status": "ok"})
 }

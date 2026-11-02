@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -69,8 +70,12 @@ func SendWebhook(cfg WebhookConfig, title, body, clickURL string) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
+		// Log the body for the operator but never return it: the error reaches
+		// API callers, and echoing it turned the webhook into a way to read
+		// internal services.
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return fmt.Errorf("webhook %d: %s", resp.StatusCode, strings.TrimSpace(string(b)))
+		slog.Warn("webhook error response", "status", resp.StatusCode, "body", strings.TrimSpace(string(b)))
+		return fmt.Errorf("webhook returned HTTP %d", resp.StatusCode)
 	}
 	return nil
 }

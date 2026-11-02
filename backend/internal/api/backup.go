@@ -17,6 +17,7 @@ type backupHandler struct {
 	svc     *backup.Service
 	store   *db.BackupStore
 	configs *db.IntegrationConfigStore
+	users   *db.UserStore
 	hub     *EventHub
 	cfg     config.Config
 }

@@ -3,7 +3,7 @@
   import type { List, Objective, PomodoroSession, Task, TaskStatus } from '$lib/types';
   import { tagStore } from '$lib/stores/tags.svelte';
   import { api } from '$lib/api';
-  import { weekStart as calcWeekStart, extractBareUrls, formatMinutes, bareUrl, prettyUrl } from '$lib/utils';
+  import { weekStart as calcWeekStart, extractBareUrls, formatMinutes, bareUrl, prettyUrl, safeHref } from '$lib/utils';
   import SubTaskList from './SubTaskList.svelte';
   import AttachmentList from './AttachmentList.svelte';
   import LinkPreview from './LinkPreview.svelte';
@@ -860,8 +860,8 @@
                       {notesExpanded ? 'Show less' : 'Read full message'}
                     </button>
                   {/if}
-                  {#if task.source_url}
-                    <a href={task.source_url} target="_blank" rel="noopener"
+                  {#if safeHref(task.source_url)}
+                    <a href={safeHref(task.source_url)} target="_blank" rel="noopener"
                        class="ml-auto inline-flex items-center gap-1 text-[12px] font-medium" style="color: var(--sempa-text-soft);">
                       Open in mail
                       <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M7 17L17 7M7 7h10v10"/></svg>
@@ -977,8 +977,8 @@
         {#if isEdit && task?.source && task.source !== 'manual'}
           <p class="text-xs text-gray-400 dark:text-gray-600">
             From {sourceLabel[task.source] ?? task.source}
-            {#if task.source_url}
-              · <a href={task.source_url} target="_blank" rel="noopener"
+            {#if safeHref(task.source_url)}
+              · <a href={safeHref(task.source_url)} target="_blank" rel="noopener"
                    class="hover:underline text-blue-500">Open original ↗</a>
             {/if}
           </p>
@@ -1078,7 +1078,7 @@
 
       <!-- Links extracted from email -->
       {#if isEdit && task?.source_metadata}
-        {@const links = (() => { try { return JSON.parse(task.source_metadata ?? '{}').links ?? []; } catch { return []; } })()}
+        {@const links = (() => { try { return (JSON.parse(task.source_metadata ?? '{}').links ?? []).filter((l: unknown) => typeof l === 'string' && safeHref(l)); } catch { return []; } })()}
         {#if links.length > 0}
           <div>
             <p class="mb-1.5 text-xs font-medium text-gray-600 dark:text-gray-400">Links from email</p>

@@ -10,7 +10,7 @@ import (
 // via X-Forwarded-For / X-Real-IP; a request arriving from a trusted proxy peer
 // should have those headers honoured. (AURA-SEC-004)
 func TestRealIPTrustBoundary(t *testing.T) {
-	mw := realIP(nil) // nil → default trusted set (loopback + private/ULA/CGNAT)
+	mw := realIP(nil) // nil → default trusted set (loopback only)
 
 	capture := func(remoteAddr string, headers map[string]string) string {
 		var seen string
@@ -55,6 +55,30 @@ func TestRealIPTrustBoundary(t *testing.T) {
 			remoteAddr: "127.0.0.1:5555",
 			headers:    map[string]string{"X-Forwarded-For": "1.2.3.4, 198.51.100.9"},
 			want:       "198.51.100.9",
+		},
+		{
+			name:       "LAN peer cannot spoof XFF to rotate the throttle key",
+			remoteAddr: "192.168.1.51:5555",
+			headers:    map[string]string{"X-Forwarded-For": "198.51.100.1"},
+			want:       "192.168.1.51",
+		},
+		{
+			name:       "tailnet peer cannot spoof XFF",
+			remoteAddr: "100.101.102.103:5555",
+			headers:    map[string]string{"X-Forwarded-For": "10.9.1.1"},
+			want:       "100.101.102.103",
+		},
+		{
+			name:       "tailscale serve on loopback: appended tailnet client wins over spoof",
+			remoteAddr: "127.0.0.1:5555",
+			headers:    map[string]string{"X-Forwarded-For": "203.0.113.9, 100.101.102.104"},
+			want:       "100.101.102.104",
+		},
+		{
+			name:       "every hop trusted: left-most client value ignored",
+			remoteAddr: "127.0.0.1:5555",
+			headers:    map[string]string{"X-Forwarded-For": "127.0.0.2, 127.0.0.3"},
+			want:       "127.0.0.1",
 		},
 		{
 			name:       "no forwarding headers: socket peer used",

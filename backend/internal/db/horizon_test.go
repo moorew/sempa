@@ -14,7 +14,7 @@ func TestGenerateHorizonDailyCoversFutureWeeks(t *testing.T) {
 	origin := makeDailyTemplate(t, s, nil)
 
 	const today = "2026-06-13" // Saturday
-	if err := s.GenerateHorizon(ctx, today, 2); err != nil {
+	if err := s.GenerateHorizon(ctx, today, 2, SystemScope); err != nil {
 		t.Fatalf("GenerateHorizon: %v", err)
 	}
 
@@ -42,7 +42,7 @@ func TestGenerateHorizonDailyCoversFutureWeeks(t *testing.T) {
 	}
 
 	// Idempotent: a second pass must not create duplicates.
-	if err := s.GenerateHorizon(ctx, today, 2); err != nil {
+	if err := s.GenerateHorizon(ctx, today, 2, SystemScope); err != nil {
 		t.Fatalf("GenerateHorizon (2nd): %v", err)
 	}
 	all2, _ := s.ListByRecurrenceOrigin(ctx, origin, SystemScope)

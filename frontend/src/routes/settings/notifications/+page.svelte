@@ -336,7 +336,7 @@
               </div>
               <div>
                 <label class="set-field-label" for="wh-av">Token / value</label>
-                <input id="wh-av" type="text" placeholder="Bearer tk_…" bind:value={settings.webhook.auth_value}
+                <input id="wh-av" type="text" placeholder={settings.webhook_auth_set ? 'Saved (leave blank to keep)' : 'Bearer tk_…'} bind:value={settings.webhook.auth_value}
                        class="set-input w-full" />
               </div>
             </div>

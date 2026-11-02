@@ -207,6 +207,10 @@ the same area.
   height do it.
 
 ### Local-first (Tauri/Capacitor)
+- **The local store belongs to one account.** `lib/localAccount.ts` binds it to
+  (server, user id): sign-out flushes then wipes it (`clearLocalAccount`), and a
+  different account or server signing in wipes it before the first sync
+  (`bindLocalAccount`). Add new local tables to `ACCOUNT_TABLES` in `db.ts`.
 - **Capacitor (Android) has no migration runner.** Local schema is all
   `CREATE TABLE IF NOT EXISTS`, which can't add a column to an existing table. A
   missing column breaks **both** task-save and sync at once (looks like two
@@ -258,6 +262,27 @@ the same area.
   font CDN.
 
 ### Backend
+- **Instance-wide state is admin-only; member data is owner-scoped.** Anything
+  stored once per instance (`integration_configs`, notification settings, the
+  webhook, pairing) sits behind `requireAdmin` (`/integrations` uses
+  `requireAdminExcept` for two read-only status probes). Per-member data takes
+  `ownerID(r)` all the way to SQL — including background-looking paths a request
+  can trigger (recurrence rollover, calendar subscriptions, push targets). Don't
+  add a route that acts on another user's rows or the admin's credentials with
+  only `requireAuth`. Secrets in responses are redacted (see the webhook
+  `auth_value` merge-on-blank in `notifications.go`).
+- **OAuth state is per flow.** `gmail.GenerateStateFor(purpose, userID)` /
+  `ConsumeStateFor`: Gmail and the Drive backup share one Google client, and an
+  unbound state let a member finish the admin-only Drive flow.
+- **Client-supplied dates and links are untrusted.** `?today=` goes through
+  `clientToday` (±2 days of the server); task `source_url`/`source_metadata`
+  links must be http(s); clients render stored links through `safeHref` and
+  `openExternal` (which refuses non-web schemes). Integration `source` values
+  (jira, gmail, …) are server-only.
+- **Outbound fetches on behalf of users or external content** use the guarded
+  transports (`unfurl`, `ical`) and the shared `netguard.IsNonPublic`. Cap every
+  response body you read (`io.LimitReader`) and never echo an upstream body
+  back to the caller.
 - **Never return a nil slice as JSON.** `respond()` now encodes a nil slice as
   `[]`, because several stores return nil for "no rows" and the client calls
   `.length`/`.filter` on the result. A `null` from `GET /tasks?parent_id=`

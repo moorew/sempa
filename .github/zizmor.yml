@@ -44,5 +44,7 @@ rules:
       # untrusted code: it only downloads the release's OWN assets, hashes them
       # into one SHA256SUMS, and cosign-signs that file. Default permissions are
       # contents:read (the job elevates only to upload). No untrusted-input path,
-      # so the trigger is safe here. Accepted, documented.
+      # so the trigger is safe here. Pull-request runs are skipped by the job `if`
+      # and get their own concurrency group, so they cannot cancel a real
+      # release finalize. Accepted, documented.
       - release-finalize.yml

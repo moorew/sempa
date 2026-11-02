@@ -6,6 +6,8 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -71,6 +73,78 @@ type updateTaskRequest struct {
 	ProjectID           *string  `json:"project_id"`      // "" unlinks; an id links; omitted = unchanged
 }
 
+// reservedTaskSources are the task sources owned by server-side importers.
+var reservedTaskSources = map[string]bool{
+	"jira": true, "gmail": true, "fastmail": true, "email_forward": true,
+	"google_calendar": true, "calendar": true, "fastmail_inbox": true,
+}
+
+// isWebLink reports whether s is an absolute http(s) URL.
+func isWebLink(s string) bool {
+	u, err := url.Parse(strings.TrimSpace(s))
+	if err != nil || u.Host == "" {
+		return false
+	}
+	return u.Scheme == "http" || u.Scheme == "https"
+}
+
+func webLinkOrNil(s *string) *string {
+	if s == nil || *s == "" || isWebLink(*s) {
+		return s
+	}
+	return nil
+}
+
+// sanitizeSourceMetadata drops any non-http(s) entry from the "links" array the
+// task panel renders as clickable chips. Other fields pass through untouched;
+// unparseable metadata is dropped.
+func sanitizeSourceMetadata(s *string) *string {
+	if s == nil || *s == "" {
+		return s
+	}
+	var m map[string]any
+	if err := json.Unmarshal([]byte(*s), &m); err != nil {
+		return nil
+	}
+	raw, ok := m["links"].([]any)
+	if !ok {
+		return s
+	}
+	links := make([]any, 0, len(raw))
+	for _, l := range raw {
+		if str, ok := l.(string); ok && isWebLink(str) {
+			links = append(links, str)
+		}
+	}
+	m["links"] = links
+	b, err := json.Marshal(m)
+	if err != nil {
+		return nil
+	}
+	out := string(b)
+	return &out
+}
+
+// clientToday accepts a client's device date for recurrence rollover only when
+// it is a real date within two days of the server's (the most two timezones
+// can differ). Anything else — far future, malformed — falls back to "" so the
+// server's own date is used; a client could otherwise roll its instances over
+// to year 9999.
+func clientToday(s string) string {
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return ""
+	}
+	server, err := time.Parse("2006-01-02", db.ServerToday())
+	if err != nil {
+		return ""
+	}
+	if d := t.Sub(server); d > 48*time.Hour || d < -48*time.Hour {
+		return ""
+	}
+	return s
+}
+
 func (h *taskHandler) list(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	date := q.Get("date")
@@ -78,13 +152,14 @@ func (h *taskHandler) list(w http.ResponseWriter, r *http.Request) {
 
 	// Generate recurring instances before returning results. `today` is the
 	// client's local date — passing it keeps rollover correct across timezones.
+	today := clientToday(q.Get("today"))
 	if weekStart != "" {
-		_ = h.store.GenerateForWeek(r.Context(), weekStart, q.Get("today"))
+		_ = h.store.GenerateForWeek(r.Context(), weekStart, today, ownerID(r))
 	} else if date != "" {
 		// Anchor rollover to the client's real today (q.Get("today")), not the
 		// date being viewed, so paging to another day never deletes today's
 		// instances and a travelling client rolls over on its own local midnight.
-		_ = h.store.GenerateForDay(r.Context(), date, q.Get("today"))
+		_ = h.store.GenerateForDay(r.Context(), date, today, ownerID(r))
 	}
 
 	parentID := q.Get("parent_id")
@@ -165,6 +240,17 @@ func (h *taskHandler) create(w http.ResponseWriter, r *http.Request) {
 
 	owner := ownerID(r)
 
+	// Integration sources (gmail, jira, fastmail, email, calendar) are set only by
+	// the server's importers, which de-duplicate on (source, source_id). A
+	// client-set key could claim an import before it ran and capture or hide
+	// another user's item, so drop it. Links must be plain web links: they are
+	// rendered as clickable hrefs for every member who can see the task.
+	if req.Source != nil && reservedTaskSources[*req.Source] {
+		req.Source, req.SourceID = nil, nil
+	}
+	req.SourceURL = webLinkOrNil(req.SourceURL)
+	req.SourceMetadata = sanitizeSourceMetadata(req.SourceMetadata)
+
 	// Idempotent replay: an offline client whose create already landed (or was
 	// restored server-side) must not hit a PK conflict, which 500s and wedges its
 	// outbox forever. Hand back the existing row so the outbox drains.
@@ -231,11 +317,11 @@ func (h *taskHandler) create(w http.ResponseWriter, r *http.Request) {
 	// Prefer the client's device date (?today=) so the first instance lands on
 	// the user's actual today; fall back to the server's home zone, never UTC.
 	if req.RecurrenceRule != nil && *req.RecurrenceRule != "" {
-		today := r.URL.Query().Get("today")
+		today := clientToday(r.URL.Query().Get("today"))
 		if today == "" {
 			today = db.ServerToday()
 		}
-		_ = h.store.GenerateForDate(r.Context(), today)
+		_ = h.store.GenerateForDate(r.Context(), today, owner)
 	}
 
 	meta := map[string]string{"entity": "task"}
@@ -384,9 +470,12 @@ func (h *taskHandler) update(w http.ResponseWriter, r *http.Request) {
 	if req.Shared != nil && updated.Shared != wasShared {
 		subIDs, _ := h.store.SetSubtasksShared(r.Context(), updated.ID, updated.Shared)
 		if !updated.Shared && h.sync != nil {
-			_ = h.sync.RecordRevocation(r.Context(), "task", updated.ID, owner)
+			// Revocations are keyed to the row's owner (who keeps it), not the
+			// member who flipped the toggle: the owner must not lose their own
+			// row, and the actor must drop their now-private copy.
+			_ = h.sync.RecordRevocation(r.Context(), "task", updated.ID, updated.OwnerID)
 			for _, sid := range subIDs {
-				_ = h.sync.RecordRevocation(r.Context(), "task", sid, owner)
+				_ = h.sync.RecordRevocation(r.Context(), "task", sid, updated.OwnerID)
 			}
 		}
 	}
@@ -399,7 +488,7 @@ func (h *taskHandler) update(w http.ResponseWriter, r *http.Request) {
 	// Propagate template edits (title, tags, estimate, schedule) to future
 	// untouched instances; customised/worked instances are preserved.
 	if isTemplate {
-		_ = h.store.SyncTemplateInstances(r.Context(), updated.ID, r.URL.Query().Get("today"))
+		_ = h.store.SyncTemplateInstances(r.Context(), updated.ID, clientToday(r.URL.Query().Get("today")), updated.OwnerID)
 	}
 
 	// Optional cleanup: archive linked lists that opted in, on completion.
@@ -634,28 +723,28 @@ func (h *taskHandler) writeJiraTransition(task db.Task) {
 
 // caldavClientForTasks builds a CalDAV client + chosen calendar from the stored
 // config, or returns ok=false when CalDAV sync isn't enabled/configured.
-func (h *taskHandler) caldavClientForTasks(ctx context.Context) (*caldav.Client, string, bool) {
+func (h *taskHandler) caldavClientForTasks(ctx context.Context) (*caldav.Client, string, string, bool) {
 	if h.configs == nil {
-		return nil, "", false
+		return nil, "", "", false
 	}
 	cdRow, err := h.configs.Get(ctx, "caldav")
 	if err != nil || !cdRow.Enabled {
-		return nil, "", false
+		return nil, "", "", false
 	}
 	var cc caldavConfig
 	if err := json.Unmarshal([]byte(cdRow.Config), &cc); err != nil || cc.CalendarHref == "" {
-		return nil, "", false
+		return nil, "", "", false
 	}
 	fmRow, err := h.configs.Get(ctx, "fastmail")
 	if err != nil {
-		return nil, "", false
+		return nil, "", "", false
 	}
 	var fm struct {
 		Email       string `json:"email"`
 		AppPassword string `json:"app_password"`
 	}
 	if err := json.Unmarshal([]byte(fmRow.Config), &fm); err != nil {
-		return nil, "", false
+		return nil, "", "", false
 	}
 	client, err := caldav.NewClient(caldav.Config{
 		BaseURL:  caldav.FastmailBaseURL,
@@ -663,9 +752,9 @@ func (h *taskHandler) caldavClientForTasks(ctx context.Context) (*caldav.Client,
 		Password: fm.AppPassword,
 	})
 	if err != nil {
-		return nil, "", false
+		return nil, "", "", false
 	}
-	return client, cc.CalendarHref, true
+	return client, cc.CalendarHref, caldavOwner(ctx, h.store.DB(), cc), true
 }
 
 // writeCalDAVBlock mirrors a task's time block to the configured CalDAV
@@ -673,8 +762,12 @@ func (h *taskHandler) caldavClientForTasks(ctx context.Context) (*caldav.Client,
 // Runs in a goroutine; errors are silently ignored (graceful degradation).
 func (h *taskHandler) writeCalDAVBlock(task db.Task) {
 	ctx := context.Background()
-	client, calHref, ok := h.caldavClientForTasks(ctx)
+	client, calHref, owner, ok := h.caldavClientForTasks(ctx)
 	if !ok {
+		return
+	}
+	// The calendar is its connector's: mirror only tasks they can see.
+	if task.OwnerID != owner && !task.Shared {
 		return
 	}
 	_ = caldav.PushTask(ctx, client, calHref, task, h.appURL)
@@ -683,7 +776,7 @@ func (h *taskHandler) writeCalDAVBlock(task db.Task) {
 // deleteCalDAVBlock removes a deleted task's event from the CalDAV calendar.
 func (h *taskHandler) deleteCalDAVBlock(taskID string) {
 	ctx := context.Background()
-	client, calHref, ok := h.caldavClientForTasks(ctx)
+	client, calHref, _, ok := h.caldavClientForTasks(ctx)
 	if !ok {
 		return
 	}

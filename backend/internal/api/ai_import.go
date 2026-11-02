@@ -68,7 +68,7 @@ func (h *integrationHandler) aiImport(w http.ResponseWriter, r *http.Request) {
 		URL  string `json:"url"`
 		Text string `json:"text"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = decode(r, &body)
 	body.URL = strings.TrimSpace(body.URL)
 	body.Text = strings.TrimSpace(body.Text)
 	if body.URL == "" && body.Text == "" {

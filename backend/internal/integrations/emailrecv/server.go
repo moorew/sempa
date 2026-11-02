@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -29,10 +30,15 @@ type Server struct {
 	smtp           *gosmtp.Server
 	tasks          *db.TaskStore
 	allowedSenders []string // lowercase email addresses or @domain suffixes; empty = accept all
+	rcptToken      string   // secret the recipient address must carry; see recipientAllowed
 }
 
-func New(addr string, tasks *db.TaskStore, allowedSenders []string) *Server {
-	s := &Server{tasks: tasks, allowedSenders: allowedSenders}
+// New builds the receiver. rcptToken must be set: SMTP has no authentication
+// here and the envelope sender is whatever the connecting client claims, so a
+// secret recipient address is what keeps arbitrary network peers from creating
+// tasks.
+func New(addr string, tasks *db.TaskStore, allowedSenders []string, rcptToken string) *Server {
+	s := &Server{tasks: tasks, allowedSenders: allowedSenders, rcptToken: strings.ToLower(strings.TrimSpace(rcptToken))}
 	srv := gosmtp.NewServer(s)
 	srv.Addr = addr
 	srv.Domain = "sempa"
@@ -69,9 +75,31 @@ func (s *Server) senderAllowed(from string) bool {
 	return false
 }
 
+// recipientAllowed reports whether a RCPT TO address carries the secret token,
+// either as the whole local part or as a +tag (tasks+<token>@example.com). With
+// no token configured nothing is accepted.
+func (s *Server) recipientAllowed(to string) bool {
+	if s.rcptToken == "" {
+		return false
+	}
+	local := strings.ToLower(strings.TrimSpace(to))
+	local = strings.Trim(local, "<>")
+	if i := strings.LastIndexByte(local, '@'); i >= 0 {
+		local = local[:i]
+	}
+	if subtle.ConstantTimeCompare([]byte(local), []byte(s.rcptToken)) == 1 {
+		return true
+	}
+	if i := strings.LastIndexByte(local, '+'); i >= 0 {
+		return subtle.ConstantTimeCompare([]byte(local[i+1:]), []byte(s.rcptToken)) == 1
+	}
+	return false
+}
+
 type session struct {
-	srv  *Server
-	from string
+	srv    *Server
+	from   string
+	rcptOK bool
 }
 
 func (s *session) Mail(from string, _ *gosmtp.MailOptions) error {
@@ -82,11 +110,21 @@ func (s *session) Mail(from string, _ *gosmtp.MailOptions) error {
 	s.from = from
 	return nil
 }
-func (s *session) Rcpt(_ string, _ *gosmtp.RcptOptions) error { return nil }
-func (s *session) Reset()                                      { s.from = "" }
-func (s *session) Logout() error                               { return nil }
+func (s *session) Rcpt(to string, _ *gosmtp.RcptOptions) error {
+	if !s.srv.recipientAllowed(to) {
+		slog.Warn("emailrecv: rejected recipient")
+		return &gosmtp.SMTPError{Code: 550, EnhancedCode: gosmtp.EnhancedCode{5, 1, 1}, Message: "no such mailbox"}
+	}
+	s.rcptOK = true
+	return nil
+}
+func (s *session) Reset()        { s.from = ""; s.rcptOK = false }
+func (s *session) Logout() error { return nil }
 
 func (s *session) Data(r io.Reader) error {
+	if !s.rcptOK {
+		return &gosmtp.SMTPError{Code: 554, EnhancedCode: gosmtp.EnhancedCode{5, 5, 1}, Message: "no valid recipient"}
+	}
 	return CreateFromReader(context.Background(), r, s.srv.tasks)
 }
 

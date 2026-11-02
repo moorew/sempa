@@ -67,7 +67,7 @@ func (h *backupHandler) driveAuth(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusServiceUnavailable, "Google OAuth is not configured on this server")
 		return
 	}
-	state := gmail.GenerateState()
+	state := gmail.GenerateStateFor(gmail.PurposeDriveBackup, sessionUserID(r))
 	if prefix := driveReturnPrefix(r); prefix != "" {
 		state += driveStateSep + base64.RawURLEncoding.EncodeToString([]byte(prefix))
 	}
@@ -79,7 +79,8 @@ func (h *backupHandler) driveAuth(w http.ResponseWriter, r *http.Request) {
 func (h *backupHandler) driveCallback(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	csrf, returnPrefix := splitDriveState(r.URL.Query().Get("state"))
-	if !gmail.ConsumeState(csrf) {
+	uid, ok := gmail.ConsumeStateFor(csrf, gmail.PurposeDriveBackup)
+	if !ok || !stillAdmin(r.Context(), h.users, uid) {
 		h.driveOAuthDone(w, returnPrefix, false, "This sign-in link expired. Please try connecting again.")
 		return
 	}

@@ -200,6 +200,33 @@ export interface PendingMutation {
     payload: string; // JSON
 }
 
+/** Every table that holds account-derived rows, children before parents. */
+const ACCOUNT_TABLES = [
+    'list_items', 'lists', 'tasks', 'weekly_objectives', 'projects', 'project_statuses',
+    'daily_plans', 'week_reviews', 'pomodoro_sessions', 'tag_definitions',
+    'sync_log', 'sync_tombstones', 'sync_state',
+];
+
+/**
+ * Wipe every row that came from (or is queued for) the signed-in account.
+ * The device keeps one database for whoever is signed in, so this must run on
+ * sign-out, on a server change and when a different account signs in —
+ * otherwise the next person sees the last one's private data and their queued
+ * edits replay under the new account.
+ */
+export async function resetLocalStore(): Promise<void> {
+    if (!hasLocalDb()) return;
+    const d = await getDriver();
+    await d.execute('PRAGMA foreign_keys = OFF');
+    try {
+        for (const t of ACCOUNT_TABLES) {
+            try { await d.execute(`DELETE FROM ${t}`); } catch { /* table absent on this schema */ }
+        }
+    } finally {
+        await d.execute('PRAGMA foreign_keys = ON');
+    }
+}
+
 export async function logMutation(
     entityType: string,
     entityId: string,

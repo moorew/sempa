@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
+  import { clearLocalAccount } from '$lib/localAccount';
   import { page } from '$app/state';
   import { api, getServerUrl, clearTauriToken, clearNativeToken, resetApiResolver } from '$lib/api';
   import type { AiTitleConfig, AiProvider } from '$lib/api';
@@ -79,6 +80,8 @@
 
   async function doSignOut() {
     signingOut = true;
+    // Flush and wipe this account's local data while the token still works.
+    await clearLocalAccount();
     // Best-effort server logout (don't await — a hung/offline request must not
     // block the local sign-out), then clear all local session state.
     void api.auth.logout().catch(() => {});

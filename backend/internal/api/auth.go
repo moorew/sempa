@@ -229,6 +229,30 @@ func (s *sessionStore) delete(id string) {
 	}
 }
 
+// deleteForUser revokes every session belonging to a user (memory + DB),
+// except the one id in keep (pass "" to revoke all). Used when a user is
+// deleted or their password changes, so a stolen or stale token stops working.
+// Pre-migration sessions without a user id are matched by email.
+func (s *sessionStore) deleteForUser(userID, email, keep string) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	s.mu.Lock()
+	for id, e := range s.entries {
+		if id == keep {
+			continue
+		}
+		if (userID != "" && e.UserID == userID) ||
+			(e.UserID == "" && email != "" && strings.EqualFold(e.Email, email)) {
+			delete(s.entries, id)
+		}
+	}
+	s.mu.Unlock()
+	if s.db != nil {
+		_, _ = s.db.Exec(
+			`DELETE FROM sessions WHERE id != ? AND (user_id = ? OR (user_id = '' AND lower(email) = ?))`,
+			keep, userID, email)
+	}
+}
+
 func (s *sessionStore) reap() {
 	for range time.Tick(10 * time.Minute) {
 		now := time.Now()
@@ -444,6 +468,18 @@ func (h *authHandler) extractSession(r *http.Request) (sessionEntry, bool) {
 	return sessionEntry{}, false
 }
 
+// presentedToken returns the raw session id the request authenticated with,
+// in the same order extractSession checks them.
+func presentedToken(r *http.Request) string {
+	if c, err := r.Cookie(sessionCookieName); err == nil && c.Value != "" {
+		return c.Value
+	}
+	if a := r.Header.Get("Authorization"); strings.HasPrefix(a, "Bearer ") {
+		return strings.TrimPrefix(a, "Bearer ")
+	}
+	return r.URL.Query().Get("token")
+}
+
 func (h *authHandler) setSessionCookie(w http.ResponseWriter, id string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
@@ -530,8 +566,17 @@ func (h *authHandler) verifyPassword(ctx context.Context, username, password str
 func normalizeEmailLower(s string) string { return strings.ToLower(strings.TrimSpace(s)) }
 
 func (h *authHandler) logout(w http.ResponseWriter, r *http.Request) {
+	// Revoke whichever credential the client presented. Desktop, Android and the
+	// Dock authenticate with a Bearer token, not the cookie, so revoking only the
+	// cookie left their token valid after "sign out".
 	if c, err := r.Cookie(sessionCookieName); err == nil {
 		h.sessions.delete(c.Value)
+	}
+	if a := r.Header.Get("Authorization"); strings.HasPrefix(a, "Bearer ") {
+		h.sessions.delete(strings.TrimPrefix(a, "Bearer "))
+	}
+	if t := r.URL.Query().Get("token"); t != "" {
+		h.sessions.delete(t)
 	}
 	// Mirror the attributes of the cookie set in setSessionCookie so the
 	// deletion is treated identically by the browser (and so static analysis
@@ -588,12 +633,15 @@ func (h *authHandler) me(w http.ResponseWriter, r *http.Request) {
 
 // resolveUser maps a session to its user row, by id when present, else by email
 // — so sessions minted before the multi-user migration (no user_id) still
-// resolve without forcing a re-login.
+// resolve without forcing a re-login. A session that carries a user id never
+// falls back to email: if that user was deleted the session is dead, and must
+// not rebind to a new account later created with the same address.
 func (h *authHandler) resolveUser(ctx context.Context, e sessionEntry) (db.User, bool) {
 	if e.UserID != "" {
 		if u, err := h.users.GetByID(ctx, e.UserID); err == nil {
 			return u, true
 		}
+		return db.User{}, false
 	}
 	if e.Email != "" {
 		if u, err := h.users.GetByEmail(ctx, e.Email); err == nil {
@@ -669,10 +717,18 @@ func (h *authHandler) requireAuth(next http.Handler) http.Handler {
 			respondError(w, http.StatusForbidden, "not permitted for this device")
 			return
 		}
+		// A session whose user no longer resolves (deleted account) is rejected
+		// outright. Letting it through with an empty scope kept reads closed but
+		// let writes fall back to the primary user's account.
+		owner := h.resolveOwnerScope(r, entry)
+		if owner == "" {
+			respondError(w, http.StatusUnauthorized, "session no longer valid")
+			return
+		}
 		// Expose the session (incl. UserID) and the resolved data-ownership scope
 		// to handlers — the basis for per-user data scoping.
 		ctx := context.WithValue(r.Context(), userCtxKey, entry)
-		ctx = context.WithValue(ctx, ownerCtxKey, h.resolveOwnerScope(r, entry))
+		ctx = context.WithValue(ctx, ownerCtxKey, owner)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -712,10 +768,7 @@ func (h *authHandler) googleAuth(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Google sign-in is not configured", http.StatusServiceUnavailable)
 		return
 	}
-	redirect := r.URL.Query().Get("redirect")
-	if redirect == "" || !strings.HasPrefix(redirect, "/") || strings.HasPrefix(redirect, "//") {
-		redirect = "/"
-	}
+	redirect := safeLocalRedirect(r.URL.Query().Get("redirect"))
 
 	// Determine where to redirect after OAuth. Each native client passes its expected
 	// return scheme so the callback can redirect back into the correct app origin.
@@ -831,7 +884,21 @@ func (h *authHandler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.setSessionCookie(w, id)
-	http.Redirect(w, r, redirect, http.StatusFound)
+	http.Redirect(w, r, safeLocalRedirect(redirect), http.StatusFound)
+}
+
+// safeLocalRedirect returns s only when a browser would resolve it to a path on
+// this origin, else "/". A prefix check alone let "/\evil.example" through:
+// browsers treat a backslash as a slash and strip tabs/newlines, turning it into
+// the protocol-relative "//evil.example".
+func safeLocalRedirect(s string) string {
+	if s == "" || s[0] != '/' || strings.HasPrefix(s, "//") || strings.ContainsAny(s, "\\\t\r\n") {
+		return "/"
+	}
+	if u, err := url.Parse(s); err != nil || u.Scheme != "" || u.Host != "" {
+		return "/"
+	}
+	return s
 }
 
 func (h *authHandler) nativeFinalize(w http.ResponseWriter, r *http.Request) {
@@ -883,7 +950,7 @@ func (h *authHandler) exchangeCode(r *http.Request, code string) (string, error)
 		return "", err
 	}
 	defer resp.Body.Close()
-	raw, _ := io.ReadAll(resp.Body)
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, raw)
 	}
@@ -915,18 +982,24 @@ func getGoogleEmail(ctx context.Context, accessToken string) (string, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 		return "", fmt.Errorf("userinfo HTTP %d: %s", resp.StatusCode, body)
 	}
 
 	var info struct {
-		Email string `json:"email"`
+		Email         string `json:"email"`
+		EmailVerified *bool  `json:"email_verified"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 64<<10)).Decode(&info); err != nil {
 		return "", err
 	}
 	if info.Email == "" {
 		return "", fmt.Errorf("no email in Google userinfo response")
+	}
+	// Accounts are matched by email, so only accept an address Google has
+	// verified belongs to the signer.
+	if info.EmailVerified != nil && !*info.EmailVerified {
+		return "", fmt.Errorf("Google account email is not verified")
 	}
 	return info.Email, nil
 }

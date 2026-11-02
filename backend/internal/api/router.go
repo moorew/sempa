@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,9 +31,15 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 	r.Use(middleware.Recoverer)
 	allowOrigin := func(_ *http.Request, origin string) bool {
 		if cfg.Env != "production" {
-			return strings.HasPrefix(origin, "http://localhost") ||
-				strings.HasPrefix(origin, "https://localhost") ||
-				strings.HasPrefix(origin, "http://127.0.0.1:")
+			// Any port on the loopback hosts, but the host must match exactly:
+			// a prefix check also admitted http://localhost.attacker.example.
+			if u, err := url.Parse(origin); err == nil && (u.Scheme == "http" || u.Scheme == "https") {
+				switch u.Hostname() {
+				case "localhost", "127.0.0.1", "::1":
+					return true
+				}
+			}
+			return origin == cfg.FrontendURL
 		}
 		// Allow Capacitor mobile app origins
 		if origin == "http://localhost" || origin == "https://localhost" || origin == "capacitor://localhost" {
@@ -95,6 +102,7 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 		svc:     backupSvc,
 		store:   db.NewBackupStore(database),
 		configs: configStore,
+		users:   db.NewUserStore(database),
 		hub:     hub,
 		cfg:     cfg,
 	}
@@ -107,6 +115,7 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 		store:      db.NewICalStore(database),
 		fmCalStore: fmCalStore,
 		configs:    configStore,
+		users:      db.NewUserStore(database),
 	}
 	devices := &deviceHandler{store: db.NewDeviceTokenStore(database)}
 	notifications := &notificationHandler{
@@ -171,6 +180,11 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 		r.Route("/devices/pair", func(r chi.Router) {
 			r.With(pairStartLimit.middleware).Post("/start", pairing.start)
 			r.Get("/status", pairing.status)
+			// Approval lives on this same subrouter: registered under /devices
+			// below it was shadowed by this route and always 404'd. A paired
+			// device acts on the household head's data, so approving is
+			// admin-only.
+			r.With(auth.requireAuth, auth.requireAdmin).Post("/approve", pairing.approve)
 		})
 
 		// All remaining API routes require session auth (if auth is configured)
@@ -328,22 +342,35 @@ func NewRouter(database *sql.DB, cfg config.Config, blobs *blob.Store, vapidPubl
 			r.Route("/devices", func(r chi.Router) {
 				r.Post("/", devices.register)
 				r.Delete("/", devices.unregister)
-				// Paired devices (Dock): approve a code, list, revoke.
-				r.Post("/pair/approve", pairing.approve)
-				r.Get("/", pairing.list)
-				r.Delete("/{id}", pairing.revoke)
+				// Paired devices (Dock) act on the household head's data and are
+				// household-wide, so approving, listing and revoking is admin-only.
+				r.With(auth.requireAdmin).Get("/", pairing.list)
+				r.With(auth.requireAdmin).Delete("/{id}", pairing.revoke)
 			})
 
+			// Notification settings and the webhook are instance-wide (one row for
+			// the whole household): members may read them, with secrets redacted,
+			// but only an admin may change or test them. Push subscriptions are
+			// per member.
 			r.Route("/notifications", func(r chi.Router) {
 				r.Get("/settings", notifications.getSettings)
-				r.Put("/settings", notifications.putSettings)
+				r.With(auth.requireAdmin).Put("/settings", notifications.putSettings)
 				r.Get("/vapid-public-key", notifications.vapidKey)
 				r.Post("/webpush/subscribe", notifications.subscribe)
 				r.Delete("/webpush/subscribe", notifications.unsubscribe)
-				r.Post("/webhook/test", notifications.testWebhook)
+				r.With(auth.requireAdmin).Post("/webhook/test", notifications.testWebhook)
 			})
 
+			// Integrations hold one instance-wide credential set each (keyed only
+			// by type) and act with the admin's external accounts, so everything
+			// here is admin-only. Members get two read-only status probes (Jira
+			// connected? AI on?) so their UI can show or hide features; the AI
+			// features themselves live under /ai below.
 			r.Route("/integrations", func(r chi.Router) {
+				r.Use(auth.requireAdminExcept(
+					"GET /api/v1/integrations/jira",
+					"GET /api/v1/integrations/ai-title",
+				))
 				r.Route("/jira", func(r chi.Router) {
 					r.Get("/", integrations.jiraGet)
 					r.Put("/", integrations.jiraPut)

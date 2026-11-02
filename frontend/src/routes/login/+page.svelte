@@ -30,6 +30,25 @@
     return getServerUrl();
   }
 
+  // A native sign-in link (sempa:// or com.clevercode.sempa://) is honoured only
+  // if THIS app started a Google sign-in in the last 10 minutes. Any web page or
+  // other app can open those schemes, and a link carrying someone else's token
+  // would otherwise silently sign this device into their account.
+  const PENDING_NATIVE_KEY = 'sempa_pending_native_login';
+  function markNativeLoginPending() {
+    try { localStorage.setItem(PENDING_NATIVE_KEY, String(Date.now())); } catch { /* ignore */ }
+  }
+  function nativeLoginPending(): boolean {
+    try {
+      const t = Number(localStorage.getItem(PENDING_NATIVE_KEY) ?? 0);
+      return t > 0 && Date.now() - t < 10 * 60 * 1000;
+    } catch { return false; }
+  }
+  function clearNativeLoginPending() {
+    try { localStorage.removeItem(PENDING_NATIVE_KEY); } catch { /* ignore */ }
+  }
+  const UNSOLICITED_LINK = 'That sign-in link didn\'t come from this app. Sign in again here.';
+
   async function handleAppUrl(event: { url: string }) {
     try {
       const u = new URL(event.url);
@@ -38,7 +57,9 @@
       const redirect  = u.searchParams.get('redirect') ?? '/';
       if (!linkToken) return;
       await Browser?.close().catch(() => {});
+      if (!nativeLoginPending()) { error = UNSOLICITED_LINK; return; }
       const result = await api.auth.nativeFinalize(linkToken);
+      clearNativeLoginPending();
       // Store session as Bearer token (cookie-based auth is unreliable cross-origin on Android)
       if (result.token) setNativeToken(result.token);
       goto(redirect, { replaceState: true });
@@ -52,10 +73,12 @@
   let tauriLoginDone = false;
   async function finalizeTauriLogin(linkToken: string) {
     if (tauriLoginDone) return;
+    if (!nativeLoginPending()) { error = UNSOLICITED_LINK; return; }
     tauriLoginDone = true;
     loading = true;
     try {
       const result = await api.auth.nativeFinalize(linkToken);
+      clearNativeLoginPending();
       if (result.token) { setTauriToken(result.token); resetApiResolver(); }
       goto(redirectTarget, { replaceState: true });
     } catch {
@@ -103,10 +126,13 @@
     // Backend redirects to https://localhost/login?link_token=X, which loads this page.
     if (isNative && !isTauri()) {
       const linkToken = page.url.searchParams.get('link_token');
-      if (linkToken) {
+      if (linkToken && !nativeLoginPending()) {
+        error = UNSOLICITED_LINK;
+      } else if (linkToken) {
         loading = true;
         try {
           const result = await api.auth.nativeFinalize(linkToken);
+          clearNativeLoginPending();
           if (result.token) setNativeToken(result.token);
           goto(redirectTarget, { replaceState: true });
           return;
@@ -169,6 +195,7 @@
   function googleSignIn() {
     const base = getBase();
     const params = new URLSearchParams({ redirect: redirectTarget });
+    if (isNative || isTauri()) markNativeLoginPending();
     if (isNative && Browser) {
       // Android primary path: Chrome Custom Tab — deep link fires appUrlOpen on return.
       Browser.open({ url: `${base}/api/v1/auth/google?${params}&native=true` });

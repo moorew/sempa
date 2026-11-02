@@ -63,11 +63,12 @@ func DeleteTask(ctx context.Context, c *Client, calendarHref, taskID string) err
 	return c.DeleteEvent(ctx, calendarHref, TaskUID(taskID))
 }
 
-// SyncAll pushes every scheduled task to the calendar. Returns the number of
-// events written. Individual failures are collected but do not abort the run.
-func SyncAll(ctx context.Context, c *Client, calendarHref string, tasks *db.TaskStore, appURL string) (int, error) {
-	// CalDAV export runs server-side across all scheduled tasks.
-	list, err := tasks.ListScheduled(ctx, db.SystemScope)
+// SyncAll pushes the owner's scheduled tasks (their own plus anything shared
+// with them) to the calendar. Returns the number of events written. Individual
+// failures are collected but do not abort the run. The calendar belongs to the
+// user who connected it, so other members' private tasks never go there.
+func SyncAll(ctx context.Context, c *Client, calendarHref string, tasks *db.TaskStore, appURL, ownerID string) (int, error) {
+	list, err := tasks.ListScheduled(ctx, ownerID)
 	if err != nil {
 		return 0, err
 	}

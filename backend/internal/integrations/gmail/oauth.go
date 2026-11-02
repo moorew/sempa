@@ -50,30 +50,59 @@ type StoredToken struct {
 
 func DefaultLabels() []string { return []string{"STARRED"} }
 
-var (
-	stateMu  sync.Mutex
-	stateMap = map[string]time.Time{}
+// OAuth state is bound to the flow that minted it and the user who started
+// it. Gmail and the Drive backup share one Google client, so an unbound state
+// minted by one flow could finish the other, which let a member complete the
+// admin-only Drive backup connection with their own Google account.
+type stateEntry struct {
+	purpose string
+	userID  string
+	exp     time.Time
+}
+
+// OAuth flow purposes.
+const (
+	PurposeGmail       = "gmail"
+	PurposeDriveBackup = "drive-backup"
 )
 
-func GenerateState() string {
+var (
+	stateMu  sync.Mutex
+	stateMap = map[string]stateEntry{}
+)
+
+// GenerateStateFor mints a single-use, 10-minute state for one flow, recording
+// the user who started it.
+func GenerateStateFor(purpose, userID string) string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
 	state := hex.EncodeToString(b)
 	stateMu.Lock()
-	stateMap[state] = time.Now().Add(10 * time.Minute)
+	now := time.Now()
+	for k, e := range stateMap {
+		if now.After(e.exp) {
+			delete(stateMap, k)
+		}
+	}
+	stateMap[state] = stateEntry{purpose: purpose, userID: userID, exp: now.Add(10 * time.Minute)}
 	stateMu.Unlock()
 	return state
 }
 
-func ConsumeState(state string) bool {
+// ConsumeStateFor spends a state. It succeeds only for the purpose it was
+// minted for and returns the user who started the flow.
+func ConsumeStateFor(state, purpose string) (userID string, ok bool) {
 	stateMu.Lock()
 	defer stateMu.Unlock()
-	exp, ok := stateMap[state]
-	if !ok {
-		return false
+	e, found := stateMap[state]
+	if !found {
+		return "", false
 	}
 	delete(stateMap, state)
-	return time.Now().Before(exp)
+	if e.purpose != purpose || time.Now().After(e.exp) {
+		return "", false
+	}
+	return e.userID, true
 }
 
 func AuthURL(clientID, redirectURI, state string, includeCalendar bool) string {

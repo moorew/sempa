@@ -61,7 +61,7 @@ func TestPristineRolloverReplaces(t *testing.T) {
 	origin := makeDailyTemplate(t, s, nil)
 
 	// Day 1: generate yesterday's instance.
-	if err := s.GenerateForDate(ctx, "2026-06-01"); err != nil {
+	if err := s.GenerateForDate(ctx, "2026-06-01", SystemScope); err != nil {
 		t.Fatal(err)
 	}
 	if got := len(instancesOn(t, s, origin, "2026-06-01")); got != 1 {
@@ -69,7 +69,7 @@ func TestPristineRolloverReplaces(t *testing.T) {
 	}
 
 	// Day 2: pristine yesterday instance should be deleted, today gets a fresh one.
-	if err := s.GenerateForDate(ctx, "2026-06-02"); err != nil {
+	if err := s.GenerateForDate(ctx, "2026-06-02", SystemScope); err != nil {
 		t.Fatal(err)
 	}
 	if got := len(instancesOn(t, s, origin, "2026-06-01")); got != 0 {
@@ -90,7 +90,7 @@ func TestModifiedRolloverCarriesForwardPlusNew(t *testing.T) {
 	ctx := context.Background()
 	origin := makeDailyTemplate(t, s, nil)
 
-	if err := s.GenerateForDate(ctx, "2026-06-01"); err != nil {
+	if err := s.GenerateForDate(ctx, "2026-06-01", SystemScope); err != nil {
 		t.Fatal(err)
 	}
 	inst := instancesOn(t, s, origin, "2026-06-01")[0]
@@ -104,7 +104,7 @@ func TestModifiedRolloverCarriesForwardPlusNew(t *testing.T) {
 
 	// Day 2: the modified instance carries forward and BECOMES that day's
 	// occurrence — one instance per day, no duplicate fresh copy.
-	if err := s.GenerateForDate(ctx, "2026-06-02"); err != nil {
+	if err := s.GenerateForDate(ctx, "2026-06-02", SystemScope); err != nil {
 		t.Fatal(err)
 	}
 	if got := len(instancesOn(t, s, origin, "2026-06-01")); got != 0 {
@@ -150,7 +150,7 @@ func TestSameDayDuplicatesHealed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := s.GenerateForDate(ctx, date); err != nil {
+	if err := s.GenerateForDate(ctx, date, SystemScope); err != nil {
 		t.Fatal(err)
 	}
 	got := instancesOn(t, s, origin, date)
@@ -202,7 +202,7 @@ func TestFutureDayDuplicatesHealedAcrossWeek(t *testing.T) {
 	}
 
 	// And the client list path must be idempotent on that week too.
-	if err := s.GenerateForWeek(ctx, "2026-06-08", today); err != nil {
+	if err := s.GenerateForWeek(ctx, "2026-06-08", today, SystemScope); err != nil {
 		t.Fatal(err)
 	}
 	if got := len(instancesOn(t, s, origin, futureDay)); got != 1 {
@@ -245,7 +245,7 @@ func TestDoneDuplicatesHealed(t *testing.T) {
 		t.Fatalf("setup expected 2 done instances, got %d", got)
 	}
 
-	if err := s.dedupeRecurringInstances(ctx, date); err != nil {
+	if err := s.dedupeRecurringInstances(ctx, date, SystemScope); err != nil {
 		t.Fatal(err)
 	}
 	got := instancesOn(t, s, origin, date)
@@ -286,7 +286,7 @@ func TestDedupeKeepsDoneOverPlanned(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := s.dedupeRecurringInstances(ctx, date); err != nil {
+	if err := s.dedupeRecurringInstances(ctx, date, SystemScope); err != nil {
 		t.Fatal(err)
 	}
 	got := instancesOn(t, s, origin, date)
@@ -306,7 +306,7 @@ func TestTemplateEditPropagates(t *testing.T) {
 	origin := makeDailyTemplate(t, s, nil)
 	const date = "2026-06-01"
 
-	if err := s.GenerateForDate(ctx, date); err != nil {
+	if err := s.GenerateForDate(ctx, date, SystemScope); err != nil {
 		t.Fatal(err)
 	}
 	if got := instancesOn(t, s, origin, date); len(got) != 1 || got[0].Title != "Meditate" {
@@ -323,7 +323,7 @@ func TestTemplateEditPropagates(t *testing.T) {
 	if _, err := s.Update(ctx, tmpl); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.SyncTemplateInstances(ctx, origin, date); err != nil {
+	if err := s.SyncTemplateInstances(ctx, origin, date, SystemScope); err != nil {
 		t.Fatal(err)
 	}
 
@@ -369,7 +369,7 @@ func TestRecurrenceDeleteRecordsTombstone(t *testing.T) {
 		}
 	}
 
-	if err := s.GenerateForDate(ctx, date); err != nil {
+	if err := s.GenerateForDate(ctx, date, SystemScope); err != nil {
 		t.Fatal(err)
 	}
 
@@ -390,12 +390,12 @@ func TestWeekGenerationFindsInstanceByWeekStart(t *testing.T) {
 	origin := makeDailyTemplate(t, s, strptr("07:30"))
 
 	// Home view path: generate today's instance.
-	if err := s.GenerateForDate(ctx, "2026-06-03"); err != nil { // Wednesday
+	if err := s.GenerateForDate(ctx, "2026-06-03", SystemScope); err != nil { // Wednesday
 		t.Fatal(err)
 	}
 	// Day/week view path: generate for the week using the client's today.
 	weekStart := "2026-06-01" // Monday
-	if err := s.GenerateForWeek(ctx, weekStart, "2026-06-03"); err != nil {
+	if err := s.GenerateForWeek(ctx, weekStart, "2026-06-03", SystemScope); err != nil {
 		t.Fatal(err)
 	}
 

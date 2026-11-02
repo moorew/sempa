@@ -51,7 +51,7 @@ func SyncICalSubscription(ctx context.Context, store *db.ICalStore, sub db.ICalS
 // number of feeds that synced cleanly and the number that errored.
 func SyncAllICalSubscriptions(ctx context.Context, database *sql.DB) (ok int, failed int) {
 	store := db.NewICalStore(database)
-	subs, err := store.ListSubscriptions(ctx)
+	subs, err := store.ListSubscriptions(ctx, db.SystemScope)
 	if err != nil {
 		return 0, 0
 	}

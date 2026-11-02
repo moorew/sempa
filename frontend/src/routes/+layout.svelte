@@ -32,7 +32,8 @@
   import { ensureDesktopNotifyPermission } from '$lib/desktopNotify';
   import { SplashScreen } from '@capacitor/splash-screen';
   import { Capacitor } from '@capacitor/core';
-  import { api, getServerUrl, getTauriToken, clearTauriToken, clearNativeToken, resetApiResolver, initTauriToken } from '$lib/api';
+  import { api, getServerUrl, getTauriToken, getNativeToken, clearTauriToken, clearNativeToken, resetApiResolver, initTauriToken } from '$lib/api';
+  import { bindLocalAccount, clearLocalAccount } from '$lib/localAccount';
   import { isTauri, hasLocalDb, onSyncTrigger } from '$lib/tauri/bridge';
   import { initDeepLinks } from '$lib/tauri/deeplink';
   import { windowChrome } from '$lib/stores/windowChrome.svelte';
@@ -300,6 +301,7 @@
           }
           userEmail = me.email ?? 'desktop';
           if (me.email) localStorage.setItem('sempa_account_email', me.email);
+          await bindLocalAccount(me.user_id);
         } catch {
           // Network error → offline. Proceed on local data; sync reconciles later.
           // accountEmail falls back to the email persisted at the last login.
@@ -321,6 +323,7 @@
         }
         userEmail = me.email;
         if (me.email) localStorage.setItem('sempa_account_email', me.email);
+        await bindLocalAccount(me.user_id);
         // Register for push notifications after auth confirmed
         initPushNotifications();
         // Web Push (PWA / browser): register the service worker, bridge its
@@ -342,7 +345,9 @@
         // On Android (local-first) an unreachable server means offline, not
         // signed-out: stay in the app on local data and let sync reconcile.
         // On plain web there's no local store, so fall back to the login page.
-        if (hasLocalDb()) {
+        // A signed-out device has no token: it must not open on the last
+        // account's local data just because the server is unreachable.
+        if (hasLocalDb() && getNativeToken()) {
           userEmail = 'mobile';
           startSync();
         } else {
@@ -377,8 +382,23 @@
       // starts, so calling them here on every authenticated landing is safe and
       // guarantees sync runs the moment we're signed in on a local-first client.
       if (hasLocalDb()) {
-        startSync();
-        realtime.connect();
+        // Before the first sync of a new sign-in, confirm whose store this is:
+        // a different account (or server) than last time wipes it first.
+        const token = getTauriToken() || getNativeToken();
+        if (token && token !== boundToken) {
+          void (async () => {
+            try {
+              const me = await api.auth.me();
+              if (me.authenticated) await bindLocalAccount(me.user_id);
+              boundToken = token;
+            } catch { /* offline — the onMount gate binds on the next launch */ }
+            startSync();
+            realtime.connect();
+          })();
+        } else {
+          startSync();
+          realtime.connect();
+        }
       }
       // Arm the in-app routine scheduler (weekly planning / daily shutdown
       // prompts). Idempotent: re-calling on every authenticated landing is safe.
@@ -473,8 +493,15 @@
   // logout HTTP POST first, so on Android (or any time the server was slow/
   // unreachable) the await never resolved and the button appeared dead — and
   // the mobile variant never cleared the native token at all.
+  // The token the local store was last bound for (see afterNavigate).
+  let boundToken = '';
+
   async function signOut() {
     moreSheetOpen = false;
+    // Flush this account's queued edits and wipe its local data first, while
+    // the token is still valid, so nothing is left for the next person.
+    await clearLocalAccount();
+    boundToken = '';
     // Tell the server to invalidate the session, best-effort, while the token
     // is still present — but DON'T await it (a hung/offline request must not
     // block the local sign-out).

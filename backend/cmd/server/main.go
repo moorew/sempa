@@ -85,8 +85,10 @@ func main() {
 	handler := api.NewRouter(database, cfg, blobs, vapidKeys.Public)
 
 	// Inbound SMTP server.
-	if cfg.SMTPPort != "" {
-		smtpSrv := emailrecv.New(":"+cfg.SMTPPort, db.NewTaskStore(database), cfg.SMTPAllowedSenders)
+	if cfg.SMTPPort != "" && cfg.SMTPRecipientToken == "" {
+		slog.Error("smtp disabled: SMTP_PORT is set but SMTP_RECIPIENT_TOKEN is empty; set a secret recipient token to accept mail")
+	} else if cfg.SMTPPort != "" {
+		smtpSrv := emailrecv.New(":"+cfg.SMTPPort, db.NewTaskStore(database), cfg.SMTPAllowedSenders, cfg.SMTPRecipientToken)
 		go func() {
 			slog.Info("smtp listening", "port", cfg.SMTPPort)
 			if err := smtpSrv.ListenAndServe(); err != nil {
@@ -124,7 +126,7 @@ func main() {
 	// FCM and the generic webhook, honoring the user's channel toggles.
 	fcmSvc := notify.New(db.NewDeviceTokenStore(database), cfg.FCMKeyPath)
 	webPush := notify.NewWebPushSender(vapidKeys, cfg.VAPIDSubject)
-	dispatcher := notify.NewDispatcher(configStore, db.NewPushSubStore(database), webPush, fcmSvc, cfg.AppURL)
+	dispatcher := notify.NewDispatcher(configStore, db.NewPushSubStore(database), db.NewUserStore(database), webPush, fcmSvc, cfg.AppURL)
 	go notify.StartReminders(ctx, db.NewTaskStore(database), dispatcher, configStore)
 
 	// Daily backup scheduler.

@@ -298,8 +298,10 @@ Generate one at [Tailscale Admin → Keys](https://login.tailscale.com/admin/set
 |----------|-------------|
 | `TS_AUTHKEY` | Auth key for the Tailscale sidecar container |
 | `EMAIL_FORWARD_TOKEN` | Secret token for the Cloudflare email-to-task webhook |
-| `SMTP_ALLOWED_SENDERS` | Restrict email-to-task senders (comma-separated emails or `@domain`; empty = accept all) |
-| `SMTP_PORT` | Port for the built-in inbound SMTP server (default: `2525`) |
+| `SMTP_PORT` | Port for the built-in inbound SMTP server. **Empty by default (off).** The Cloudflare webhook above doesn't need it. |
+| `SMTP_RECIPIENT_TOKEN` | Required when `SMTP_PORT` is set: a secret the recipient address must carry (`tasks+<token>@…` or `<token>@…`). The server has no SMTP login and the sender address is whatever the connecting client claims, so this secret is what stops anyone who can reach the port from creating tasks. Without it the SMTP server doesn't start. |
+| `SMTP_ALLOWED_SENDERS` | Further restrict SMTP senders (comma-separated emails or `@domain`; empty = any sender with the right recipient token). Not authentication on its own. |
+| `SEMPA_TRUSTED_PROXIES` | Comma-separated IPs/CIDRs of reverse proxies whose `X-Forwarded-For` is trusted. Default: loopback only, which fits Tailscale Serve in the shipped compose file. List a proxy on another host here. |
 | `VAPID_SUBJECT` | Web Push contact address (e.g. `mailto:you@example.com`); the VAPID key pair auto-generates |
 | `FCM_KEY_PATH` | Path to a Firebase service-account JSON key for native Android push |
 | `OLLAMA_BASE_URL` | Ollama endpoint for the local AI model (AI assist, including email-title cleanup). **Empty by default** (feature off). `install.sh` sets it to `http://127.0.0.1:11434` when you opt into local AI; it can also be set manually or changed in **Settings → Integrations**. |

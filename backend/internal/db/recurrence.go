@@ -24,12 +24,17 @@ import (
 //
 // Pristine vs. modified is tracked by tasks.is_customized (set whenever the user
 // edits an instance's content or adds a sub-task — see the API layer).
-func (s *TaskStore) GenerateForDate(ctx context.Context, date string) error {
+//
+// ownerID limits every write to that user's own instances and templates: the
+// date comes from one client's device, so it must only ever roll over that
+// user's day. Pass SystemScope only from trusted server code.
+func (s *TaskStore) GenerateForDate(ctx context.Context, date, ownerID string) error {
 	t, err := time.Parse("2006-01-02", date)
 	if err != nil {
 		return fmt.Errorf("invalid date %q: %w", date, err)
 	}
 	ws := weekStartOf(t)
+	scope, sargs := ownScope(ownerID)
 
 	// 1a. Delete pristine, open instances left in the past — nothing the user
 	//     cared about, so today's fresh instance replaces them.
@@ -39,7 +44,7 @@ func (s *TaskStore) GenerateForDate(ctx context.Context, date string) error {
 		  AND status IN ('backlog','planned')
 		  AND (time_actual_minutes IS NULL OR time_actual_minutes = 0)
 		  AND planned_date IS NOT NULL
-		  AND planned_date < ?`, date); err != nil {
+		  AND planned_date < ?`+scope, append([]any{date}, sargs...)...); err != nil {
 		return err
 	}
 
@@ -51,7 +56,7 @@ func (s *TaskStore) GenerateForDate(ctx context.Context, date string) error {
 		WHERE recurrence_origin_id IS NOT NULL
 		  AND status IN ('backlog','planned','in_progress')
 		  AND planned_date IS NOT NULL
-		  AND planned_date < ?`, date, ws, date); err != nil {
+		  AND planned_date < ?`+scope, append([]any{date, ws, date}, sargs...)...); err != nil {
 		return err
 	}
 
@@ -59,14 +64,14 @@ func (s *TaskStore) GenerateForDate(ctx context.Context, date string) error {
 	//     preferring the customised / time-logged / done one over a bare pristine
 	//     copy. (Earlier logic could leave both a carried-forward modified instance
 	//     and a fresh pristine one on the same day.)
-	if err := s.dedupeInstancesForDate(ctx, date); err != nil {
+	if err := s.dedupeRecurringInstances(ctx, date, ownerID); err != nil {
 		return err
 	}
 
 	// 2. Ensure ONE instance exists for every template due on `date`. Any
 	//    non-cancelled instance already on the day counts — a carried-forward or
 	//    customised instance IS that day's occurrence, so we don't add a duplicate.
-	return s.ensureInstancesForDate(ctx, t)
+	return s.ensureInstancesForDate(ctx, t, ownerID)
 }
 
 // ensureInstancesForDate is the non-destructive half of rollover: it creates a
@@ -74,9 +79,9 @@ func (s *TaskStore) GenerateForDate(ctx context.Context, date string) error {
 // It never deletes or moves anything, so it is safe to run from the timezone-
 // agnostic horizon poller (which must not delete a still-current instance based
 // on the server's own midnight — see SeedHorizon).
-func (s *TaskStore) ensureInstancesForDate(ctx context.Context, t time.Time) error {
+func (s *TaskStore) ensureInstancesForDate(ctx context.Context, t time.Time, ownerID string) error {
 	date := t.Format("2006-01-02")
-	templates, err := s.ListRecurringTemplates(ctx, SystemScope)
+	templates, err := s.ownedTemplates(ctx, ownerID)
 	if err != nil {
 		return err
 	}
@@ -100,11 +105,11 @@ func (s *TaskStore) ensureInstancesForDate(ctx context.Context, t time.Time) err
 // today's instances, and a travelling client rolls the day over on its own local
 // midnight. The viewed date's instances are then ensured non-destructively.
 // `today` is the client's device date (YYYY-MM-DD); "" falls back to the server's.
-func (s *TaskStore) GenerateForDay(ctx context.Context, date, today string) error {
+func (s *TaskStore) GenerateForDay(ctx context.Context, date, today, ownerID string) error {
 	if today == "" {
 		today = ServerToday()
 	}
-	if err := s.GenerateForDate(ctx, today); err != nil {
+	if err := s.GenerateForDate(ctx, today, ownerID); err != nil {
 		return err
 	}
 	// For a future day, also materialise its instances. Past days were already
@@ -114,14 +119,25 @@ func (s *TaskStore) GenerateForDay(ctx context.Context, date, today string) erro
 		if err != nil {
 			return fmt.Errorf("invalid date %q: %w", date, err)
 		}
-		return s.ensureInstancesForDate(ctx, t)
+		return s.ensureInstancesForDate(ctx, t, ownerID)
 	}
 	return nil
 }
 
-// dedupeInstancesForDate heals same-day duplicates for a single day.
-func (s *TaskStore) dedupeInstancesForDate(ctx context.Context, date string) error {
-	return s.dedupeRecurringInstances(ctx, date)
+// ownedTemplates lists the recurring templates a rollover may seed from: the
+// owner's own (not ones merely shared with them), or all for SystemScope.
+func (s *TaskStore) ownedTemplates(ctx context.Context, ownerID string) ([]Task, error) {
+	templates, err := s.ListRecurringTemplates(ctx, ownerID)
+	if err != nil || ownerID == SystemScope {
+		return templates, err
+	}
+	own := templates[:0]
+	for _, t := range templates {
+		if t.OwnerID == ownerID {
+			own = append(own, t)
+		}
+	}
+	return own, nil
 }
 
 // dedupeRecurringInstances removes redundant pristine duplicates of a recurring
@@ -153,7 +169,8 @@ func (s *TaskStore) dedupeInstancesForDate(ctx context.Context, date string) err
 // instances on a FUTURE day, and — because per-day rollover only ever deduped
 // "today" — that pair used to survive across the week boundary until the day
 // finally became today. Deduping every seeded day closes that gap.
-func (s *TaskStore) dedupeRecurringInstances(ctx context.Context, date string) error {
+func (s *TaskStore) dedupeRecurringInstances(ctx context.Context, date, ownerID string) error {
+	scope, sargs := ownScope(ownerID)
 	// rank(t) mirrors the doc comment; identical expression for candidate and
 	// sibling so the comparison is symmetric.
 	const rank = `CASE
@@ -182,9 +199,9 @@ func (s *TaskStore) dedupeRecurringInstances(ctx context.Context, date string) e
 			  )
 		  )`
 	if date != "" {
-		return s.tombstoneAndDeleteTasks(ctx, where+` AND planned_date = ?`, date)
+		return s.tombstoneAndDeleteTasks(ctx, where+` AND planned_date = ?`+scope, append([]any{date}, sargs...)...)
 	}
-	return s.tombstoneAndDeleteTasks(ctx, where)
+	return s.tombstoneAndDeleteTasks(ctx, where+scope, sargs...)
 }
 
 // tombstoneAndDeleteTasks deletes the tasks matching `where` AND records a sync
@@ -209,7 +226,7 @@ func (s *TaskStore) tombstoneAndDeleteTasks(ctx context.Context, where string, a
 // This is intentionally non-destructive: it never deletes future instances (an
 // earlier version did, which could race with the day/today view and make tasks
 // vanish). Pristine-existence checks keep it idempotent and duplicate-free.
-func (s *TaskStore) GenerateForWeek(ctx context.Context, weekStart, today string) error {
+func (s *TaskStore) GenerateForWeek(ctx context.Context, weekStart, today, ownerID string) error {
 	if today == "" {
 		today = ServerToday()
 	}
@@ -218,6 +235,7 @@ func (s *TaskStore) GenerateForWeek(ctx context.Context, weekStart, today string
 		return fmt.Errorf("invalid weekStart %q: %w", weekStart, err)
 	}
 	weekEnd := ws.AddDate(0, 0, 6).Format("2006-01-02")
+	scope, sargs := ownScope(ownerID)
 
 	// Backfill: repair any task whose week_start is missing or doesn't match its
 	// planned_date, so it surfaces in ListByWeek (which filters on week_start).
@@ -226,7 +244,7 @@ func (s *TaskStore) GenerateForWeek(ctx context.Context, weekStart, today string
 		SET week_start = date(planned_date, '-' || ((CAST(strftime('%w', planned_date) AS INTEGER) + 6) % 7) || ' days')
 		WHERE planned_date IS NOT NULL
 		  AND (week_start IS NULL OR week_start = ''
-		       OR week_start != date(planned_date, '-' || ((CAST(strftime('%w', planned_date) AS INTEGER) + 6) % 7) || ' days'))`)
+		       OR week_start != date(planned_date, '-' || ((CAST(strftime('%w', planned_date) AS INTEGER) + 6) % 7) || ' days'))`+scope, sargs...)
 
 	switch {
 	case today > weekEnd:
@@ -234,13 +252,13 @@ func (s *TaskStore) GenerateForWeek(ctx context.Context, weekStart, today string
 		return nil
 	case today < weekStart:
 		// Future week — seed every due day, no rollover.
-		return s.seedWeekInstances(ctx, ws, "")
+		return s.seedWeekInstances(ctx, ws, "", ownerID)
 	default:
 		// Current week — roll today over, then seed the remaining days.
-		if err := s.GenerateForDate(ctx, today); err != nil {
+		if err := s.GenerateForDate(ctx, today, ownerID); err != nil {
 			return err
 		}
-		return s.seedWeekInstances(ctx, ws, today)
+		return s.seedWeekInstances(ctx, ws, today, ownerID)
 	}
 }
 
@@ -252,7 +270,7 @@ func (s *TaskStore) GenerateForWeek(ctx context.Context, weekStart, today string
 // Run proactively by the recurrence poller, these instances flow to every
 // client through normal sync. `today` is YYYY-MM-DD; pass "" for the server's
 // date. It is idempotent (pristine-existence checks keep it duplicate-free).
-func (s *TaskStore) GenerateHorizon(ctx context.Context, today string, weeksAhead int) error {
+func (s *TaskStore) GenerateHorizon(ctx context.Context, today string, weeksAhead int, ownerID string) error {
 	if today == "" {
 		today = ServerToday()
 	}
@@ -266,7 +284,7 @@ func (s *TaskStore) GenerateHorizon(ctx context.Context, today string, weeksAhea
 	}
 	for i := 0; i <= weeksAhead; i++ {
 		ws := curWS.AddDate(0, 0, i*7).Format("2006-01-02")
-		if err := s.GenerateForWeek(ctx, ws, today); err != nil {
+		if err := s.GenerateForWeek(ctx, ws, today, ownerID); err != nil {
 			return err
 		}
 	}
@@ -323,7 +341,7 @@ func (s *TaskStore) SeedHorizon(ctx context.Context, today string, weeksAhead in
 		if i == 0 {
 			after = t.AddDate(0, 0, -1).Format("2006-01-02")
 		}
-		if err := s.seedWeekInstances(ctx, ws, after); err != nil {
+		if err := s.seedWeekInstances(ctx, ws, after, SystemScope); err != nil {
 			return err
 		}
 	}
@@ -335,14 +353,14 @@ func (s *TaskStore) SeedHorizon(ctx context.Context, today string, weeksAhead in
 	// be reached otherwise. Safe on the timezone-agnostic poller: it only removes
 	// a pristine instance shadowed by a higher-ranked same-day sibling, never a
 	// day's sole instance.
-	return s.dedupeRecurringInstances(ctx, "")
+	return s.dedupeRecurringInstances(ctx, "", SystemScope)
 }
 
 // seedWeekInstances creates a pristine instance for each due day in the week
 // (Mon–Sun) strictly after `afterDate` (use "" to include all days). Days that
 // already have a pristine instance for the template are skipped.
-func (s *TaskStore) seedWeekInstances(ctx context.Context, ws time.Time, afterDate string) error {
-	templates, err := s.ListRecurringTemplates(ctx, SystemScope)
+func (s *TaskStore) seedWeekInstances(ctx context.Context, ws time.Time, afterDate, ownerID string) error {
+	templates, err := s.ownedTemplates(ctx, ownerID)
 	if err != nil {
 		return err
 	}
@@ -368,7 +386,7 @@ func (s *TaskStore) seedWeekInstances(ctx context.Context, ws time.Time, afterDa
 		// a non-atomic check with no unique constraint behind it, so two seeders
 		// can both miss and both insert; deduping here — on every seeded day, not
 		// just today — stops a future-day duplicate from riding across the week.
-		if err := s.dedupeRecurringInstances(ctx, date); err != nil {
+		if err := s.dedupeRecurringInstances(ctx, date, ownerID); err != nil {
 			return err
 		}
 	}
@@ -455,7 +473,7 @@ func (s *TaskStore) RetireTemplate(ctx context.Context, id string) error {
 // from `today` onward are deleted and regenerated under the template's current
 // title / description / tags / estimate / rule. Customised or already-worked
 // instances are left exactly as they are.
-func (s *TaskStore) SyncTemplateInstances(ctx context.Context, originID, today string) error {
+func (s *TaskStore) SyncTemplateInstances(ctx context.Context, originID, today, ownerID string) error {
 	if today == "" {
 		today = ServerToday()
 	}
@@ -467,7 +485,7 @@ func (s *TaskStore) SyncTemplateInstances(ctx context.Context, originID, today s
 		  AND (time_actual_minutes IS NULL OR time_actual_minutes = 0)`, originID, today); err != nil {
 		return err
 	}
-	return s.GenerateHorizon(ctx, today, recurrenceHorizonWeeks)
+	return s.GenerateHorizon(ctx, today, recurrenceHorizonWeeks, ownerID)
 }
 
 // recurrenceHorizonWeeks mirrors the poller's horizon (+2 weeks).

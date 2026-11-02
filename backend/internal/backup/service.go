@@ -213,9 +213,11 @@ func addFileToZip(zw *zip.Writer, srcPath, name string) error {
 	return err
 }
 
-// sanitizeSnapshot always removes the backup passphrase + destination creds (so a
-// bundle never contains the keys to itself), and in exclude-secrets mode also
-// drops integration tokens and device push tokens.
+// sanitizeSnapshot always removes the backup passphrase + destination creds and
+// every live login token (so a bundle never contains the keys to itself or to
+// the instance), and in exclude-secrets mode also drops integration tokens and
+// device push tokens. A session id is a bearer credential: one copied out of a
+// bundle would let whoever reads the bundle act as that user, admin included.
 func sanitizeSnapshot(ctx context.Context, snapPath, mode string) error {
 	sdb, err := sql.Open("sqlite", snapPath)
 	if err != nil {
@@ -225,6 +227,8 @@ func sanitizeSnapshot(ctx context.Context, snapPath, mode string) error {
 
 	stmts := []string{
 		`UPDATE backup_settings SET passphrase = NULL, destinations = '[]'`,
+		`DELETE FROM sessions`,
+		`UPDATE paired_devices SET token = NULL`,
 	}
 	if mode == ModeExcludeSecrets {
 		stmts = append(stmts,
@@ -247,6 +251,9 @@ var restoreSkip = map[string]bool{
 	"schema_migrations": true,
 	"backup_settings":   true,
 	"backup_runs":       true,
+	// Never bring back login tokens: an older bundle would revive sessions that
+	// were logged out or revoked after it was taken.
+	"sessions": true,
 }
 
 // Restore replaces ALL data from the bundle read from src. If the bundle is

@@ -137,7 +137,7 @@ func (h *projectHandler) update(w http.ResponseWriter, r *http.Request) {
 	// Un-share: peers drop their copy (the owner keeps it). Linked tasks etc. keep
 	// their own share state — a private task can sit in a shared project.
 	if req.Shared != nil && wasShared && !updated.Shared && h.sync != nil {
-		_ = h.sync.RecordRevocation(r.Context(), "project", updated.ID, owner)
+		_ = h.sync.RecordRevocation(r.Context(), "project", updated.ID, updated.OwnerID)
 	}
 	h.broadcast()
 	respond(w, http.StatusOK, updated)

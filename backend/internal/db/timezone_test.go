@@ -38,7 +38,7 @@ func TestSeedHorizonKeepsCurrentInstances(t *testing.T) {
 	origin := makeDailyTemplate(t, s, nil)
 
 	// A pristine instance for "yesterday" (well within grace) must survive a poll.
-	if err := s.GenerateForDate(ctx, "2026-06-09"); err != nil {
+	if err := s.GenerateForDate(ctx, "2026-06-09", SystemScope); err != nil {
 		t.Fatal(err)
 	}
 	if got := len(instancesOn(t, s, origin, "2026-06-09")); got != 1 {
@@ -67,7 +67,7 @@ func TestSeedHorizonPrunesStale(t *testing.T) {
 	ctx := context.Background()
 	origin := makeDailyTemplate(t, s, nil)
 
-	if err := s.GenerateForDate(ctx, "2026-06-01"); err != nil {
+	if err := s.GenerateForDate(ctx, "2026-06-01", SystemScope); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.SeedHorizon(ctx, "2026-06-10", 2); err != nil {
@@ -86,12 +86,12 @@ func TestGenerateForDayAnchorsToToday(t *testing.T) {
 	ctx := context.Background()
 	origin := makeDailyTemplate(t, s, nil)
 
-	if err := s.GenerateForDate(ctx, "2026-06-10"); err != nil {
+	if err := s.GenerateForDate(ctx, "2026-06-10", SystemScope); err != nil {
 		t.Fatal(err)
 	}
 
 	// View a day a week ahead; today is still 06-10.
-	if err := s.GenerateForDay(ctx, "2026-06-17", "2026-06-10"); err != nil {
+	if err := s.GenerateForDay(ctx, "2026-06-17", "2026-06-10", SystemScope); err != nil {
 		t.Fatal(err)
 	}
 	if got := len(instancesOn(t, s, origin, "2026-06-10")); got != 1 {

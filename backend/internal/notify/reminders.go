@@ -68,6 +68,8 @@ func checkDueReminders(ctx context.Context, tasks *db.TaskStore, dispatcher *Dis
 			TaskID: t.ID,
 			Tag:    "reminder-" + t.ID,
 			Type:   "reminder",
+			// Only the task's owner is reminded, on their own devices.
+			OwnerID: t.OwnerID,
 		})
 		if err := tasks.MarkReminderSent(ctx, t.ID); err != nil {
 			slog.Error("notify: mark reminder sent", "id", t.ID, "err", err)
@@ -85,24 +87,24 @@ func sendMorningDigest(ctx context.Context, tasks *db.TaskStore, dispatcher *Dis
 		return
 	}
 
-	pending := 0
+	// One digest per user, counting only their own tasks, sent to their devices.
+	pending := map[string]int{}
 	for _, t := range dayTasks {
-		if t.Status != "done" && t.Status != "cancelled" {
-			pending++
+		if t.Status != "done" && t.Status != "cancelled" && t.OwnerID != "" {
+			pending[t.OwnerID]++
 		}
 	}
-	if pending == 0 {
-		return
+	for owner, n := range pending {
+		dispatcher.Send(ctx, Notification{
+			Title:   "Good morning",
+			Body:    fmt.Sprintf("You have %d task%s planned for today.", n, plural(n)),
+			URL:     "/home",
+			Tag:     "morning-digest-" + today,
+			Type:    "morning_digest",
+			OwnerID: owner,
+		})
+		slog.Info("notify: sent morning digest", "tasks", n)
 	}
-
-	dispatcher.Send(ctx, Notification{
-		Title: "Good morning",
-		Body:  fmt.Sprintf("You have %d task%s planned for today.", pending, plural(pending)),
-		URL:   "/home",
-		Tag:   "morning-digest-" + today,
-		Type:  "morning_digest",
-	})
-	slog.Info("notify: sent morning digest", "tasks", pending)
 }
 
 func plural(n int) string {
