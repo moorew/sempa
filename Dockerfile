@@ -29,7 +29,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w
 # ── Stage 3: Final image ─────────────────────────────────────────────────────
 # Pinned base (not :latest) so rebuilds are reproducible; Dependabot's docker
 # updates bump it. wget (busybox, already in alpine) backs the health check.
-FROM alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+FROM alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 RUN apk --no-cache add ca-certificates tzdata \
     && addgroup -S sempa && adduser -S -G sempa -u 10001 sempa
 WORKDIR /app
