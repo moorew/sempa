@@ -9,6 +9,13 @@
 **/node_modules
 frontend/.svelte-kit
 frontend/build
+
+# Local Vite env files. Anything in one is compiled into the web bundle, so a
+# stray frontend/.env on the build host (VITE_API_URL=...) silently pinned the
+# image to one server. Builds must not depend on files outside git.
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
 frontend/src-tauri/target
 frontend/android/.gradle
 frontend/android/build
