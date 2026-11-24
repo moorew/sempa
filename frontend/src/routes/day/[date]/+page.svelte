@@ -20,10 +20,12 @@
   import MiniCalendar from '$lib/components/MiniCalendar.svelte';
   import TimeslotCalendar from '$lib/components/TimeslotCalendar.svelte';
   import WeeklyObjectivesWidget from '$lib/components/WeeklyObjectivesWidget.svelte';
-  import { ChevronLeft, ChevronRight, Plus, Clock, Mail, SlidersHorizontal, Target, Search } from 'lucide-svelte';
+  import { ChevronLeft, ChevronRight, Plus, Clock, Mail, SlidersHorizontal, Target, Search, FolderKanban } from 'lucide-svelte';
   import { tagStore } from '$lib/stores/tags.svelte';
   import TagFilterBar from '$lib/components/TagFilterBar.svelte';
   import JiraPanel from '$lib/components/JiraPanel.svelte';
+  import ProjectTimeline from '$lib/components/ProjectTimeline.svelte';
+  import ProjectsPanel from '$lib/components/ProjectsPanel.svelte';
   import { jiraStatus } from '$lib/stores/jiraStatus.svelte';
   import MobileTaskCard from '$lib/components/MobileTaskCard.svelte';
   import MobileTaskView from '$lib/components/MobileTaskView.svelte';
@@ -60,7 +62,7 @@
   let draggingId    = $state<string | null>(null);
   let dragOverDate  = $state<string | null>(null);
   let emailPanel    = $state<EmailPanel | undefined>(undefined);
-  type RightPanel = 'schedule' | 'mail' | 'jira' | 'objectives';
+  type RightPanel = 'schedule' | 'mail' | 'jira' | 'projects' | 'objectives';
   let rightPanel    = $state<RightPanel>('schedule');
 
   // The Jira tab only exists when Jira is actually connected — an unconfigured
@@ -71,13 +73,43 @@
     { id: 'schedule',   label: 'Schedule' },
     { id: 'mail',       label: 'Inbox' },
     ...(jiraStatus.connected ? [{ id: 'jira' as const, label: 'Jira' }] : []),
+    ...(projectStore.open.length ? [{ id: 'projects' as const, label: 'Projects' }] : []),
     { id: 'objectives', label: 'Goals' },
   ]);
+  // Five tabs don't fit 332px with labels, so past four only the active one keeps its label.
+  const compactTabs = $derived(rightPanelTabs.length > 4);
   // Derived, not an $effect that reassigns rightPanel — an effect that reads and
   // writes the same $state is the read-modify-write loop that wedges the whole app.
   const activePanel = $derived<RightPanel>(
-    rightPanel === 'jira' && !jiraStatus.connected ? 'schedule' : rightPanel,
+    (rightPanel === 'jira' && !jiraStatus.connected) || (rightPanel === 'projects' && !projectStore.open.length)
+      ? 'schedule' : rightPanel,
   );
+
+  // ── Projects on the desktop board ──────────────────────────────────────────
+  // Open projects run as bars across the day columns (ProjectTimeline), and the
+  // Projects tab lists each one's not-yet-planned tasks to drag onto a day.
+  // Both read each project's top-level tasks, loaded here once and refreshed
+  // on any task/project change.
+  let projectTasks = $state<Record<string, Task[]>>({});
+  let focusProjectId = $state<string | null>(null);
+  let projectLoadSeq = 0;
+  async function loadProjectTasks() {
+    if (mobile.value) return;
+    const list = untrack(() => projectStore.open);
+    const seq = ++projectLoadSeq;
+    const entries = await Promise.all(list.map((p) =>
+      api.projects.tasks(p.id).then((ts) => [p.id, ts ?? []] as const).catch(() => [p.id, [] as Task[]] as const)));
+    if (seq === projectLoadSeq) projectTasks = Object.fromEntries(entries);
+  }
+  $effect(() => {
+    if (mobile.value) return;
+    void projectStore.open;
+    untrack(() => { void loadProjectTasks(); });
+  });
+  function selectProject(id: string) {
+    focusProjectId = id;
+    rightPanel = 'projects';
+  }
 
   let panelOpen   = $state(false);
   let panelTask   = $state<Task | null>(null);
@@ -309,6 +341,7 @@
     const ev = realtime.lastEvent;
     if (!ev) return;
     if (ev.type === 'task:change' || ev.type === 'objective:change') reloadLoaded();
+    if (ev.type === 'task:change') untrack(() => { void loadProjectTasks(); });
   });
 
   // Handle FAB deep link — runs on mount AND whenever search params change
@@ -672,6 +705,8 @@
       const [updatedMoved, ...updatedSiblings] = await Promise.all([movedReq, ...siblingReqs]);
       const byId = new Map<string, Task>([updatedMoved, ...updatedSiblings].map(t => [t.id, t]));
       tasks = tasks.map(t => byId.get(t.id) ?? t);
+      // A project task just got a day: drop it from that project's "to plan".
+      if (task.project_id) void loadProjectTasks();
     } catch (e: any) { tasks = prev; showDropError(e?.message || 'Could not move that task'); }
   }
 
@@ -871,6 +906,7 @@
 
   async function handlePanelSave(saved: Task) {
     panelOpen = false;
+    void loadProjectTasks();
     if (saved.status === 'cancelled') { tasks = tasks.filter(t => t.id !== saved.id); return; }
     if (!panelTask && saved.recurrence_rule) { await reloadLoaded(); return; }
     const idx = tasks.findIndex(t => t.id === saved.id);
@@ -1410,8 +1446,16 @@
            past days reachable by scrolling left and the future to the right —
            the range grows on demand at either edge, so there's no week boundary
            to flash through. Weekend columns read a touch softer. -->
+      <!-- The scroller is a column: the project timeline band on top (same
+           column track, so bars line up with their days and scroll with them),
+           then the day columns filling the rest of the height. -->
       <div bind:this={weekGrid} onscroll={onBoardScroll}
-           class="flex flex-1 min-h-0 items-stretch gap-3.5 overflow-x-auto overflow-y-hidden" data-weekgrid>
+           class="flex flex-1 min-h-0 flex-col overflow-x-auto overflow-y-hidden" data-weekgrid>
+        <ProjectTimeline dates={columns.map((c) => c.date)} projects={projectStore.open}
+                         {projectTasks} today={todayDate}
+                         selectedId={activePanel === 'projects' ? focusProjectId : null}
+                         onSelect={selectProject} />
+        <div class="flex w-max flex-[1_1_auto] min-h-0 items-stretch gap-3.5">
         {#each columns as day (day.date)}
           <div id="day-col-{day.date}" data-daycol class="flex h-full w-60 shrink-0" style={day.isWeekend ? 'opacity: 0.92;' : ''}>
             <WeekDayColumn
@@ -1435,6 +1479,7 @@
             />
           </div>
         {/each}
+        </div>
       </div>
     {/if}
   </main>
@@ -1458,11 +1503,11 @@
         {@const active = activePanel === panel.id}
         <button onclick={() => rightPanel = panel.id}
                 title={panel.label}
-                role="tab" aria-selected={active}
+                role="tab" aria-selected={active} aria-label={panel.label}
                 class="flex h-9 items-center justify-center gap-1.5 text-[12.5px] transition-colors"
-                style={active
+                style="{active
                   ? 'color: var(--sempa-text); font-weight: 700;'
-                  : 'color: var(--sempa-text-soft); font-weight: 600;'}>
+                  : 'color: var(--sempa-text-soft); font-weight: 600;'}{compactTabs && active ? ' flex-grow: 2.2;' : ''}">
           {#if panel.id === 'schedule'}
             <Clock size={15} />
           {:else if panel.id === 'mail'}
@@ -1471,10 +1516,12 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
               <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.757a5.215 5.215 0 0 0 5.214 5.214h2.129v2.058A5.218 5.218 0 0 0 18.313 18.3V6.763a1.006 1.006 0 0 0-1.019-1.006zM23.277.007H11.749a5.215 5.215 0 0 0 5.214 5.214h2.129v2.058A5.218 5.218 0 0 0 24.282 12.5V1.012A1.005 1.005 0 0 0 23.277.007z"/>
             </svg>
+          {:else if panel.id === 'projects'}
+            <FolderKanban size={15} />
           {:else}
             <Target size={15} />
           {/if}
-          {panel.label}
+          {#if !compactTabs || active}{panel.label}{/if}
         </button>
       {/each}
     </div>
@@ -1502,6 +1549,12 @@
               onTaskDragStart={(id) => { draggingId = id; }}
               onTasksReloaded={reloadLoaded}
             />
+          {:else if activePanel === 'projects'}
+            <ProjectsPanel projects={projectStore.open} {projectTasks} today={todayDate}
+                           focusId={focusProjectId}
+                           onTaskDragStart={(id) => { draggingId = id; }}
+                           onTaskClick={openEdit}
+                           onChanged={loadProjectTasks} />
           {:else}
             <!-- Objectives: weekly goals + a jump to the full planner -->
             <div class="h-full overflow-y-auto">

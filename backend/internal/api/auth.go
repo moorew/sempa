@@ -892,7 +892,9 @@ func (h *authHandler) googleCallback(w http.ResponseWriter, r *http.Request) {
 // browsers treat a backslash as a slash and strip tabs/newlines, turning it into
 // the protocol-relative "//evil.example".
 func safeLocalRedirect(s string) string {
-	if s == "" || s[0] != '/' || strings.HasPrefix(s, "//") || strings.ContainsAny(s, "\\\t\r\n") {
+	// The explicit s[1] check is the shape CodeQL's go/bad-redirect-check looks
+	// for; ContainsAny below already covers a backslash anywhere.
+	if s == "" || s[0] != '/' || (len(s) > 1 && (s[1] == '/' || s[1] == '\\')) || strings.ContainsAny(s, "\\\t\r\n") {
 		return "/"
 	}
 	if u, err := url.Parse(s); err != nil || u.Scheme != "" || u.Host != "" {

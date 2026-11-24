@@ -1,6 +1,6 @@
 {
   "name": "sempa-frontend",
-  "version": "1.31.0",
+  "version": "1.32.0",
   "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
@@ -17,8 +17,8 @@
     "tauri:build": "tauri build"
   },
   "devDependencies": {
-    "@sveltejs/adapter-static": "^4.0.0",
-    "@sveltejs/kit": "^3.1.0",
+    "@sveltejs/adapter-static": "^4.0.1",
+    "@sveltejs/kit": "^3.2.0",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2.12.3",
