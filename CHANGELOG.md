@@ -6,6 +6,40 @@ based on [Keep a Changelog](https://keepachangelog.com/), and Sempa follows
 (`vX.Y.Z`) with auto-generated notes on the
 [Releases page](https://github.com/moorew/sempa/releases).
 
+## [1.32.0] - 2026-11-24
+
+### Added
+- **Projects on the day board.** On desktop, every open project now runs as a
+  bar across the day columns from its start date to its target date, so a
+  multi-week project stays in view while you plan. Each bar shows how many of
+  its tasks aren't on a day yet. An overdue project keeps running to today, and
+  one with no target date runs open-ended.
+- **Projects tab in the day board's side panel.** Click a project's bar (or the
+  new Projects tab) to see each open project's progress, its tasks that aren't
+  on a day yet and the next few that are. Drag a task onto a day to plan it, or
+  add one with **Add task**.
+
+### Fixed
+- **Self-hosted logins went to the wrong server** ([#106]). The published web
+  build had our own server address compiled in, so a self-hosted install sent
+  sign-in and every other request there, whatever `APP_URL` said. The web app
+  now talks to the server it's loaded from. `docker-compose.yml` also no longer
+  defaults `APP_URL` to our address: set it in `.env` (a value in `.env.local`
+  is overridden by the compose file).
+
+### Security
+- The server is built with Go 1.27.4 (the image was still on 1.27.0) and
+  go-smtp 0.25.1, which fixes several `net/http`, `crypto/tls` and `crypto/x509`
+  vulnerabilities and one in the inbound email receiver. The runtime image is
+  Alpine 3.24.4.
+- SvelteKit 3.4 and adapter-static 4.0.1 (build-time fixes, including one
+  that could put server-only values in the client bundle) and patched
+  build-tool dependencies (glob, minimatch).
+- Sign-in redirects reject a second `/` or `\` explicitly (no change in
+  behaviour; makes the guard visible to code scanning).
+
+[#106]: https://github.com/moorew/sempa/issues/106
+
 ## [1.31.0] - 2026-11-02
 
 ### Security
