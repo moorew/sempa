@@ -76,7 +76,10 @@ export interface AiPullState {
 }
 
 // Resolve the API base URL:
-// 1. Build-time env var (dev): VITE_API_URL
+// 1. Build-time env var (dev only, via .env.development): VITE_API_URL. Never
+//    set one for production builds: it overrides the server the user entered,
+//    and the web image is published, so every self-hoster's browser would call
+//    that host (issue #106).
 // 2. Runtime user-configured server (mobile/native): stored in localStorage
 // 3. Fallback: empty string → relative URLs (web served by Go)
 // Client's local date as YYYY-MM-DD, sent to the server so recurring-task
