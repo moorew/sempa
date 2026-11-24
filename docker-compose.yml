@@ -59,8 +59,12 @@ services:
       PORT: "9001"
       DB_PATH: "/data/sempa.db"
       FRONTEND_DIR: "/app/frontend/build"
-      APP_URL: "${APP_URL:-https://sempa.clevercode.ts.net}"
-      FRONTEND_URL: "${APP_URL:-https://sempa.clevercode.ts.net}"
+      # The public URL Sempa is reached at (OAuth callbacks, CORS, links in
+      # notifications). Set APP_URL in .env, which Compose substitutes here.
+      # A value in .env.local does NOT apply: this environment block wins over
+      # env_file, so the default below would silently replace it.
+      APP_URL: "${APP_URL:-http://localhost:9001}"
+      FRONTEND_URL: "${APP_URL:-http://localhost:9001}"
       ENV: "production"
       # Home timezone (IANA) for all server-side day boundaries: recurring-task
       # rollover, the recurrence horizon, and the morning digest. The container

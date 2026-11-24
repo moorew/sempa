@@ -21,7 +21,7 @@ type Config struct {
 	Timezone string
 
 	// OAuth / integration
-	AppURL            string // e.g. https://blackbox.clevercode.ts.net
+	AppURL            string // e.g. https://sempa.<your-tailnet>.ts.net
 	FrontendURL       string // e.g. http://localhost:5173 (dev only)
 	GmailClientID     string
 	GmailClientSecret string
